@@ -1,12 +1,15 @@
 import { useState, useMemo } from 'react'
 import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination } from 'antd'
 import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined } from '@ant-design/icons'
+import { useNavigate, useParams } from 'react-router-dom'
 import { mockModules, mockCases } from '../../mock/data'
 
 const priorityColors = { P0: '#dc4446', P1: '#fa8c16', P2: '#4C8BF5', P3: '#86909c' }
 const statusColors = { '已自动化': '#52c41a', '待自动化': '#fa8c16', '脚本已移除': '#dc4446' }
 
 export default function CaseManagement() {
+  const navigate = useNavigate()
+  const { projectId } = useParams()
   const [selectedModule, setSelectedModule] = useState(null)
   const [selectedSub, setSelectedSub] = useState(null)
   const [keyword, setKeyword] = useState('')
@@ -52,27 +55,30 @@ export default function CaseManagement() {
   }
 
   const columns = [
-    { title: '用例ID', dataIndex: 'id', width: 155, render: v => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#4e5969' }}>{v}</span> },
-    { title: '标题', dataIndex: 'title', ellipsis: true },
-    { title: '类型', dataIndex: 'type', width: 70, render: v => <Tag color={v==='API'?'#e6f4ff':'#f6ffed'} style={{ color: v==='API'?'#4C8BF5':'#52c41a' }}>{v}</Tag> },
-    { title: '模块', dataIndex: 'moduleCode', width: 90 },
+    { title: '用例ID', dataIndex: 'id', width: 155, render: v => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#86909c' }}>{v}</span> },
+    { title: '标题', dataIndex: 'title', ellipsis: true, render: (v, row) => (
+      <span
+        onClick={() => navigate(`/projects/${projectId}/cases/${row.id}`)}
+        style={{ color: '#1d2129', cursor: 'pointer', fontWeight: 500 }}
+        onMouseEnter={e => e.target.style.color = '#4C8BF5'}
+        onMouseLeave={e => e.target.style.color = '#1d2129'}
+      >{v}</span>
+    )},
+    { title: '类型', dataIndex: 'type', width: 65, render: v => <Tag color={v==='API'?'#e6f4ff':'#f6ffed'} style={{ color: v==='API'?'#4C8BF5':'#52c41a' }}>{v}</Tag> },
+    { title: '模块', dataIndex: 'moduleCode', width: 85 },
     { title: '子模块', dataIndex: 'subModuleLabel', width: 80, render: v => <span style={{ color: '#86909c' }}>{v}</span> },
-    { title: '优先级', dataIndex: 'priority', width: 72, align: 'center', render: v => <Tag style={{ background: priorityColors[v], color: '#fff', border: 'none' }}>{v}</Tag> },
+    { title: '优先级', dataIndex: 'priority', width: 68, align: 'center', render: v => <Tag style={{ background: priorityColors[v], color: '#fff', border: 'none' }}>{v}</Tag> },
     { title: '状态', dataIndex: 'status', width: 100, render: v => <Tag style={{ background: statusColors[v]+'18', color: statusColors[v], border: 'none' }}>{v}</Tag> },
-    { title: '来源', dataIndex: 'source', width: 55, align: 'center', render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v}</span> },
-    { title: 'Flaky', width: 50, align: 'center', render: (_, r) => r.flaky ? <Tag color="#fff7e6" style={{ color: '#fa8c16', border: 'none' }}>F</Tag> : null },
-    { title: '操作', width: 90, fixed: 'right', render: () => <Space size={4}><Button type="link" size="small">编辑</Button><Button type="link" size="small" style={{ color: '#86909c' }}>详情</Button></Space> },
+    { title: '来源', dataIndex: 'source', width: 50, align: 'center', render: v => <span style={{ fontSize: 12, color: '#c0c4cc' }}>{v}</span> },
+    { title: 'Flaky', width: 46, align: 'center', render: (_, r) => r.flaky ? <Tag color="#fff7e6" style={{ color: '#fa8c16', border: 'none' }}>F</Tag> : null },
   ]
 
   return (
     <div style={{ display: 'flex', gap: 16, height: 'calc(100vh - 96px)' }}>
       {/* 左侧树 */}
-      <Card style={{ width: 240, flexShrink: 0, overflow: 'auto' }} styles={{ body: { padding: '12px 8px' } }}
-        title={<span style={{ fontSize: 13, fontWeight: 600 }}>用例导航</span>}
-        headStyle={{ padding: '0 16px', minHeight: 40, borderBottom: '1px solid #f2f3f5' }}
-      >
-        <Tree treeData={treeData} defaultExpandAll onSelect={onTreeSelect} blockNode
-          style={{ fontSize: 13 }} />
+      <Card style={{ width: 240, flexShrink: 0, overflow: 'auto' }} styles={{ body: { padding: '12px 8px' }, header: { padding: '0 16px', minHeight: 40, borderBottom: '1px solid #f2f3f5' } }}
+        title={<span style={{ fontSize: 13, fontWeight: 600 }}>用例导航</span>}>
+        <Tree treeData={treeData} defaultExpandAll onSelect={onTreeSelect} blockNode style={{ fontSize: 13 }} />
       </Card>
 
       {/* 右侧列表 */}
@@ -117,6 +123,10 @@ export default function CaseManagement() {
             scroll={{ y: 'calc(100vh - 330px)' }}
             rowSelection={{ selectedRowKeys: selectedRows, onChange: setSelectedRows }}
             style={{ flex: 1 }}
+            onRow={(record) => ({
+              style: { cursor: 'pointer' },
+              onDoubleClick: () => navigate(`/projects/${projectId}/cases/${record.id}`),
+            })}
           />
           <div style={{ padding: '12px 16px', borderTop: '1px solid #f2f3f5', display: 'flex', justifyContent: 'flex-end' }}>
             <Pagination current={page} pageSize={pageSize} total={filtered.length}

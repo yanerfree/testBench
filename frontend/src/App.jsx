@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons'
 import ProjectList from './pages/projects/ProjectList'
 import CaseManagement from './pages/cases/CaseManagement'
+import CaseDetail from './pages/cases/CaseDetail'
 import PlanDetail from './pages/plan/PlanDetail'
 import ReportDetail from './pages/report/ReportDetail'
 
@@ -106,6 +107,7 @@ export default function App() {
             <Route path="/" element={<Navigate to="/projects" replace />} />
             <Route path="/projects" element={<ProjectList />} />
             <Route path="/projects/:projectId/cases" element={<CaseManagement />} />
+            <Route path="/projects/:projectId/cases/:caseId" element={<CaseDetail />} />
             <Route path="/projects/:projectId/plans/:planId" element={<PlanDetail />} />
             <Route path="/projects/:projectId/reports/:reportId" element={<ReportDetail />} />
           </Routes>
