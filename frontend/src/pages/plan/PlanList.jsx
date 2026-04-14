@@ -55,7 +55,7 @@ export default function PlanList() {
       { count: summary.error, color: '#f5b87a' },
       { count: summary.flaky, color: '#f0d86e' },
       { count: summary.skipped, color: '#e0e0e3' },
-      { count: summary.xfail, color: '#d4c8f5' },
+      { count: summary.xfail, color: '#b89aed' },
     ].filter(s => s.count > 0)
 
     return (

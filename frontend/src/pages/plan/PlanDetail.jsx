@@ -5,12 +5,12 @@ import { useNavigate } from 'react-router-dom'
 import { mockPlan, mockReport } from '../../mock/data'
 
 const statusCfg = {
-  passed: { label: '通过', color: '#6ecf96', bg: '#f6ffed' },
-  failed: { label: '失败', color: '#f08a8e', bg: '#fff2f0' },
-  error: { label: '错误', color: '#f5b87a', bg: '#fff7e6' },
-  flaky: { label: 'Flaky', color: '#f0d86e', bg: '#feffe6' },
-  skipped: { label: '跳过', color: '#86909c', bg: '#f7f8fa' },
-  xfail: { label: '预期失败', color: '#8c8c8c', bg: '#fafafa' },
+  passed: { label: '通过', color: '#6ecf96', bg: '#eefbf3' },
+  failed: { label: '失败', color: '#f08a8e', bg: '#fef0f1' },
+  error: { label: '错误', color: '#f5b87a', bg: '#fef5eb' },
+  flaky: { label: 'Flaky', color: '#f0d86e', bg: '#fefce8' },
+  skipped: { label: '跳过', color: '#bfc4cd', bg: '#f5f5f7' },
+  xfail: { label: '预期失败', color: '#b89aed', bg: '#f5f0fe' },
 }
 
 export default function PlanDetail() {

@@ -345,9 +345,9 @@ inputDocuments: []
 > **三套标识的关系：**
 > - **`TC-{MODULE}-{seq5}`** —— 平台主键，用户可见的用例编号
 > - **`tea_id`**（如 `auth_login_redirect_to_dashboard`）—— TEA 端可读 ID，用于反查"TEA 用例对应平台哪条用例"
-> - **`script_ref.file`** —— 脚本文件路径，**导入时的唯一匹配键**（一场景一文件，路径全局唯一）
+> - **`script_ref.file`** —— 脚本文件路径，用于执行引擎定位脚本（一场景一文件，路径全局唯一）
 >
-> 三者互不冲突：导入匹配只用 `script_ref.file`，`tea_id` 仅作追溯，`TC-` 编号始终是平台主键。
+> 三者互不冲突：**导入匹配用 `tea_id`**（唯一标识，不因脚本重命名/移动而变化），`script_ref.file` 用于执行引擎定位脚本，`TC-` 编号始终是平台主键。
 
 #### FR-CASE-002：用例导入
 
@@ -357,7 +357,7 @@ inputDocuments: []
 - AC1：仅接受 `.json` 后缀文件，否则报错
 - AC2：JSON 解析失败时显示具体错误位置（行号）
 - AC3：每条用例必填字段（id/type/title/module/script_ref）缺失时跳过该条并记录
-- AC4：按 `script_ref.file` 匹配已存在用例 → 更新元数据，保留平台 ID 和历史
+- AC4：按 `tea_id` 匹配已存在用例 → 更新元数据（含 script_ref），保留平台 ID 和历史
 - AC5：本次未出现但平台已有的用例 → 状态变为「脚本已移除」
 - AC6：导入完成展示摘要：新增 N / 更新 M / 脚本已移除 K / 跳过 L
 
@@ -842,7 +842,7 @@ TEA 需在生成测试脚本时，同步输出统一的结构化用例文件 `te
    - `module` 为模块缩写码小写（如 `auth`）
    - `slug` 为脚本文件名去掉 `test_` 前缀和 `.py` 后缀的部分
    - **作为 TEA 端的可读 ID，便于人工识别和反查**
-5. `script_ref.file` 为相对于项目根目录的脚本路径，**作为平台匹配用例的唯一键**
+5. `script_ref.file` 为相对于项目根目录的脚本路径，用于执行引擎定位脚本
 6. `script_ref.function` 与文件主函数同名，保留用于日志和兜底
 7. **脚本执行时输出步骤级日志**（详见 FR-EXEC-003）：
    - 通过 pytest fixture / hook 在每个测试步骤执行后追加 JSON 日志

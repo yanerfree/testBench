@@ -172,7 +172,7 @@ status: "待同步"
 
 | 序号 | 变更内容 | 责任人 | 优先级 | 状态 |
 |------|---------|--------|--------|------|
-| 24 | **FR-CASE-002 AC4 修改**：导入匹配键从 `script_ref.file` 改为 `tea_id`（唯一标识） | John(PRD修改) | P0 | ⬜ 待更新 |
+| 24 | **FR-CASE-002 AC4 修改**：导入匹配键从 `script_ref.file` 改为 `tea_id`（唯一标识） | John(PRD修改) | P0 | ✅ 已更新 |
 | 25 | **新增"更新用例"按钮**：用例管理页新增 Git 自动拉取 tea-cases.json 导入功能 | John(PRD新增FR) + Amelia(实现) | P0 | ⬜ 待确认 |
 | 26 | **项目设置新增字段**：JSON 文件路径（tea-cases.json 在仓库中的相对路径，默认根目录） | Amelia(实现) | P1 | ⬜ 待实现 |
 | 27 | **python-jose → joserfc**：JWT 库替换，原库已停维有 CVE | Amelia(实现) | P0 | ⬜ 待实现 |
@@ -200,4 +200,33 @@ status: "待同步"
 
 ---
 
-*生成于 2026-04-14 · 来源：UX Step 3-8 + 架构 Step 1-3 + Party Mode 评审 + 功能确认讨论*
+### 架构 Step 4 变更（Schema 设计评审）
+
+| 序号 | 变更内容 | 责任人 | 优先级 | 状态 |
+|------|---------|--------|--------|------|
+| 42 | **角色体系改为两级**：users.role=admin/user + project_members.role=项目级角色 | John(PRD修改) + Amelia | P0 | ⬜ 待更新 |
+| 43 | **模块改为 case_folders 路径模式**：最多 4 层目录，取代 modules + sub_modules 两表 | John(PRD修改) + Amelia | P0 | ⬜ 待更新 |
+| 44 | **test_type 不可混合**：一个计划只能选 api 或 e2e | John(PRD补充约束) | P0 | ⬜ 待更新 |
+| 45 | **通知渠道改为非必填**：NULL=不通知，手动计划前端隐藏通知渠道 | John(PRD修改) + Sally(前端) | P1 | ⬜ 待更新 |
+| 46 | **step.url 存完整 URL 含域名**：执行引擎拼接 BASE_URL + 相对路径后存入 | Amelia(后端) | P0 | ⬜ 待实现 |
+| 47 | **plan_cases.assignee_id 默认 NULL**：自动化不需要处理人，手动由 Lead 后续分配 | Amelia(后端) | P1 | ⬜ 待实现 |
+
+---
+
+### 架构 Step 5 变更（实现模式评审）
+
+| 序号 | 变更内容 | 责任人 | 优先级 | 状态 |
+|------|---------|--------|--------|------|
+| 48 | **JSONB 内部改为 snake_case**：API 序列化层统一转 camelCase 给前端 | Amelia | P0 | ⬜ 待实现 |
+| 49 | **API 路径加 /api/v1/ 前缀** | Amelia | P0 | ⬜ 待实现 |
+| 50 | **JWT 滑动续期**：剩余 <2h 时 response header 返回新 token | Amelia | P1 | ⬜ 待实现 |
+| 51 | **审计日志只记行为不记字段 diff** | Amelia | P1 | ⬜ 待实现 |
+| 52 | **软删除约定**：cases/plans 用 deleted_at 字段 | Amelia | P1 | ⬜ 待实现 |
+| 53 | **Alembic 迁移规范**：一人一分支一 migration | Amelia | P1 | ⬜ 待实现 |
+| 54 | **JSONB 写入加 JSON Schema 校验** | Amelia | P1 | ⬜ 待实现 |
+| 55 | **前端 ESLint 禁止硬编码色值** + E2E 测试断言 data-testid | Sally(前端) + Murat(测试) | P2 | ⬜ 待实现 |
+| 56 | **TEA prompt 模板注入规范约束**（响应格式/分页/时间/JSONB 字段名） | Murat(TEA) | P1 | ⬜ 待实现 |
+
+---
+
+*生成于 2026-04-14 · 来源：UX Step 3-8 + 架构 Step 1-5 + Party Mode 评审*
