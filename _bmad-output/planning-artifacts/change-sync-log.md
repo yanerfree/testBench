@@ -168,4 +168,36 @@ status: "待同步"
 
 ---
 
-*生成于 2026-04-14 · 来源：UX 设计规格工作流 Step 3-8 + React 原型验证*
+### 架构评审变更（架构 Step 3 + Party Mode）
+
+| 序号 | 变更内容 | 责任人 | 优先级 | 状态 |
+|------|---------|--------|--------|------|
+| 24 | **FR-CASE-002 AC4 修改**：导入匹配键从 `script_ref.file` 改为 `tea_id`（唯一标识） | John(PRD修改) | P0 | ⬜ 待更新 |
+| 25 | **新增"更新用例"按钮**：用例管理页新增 Git 自动拉取 tea-cases.json 导入功能 | John(PRD新增FR) + Amelia(实现) | P0 | ⬜ 待确认 |
+| 26 | **项目设置新增字段**：JSON 文件路径（tea-cases.json 在仓库中的相对路径，默认根目录） | Amelia(实现) | P1 | ⬜ 待实现 |
+| 27 | **python-jose → joserfc**：JWT 库替换，原库已停维有 CVE | Amelia(实现) | P0 | ⬜ 待实现 |
+| 28 | **bcrypt 版本锁定 <4.1**：避免 passlib 兼容性冲突 | Amelia(实现) | P0 | ⬜ 待实现 |
+| 29 | **engine/ 目录重构**：新增 sandbox.py、collector.py、command_builder.py；worktree 移至 services/ | Amelia(实现) | P1 | ⬜ 待实现 |
+| 30 | **deps.py 拆目录**：deps/db.py + deps/auth.py + deps/worker.py | Amelia(实现) | P1 | ⬜ 待实现 |
+| 31 | **新增横切模块**：core/pagination.py、core/permissions.py、core/health.py、schemas/common.py | Amelia(实现) | P1 | ⬜ 待实现 |
+| 32 | **API 进程禁 subprocess.run**：阻塞调用走 arq Worker | Amelia(实现) | P0 | ⬜ 待实现 |
+| 33 | **executor 超时机制**：timeout + process.kill() | Amelia(实现) | P0 | ⬜ 待实现 |
+| 34 | **并发规模调整**：同时执行计划 5→20，在线用户 50→200 | John(PRD更新NFR) | P0 | ⬜ 待更新 |
+| 35 | **任务队列**：arq + Redis，一期单机 4-6 Worker | Amelia(实现) | P0 | ⬜ 待实现 |
+
+---
+
+### 功能确认变更
+
+| 序号 | 变更内容 | 责任人 | 优先级 | 状态 |
+|------|---------|--------|--------|------|
+| 36 | **模块管理改为导入自动生成**：导入 tea-cases.json 时自动创建 module/submodule 树结构，不需提前手动建模块 | John(PRD修改FR-MOD) + Amelia | P0 | ⬜ 待更新 |
+| 37 | **用例导航树支持增删改**：右键重命名/删除/新建子模块，拖拽移动用例。取消独立模块管理页 | John(PRD修改) + Amelia(前端) | P0 | ⬜ 待更新 |
+| 38 | **操作日志保留期确认 ≥ 1 年**：PRD NFR-DATA-003 已为 1 年，确认无误 | — | — | ✅ 已确认 |
+| 39 | **测试计划支持删除**：已归档计划可彻底删除，二次确认弹窗 | John(PRD新增AC) + Amelia | P1 | ⬜ 待更新 |
+| 40 | **测试报告支持删除**：报告可删除释放存储，二次确认弹窗 | John(PRD新增AC) + Amelia | P1 | ⬜ 待更新 |
+| 41 | **自动化部署 Skill**：输出 Claude Code Skill，用户提供服务器地址+账号+安装路径，自动完成环境检查→安装→部署→启动→自检。支持 Linux + Windows | Amelia(实现) + Paige(文档) | P2 | ⬜ 待实现 |
+
+---
+
+*生成于 2026-04-14 · 来源：UX Step 3-8 + 架构 Step 1-3 + Party Mode 评审 + 功能确认讨论*
