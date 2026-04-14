@@ -8,15 +8,19 @@ import './styles/global.css'
 
 const theme = {
   token: {
-    colorPrimary: '#4C8BF5',
+    colorPrimary: '#6b7ef5',
     borderRadius: 8,
     colorBgContainer: '#ffffff',
     fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
-    colorText: '#1d2129',
-    colorTextSecondary: '#86909c',
-    colorBorder: '#e5e6eb',
-    colorBorderSecondary: '#f2f3f5',
-    controlHeight: 36,
+    colorText: '#2e3138',
+    colorTextSecondary: '#8c919e',
+    colorBorder: '#e8e8ec',
+    colorBorderSecondary: '#f0f0f3',
+    controlHeight: 34,
+    colorSuccess: '#6ecf96',
+    colorError: '#f08a8e',
+    colorWarning: '#f5b87a',
+    colorInfo: '#7ec2f7',
   },
 }
 

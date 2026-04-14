@@ -9,6 +9,7 @@ import {
 import ProjectList from './pages/projects/ProjectList'
 import CaseManagement from './pages/cases/CaseManagement'
 import CaseDetail from './pages/cases/CaseDetail'
+import PlanList from './pages/plan/PlanList'
 import PlanDetail from './pages/plan/PlanDetail'
 import ReportDetail from './pages/report/ReportDetail'
 
@@ -26,7 +27,7 @@ export default function App() {
     ...(isProjectPage ? [
       { type: 'divider' },
       { key: '/projects/proj-001/cases', icon: <FileTextOutlined />, label: '用例管理' },
-      { key: '/projects/proj-001/plans/plan-001', icon: <UnorderedListOutlined />, label: '测试计划' },
+      { key: '/projects/proj-001/plans', icon: <UnorderedListOutlined />, label: '测试计划' },
       { key: '/projects/proj-001/reports/rpt-001', icon: <BarChartOutlined />, label: '测试报告' },
       { type: 'divider' },
       { key: '/settings/env', icon: <SettingOutlined />, label: '环境配置' },
@@ -45,33 +46,35 @@ export default function App() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
+      {/* 浅色顶栏 - Apifox 风格 */}
       <Header style={{
-        background: '#1d1d1f', height: 48, lineHeight: '48px', padding: '0 20px',
+        background: '#fff', height: 46, lineHeight: '46px', padding: '0 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        borderBottom: '1px solid #f0f0f3',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
-            width: 28, height: 28, borderRadius: 8,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            width: 26, height: 26, borderRadius: 7,
+            background: 'linear-gradient(135deg, #a78bfa 0%, #7c8cf8 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontWeight: 700, fontSize: 14,
+            color: '#fff', fontWeight: 700, fontSize: 13,
           }}>T</div>
-          <span style={{ color: '#fff', fontSize: 15, fontWeight: 600 }}>测试管理平台</span>
+          <span style={{ color: '#2e3138', fontSize: 14, fontWeight: 600 }}>测试管理平台</span>
           {isProjectPage && (
             <>
-              <span style={{ color: '#555', margin: '0 4px' }}>/</span>
-              <span style={{ color: '#aaa', fontSize: 13 }}>API网关管理系统</span>
+              <span style={{ color: '#e0e0e3', margin: '0 2px' }}>/</span>
+              <span style={{ color: '#8c919e', fontSize: 13 }}>API网关管理系统</span>
             </>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Tooltip title="通知">
-            <Button type="text" icon={<BellOutlined style={{ color: '#999' }} />} size="small" />
+            <Button type="text" icon={<BellOutlined style={{ color: '#bfc4cd' }} />} size="small" />
           </Tooltip>
           <Dropdown menu={userMenu} placement="bottomRight">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <Avatar size={26} style={{ background: '#667eea', fontSize: 12 }}>张</Avatar>
-              <span style={{ color: '#ccc', fontSize: 13 }}>张三</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <Avatar size={24} style={{ background: '#a78bfa', fontSize: 11 }}>张</Avatar>
+              <span style={{ color: '#8c919e', fontSize: 13 }}>张三</span>
             </div>
           </Dropdown>
         </div>
@@ -79,18 +82,19 @@ export default function App() {
 
       <Layout>
         <Sider
-          width={220}
-          collapsedWidth={56}
+          width={200}
+          collapsedWidth={52}
           collapsed={collapsed}
           theme="light"
-          style={{ background: '#fff', borderRight: '1px solid #f2f3f5', overflow: 'auto' }}
+          style={{ background: '#fff', borderRight: '1px solid #f0f0f3', overflow: 'auto' }}
         >
-          <div style={{ padding: '12px 8px 4px' }}>
+          <div style={{ padding: '8px 6px 2px' }}>
             <Button
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed(!collapsed)}
-              style={{ width: '100%', color: '#86909c' }}
+              style={{ width: '100%', color: '#bfc4cd' }}
+              size="small"
             />
           </div>
           <Menu
@@ -102,12 +106,14 @@ export default function App() {
           />
         </Sider>
 
-        <Content style={{ padding: 24, background: '#f7f8fa', overflow: 'auto', minHeight: 'calc(100vh - 48px)' }}>
+        {/* 内容区：紧凑间距 */}
+        <Content style={{ padding: '12px 16px', background: '#fafafa', overflow: 'auto', minHeight: 'calc(100vh - 46px)' }}>
           <Routes>
             <Route path="/" element={<Navigate to="/projects" replace />} />
             <Route path="/projects" element={<ProjectList />} />
             <Route path="/projects/:projectId/cases" element={<CaseManagement />} />
             <Route path="/projects/:projectId/cases/:caseId" element={<CaseDetail />} />
+            <Route path="/projects/:projectId/plans" element={<PlanList />} />
             <Route path="/projects/:projectId/plans/:planId" element={<PlanDetail />} />
             <Route path="/projects/:projectId/reports/:reportId" element={<ReportDetail />} />
           </Routes>

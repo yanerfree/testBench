@@ -1,3 +1,11 @@
+// ============ 环境配置（全局） ============
+export const mockEnvironments = [
+  { id: 'env-001', name: 'staging', label: '测试环境', variables: { BASE_URL: 'https://staging.example.com', DB_HOST: '10.0.1.100' } },
+  { id: 'env-002', name: 'production', label: '生产环境', variables: { BASE_URL: 'https://api.example.com', DB_HOST: '10.0.2.100' } },
+  { id: 'env-003', name: 'dev', label: '开发环境', variables: { BASE_URL: 'http://localhost:8000', DB_HOST: 'localhost' } },
+  { id: 'env-004', name: 'pre-release', label: '预发布环境', variables: { BASE_URL: 'https://pre.example.com', DB_HOST: '10.0.3.100' } },
+]
+
 // ============ 项目列表 ============
 export const mockProjects = [
   { id: 'proj-001', name: 'API网关管理系统', desc: 'API发布、审批、版本管理的核心服务', gitUrl: 'git@code.example.com:team/api-gateway.git', branch: 'main', memberCount: 8, caseCount: 342, planCount: 12, lastRun: { status: 'passed', passRate: 95.2, time: '2026-04-14 08:48' } },
@@ -152,6 +160,17 @@ export function getMockStepDetail(stepId) {
 }
 
 // 计划
+// ============ 测试计划列表 ============
+export const mockPlans = [
+  { id: 'plan-001', name: 'API审批流程回归-Sprint 12', type: '自动化', testType: 'API', environment: 'staging', status: '已完成', createdBy: '张三', executedAt: '2026-04-14 08:30', completedAt: '2026-04-14 08:48', scenarioCount: 120, automated: 100, manual: 20, summary: { passed:95,failed:8,error:3,flaky:2,skipped:7,xfail:5 }, passRate: 87.96, durationMs: 1079600 },
+  { id: 'plan-002', name: '用户认证模块冒烟测试', type: '自动化', testType: 'E2E', environment: 'staging', status: '执行中', createdBy: '李四', executedAt: '2026-04-14 10:00', completedAt: null, scenarioCount: 40, automated: 35, manual: 5, summary: { passed:28,failed:2,error:1,flaky:0,skipped:4,xfail:0 }, passRate: 90.32, durationMs: 352000 },
+  { id: 'plan-003', name: '订单流程手动验证-v2.1', type: '手动', testType: 'API', environment: 'production', status: '已完成', createdBy: '王五', executedAt: '2026-04-13 14:00', completedAt: '2026-04-13 16:30', scenarioCount: 25, automated: 0, manual: 25, summary: { passed:22,failed:3,error:0,flaky:0,skipped:0,xfail:0 }, passRate: 88.0, durationMs: null },
+  { id: 'plan-004', name: '支付网关全量回归', type: '自动化', testType: 'API', environment: 'staging', status: '已暂停', createdBy: '张三', executedAt: '2026-04-13 22:00', completedAt: null, scenarioCount: 95, automated: 95, manual: 0, summary: { passed:40,failed:15,error:5,flaky:3,skipped:32,xfail:0 }, passRate: 63.49, durationMs: 580000 },
+  { id: 'plan-005', name: 'API管理模块-Sprint 11 补测', type: '自动化', testType: 'API', environment: 'dev', status: '已完成', createdBy: '赵六', executedAt: '2026-04-12 09:00', completedAt: '2026-04-12 09:25', scenarioCount: 35, automated: 30, manual: 5, summary: { passed:33,failed:1,error:0,flaky:1,skipped:0,xfail:0 }, passRate: 94.29, durationMs: 245600 },
+  { id: 'plan-006', name: '注册流程每日冒烟', type: '自动化', testType: 'E2E', environment: 'staging', status: '已完成', createdBy: '李四', executedAt: '2026-04-14 06:00', completedAt: '2026-04-14 06:15', scenarioCount: 12, automated: 12, manual: 0, summary: { passed:12,failed:0,error:0,flaky:0,skipped:0,xfail:0 }, passRate: 100, durationMs: 89000 },
+  { id: 'plan-007', name: '密码重置功能验收', type: '手动', testType: 'E2E', environment: 'staging', status: '草稿', createdBy: '王五', executedAt: null, completedAt: null, scenarioCount: 8, automated: 0, manual: 8, summary: { passed:0,failed:0,error:0,flaky:0,skipped:0,xfail:0 }, passRate: 0, durationMs: null },
+]
+
 export const mockPlan = {
   id: 'plan-001', name: 'API审批流程回归-Sprint 12',
   type: '自动化', testType: 'API', environment: 'staging', channel: '测试团队群',

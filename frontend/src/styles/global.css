@@ -1,46 +1,47 @@
 /* ========================================
-   Apifox 风格全局样式
-   特征：温和、圆润、清爽、极淡边框
+   马卡龙色系 + Apifox 紧凑布局
+   特征：柔和粉彩、零间距、极淡分隔、浅色顶栏
    ======================================== */
 
 :root {
-  --bg-body: #f7f8fa;
+  --bg-body: #fafafa;
   --bg-card: #ffffff;
-  --bg-hover: #f9fafb;
-  --bg-active: #f0f7ff;
+  --bg-hover: #fafafa;
+  --bg-active: #f0f4ff;
   --bg-sidebar: #ffffff;
-  --bg-topbar: #1d1d1f;
 
-  --text-primary: #1d2129;
-  --text-regular: #4e5969;
-  --text-secondary: #86909c;
-  --text-placeholder: #c9cdd4;
+  --text-primary: #2e3138;
+  --text-regular: #555a65;
+  --text-secondary: #8c919e;
+  --text-placeholder: #c2c6cf;
 
-  --border-light: #f2f3f5;
-  --border-regular: #e5e6eb;
+  --border-light: #f0f0f3;
+  --border-regular: #e8e8ec;
 
-  --green: #52c41a;
-  --green-bg: #f6ffed;
-  --green-light: #73d13d;
-  --red: #dc4446;
-  --red-bg: #fff2f0;
-  --orange: #fa8c16;
-  --orange-bg: #fff7e6;
-  --yellow: #fadb14;
-  --yellow-bg: #feffe6;
-  --blue: #1677ff;
-  --blue-bg: #e6f4ff;
-  --gray: #c9cdd4;
-  --gray-bg: #f7f8fa;
+  /* 马卡龙色系 */
+  --primary: #6b7ef5;          /* 薰衣草蓝（加深） */
+  --primary-bg: #eef0fe;
+  --green: #6ecf96;            /* 薄荷绿 */
+  --green-bg: #eefbf3;
+  --red: #f08a8e;              /* 草莓粉 */
+  --red-bg: #fef0f1;
+  --orange: #f5b87a;           /* 杏桃橙 */
+  --orange-bg: #fef5eb;
+  --yellow: #f0d86e;           /* 柠檬黄 */
+  --yellow-bg: #fefce8;
+  --purple: #b89aed;           /* 香芋紫 */
+  --purple-bg: #f5f0fe;
+  --blue: #7ec2f7;             /* 天空蓝 */
+  --blue-bg: #eef6fe;
+  --gray: #bfc4cd;
+  --gray-bg: #f5f5f7;
 
   --radius-sm: 6px;
   --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-lg: 10px;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-  --shadow-md: 0 2px 8px 0 rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 4px 16px 0 rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 2px 6px 0 rgba(0, 0, 0, 0.04);
 
   --font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', Roboto, sans-serif;
 }
@@ -58,19 +59,66 @@ body {
 
 #root { min-height: 100vh; }
 
-/* Ant Design 覆盖 - 对标 Apifox 风格 */
+/* ============ Ant Design 覆盖 ============ */
+
+/* Card：去掉间距感，用极淡线分隔 */
 .ant-card {
   border-radius: var(--radius-lg) !important;
   border: 1px solid var(--border-light) !important;
-  box-shadow: var(--shadow-sm) !important;
+  box-shadow: none !important;
 }
 .ant-card:hover {
-  box-shadow: var(--shadow-md) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
+.ant-card .ant-card-head {
+  border-bottom: 1px solid var(--border-light) !important;
+  min-height: 42px !important;
+}
+
+/* Button */
 .ant-btn {
   border-radius: var(--radius-md) !important;
   font-weight: 500;
+  box-shadow: none !important;
 }
+.ant-btn-primary {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important;
+}
+.ant-btn-primary:hover {
+  background: #5a6de8 !important;
+  border-color: #5a6de8 !important;
+}
+.ant-btn-primary:disabled, .ant-btn-primary[disabled] {
+  background: #d0d5f7 !important;
+  border-color: #d0d5f7 !important;
+  color: #fff !important;
+  opacity: 0.7;
+}
+/* Ghost 按钮加深 */
+.ant-btn-primary.ant-btn-background-ghost {
+  color: #5a6de8 !important;
+  border-color: #5a6de8 !important;
+  background: transparent !important;
+}
+.ant-btn-primary.ant-btn-background-ghost:hover {
+  color: #4a5cd6 !important;
+  border-color: #4a5cd6 !important;
+  background: #f0f1fe !important;
+}
+/* Dashed 按钮（添加步骤） */
+.ant-btn-dashed {
+  color: #5a6de8 !important;
+  border-color: #b8c0f5 !important;
+}
+.ant-btn-dashed:hover {
+  color: #4a5cd6 !important;
+  border-color: #5a6de8 !important;
+  background: #f5f6fe !important;
+}
+
+/* Tag：胶囊+马卡龙底色 */
 .ant-tag {
   border-radius: 10px !important;
   border: none !important;
@@ -78,11 +126,13 @@ body {
   padding: 0 10px;
   line-height: 22px;
 }
+
+/* Table */
 .ant-table {
   border-radius: var(--radius-lg) !important;
 }
 .ant-table-thead > tr > th {
-  background: #fafbfc !important;
+  background: #fafafc !important;
   font-weight: 600 !important;
   color: var(--text-secondary) !important;
   font-size: 13px !important;
@@ -92,43 +142,83 @@ body {
   border-bottom: 1px solid var(--border-light) !important;
 }
 .ant-table-tbody > tr:hover > td {
-  background: var(--bg-hover) !important;
+  background: #fafafc !important;
 }
+
+/* Drawer */
 .ant-drawer .ant-drawer-header {
   border-bottom: 1px solid var(--border-light);
 }
+
+/* Tabs */
 .ant-tabs-tab {
   border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
 }
+.ant-tabs-ink-bar {
+  background: var(--primary) !important;
+}
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--primary) !important;
+}
+
+/* Input */
 .ant-input, .ant-select-selector, .ant-input-affix-wrapper {
   border-radius: var(--radius-md) !important;
 }
+.ant-input:focus, .ant-input-focused,
+.ant-input-affix-wrapper:focus, .ant-input-affix-wrapper-focused,
+.ant-select-focused .ant-select-selector {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px rgba(124, 140, 248, 0.15) !important;
+}
+
+/* Pagination */
 .ant-pagination .ant-pagination-item {
   border-radius: var(--radius-sm) !important;
 }
+.ant-pagination .ant-pagination-item-active {
+  border-color: var(--primary) !important;
+}
+.ant-pagination .ant-pagination-item-active a {
+  color: var(--primary) !important;
+}
+
+/* Menu */
 .ant-menu-item {
   border-radius: var(--radius-md) !important;
   margin: 2px 8px !important;
 }
+.ant-menu-item-selected {
+  background: var(--primary-bg) !important;
+  color: var(--primary) !important;
+}
 
-/* 滚动条美化 */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+/* Radio Button Group - 马卡龙风格 */
+.ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+/* Switch */
+.ant-switch-checked {
+  background: var(--primary) !important;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #bbb; }
+::-webkit-scrollbar-thumb { background: #e0e0e3; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #ccc; }
 
-/* 代码块 */
+/* JSON 代码块 */
 pre.json-view {
-  background: #fafbfc;
+  background: #fafafc;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 14px;
   font-size: 13px;
   font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
   line-height: 1.6;
   overflow-x: auto;
   color: var(--text-regular);
 }
-pre.json-view .json-key { color: #c41a16; }
-pre.json-view .json-string { color: #1a1aa6; }
-pre.json-view .json-number { color: #1c00cf; }

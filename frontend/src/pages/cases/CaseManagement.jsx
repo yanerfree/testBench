@@ -4,8 +4,10 @@ import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined } from '
 import { useNavigate, useParams } from 'react-router-dom'
 import { mockModules, mockCases } from '../../mock/data'
 
-const priorityColors = { P0: '#dc4446', P1: '#fa8c16', P2: '#4C8BF5', P3: '#86909c' }
-const statusColors = { '已自动化': '#52c41a', '待自动化': '#fa8c16', '脚本已移除': '#dc4446' }
+const priorityColors = { P0: '#f08a8e', P1: '#f5b87a', P2: '#7c8cf8', P3: '#a8adb6' }
+const priorityBg = { P0: '#fef0f1', P1: '#fef5eb', P2: '#f0f1fe', P3: '#f5f5f7' }
+const statusColors = { '已自动化': '#6ecf96', '待自动化': '#f5b87a', '脚本已移除': '#f08a8e' }
+const statusBg = { '已自动化': '#eefbf3', '待自动化': '#fef5eb', '脚本已移除': '#fef0f1' }
 
 export default function CaseManagement() {
   const navigate = useNavigate()
@@ -60,17 +62,17 @@ export default function CaseManagement() {
       <span
         onClick={() => navigate(`/projects/${projectId}/cases/${row.id}`)}
         style={{ color: '#1d2129', cursor: 'pointer', fontWeight: 500 }}
-        onMouseEnter={e => e.target.style.color = '#4C8BF5'}
+        onMouseEnter={e => e.target.style.color = '#7c8cf8'}
         onMouseLeave={e => e.target.style.color = '#1d2129'}
       >{v}</span>
     )},
-    { title: '类型', dataIndex: 'type', width: 65, render: v => <Tag color={v==='API'?'#e6f4ff':'#f6ffed'} style={{ color: v==='API'?'#4C8BF5':'#52c41a' }}>{v}</Tag> },
+    { title: '类型', dataIndex: 'type', width: 65, render: v => <Tag color={v==='API'?'#e6f4ff':'#f6ffed'} style={{ color: v==='API'?'#7c8cf8':'#6ecf96' }}>{v}</Tag> },
     { title: '模块', dataIndex: 'moduleCode', width: 85 },
     { title: '子模块', dataIndex: 'subModuleLabel', width: 80, render: v => <span style={{ color: '#86909c' }}>{v}</span> },
-    { title: '优先级', dataIndex: 'priority', width: 68, align: 'center', render: v => <Tag style={{ background: priorityColors[v], color: '#fff', border: 'none' }}>{v}</Tag> },
-    { title: '状态', dataIndex: 'status', width: 100, render: v => <Tag style={{ background: statusColors[v]+'18', color: statusColors[v], border: 'none' }}>{v}</Tag> },
+    { title: '优先级', dataIndex: 'priority', width: 68, align: 'center', render: v => <Tag style={{ background: priorityBg[v], color: priorityColors[v], border: 'none' }}>{v}</Tag> },
+    { title: '状态', dataIndex: 'status', width: 100, render: v => <Tag style={{ background: statusBg[v], color: statusColors[v], border: 'none' }}>{v}</Tag> },
     { title: '来源', dataIndex: 'source', width: 50, align: 'center', render: v => <span style={{ fontSize: 12, color: '#c0c4cc' }}>{v}</span> },
-    { title: 'Flaky', width: 46, align: 'center', render: (_, r) => r.flaky ? <Tag color="#fff7e6" style={{ color: '#fa8c16', border: 'none' }}>F</Tag> : null },
+    { title: 'Flaky', width: 46, align: 'center', render: (_, r) => r.flaky ? <Tag color="#fff7e6" style={{ color: '#f5b87a', border: 'none' }}>F</Tag> : null },
   ]
 
   return (
@@ -103,7 +105,7 @@ export default function CaseManagement() {
           </div>
           {selectedRows.length > 0 && (
             <div style={{ marginTop: 10, padding: '8px 12px', background: '#e6f4ff', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 13, color: '#4C8BF5' }}>已选 {selectedRows.length} 条</span>
+              <span style={{ fontSize: 13, color: '#7c8cf8' }}>已选 {selectedRows.length} 条</span>
               <Button size="small" type="link">批量移动</Button>
               <Button size="small" type="link">批量归档</Button>
               <Button size="small" type="link">修改优先级</Button>

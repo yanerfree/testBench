@@ -8,12 +8,12 @@ export default function ProjectList() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ fontSize: 20, fontWeight: 600, color: '#1d2129' }}>项目列表</h2>
         <Button type="primary" icon={<PlusOutlined />}>创建项目</Button>
       </div>
 
-      <Row gutter={[16, 16]}>
+      <Row gutter={[12, 12]}>
         {mockProjects.map(p => (
           <Col span={6} key={p.id}>
             <Card
@@ -61,7 +61,7 @@ export default function ProjectList() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <Tag color={p.lastRun.status === 'passed' ? '#f6ffed' : '#fff2f0'}
-                      style={{ color: p.lastRun.status === 'passed' ? '#52c41a' : '#dc4446' }}>
+                      style={{ color: p.lastRun.status === 'passed' ? '#6ecf96' : '#f08a8e' }}>
                       通过率 {p.lastRun.passRate}%
                     </Tag>
                   </div>
@@ -74,7 +74,7 @@ export default function ProjectList() {
               {/* 底部操作 */}
               <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
                 <Button size="small" type="text" icon={<EditOutlined />} onClick={e => e.stopPropagation()}>编辑</Button>
-                <Button size="small" type="text" icon={<SyncOutlined />} onClick={e => e.stopPropagation()} style={{ color: '#52c41a' }}>更新脚本</Button>
+                <Button size="small" type="text" icon={<SyncOutlined />} onClick={e => e.stopPropagation()} style={{ color: '#6ecf96' }}>更新脚本</Button>
                 <div style={{ flex: 1 }} />
                 <RightOutlined style={{ color: '#c0c4cc', fontSize: 12, alignSelf: 'center' }} />
               </div>

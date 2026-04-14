@@ -5,10 +5,10 @@ import { useNavigate } from 'react-router-dom'
 import { mockPlan, mockReport } from '../../mock/data'
 
 const statusCfg = {
-  passed: { label: '通过', color: '#52c41a', bg: '#f6ffed' },
-  failed: { label: '失败', color: '#dc4446', bg: '#fff2f0' },
-  error: { label: '错误', color: '#fa8c16', bg: '#fff7e6' },
-  flaky: { label: 'Flaky', color: '#d4b106', bg: '#feffe6' },
+  passed: { label: '通过', color: '#6ecf96', bg: '#f6ffed' },
+  failed: { label: '失败', color: '#f08a8e', bg: '#fff2f0' },
+  error: { label: '错误', color: '#f5b87a', bg: '#fff7e6' },
+  flaky: { label: 'Flaky', color: '#f0d86e', bg: '#feffe6' },
   skipped: { label: '跳过', color: '#86909c', bg: '#f7f8fa' },
   xfail: { label: '预期失败', color: '#8c8c8c', bg: '#fafafa' },
 }
@@ -33,14 +33,14 @@ export default function PlanDetail() {
     { title: '用例', dataIndex: 'name', ellipsis: true, render: (v, r) => (
       <div>
         <span style={{ fontWeight: 500 }}>{v}</span>
-        {r.errorSummary && <div style={{ fontSize: 12, color: '#dc4446', marginTop: 2 }}>{r.errorSummary}</div>}
+        {r.errorSummary && <div style={{ fontSize: 12, color: '#f08a8e', marginTop: 2 }}>{r.errorSummary}</div>}
         {r.remark && <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>{r.remark}</div>}
       </div>
     )},
     { title: '状态', dataIndex: 'status', width: 90, align: 'center', render: v => {
       const c = statusCfg[v]; return <Tag style={{ background: c.bg, color: c.color, border: 'none' }}>{c.label}</Tag>
     }},
-    { title: '来源', width: 72, align: 'center', render: (_, r) => <Tag style={{ background: r.executionType==='automated'?'#e6f4ff':'#fff7e6', color: r.executionType==='automated'?'#4C8BF5':'#fa8c16', border: 'none' }}>{r.executionType==='automated'?'自动':'手动'}</Tag> },
+    { title: '来源', width: 72, align: 'center', render: (_, r) => <Tag style={{ background: r.executionType==='automated'?'#e6f4ff':'#fff7e6', color: r.executionType==='automated'?'#7c8cf8':'#f5b87a', border: 'none' }}>{r.executionType==='automated'?'自动':'手动'}</Tag> },
     { title: '耗时', width: 80, align: 'right', render: (_, r) => <span style={{ fontSize: 13, color: '#86909c', fontFamily: 'monospace' }}>{r.durationMs ? (r.durationMs < 1000 ? r.durationMs+'ms' : (r.durationMs/1000).toFixed(1)+'s') : '-'}</span> },
     { title: '处理人', width: 70, align: 'center', render: (_, r) => r.assignee || <span style={{ color: '#ddd' }}>-</span> },
   ]
@@ -48,12 +48,12 @@ export default function PlanDetail() {
   return (
     <div>
       {/* 头部 */}
-      <Card styles={{ body: { padding: '16px 24px' } }} style={{ marginBottom: 16 }}>
+      <Card styles={{ body: { padding: '16px 24px' } }} style={{ marginBottom: 8 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>{mockPlan.name}</h2>
-              <Tag style={{ background: '#f6ffed', color: '#52c41a', border: 'none' }}>{mockPlan.status}</Tag>
+              <Tag style={{ background: '#f6ffed', color: '#6ecf96', border: 'none' }}>{mockPlan.status}</Tag>
               <Tag style={{ background: '#f7f8fa', color: '#86909c', border: 'none' }}>{mockPlan.type}</Tag>
             </div>
             <Space size={20} style={{ fontSize: 13, color: '#86909c' }}>
@@ -71,7 +71,7 @@ export default function PlanDetail() {
       </Card>
 
       {/* 统计卡片 */}
-      <Row gutter={12} style={{ marginBottom: 16 }}>
+      <Row gutter={8} style={{ marginBottom: 8 }}>
         <Col span={4}>
           <Card styles={{ body: { padding: '16px', textAlign: 'center' } }}>
             <div style={{ fontSize: 28, fontWeight: 700 }}>{mockPlan.total}</div>
@@ -89,7 +89,7 @@ export default function PlanDetail() {
       </Row>
 
       {/* 配置信息 */}
-      <Card style={{ marginBottom: 16 }} title={<span style={{ fontSize: 14, fontWeight: 600 }}>计划配置</span>}
+      <Card style={{ marginBottom: 8 }} title={<span style={{ fontSize: 14, fontWeight: 600 }}>计划配置</span>}
         headStyle={{ borderBottom: '1px solid #f2f3f5', minHeight: 44 }} styles={{ body: { padding: '12px 24px' } }}>
         <Descriptions column={4} size="small">
           <Descriptions.Item label="计划类型">{mockPlan.type}</Descriptions.Item>
