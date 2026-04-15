@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.core.security import decode_token
 from app.deps.db import get_db
+from app.models.project import ProjectMember
 from app.models.user import User
 
 
@@ -39,9 +40,47 @@ async def get_current_user(request: Request, session: AsyncSession = Depends(get
 
 
 def require_role(*roles: str) -> Callable:
-    """角色检查依赖工厂。用法: Depends(require_role("admin"))"""
+    """系统级角色检查依赖工厂。用法: Depends(require_role("admin"))"""
     async def _check(current_user: User = Depends(get_current_user)) -> User:
         if current_user.role not in roles:
             raise ForbiddenError(code="ROLE_DENIED", message="无权限执行此操作")
+        return current_user
+    return _check
+
+
+def require_project_role(*roles: str) -> Callable:
+    """项目级角色检查依赖工厂。
+
+    用法: Depends(require_project_role("project_admin", "developer", "tester"))
+
+    规则：
+    - 系统 admin 直接通过（绕过项目级检查）
+    - 非 admin 用户必须绑定到该项目，且项目角色在 roles 列表中
+    - 路径中必须包含 {project_id} 参数
+    """
+    async def _check(
+        project_id: uuid.UUID,
+        current_user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_db),
+    ) -> User:
+        # 系统 admin 绕过项目级检查
+        if current_user.role == "admin":
+            return current_user
+
+        # 查询项目成员记录
+        result = await session.execute(
+            select(ProjectMember).where(
+                ProjectMember.project_id == project_id,
+                ProjectMember.user_id == current_user.id,
+            )
+        )
+        member = result.scalar_one_or_none()
+
+        if member is None:
+            raise ForbiddenError(code="NOT_PROJECT_MEMBER", message="未绑定到该项目")
+
+        if member.role not in roles:
+            raise ForbiddenError(code="PROJECT_ROLE_DENIED", message="无权限执行此操作")
+
         return current_user
     return _check

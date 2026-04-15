@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_201_CREATED
 
-from app.deps.auth import get_current_user, require_role
+from app.deps.auth import get_current_user, require_project_role, require_role
 from app.deps.db import get_db
 from app.models.user import User
 from app.schemas.common import MessageResponse
@@ -81,9 +81,9 @@ async def delete_project(
 async def list_members(
     project_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role("admin")),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
 ):
-    """查看项目成员列表（仅 admin）"""
+    """查看项目成员列表（项目成员均可查看）"""
     members = await member_service.list_members(session, project_id)
     return {
         "data": [
@@ -97,9 +97,9 @@ async def add_member(
     project_id: uuid.UUID,
     body: AddMemberRequest,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role("admin")),
+    _: User = Depends(require_project_role("project_admin")),
 ):
-    """添加项目成员（仅 admin）"""
+    """添加项目成员（project_admin 或系统 admin）"""
     member = await member_service.add_member(session, project_id, body)
     return {"data": MemberResponse(**member).model_dump(by_alias=True)}
 
@@ -110,9 +110,9 @@ async def update_member_role(
     user_id: uuid.UUID,
     body: UpdateMemberRequest,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role("admin")),
+    _: User = Depends(require_project_role("project_admin")),
 ):
-    """修改成员角色（仅 admin）"""
+    """修改成员角色（project_admin 或系统 admin）"""
     member = await member_service.update_member_role(session, project_id, user_id, body)
     return {"data": MemberResponse(**member).model_dump(by_alias=True)}
 
@@ -122,8 +122,8 @@ async def remove_member(
     project_id: uuid.UUID,
     user_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role("admin")),
+    _: User = Depends(require_project_role("project_admin")),
 ):
-    """移除项目成员（仅 admin）"""
+    """移除项目成员（project_admin 或系统 admin）"""
     await member_service.remove_member(session, project_id, user_id)
     return MessageResponse(message="移除成功").model_dump()
