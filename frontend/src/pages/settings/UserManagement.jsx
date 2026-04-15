@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { Table, Button, Tag, Modal, Form, Input, Select, Switch, message, Popconfirm, Space, Avatar } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons'
-import { mockUsers } from '../../mock/data'
+import { useState, useEffect, useCallback } from 'react'
+import { Table, Button, Tag, Modal, Form, Input, Select, Switch, message, Popconfirm, Space, Avatar, Spin } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ReloadOutlined } from '@ant-design/icons'
+import { api } from '../../utils/request'
 
 const ROLE_CONFIG = {
   admin: { label: '系统管理员', color: '#f08a8e', bg: '#fef0f1' },
@@ -9,10 +9,24 @@ const ROLE_CONFIG = {
 }
 
 export default function UserManagement() {
-  const [users, setUsers] = useState(mockUsers.map(u => ({ ...u })))
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
   const [form] = Form.useForm()
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/users')
+      setUsers(res.data)
+    } catch { /* request.js 已展示错误 */ } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchUsers() }, [fetchUsers])
 
   const openCreate = () => {
     setEditingUser(null)
@@ -26,43 +40,48 @@ export default function UserManagement() {
     setModalOpen(true)
   }
 
-  const handleSave = () => {
-    form.validateFields().then(values => {
+  const handleSave = async () => {
+    let values
+    try { values = await form.validateFields() } catch { return }
+
+    setSaving(true)
+    try {
       if (editingUser) {
-        setUsers(prev => prev.map(u => u.id === editingUser.id
-          ? { ...u, role: values.role, isActive: values.isActive }
-          : u
-        ))
+        await api.put(`/users/${editingUser.id}`, {
+          role: values.role,
+          isActive: values.isActive,
+        })
         message.success('用户已更新')
       } else {
-        if (users.some(u => u.username === values.username)) {
-          message.error('用户名已存在')
-          return
-        }
-        const newUser = {
-          id: `user-${Date.now()}`,
+        await api.post('/users', {
           username: values.username,
           password: values.password,
           role: values.role,
-          isActive: true,
-          createdAt: new Date().toISOString().split('T')[0],
-        }
-        setUsers(prev => [...prev, newUser])
+        })
         message.success('用户创建成功')
       }
       setModalOpen(false)
       form.resetFields()
-    })
+      fetchUsers()
+    } catch { /* request.js 已展示错误 */ } finally {
+      setSaving(false)
+    }
   }
 
-  const handleDelete = (user) => {
-    setUsers(prev => prev.filter(u => u.id !== user.id))
-    message.success('用户已删除')
+  const handleDelete = async (user) => {
+    try {
+      await api.del(`/users/${user.id}`)
+      message.success('用户已删除')
+      fetchUsers()
+    } catch { /* request.js 已展示错误 */ }
   }
 
-  const toggleActive = (user) => {
-    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isActive: !u.isActive } : u))
-    message.success(user.isActive ? '已停用' : '已启用')
+  const toggleActive = async (user) => {
+    try {
+      await api.put(`/users/${user.id}`, { isActive: !user.isActive })
+      message.success(user.isActive ? '已停用' : '已启用')
+      fetchUsers()
+    } catch { /* request.js 已展示错误 */ }
   }
 
   const columns = [
@@ -95,8 +114,8 @@ export default function UserManagement() {
       ),
     },
     {
-      title: '创建时间', dataIndex: 'createdAt', width: 130, align: 'center',
-      render: v => <span style={{ fontSize: 13, color: '#8c919e' }}>{v}</span>,
+      title: '创建时间', dataIndex: 'createdAt', width: 180, align: 'center',
+      render: v => <span style={{ fontSize: 13, color: '#8c919e' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span>,
     },
     {
       title: '操作', width: 120, align: 'center',
@@ -124,7 +143,10 @@ export default function UserManagement() {
           <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#2e3138' }}>用户管理</h2>
           <span style={{ fontSize: 13, color: '#8c919e' }}>管理系统用户账号与角色</span>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新建用户</Button>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={fetchUsers} loading={loading}>刷新</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新建用户</Button>
+        </Space>
       </div>
 
       <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #f0f0f3', padding: 2 }}>
@@ -133,6 +155,7 @@ export default function UserManagement() {
           columns={columns}
           rowKey="id"
           size="small"
+          loading={loading}
           pagination={{ pageSize: 10, size: 'small', showTotal: t => `共 ${t} 位用户` }}
         />
       </div>
@@ -144,6 +167,7 @@ export default function UserManagement() {
         onCancel={() => { setModalOpen(false); form.resetFields() }}
         okText={editingUser ? '保存' : '创建'}
         cancelText="取消"
+        confirmLoading={saving}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item

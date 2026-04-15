@@ -25,9 +25,9 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 async def create_project(
     body: CreateProjectRequest,
     session: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(get_current_user),
 ):
-    """创建项目（仅 admin）"""
+    """创建项目（所有登录用户）"""
     project = await project_service.create_project(session, body, current_user)
     return {
         "data": ProjectResponse.model_validate(project, from_attributes=True).model_dump(by_alias=True)
