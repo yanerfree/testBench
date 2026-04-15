@@ -8,8 +8,15 @@ from app.deps.auth import get_current_user, require_role
 from app.deps.db import get_db
 from app.models.user import User
 from app.schemas.common import MessageResponse
-from app.schemas.project import CreateProjectRequest, ProjectResponse, UpdateProjectRequest
-from app.services import project_service
+from app.schemas.project import (
+    AddMemberRequest,
+    CreateProjectRequest,
+    MemberResponse,
+    ProjectResponse,
+    UpdateMemberRequest,
+    UpdateProjectRequest,
+)
+from app.services import member_service, project_service
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -65,3 +72,58 @@ async def delete_project(
     """删除项目（仅 admin）"""
     await project_service.delete_project(session, project_id)
     return MessageResponse(message="删除成功").model_dump()
+
+
+# ---- 项目成员管理 ----
+
+
+@router.get("/{project_id}/members")
+async def list_members(
+    project_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+):
+    """查看项目成员列表（仅 admin）"""
+    members = await member_service.list_members(session, project_id)
+    return {
+        "data": [
+            MemberResponse(**m).model_dump(by_alias=True) for m in members
+        ]
+    }
+
+
+@router.post("/{project_id}/members", status_code=HTTP_201_CREATED)
+async def add_member(
+    project_id: uuid.UUID,
+    body: AddMemberRequest,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+):
+    """添加项目成员（仅 admin）"""
+    member = await member_service.add_member(session, project_id, body)
+    return {"data": MemberResponse(**member).model_dump(by_alias=True)}
+
+
+@router.put("/{project_id}/members/{user_id}")
+async def update_member_role(
+    project_id: uuid.UUID,
+    user_id: uuid.UUID,
+    body: UpdateMemberRequest,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+):
+    """修改成员角色（仅 admin）"""
+    member = await member_service.update_member_role(session, project_id, user_id, body)
+    return {"data": MemberResponse(**member).model_dump(by_alias=True)}
+
+
+@router.delete("/{project_id}/members/{user_id}")
+async def remove_member(
+    project_id: uuid.UUID,
+    user_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+):
+    """移除项目成员（仅 admin）"""
+    await member_service.remove_member(session, project_id, user_id)
+    return MessageResponse(message="移除成功").model_dump()

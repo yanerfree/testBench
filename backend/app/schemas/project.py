@@ -30,3 +30,28 @@ class ProjectResponse(BaseSchema):
     script_base_path: str
     created_at: datetime
     updated_at: datetime
+
+
+# ---- 项目成员 ----
+
+PROJECT_ROLES = ("project_admin", "developer", "tester", "guest")
+
+
+class AddMemberRequest(BaseSchema):
+    """添加项目成员请求"""
+    user_id: uuid.UUID
+    role: str = Field(pattern=r"^(project_admin|developer|tester|guest)$")
+
+
+class UpdateMemberRequest(BaseSchema):
+    """更新成员角色请求"""
+    role: str = Field(pattern=r"^(project_admin|developer|tester|guest)$")
+
+
+class MemberResponse(BaseSchema):
+    """项目成员响应（含用户信息）"""
+    id: uuid.UUID
+    user_id: uuid.UUID
+    username: str
+    role: str
+    joined_at: datetime

@@ -36,6 +36,12 @@ class UnauthorizedError(AppError):
         super().__init__(code=code, message=message, status_code=401, detail=detail)
 
 
+class ValidationError(AppError):
+    """业务规则校验失败"""
+    def __init__(self, code: str = "VALIDATION_ERROR", message: str = "业务规则校验失败", detail: str | None = None):
+        super().__init__(code=code, message=message, status_code=422, detail=detail)
+
+
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     """AppError 全局处理器"""
     return JSONResponse(
@@ -66,6 +72,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """未捕获异常兜底（生产环境不暴露堆栈）"""
+    import traceback; traceback.print_exc()  # 打印堆栈便于排查
     return JSONResponse(
         status_code=500,
         content={
