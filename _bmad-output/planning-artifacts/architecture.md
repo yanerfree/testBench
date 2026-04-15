@@ -8,7 +8,7 @@ inputDocuments:
 workflowType: 'architecture'
 project_name: '测试管理平台'
 user_name: 'Dreamer'
-date: '2026-04-14'
+date: '2026-04-15'
 ---
 
 # Architecture Decision Document — 测试管理平台
@@ -26,7 +26,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 | 项目管理 | 3 | Git 集成、成员 RBAC |
 | 模块管理 | 3 | 三级树形结构 |
 | 用例管理 | 9 | 万级数据分页/虚拟滚动、JSON 导入解析、批量操作 |
-| 环境配置 | 1 | 全局键值对存储、变量优先级注入 |
+| 变量与环境配置 | 3 | 全局变量 + 环境变量两层体系、优先级合并注入 |
 | 通知渠道 | 2 | 钉钉 Webhook、加密存储 |
 | 测试计划 | 8 | 两套状态机（自动/手动）、执行队列、熔断、处理人分配 |
 | 执行引擎 | 3 | subprocess 调用 pytest、Git worktree 隔离、JUnit XML + 步骤级 JSON 解析 |
@@ -62,7 +62,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 | arq + Redis 任务队列 | 本次架构讨论确认 | ✅ 已确认 |
 | 场景级统计（case_id） | UX 讨论确认 | ✅ 已确认 |
 | 6 种状态枚举 | Party Mode 确认 | ✅ 已确认 |
-| 环境变量优先级覆盖 | Dreamer 需求 | ✅ 已确认 |
+| 全局变量 + 环境变量两层体系（参考 Apifox） | Dreamer 需求 | ✅ 已确认 |
 | 手动录入独立页面 | Dreamer 确认 | ✅ 已确认 |
 | 马卡龙色系（主色 #6b7ef5） | 原型验证确认 | ✅ 已确认 |
 
@@ -80,7 +80,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 | RBAC 权限 | 所有 API | 5 级角色 + 项目级隔离，中间件 + 装饰器 |
 | 审计日志 | 所有写操作 | 仅追加表，装饰器自动记录 |
 | 异步任务 | 脚本执行、报告导出、Git 同步 | arq 任务队列 + Worker 池 |
-| 环境变量注入 | 执行引擎 | os.environ 覆盖，平台变量 > 脚本配置 |
+| 变量注入 | 执行引擎 | 全局变量 + 环境变量合并后 os.environ 覆盖，环境变量 > 全局变量 > 脚本配置 |
 | 错误处理 | 全局 | 统一异常体系 + trace_id |
 
 ### 扩展性策略
@@ -159,8 +159,10 @@ backend/
 │   ├── api/                       # API 路由层
 │   │   ├── auth.py                # 登录/鉴权
 │   │   ├── projects.py            # 项目管理
+│   │   ├── branches.py            # 分支配置管理
 │   │   ├── modules.py             # 模块管理
 │   │   ├── cases.py               # 用例管理（含导入/更新）
+│   │   ├── global_variables.py     # 全局变量
 │   │   ├── environments.py        # 环境配置
 │   │   ├── plans.py               # 测试计划
 │   │   ├── executions.py          # 执行控制
@@ -170,8 +172,10 @@ backend/
 │   ├── models/                    # SQLAlchemy ORM 模型
 │   │   ├── user.py
 │   │   ├── project.py
+│   │   ├── branch.py              # 分支配置
 │   │   ├── module.py
 │   │   ├── case.py
+│   │   ├── global_variable.py     # 全局变量
 │   │   ├── environment.py
 │   │   ├── plan.py
 │   │   ├── report.py              # reports + scenarios + steps 三表
@@ -181,20 +185,22 @@ backend/
 │   │   ├── common.py              # 分页、错误、批量操作通用 schema
 │   │   ├── user.py
 │   │   ├── project.py
+│   │   ├── branch.py              # 分支配置
 │   │   ├── case.py
 │   │   ├── plan.py
 │   │   ├── report.py
+│   │   ├── global_variable.py     # 全局变量
 │   │   └── environment.py
 │   │
 │   ├── services/                  # 业务逻辑层
 │   │   ├── auth_service.py
 │   │   ├── project_service.py
+│   │   ├── branch_service.py      # 分支配置管理
 │   │   ├── case_service.py        # 含 tea-cases.json 导入逻辑
 │   │   ├── plan_service.py
 │   │   ├── report_service.py
 │   │   ├── notification_service.py # 钉钉通知
-│   │   ├── git_service.py         # Git clone/pull
-│   │   └── worktree_service.py    # Git worktree 创建/清理
+│   │   └── git_service.py         # Git bare clone / fetch / checkout
 │   │
 │   ├── engine/                    # 执行引擎
 │   │   ├── executor.py            # 编排：worktree→sandbox→subprocess→回收
@@ -329,6 +335,120 @@ TEA 为测试管理平台生成测试脚本和用例清单，两者在同一 Git
 | result_parser | 100% 分支 | 解析错误 = 无声数据腐败 |
 | 状态机（两套） | 100% 转换路径 | 状态错误 = 数据不一致 |
 | 导入匹配逻辑（tea_id） | 100% 分支 | 匹配错误 = 用例数据丢失/覆盖 |
+| 变量合并逻辑 | 100% 分支 | 合并错误 = 测试在错误环境跑，静默数据腐败 |
+| worktree 生命周期（创建+清理） | 100% 路径 | 泄漏 = Worker 死锁 + 磁盘耗尽 |
+
+### Git 目录三层模型
+
+#### 目录结构
+
+```
+{project.script_base_path}/                    # 项目级，如 /opt/scripts/project-a/
+├── .repos/                                    # 第一层：bare 仓库（项目级唯一）
+│   └── repo.git/                              #   bare clone，所有分支配置共享 objects
+│
+├── {branch_config_name}/                      # 第二层：分支配置工作目录
+│   ├── .git                                   #   worktree 链接文件（指向 .repos/repo.git）
+│   ├── tests/
+│   ├── tea-cases.json
+│   └── ...
+│
+└── .sandboxes/                                # 第三层：执行沙箱（临时，用完即删）
+    └── {execution_id}/                        #   每次执行一个独立 worktree
+        └── ...
+```
+
+**路径计算（唯一真相）：**
+
+```python
+from pathlib import Path
+
+def get_paths(project, branch_config, execution_id=None):
+    base = Path(project.script_base_path)
+    return {
+        "bare_repo":         base / ".repos" / "repo.git",
+        "branch_config_dir": base / branch_config.name,
+        "sandbox_dir":       base / ".sandboxes" / execution_id if execution_id else None,
+    }
+```
+
+#### 为什么选 bare clone + worktree
+
+| 方案 | 磁盘占用 | 并发安全 | 结论 |
+|------|---------|---------|------|
+| **bare + worktree（采用）** | 1 份 objects，N 个轻量 checkout | Git 原生支持 | ✅ |
+| 每分支配置独立 clone | N 份完整 .git | 天然隔离但浪费 | ❌ |
+| 共享 .git + 符号链接 | 1 份 | 手动锁，易出错 | ❌ |
+
+#### 全生命周期 Git 命令
+
+**① 项目创建** — `git clone --bare {git_url} {base}/.repos/repo.git`
+
+**② 首次分支配置同步（"更新脚本"，目录不存在）：**
+```bash
+git --git-dir {bare_repo} fetch origin --prune
+git --git-dir {bare_repo} worktree add {branch_config_dir} origin/{branch}
+git -C {branch_config_dir} rev-parse HEAD  # → 写入 branches.last_commit_sha
+```
+
+**③ 后续分支配置同步（日常更新）：**
+```bash
+git --git-dir {bare_repo} fetch origin --prune
+git -C {branch_config_dir} checkout origin/{branch}  # detached HEAD
+git -C {branch_config_dir} rev-parse HEAD  # → 更新 last_commit_sha
+```
+
+**④ 分支切换（用户修改分支配置的 branch 字段后同步）：** 与③相同，checkout 到新的 `origin/{new_branch}`。
+
+**⑤ 执行前创建沙箱：**
+```bash
+# 基于 commit SHA 创建，确保执行期间代码不变
+git --git-dir {bare_repo} worktree add --detach {sandbox_dir} {commit_sha}
+```
+
+**⑥ 执行后清理沙箱：**
+```bash
+git --git-dir {bare_repo} worktree remove --force {sandbox_dir}
+# 兜底：如果失败则 rm -rf + git worktree prune
+```
+
+#### 并发安全
+
+| 场景 | 是否冲突 | 原因 |
+|------|---------|------|
+| 分支配置 A 同步 + 分支配置 B 同步 | 安全 | fetch 幂等，各自 checkout 不同 worktree |
+| 分支配置同步 + 执行正在跑 | 安全 | 沙箱基于 commit SHA，与分支配置目录无关 |
+| 多个执行并发创建沙箱 | 安全 | worktree add 串行（FileLock），创建完 pytest 并行 |
+
+**锁策略：**
+```
+{bare_repo}/branch-{branch_config_name}.lock   # 每分支配置一把锁（同步用）
+{bare_repo}/sandbox.lock                       # 沙箱创建/销毁共用（操作 <1s）
+```
+
+#### 磁盘空间
+
+```
+典型项目（仓库 100MB，3 个活跃分支配置，峰值 20 并发）：
+  bare repo:              ~100 MB
+  分支配置 worktree x3:   ~50 MB x3 = 150 MB
+  沙箱（峰值 20 并发）:    ~50 MB x20 = 1,000 MB（临时）
+  日常（无执行）:          ~250 MB / 项目
+```
+
+#### 清理策略
+
+- **Worker 启动时：** 扫描 `.sandboxes/` 清理残留目录 + `git worktree prune`
+- **健康检查：** `/readyz` 端点检查磁盘空间，低于阈值拒绝新执行任务
+
+#### 文件职责划分
+
+| 文件 | 职责 |
+|------|------|
+| `services/git_service.py` | clone bare repo / fetch / checkout（仓库级操作） |
+| `engine/sandbox.py` | create_sandbox() / cleanup_sandbox() / cleanup_orphans()（执行级操作） |
+
+> **变更说明（v3.4 评审）：** 原 `services/worktree_service.py` 合并到 `engine/sandbox.py`，职责边界更清晰。
 
 ## Core Architectural Decisions
 
@@ -373,15 +493,43 @@ CREATE TABLE projects (
     name            VARCHAR(100) UNIQUE NOT NULL,
     description     TEXT,
     git_url         VARCHAR(500) NOT NULL,
-    branch          VARCHAR(100) DEFAULT 'main',
-    script_path     VARCHAR(500) NOT NULL,
-    json_file_path  VARCHAR(200) DEFAULT 'tea-cases.json',
-    last_sync_at    TIMESTAMPTZ,
-    last_commit_sha VARCHAR(40),
+    script_base_path VARCHAR(500) NOT NULL,   -- 脚本基础路径，分支配置目录自动派生
     created_at      TIMESTAMPTZ DEFAULT now(),
     updated_at      TIMESTAMPTZ DEFAULT now()
 );
 ```
+
+> **变更说明（v3.4）：** `branch`、`json_file_path`、`last_sync_at`、`last_commit_sha` 移至 `branches` 表。`script_path` 改为 `script_base_path`，作为基础路径，各分支配置的实际脚本目录自动派生为 `{script_base_path}/{branch_config_name}/`。
+
+#### branches — 分支配置
+
+```sql
+CREATE TABLE branches (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id      UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name            VARCHAR(50) NOT NULL,     -- [a-zA-Z0-9_-]，用于路径派生，创建后不可改
+    description     TEXT,
+    branch          VARCHAR(100) NOT NULL DEFAULT 'main',
+    json_file_path  VARCHAR(200) DEFAULT 'tea-cases.json',
+    status          VARCHAR(20) NOT NULL DEFAULT 'active',  -- active / archived
+    last_sync_at    TIMESTAMPTZ,
+    last_commit_sha VARCHAR(40),
+    created_at      TIMESTAMPTZ DEFAULT now(),
+    updated_at      TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(project_id, name),
+    CHECK (name ~ '^[a-zA-Z0-9_-]{1,50}$')
+);
+```
+
+> **设计说明：**
+> - 分支配置是项目下的用例与脚本容器，仅管理用例集、目录结构和脚本同步
+> - 计划、报告、审计日志等归属于项目级，不与分支配置绑定
+> - `name` 字段创建后不可修改（关联文件系统路径），仅允许 `[a-zA-Z0-9_-]`
+> - `branch` 字段支持修改，修改后下次"更新脚本"时拉取新分支代码
+> - 分支配置的实际脚本目录自动派生：`{project.script_base_path}/{branch_config.name}/`，用户无需手动指定
+> - "更新脚本"时平台在分支配置目录下执行 `git clone`（首次）或 `git fetch + checkout {branch}`（后续）
+> - 同一项目内多个分支配置可绑定不同分支（如 `release/1.0`、`release/2.0`、`develop`）
+> - 创建项目时自动创建默认分支配置（名称 `default`，分支 `main`）
 
 #### project_members — 项目成员
 
@@ -400,27 +548,27 @@ CREATE TABLE project_members (
 
 ```sql
 CREATE TABLE case_folders (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id  UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    parent_id   UUID REFERENCES case_folders(id),
-    name        VARCHAR(100) NOT NULL,
-    path        VARCHAR(500) NOT NULL,  -- "AUTH/LOGIN/正常流程"
-    depth       INT NOT NULL,           -- 1-4
-    sort_order  INT DEFAULT 0,
-    created_at  TIMESTAMPTZ DEFAULT now(),
-    UNIQUE(project_id, path),
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    branch_id     UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+    parent_id     UUID REFERENCES case_folders(id),
+    name          VARCHAR(100) NOT NULL,
+    path          VARCHAR(500) NOT NULL,  -- "AUTH/LOGIN/正常流程"
+    depth         INT NOT NULL,           -- 1-4
+    sort_order    INT DEFAULT 0,
+    created_at    TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(branch_id, path),
     CHECK(depth <= 4)
 );
 ```
 
-> 取代原来的 modules + sub_modules 两表设计。导入时 TEA 的 module + submodule 自动映射为前两层，用户可继续建第 3、4 层。
+> 取代原来的 modules + sub_modules 两表设计。导入时 TEA 的 module + submodule 自动映射为前两层，用户可继续建第 3、4 层。目录结构按分支配置隔离。
 
 #### cases — 用例
 
 ```sql
 CREATE TABLE cases (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id        UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    branch_id         UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
     case_code         VARCHAR(20) NOT NULL,       -- TC-AUTH-00001
     tea_id            VARCHAR(200),               -- 导入匹配键
     title             VARCHAR(200) NOT NULL,
@@ -439,10 +587,48 @@ CREATE TABLE cases (
     remark            TEXT,
     created_at        TIMESTAMPTZ DEFAULT now(),
     updated_at        TIMESTAMPTZ DEFAULT now(),
-    UNIQUE(project_id, case_code),
-    UNIQUE(project_id, tea_id)
+    UNIQUE(branch_id, case_code),
+    UNIQUE(branch_id, tea_id)
 );
 ```
+
+> **变更说明（v3.4→v4.0）：** `project_id` → `iteration_id` → `branch_id`。用例归属于分支配置，不同分支配置的用例独立管理。唯一约束为分支配置级别。
+
+#### global_variables — 全局变量
+
+```sql
+CREATE TABLE global_variables (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    key         VARCHAR(64) UNIQUE NOT NULL,
+    value       TEXT NOT NULL,
+    description VARCHAR(200),
+    sort_order  INT DEFAULT 0,
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now(),
+    CHECK (key ~ '^[A-Za-z][A-Za-z0-9_]{0,62}$')
+);
+```
+
+> 全局变量不区分环境，所有环境下均生效。同名 key 时被环境变量覆盖。
+
+#### 变量 Key 命名规则与系统保留黑名单
+
+**命名规则：** `^[A-Za-z][A-Za-z0-9_]{0,62}$`（字母开头，仅含字母/数字/下划线，最长 63 字符）。
+
+**系统保留变量黑名单（创建时拦截，返回 422）：**
+
+```python
+RESERVED_VAR_NAMES = frozenset({
+    "PATH", "HOME", "USER", "SHELL", "LANG", "LC_ALL", "LC_CTYPE",
+    "PYTHONPATH", "PYTHONHOME", "PYTHONIOENCODING",
+    "LD_LIBRARY_PATH", "LD_PRELOAD",
+    "TMPDIR", "TEMP", "TMP",
+    "DISPLAY", "TERM", "HOSTNAME",
+    "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
+})
+```
+
+> **注入方式：** `subprocess.run(env={**os.environ.copy(), **merged_user_vars})`，用户变量直接以原名注入。黑名单阻止用户覆盖关键系统变量，但不限制其他自定义变量名。
 
 #### environments — 环境配置
 
@@ -451,7 +637,6 @@ CREATE TABLE environments (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name        VARCHAR(50) UNIQUE NOT NULL,
     description TEXT,
-    base_url    VARCHAR(500),
     created_at  TIMESTAMPTZ DEFAULT now(),
     updated_at  TIMESTAMPTZ DEFAULT now()
 );
@@ -459,13 +644,20 @@ CREATE TABLE environments (
 CREATE TABLE environment_variables (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     environment_id  UUID NOT NULL REFERENCES environments(id) ON DELETE CASCADE,
-    key             VARCHAR(100) NOT NULL,
+    key             VARCHAR(64) NOT NULL,
     value           TEXT NOT NULL,
-    is_sensitive    BOOLEAN DEFAULT false,
+    description     VARCHAR(200),
     sort_order      INT DEFAULT 0,
-    UNIQUE(environment_id, key)
+    UNIQUE(environment_id, key),
+    CHECK (key ~ '^[A-Za-z][A-Za-z0-9_]{0,62}$')
 );
 ```
+
+> **变量注入优先级：** 环境变量 > 全局变量 > 脚本内配置。
+> - **合并逻辑：** 先加载全局变量，再用选定环境的变量覆盖同名 key。有值 = 覆盖，无记录 = 继承上层。
+> - **注入方式：** `subprocess.run(env={**os.environ.copy(), **merged_vars})`，基于当前进程环境副本叠加用户变量，不污染 Worker 进程，不丢失系统变量。
+> - **变量快照：** 执行开始时将合并后的完整变量集写入 `test_reports.variables_snapshot`（JSONB，含 key/value/scope），写入后不可修改。一期保存全量值（内部团队使用），二期引入 `is_sensitive` 标记后对外接口自动脱敏。
+> - `base_url` 不再作为 environments 表的独立字段，改为环境变量中的一个 key（`BASE_URL`）。
 
 #### notification_channels — 通知渠道
 
@@ -502,6 +694,8 @@ CREATE TABLE plans (
     updated_at      TIMESTAMPTZ DEFAULT now()
 );
 ```
+
+> **变更说明（v4.0）：** 计划回归项目级（`project_id`），不再绑定分支配置。计划可选择任意分支配置下的用例，通过 `plan_cases` 关联。
 
 > **test_type 约束：一个计划只能选 api 或 e2e，不能混合。** 原因：执行环境不同（API 直接跑 pytest，E2E 需要 Playwright 浏览器）。
 
@@ -545,6 +739,7 @@ CREATE TABLE test_reports (
     failed_assertions   INT DEFAULT 0,
     automated_count     INT DEFAULT 0,
     manual_count        INT DEFAULT 0,
+    variables_snapshot  JSONB,          -- 执行时变量快照（全局+环境合并后），不可变
     created_at          TIMESTAMPTZ DEFAULT now()
 );
 ```
@@ -643,17 +838,27 @@ CREATE TABLE audit_logs (
 | POST | `/api/projects` | 创建 |
 | PUT | `/api/projects/{id}` | 编辑 |
 | DELETE | `/api/projects/{id}` | 删除 |
-| POST | `/api/projects/{id}/sync` | Git pull |
 | GET | `/api/projects/{id}/members` | 成员列表 |
 | POST | `/api/projects/{id}/members` | 添加成员 |
 | DELETE | `/api/projects/{id}/members/{userId}` | 移除成员 |
+
+#### 分支配置
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/projects/{id}/branches` | 分支配置列表 |
+| POST | `/api/projects/{id}/branches` | 创建分支配置 |
+| PUT | `/api/branches/{id}` | 编辑分支配置 |
+| POST | `/api/branches/{id}/archive` | 归档分支配置 |
+| POST | `/api/branches/{id}/activate` | 恢复分支配置 |
+| POST | `/api/branches/{id}/sync` | Git pull（更新脚本） |
 
 #### 目录管理（导航树）
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/projects/{id}/folders` | 目录树 |
-| POST | `/api/projects/{id}/folders` | 创建目录 |
+| GET | `/api/branches/{id}/folders` | 目录树 |
+| POST | `/api/branches/{id}/folders` | 创建目录 |
 | PUT | `/api/folders/{id}` | 重命名 |
 | DELETE | `/api/folders/{id}` | 删除（无用例时） |
 
@@ -661,16 +866,23 @@ CREATE TABLE audit_logs (
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/projects/{id}/cases` | 列表 |
+| GET | `/api/branches/{id}/cases` | 列表 |
 | GET | `/api/cases/{id}` | 详情 |
-| POST | `/api/projects/{id}/cases` | 新建 |
+| POST | `/api/branches/{id}/cases` | 新建 |
 | PUT | `/api/cases/{id}` | 编辑 |
 | DELETE | `/api/cases/{id}` | 删除 |
-| POST | `/api/projects/{id}/cases/import` | 上传导入 |
-| POST | `/api/projects/{id}/cases/sync` | Git 更新用例 |
-| POST | `/api/projects/{id}/cases/batch` | 批量操作 |
-| GET | `/api/projects/{id}/cases/export` | 导出 Excel |
+| POST | `/api/branches/{id}/cases/import` | 上传导入 |
+| POST | `/api/branches/{id}/cases/sync` | Git 更新用例 |
+| POST | `/api/branches/{id}/cases/batch` | 批量操作 |
+| GET | `/api/branches/{id}/cases/export` | 导出 Excel |
 | POST | `/api/cases/{id}/execute` | 单用例执行 |
+
+#### 全局变量
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/global-variables` | 列表 |
+| PUT | `/api/global-variables` | 批量更新（全量替换） |
 
 #### 环境
 
@@ -680,8 +892,10 @@ CREATE TABLE audit_logs (
 | POST | `/api/environments` | 创建 |
 | PUT | `/api/environments/{id}` | 编辑 |
 | DELETE | `/api/environments/{id}` | 删除 |
-| GET | `/api/environments/{id}/variables` | 变量列表 |
-| PUT | `/api/environments/{id}/variables` | 更新变量 |
+| POST | `/api/environments/{id}/clone` | 复制环境 |
+| GET | `/api/environments/{id}/variables` | 环境变量列表 |
+| PUT | `/api/environments/{id}/variables` | 更新环境变量 |
+| GET | `/api/environments/{id}/merged-variables` | 合并后的变量（全局+环境，用于预览） |
 
 #### 通知渠道
 
@@ -753,6 +967,8 @@ CREATE TABLE audit_logs (
 | test_type 不可混合 | 一个计划只能选 api 或 e2e |
 | 通知渠道非必填 | NULL = 不通知，手动计划前端隐藏 |
 | step.url 存完整 URL | 含域名，前端复制 curl 直接可用 |
+| **项目引入分支配置二级结构（v4.0）** | projects → branches，用例和脚本挂在分支配置下；计划、报告、审计日志为项目级 |
+| **全局变量 + 环境变量两层体系（v3.4）** | 参考 Apifox，全局变量跨环境通用，环境变量优先级更高 |
 
 ## Implementation Patterns & Consistency Rules
 
