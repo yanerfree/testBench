@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
-import { Layout, Menu, Avatar, Dropdown, Button, Tooltip } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, Button, Tooltip, message, Select } from 'antd'
 import {
   FolderOutlined, FileTextOutlined, UnorderedListOutlined, BarChartOutlined,
   SettingOutlined, UserOutlined, FileSearchOutlined,
-  MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined,
+  MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined, TagOutlined,
 } from '@ant-design/icons'
 import ProjectList from './pages/projects/ProjectList'
 import CaseManagement from './pages/cases/CaseManagement'
@@ -12,15 +12,30 @@ import CaseDetail from './pages/cases/CaseDetail'
 import PlanList from './pages/plan/PlanList'
 import PlanDetail from './pages/plan/PlanDetail'
 import ReportDetail from './pages/report/ReportDetail'
+import Login from './pages/auth/Login'
+import { mockIterations } from './mock/data'
+import ManualRecord from './pages/plan/ManualRecord'
+import EnvConfig from './pages/settings/EnvConfig'
+import UserManagement from './pages/settings/UserManagement'
+import AuditLogs from './pages/settings/AuditLogs'
 
 const { Header, Sider, Content } = Layout
 
-export default function App() {
+function RequireAuth({ children }) {
+  const token = localStorage.getItem('token')
+  if (!token) return <Navigate to="/login" replace />
+  return children
+}
+
+function AppLayout() {
   const [collapsed, setCollapsed] = useState(false)
+  const [currentIteration, setCurrentIteration] = useState('iter-001')
   const navigate = useNavigate()
   const location = useLocation()
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isProjectPage = location.pathname.includes('/projects/')
+  const activeIterations = mockIterations.filter(i => i.status === 'active')
 
   const menuItems = [
     { key: '/projects', icon: <FolderOutlined />, label: '项目列表' },
@@ -36,13 +51,22 @@ export default function App() {
     ] : []),
   ]
 
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    message.success('已退出登录')
+    navigate('/login', { replace: true })
+  }
+
   const userMenu = {
     items: [
       { key: 'profile', label: '个人设置' },
       { type: 'divider' },
-      { key: 'logout', label: '退出登录' },
+      { key: 'logout', label: '退出登录', onClick: handleLogout },
     ]
   }
+
+  const displayName = user.username === 'admin' ? '管理员' : user.username || '用户'
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -62,8 +86,18 @@ export default function App() {
           <span style={{ color: '#2e3138', fontSize: 14, fontWeight: 600 }}>测试管理平台</span>
           {isProjectPage && (
             <>
-              <span style={{ color: '#e0e0e3', margin: '0 2px' }}>/</span>
+              <span style={{ color: '#e0e0e3', margin: '0 4px' }}>/</span>
               <span style={{ color: '#8c919e', fontSize: 13 }}>API网关管理系统</span>
+              <span style={{ color: '#e0e0e3', margin: '0 4px' }}>/</span>
+              <Select
+                value={currentIteration}
+                onChange={setCurrentIteration}
+                size="small"
+                variant="borderless"
+                style={{ width: 110 }}
+                suffixIcon={<TagOutlined style={{ color: '#bfc4cd', fontSize: 11 }} />}
+                options={activeIterations.map(i => ({ value: i.id, label: i.name }))}
+              />
             </>
           )}
         </div>
@@ -73,8 +107,8 @@ export default function App() {
           </Tooltip>
           <Dropdown menu={userMenu} placement="bottomRight">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <Avatar size={24} style={{ background: '#a78bfa', fontSize: 11 }}>张</Avatar>
-              <span style={{ color: '#8c919e', fontSize: 13 }}>张三</span>
+              <Avatar size={24} style={{ background: '#a78bfa', fontSize: 11 }}>{displayName[0]}</Avatar>
+              <span style={{ color: '#8c919e', fontSize: 13 }}>{displayName}</span>
             </div>
           </Dropdown>
         </div>
@@ -115,10 +149,23 @@ export default function App() {
             <Route path="/projects/:projectId/cases/:caseId" element={<CaseDetail />} />
             <Route path="/projects/:projectId/plans" element={<PlanList />} />
             <Route path="/projects/:projectId/plans/:planId" element={<PlanDetail />} />
+            <Route path="/projects/:projectId/plans/:planId/manual-record" element={<ManualRecord />} />
             <Route path="/projects/:projectId/reports/:reportId" element={<ReportDetail />} />
+            <Route path="/settings/env" element={<EnvConfig />} />
+            <Route path="/settings/users" element={<UserManagement />} />
+            <Route path="/settings/logs" element={<AuditLogs />} />
           </Routes>
         </Content>
       </Layout>
     </Layout>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/*" element={<RequireAuth><AppLayout /></RequireAuth>} />
+    </Routes>
   )
 }

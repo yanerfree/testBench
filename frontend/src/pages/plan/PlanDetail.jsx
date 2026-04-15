@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Card, Tag, Button, Radio, Table, Descriptions, Space, Row, Col } from 'antd'
-import { BarChartOutlined, DownloadOutlined, FileTextOutlined, UserOutlined, ClockCircleOutlined } from '@ant-design/icons'
+import { BarChartOutlined, DownloadOutlined, FileTextOutlined, UserOutlined, ClockCircleOutlined, EditOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { mockPlan, mockReport } from '../../mock/data'
 
@@ -63,6 +63,11 @@ export default function PlanDetail() {
             </Space>
           </div>
           <Space>
+            {mockPlan.manual > 0 && (
+              <Button icon={<EditOutlined />} onClick={() => navigate(`/projects/proj-001/plans/${mockPlan.id}/manual-record`)}>
+                开始手动录入
+              </Button>
+            )}
             <Button type="primary" icon={<BarChartOutlined />} onClick={() => navigate('/projects/proj-001/reports/rpt-001')}>查看报告</Button>
             <Button icon={<DownloadOutlined />}>导出 HTML</Button>
             <Button icon={<FileTextOutlined />}>导出 Excel</Button>

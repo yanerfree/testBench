@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react'
-import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination } from 'antd'
-import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined } from '@ant-design/icons'
+import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message } from 'antd'
+import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
-import { mockModules, mockCases } from '../../mock/data'
+import { mockModules, mockCases, mockBranches } from '../../mock/data'
 
 const priorityColors = { P0: '#f08a8e', P1: '#f5b87a', P2: '#7c8cf8', P3: '#a8adb6' }
 const priorityBg = { P0: '#fef0f1', P1: '#fef5eb', P2: '#f0f1fe', P3: '#f5f5f7' }
@@ -12,6 +12,7 @@ const statusBg = { '已自动化': '#eefbf3', '待自动化': '#fef5eb', '脚本
 export default function CaseManagement() {
   const navigate = useNavigate()
   const { projectId } = useParams()
+  const [currentBranch, setCurrentBranch] = useState('br-001')
   const [selectedModule, setSelectedModule] = useState(null)
   const [selectedSub, setSelectedSub] = useState(null)
   const [keyword, setKeyword] = useState('')
@@ -19,6 +20,42 @@ export default function CaseManagement() {
   const [selectedRows, setSelectedRows] = useState([])
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
+
+  const [importOpen, setImportOpen] = useState(false)
+  const [importPreview, setImportPreview] = useState(null)
+
+  const activeBranches = mockBranches.filter(b => b.status === 'active')
+  const branch = mockBranches.find(b => b.id === currentBranch)
+
+  // 模拟解析 tea-cases.json
+  const mockImportPreview = {
+    total: 15,
+    newCount: 8,
+    updateCount: 5,
+    removedCount: 2,
+    cases: [
+      { tea_id: 'auth_login_success', title: '登录成功跳转首页', module: 'AUTH', type: 'API', priority: 'P0', status: '新增' },
+      { tea_id: 'auth_login_fail_lock', title: '登录失败锁定账号', module: 'AUTH', type: 'API', priority: 'P0', status: '新增' },
+      { tea_id: 'auth_register_email', title: '邮箱注册流程', module: 'AUTH', type: 'API', priority: 'P1', status: '更新' },
+      { tea_id: 'approval_submit', title: '发布审批提交', module: 'APPROVAL', type: 'API', priority: 'P0', status: '更新' },
+      { tea_id: 'approval_reject', title: '发布审批驳回', module: 'APPROVAL', type: 'API', priority: 'P1', status: '新增' },
+      { tea_id: 'api_create_basic', title: '创建API基础流程', module: 'API', type: 'API', priority: 'P0', status: '更新' },
+      { tea_id: 'api_version_rollback', title: 'API版本回滚', module: 'API', type: 'API', priority: 'P1', status: '新增' },
+      { tea_id: 'auth_token_expire', title: 'Token过期处理', module: 'AUTH', type: 'API', priority: 'P2', status: '移除' },
+    ],
+  }
+
+  const handleImportFile = (file) => {
+    // 模拟文件解析
+    setTimeout(() => setImportPreview(mockImportPreview), 500)
+    return false // 阻止自动上传
+  }
+
+  const handleImportConfirm = () => {
+    message.success(`导入完成：新增 ${importPreview.newCount} / 更新 ${importPreview.updateCount} / 移除 ${importPreview.removedCount}`)
+    setImportOpen(false)
+    setImportPreview(null)
+  }
 
   const treeData = [
     { title: 'API 测试', key: 'type-api', children: mockModules.map(m => ({
@@ -76,7 +113,34 @@ export default function CaseManagement() {
   ]
 
   return (
-    <div style={{ display: 'flex', gap: 16, height: 'calc(100vh - 96px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: 'calc(100vh - 96px)' }}>
+      {/* 分支选择栏 */}
+      <Card styles={{ body: { padding: '8px 16px' } }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <BranchesOutlined style={{ color: '#6b7ef5' }} />
+            <span style={{ fontSize: 13, color: '#8c919e' }}>分支配置</span>
+            <Select
+              value={currentBranch}
+              onChange={v => { setCurrentBranch(v); setPage(1) }}
+              size="small"
+              style={{ width: 180 }}
+              options={activeBranches.map(b => ({
+                value: b.id,
+                label: <span>{b.name} <span style={{ fontSize: 11, color: '#bfc4cd' }}>({b.branch})</span></span>,
+              }))}
+            />
+            {branch && (
+              <span style={{ fontSize: 11, color: '#bfc4cd' }}>
+                最近同步: {branch.lastSyncAt} · {branch.lastCommitSha.substring(0, 7)}
+              </span>
+            )}
+          </div>
+          <Button size="small" icon={<SyncOutlined />}>更新脚本</Button>
+        </div>
+      </Card>
+
+      <div style={{ flex: 1, display: 'flex', gap: 16, minHeight: 0 }}>
       {/* 左侧树 */}
       <Card style={{ width: 240, flexShrink: 0, overflow: 'auto' }} styles={{ body: { padding: '12px 8px' }, header: { padding: '0 16px', minHeight: 40, borderBottom: '1px solid #f2f3f5' } }}
         title={<span style={{ fontSize: 13, fontWeight: 600 }}>用例导航</span>}>
@@ -98,7 +162,7 @@ export default function CaseManagement() {
               </Radio.Group>
             </Space>
             <Space>
-              <Button icon={<UploadOutlined />} size="small">导入</Button>
+              <Button icon={<UploadOutlined />} size="small" onClick={() => setImportOpen(true)}>导入</Button>
               <Button icon={<DownloadOutlined />} size="small">导出</Button>
               <Button type="primary" icon={<PlusOutlined />} size="small">新建用例</Button>
             </Space>
@@ -137,6 +201,72 @@ export default function CaseManagement() {
           </div>
         </Card>
       </div>
+      </div>
+
+      {/* 导入用例弹窗 */}
+      <Modal
+        title="导入用例（tea-cases.json）"
+        open={importOpen}
+        onCancel={() => { setImportOpen(false); setImportPreview(null) }}
+        footer={importPreview ? [
+          <Button key="cancel" onClick={() => { setImportOpen(false); setImportPreview(null) }}>取消</Button>,
+          <Button key="confirm" type="primary" onClick={handleImportConfirm}>
+            确认导入（{importPreview.total} 条）
+          </Button>,
+        ] : null}
+        width={680}
+      >
+        {!importPreview ? (
+          <Upload.Dragger
+            accept=".json"
+            showUploadList={false}
+            beforeUpload={handleImportFile}
+            style={{ padding: '32px 0' }}
+          >
+            <p><InboxOutlined style={{ fontSize: 40, color: '#6b7ef5' }} /></p>
+            <p style={{ fontSize: 14, color: '#2e3138', marginTop: 8 }}>点击或拖拽上传 tea-cases.json</p>
+            <p style={{ fontSize: 12, color: '#8c919e' }}>支持 TEA 框架生成的标准用例清单文件</p>
+          </Upload.Dragger>
+        ) : (
+          <>
+            {/* 摘要 */}
+            <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+              {[
+                { label: '新增', count: importPreview.newCount, color: '#6ecf96', bg: '#eefbf3' },
+                { label: '更新', count: importPreview.updateCount, color: '#6b7ef5', bg: '#eef0fe' },
+                { label: '移除', count: importPreview.removedCount, color: '#f08a8e', bg: '#fef0f1' },
+              ].map(s => (
+                <div key={s.label} style={{
+                  flex: 1, textAlign: 'center', padding: '10px 0',
+                  background: s.bg, borderRadius: 8,
+                }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.count}</div>
+                  <div style={{ fontSize: 12, color: '#8c919e' }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+            {/* 预览表格 */}
+            <Table
+              dataSource={importPreview.cases}
+              rowKey="tea_id"
+              size="small"
+              pagination={false}
+              scroll={{ y: 280 }}
+              columns={[
+                { title: 'TEA ID', dataIndex: 'tea_id', width: 170, render: v => <span style={{ fontSize: 12, color: '#8c919e', fontFamily: 'monospace' }}>{v}</span> },
+                { title: '标题', dataIndex: 'title', ellipsis: true },
+                { title: '模块', dataIndex: 'module', width: 85 },
+                { title: '优先级', dataIndex: 'priority', width: 60, align: 'center', render: v => <Tag style={{ background: priorityBg[v], color: priorityColors[v], border: 'none' }}>{v}</Tag> },
+                { title: '操作', dataIndex: 'status', width: 70, align: 'center', render: v => {
+                  const cfg = { '新增': { color: '#6ecf96', bg: '#eefbf3' }, '更新': { color: '#6b7ef5', bg: '#eef0fe' }, '移除': { color: '#f08a8e', bg: '#fef0f1' } }
+                  const c = cfg[v]
+                  return <Tag style={{ color: c.color, background: c.bg, border: 'none' }}>{v}</Tag>
+                }},
+              ]}
+            />
+          </>
+        )}
+      </Modal>
     </div>
   )
 }
