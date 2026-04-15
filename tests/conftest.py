@@ -20,6 +20,7 @@ from app.core.security import hash_password, create_access_token
 from app.main import app
 from app.deps.db import get_db
 from app.models.user import User, Base
+from app.models.project import Project, Branch, ProjectMember  # noqa: F401 — 确保 metadata 包含新表
 
 
 # Use a separate test database

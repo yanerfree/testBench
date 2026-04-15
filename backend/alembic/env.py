@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.config import settings
 from app.models.user import Base
+from app.models.project import Project, Branch, ProjectMember  # noqa: F401 — 确保 metadata 发现
 
 config = context.config
 if config.config_file_name is not None:
