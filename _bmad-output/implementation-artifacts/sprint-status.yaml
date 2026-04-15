@@ -1,0 +1,97 @@
+# generated: 2026-04-15
+# last_updated: 2026-04-15
+# project: testBench
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: {project-root}/_bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-04-15
+last_updated: 2026-04-15
+project: testBench
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: 项目基础与用户体系
+  epic-1: in-progress
+  1-1-backend-scaffold-and-user-table: in-progress
+  1-2-login-page-and-jwt-auth: backlog
+  1-3-user-crud-management: backlog
+  1-4-project-crud: backlog
+  1-5-project-member-management: backlog
+  1-6-rbac-permission-enforcement: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: 分支与用例管理
+  epic-2: backlog
+  2-1-branch-config-crud: backlog
+  2-2-git-service-and-script-sync: backlog
+  2-3-case-import-tea-cases-json: backlog
+  2-4-case-manual-crud-and-detail: backlog
+  2-5-case-folder-tree-navigation: backlog
+  2-6-case-list-filter-pagination: backlog
+  2-7-case-batch-operations: backlog
+  2-8-case-archive-delete-flaky-cross-branch-copy: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: 变量与环境配置
+  epic-3: backlog
+  3-1-global-variables-crud: backlog
+  3-2-environment-and-env-variables-crud: backlog
+  3-3-notification-channel-crud: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: 测试计划与执行引擎
+  epic-4: backlog
+  4-1-test-plan-crud: backlog
+  4-2-execution-engine-sandbox-and-pytest: backlog
+  4-3-automated-plan-execution-flow: backlog
+  4-4-manual-plan-execution: backlog
+  4-5-mixed-execution-auto-then-manual: backlog
+  4-6-circuit-breaker-pause-resume-abort-queue: backlog
+  4-7-plan-reopen-and-archive: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: 报告与通知
+  epic-5: backlog
+  5-1-report-dashboard-l1-l2: backlog
+  5-2-report-drilldown-l3-l4: backlog
+  5-3-failure-detail-three-layer-display: backlog
+  5-4-html-excel-export-and-dingtalk-notification: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6: 审计与运维
+  epic-6: backlog
+  6-1-audit-log-recording-and-query: backlog
+  6-2-health-check-endpoints: backlog
+  epic-6-retrospective: optional
