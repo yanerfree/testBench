@@ -1,0 +1,67 @@
+import uuid
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.status import HTTP_201_CREATED
+
+from app.deps.auth import require_role
+from app.deps.db import get_db
+from app.models.user import User
+from app.schemas.common import MessageResponse
+from app.schemas.user import CreateUserRequest, UpdateUserRequest, UserResponse
+from app.services import user_service
+
+router = APIRouter(prefix="/api/users", tags=["users"])
+
+
+@router.get("")
+async def list_users(
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+):
+    """获取所有用户列表（仅 admin）"""
+    users = await user_service.list_users(session)
+    return {
+        "data": [
+            UserResponse.model_validate(u, from_attributes=True).model_dump(by_alias=True)
+            for u in users
+        ]
+    }
+
+
+@router.post("", status_code=HTTP_201_CREATED)
+async def create_user(
+    body: CreateUserRequest,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+):
+    """创建用户（仅 admin）"""
+    user = await user_service.create_user(session, body)
+    return {
+        "data": UserResponse.model_validate(user, from_attributes=True).model_dump(by_alias=True)
+    }
+
+
+@router.put("/{user_id}")
+async def update_user(
+    user_id: uuid.UUID,
+    body: UpdateUserRequest,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+):
+    """更新用户角色或激活状态（仅 admin）"""
+    user = await user_service.update_user(session, user_id, body)
+    return {
+        "data": UserResponse.model_validate(user, from_attributes=True).model_dump(by_alias=True)
+    }
+
+
+@router.delete("/{user_id}")
+async def delete_user(
+    user_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+):
+    """删除用户（仅 admin）"""
+    await user_service.delete_user(session, user_id)
+    return MessageResponse(message="删除成功").model_dump()
