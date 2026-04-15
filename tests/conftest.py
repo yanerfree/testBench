@@ -2,11 +2,13 @@
 Root conftest.py — 共享 fixtures for all test levels.
 
 Fixtures:
-    - db_engine / db_session: 异步数据库连接（事务回滚隔离）
+    - db_engine / db_session: 异步数据库连接（每个测试后 rollback）
     - client: httpx.AsyncClient（绑定 FastAPI app）
-    - admin_token: 预置 admin 用户的 JWT token
+
+Helpers:
+    - create_test_user(): 在 db_session 中创建用户并返回 User
+    - make_auth_headers(): 为用户签发 JWT token 并返回 headers
 """
-import asyncio
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -14,43 +16,39 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from app.config import settings
+from app.core.security import hash_password, create_access_token
 from app.main import app
-from app.deps.db import get_session
-from app.models.user import Base
+from app.deps.db import get_db
+from app.models.user import User, Base
 
 
 # Use a separate test database
 TEST_DATABASE_URL = settings.database_url.replace("/testbench", "/testbench_test")
 
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create a single event loop for the entire test session."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest.fixture(scope="session")
-async def db_engine():
-    """Create a test database engine (session scope)."""
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield engine
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
+# 测试用固定密码
+TEST_PASSWORD = "Test@123456"
 
 
 @pytest.fixture
-async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
-    """Per-test database session with transaction rollback."""
-    session_factory = async_sessionmaker(db_engine, expire_on_commit=False)
-    async with session_factory() as session:
-        async with session.begin():
-            yield session
-            await session.rollback()
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Per-test: 建引擎 → 建表 → 创建 session → yield → rollback → 销毁。
+    每个测试完全隔离，不存在 event loop 跨作用域问题。"""
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    session = session_factory()
+    try:
+        yield session
+    finally:
+        await session.rollback()
+        await session.close()
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 
 
 @pytest.fixture
@@ -60,10 +58,35 @@ async def client(db_session) -> AsyncGenerator[AsyncClient, None]:
     async def _override_session():
         yield db_session
 
-    app.dependency_overrides[get_session] = _override_session
+    app.dependency_overrides[get_db] = _override_session
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
     app.dependency_overrides.clear()
+
+
+async def create_test_user(
+    db_session: AsyncSession,
+    username: str = "testuser",
+    password: str = TEST_PASSWORD,
+    role: str = "user",
+    is_active: bool = True,
+) -> User:
+    """在测试中创建用户。直接在测试函数内调用。"""
+    user = User(
+        username=username,
+        password=hash_password(password),
+        role=role,
+        is_active=is_active,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    return user
+
+
+def make_auth_headers(user: User) -> tuple[dict, str]:
+    """为用户签发 JWT token 并返回 (headers_dict, token_str)。"""
+    token = create_access_token(user.id, user.role)
+    return {"Authorization": f"Bearer {token}"}, token

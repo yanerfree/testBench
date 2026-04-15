@@ -1,12 +1,148 @@
 {
   "version": "1.0",
-  "generatedAt": null,
+  "generatedAt": "2026-04-15T20:00:00Z",
   "project": "testBench",
   "summary": {
-    "total": 0,
-    "byLevel": { "unit": 0, "integration": 0, "api": 0, "e2e": 0 },
-    "byPriority": { "P0": 0, "P1": 0, "P2": 0, "P3": 0 },
-    "byModule": {}
+    "total": 9,
+    "byLevel": { "unit": 2, "integration": 0, "api": 7, "e2e": 0 },
+    "byPriority": { "P0": 6, "P1": 3, "P2": 0, "P3": 0 },
+    "byModule": { "auth": 9 }
   },
-  "cases": []
+  "cases": [
+    {
+      "tea_id": "auth_jwt_create_token",
+      "title": "JWT token 签发功能验证",
+      "module": "auth",
+      "submodule": "jwt",
+      "type": "api",
+      "level": "unit",
+      "priority": "P0",
+      "script_ref": {
+        "file": "tests/unit/auth/test_jwt_create_token.py",
+        "class": "TestJwtCreateToken",
+        "func": "test_token_contains_required_claims"
+      },
+      "tags": ["security"]
+    },
+    {
+      "tea_id": "auth_jwt_decode_token",
+      "title": "JWT token 解码与验证",
+      "module": "auth",
+      "submodule": "jwt",
+      "type": "api",
+      "level": "unit",
+      "priority": "P0",
+      "script_ref": {
+        "file": "tests/unit/auth/test_jwt_decode_token.py",
+        "class": "TestJwtDecodeToken",
+        "func": "test_decode_valid_token"
+      },
+      "tags": ["security"]
+    },
+    {
+      "tea_id": "auth_login_success",
+      "title": "正确凭据登录返回 JWT token",
+      "module": "auth",
+      "submodule": "login",
+      "type": "api",
+      "level": "api",
+      "priority": "P0",
+      "script_ref": {
+        "file": "tests/api/auth/test_login_success.py",
+        "class": "TestLoginSuccess",
+        "func": "test_correct_credentials_return_token"
+      },
+      "tags": ["smoke", "security"]
+    },
+    {
+      "tea_id": "auth_login_wrong_password",
+      "title": "错误密码登录返回 401",
+      "module": "auth",
+      "submodule": "login",
+      "type": "api",
+      "level": "api",
+      "priority": "P0",
+      "script_ref": {
+        "file": "tests/api/auth/test_login_wrong_password.py",
+        "class": "TestLoginWrongPassword",
+        "func": "test_wrong_password_returns_401"
+      },
+      "tags": ["security"]
+    },
+    {
+      "tea_id": "auth_login_inactive_user",
+      "title": "禁用用户登录返回 401",
+      "module": "auth",
+      "submodule": "login",
+      "type": "api",
+      "level": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_login_inactive_user.py",
+        "class": "TestLoginInactiveUser",
+        "func": "test_inactive_user_cannot_login"
+      },
+      "tags": ["security"]
+    },
+    {
+      "tea_id": "auth_me_success",
+      "title": "已登录用户获取自身信息",
+      "module": "auth",
+      "submodule": "me",
+      "type": "api",
+      "level": "api",
+      "priority": "P0",
+      "script_ref": {
+        "file": "tests/api/auth/test_me_success.py",
+        "class": "TestMeSuccess",
+        "func": "test_me_returns_current_user"
+      },
+      "tags": []
+    },
+    {
+      "tea_id": "auth_me_unauthorized",
+      "title": "未授权访问 /me 返回 401",
+      "module": "auth",
+      "submodule": "me",
+      "type": "api",
+      "level": "api",
+      "priority": "P0",
+      "script_ref": {
+        "file": "tests/api/auth/test_me_unauthorized.py",
+        "class": "TestMeUnauthorized",
+        "func": "test_no_token_returns_401"
+      },
+      "tags": ["security"]
+    },
+    {
+      "tea_id": "auth_logout",
+      "title": "登出接口返回成功确认",
+      "module": "auth",
+      "submodule": "logout",
+      "type": "api",
+      "level": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_logout.py",
+        "class": "TestLogout",
+        "func": "test_logout_returns_success"
+      },
+      "tags": []
+    },
+    {
+      "tea_id": "auth_token_refresh",
+      "title": "Token 滑动续期中间件验证",
+      "module": "auth",
+      "submodule": "token",
+      "type": "api",
+      "level": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_token_refresh.py",
+        "class": "TestTokenRefresh",
+        "func": "test_near_expiry_token_returns_new_token"
+      },
+      "tags": ["middleware"]
+    }
+  ]
 }

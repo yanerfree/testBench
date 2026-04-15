@@ -2,29 +2,29 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Form, Input, Button, message } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
-import { mockUsers } from '../../mock/data'
+import { api } from '../../utils/request'
 
 export default function Login() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
-  const onFinish = (values) => {
+  const onFinish = async (values) => {
     setLoading(true)
-    // 模拟登录请求延迟
-    setTimeout(() => {
-      const user = mockUsers.find(
-        u => u.username === values.username && u.password === values.password && u.isActive
-      )
-      if (user) {
-        localStorage.setItem('token', `mock-jwt-${user.id}`)
-        localStorage.setItem('user', JSON.stringify({ id: user.id, username: user.username, role: user.role }))
-        message.success('登录成功')
-        navigate('/', { replace: true })
-      } else {
-        message.error('用户名或密码错误')
-      }
+    try {
+      const res = await api.post('/auth/login', {
+        username: values.username,
+        password: values.password,
+      })
+      const { token, user } = res.data
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(user))
+      message.success('登录成功')
+      navigate('/', { replace: true })
+    } catch {
+      // api.post 内部已通过 message.error 展示了后端错误信息
+    } finally {
       setLoading(false)
-    }, 600)
+    }
   }
 
   return (

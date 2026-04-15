@@ -1,6 +1,6 @@
 import { message } from 'antd'
 
-const BASE_URL = '/api/v1'
+const BASE_URL = '/api'
 
 async function request(url, options = {}) {
   const token = localStorage.getItem('token')
