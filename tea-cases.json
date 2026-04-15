@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "generatedAt": null,
+  "project": "testBench",
+  "summary": {
+    "total": 0,
+    "byLevel": { "unit": 0, "integration": 0, "api": 0, "e2e": 0 },
+    "byPriority": { "P0": 0, "P1": 0, "P2": 0, "P3": 0 },
+    "byModule": {}
+  },
+  "cases": []
+}

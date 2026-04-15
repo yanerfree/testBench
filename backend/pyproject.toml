@@ -29,5 +29,10 @@ include = ["app*"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
     "httpx",
+    "factory-boy>=3.3",
+    "faker>=28.0",
 ]
+
+# pytest 和 coverage 配置已移至项目根目录 pyproject.toml
