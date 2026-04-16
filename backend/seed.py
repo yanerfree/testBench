@@ -1,4 +1,4 @@
-"""初始管理员 seed 脚本 — 幂等执行"""
+"""初始化种子数据 — 幂等执行（重复运行不会重复创建）"""
 import asyncio
 
 from sqlalchemy import select
@@ -7,25 +7,129 @@ from app.config import settings
 from app.core.security import hash_password
 from app.deps.db import async_session_factory
 from app.models.user import User
+from app.models.environment import Environment, EnvironmentVariable, GlobalVariable, NotificationChannel
+
+
+# ---- 默认全局变量 ----
+DEFAULT_GLOBAL_VARIABLES = [
+    {"key": "API_TIMEOUT", "value": "30", "description": "API 请求超时（秒）"},
+    {"key": "RETRY_COUNT", "value": "3", "description": "失败重试次数"},
+    {"key": "LOG_LEVEL", "value": "INFO", "description": "日志级别"},
+    {"key": "BASE_WAIT", "value": "1000", "description": "基础等待时间（毫秒）"},
+]
+
+# ---- 默认环境 ----
+DEFAULT_ENVIRONMENTS = [
+    {
+        "name": "development",
+        "description": "开发环境",
+        "variables": [
+            {"key": "BASE_URL", "value": "http://localhost:8000", "description": "开发服务地址"},
+            {"key": "DB_HOST", "value": "localhost", "description": "数据库地址"},
+            {"key": "DB_PORT", "value": "5432", "description": "数据库端口"},
+            {"key": "DEBUG", "value": "true", "description": "调试模式"},
+        ],
+    },
+    {
+        "name": "testing",
+        "description": "测试环境",
+        "variables": [
+            {"key": "BASE_URL", "value": "http://10.0.1.100:8000", "description": "测试服务地址"},
+            {"key": "DB_HOST", "value": "10.0.1.100", "description": "数据库地址"},
+            {"key": "DB_PORT", "value": "5432", "description": "数据库端口"},
+            {"key": "DEBUG", "value": "false", "description": "调试模式"},
+        ],
+    },
+    {
+        "name": "staging",
+        "description": "预发布环境",
+        "variables": [
+            {"key": "BASE_URL", "value": "https://staging.example.com", "description": "预发布地址"},
+            {"key": "DB_HOST", "value": "staging-db.internal", "description": "数据库地址"},
+            {"key": "DB_PORT", "value": "5432", "description": "数据库端口"},
+            {"key": "DEBUG", "value": "false", "description": "调试模式"},
+        ],
+    },
+    {
+        "name": "production",
+        "description": "生产环境",
+        "variables": [
+            {"key": "BASE_URL", "value": "https://api.example.com", "description": "生产地址"},
+            {"key": "DB_HOST", "value": "prod-db.internal", "description": "数据库地址"},
+            {"key": "DB_PORT", "value": "5432", "description": "数据库端口"},
+            {"key": "DEBUG", "value": "false", "description": "调试模式"},
+        ],
+    },
+]
 
 
 async def seed_admin():
+    """创建管理员用户"""
     async with async_session_factory() as session:
         result = await session.execute(select(User).where(User.username == "admin"))
-        existing = result.scalar_one_or_none()
-        if existing:
-            print("Admin user already exists, skipping.")
+        if result.scalar_one_or_none():
+            print("[admin] 已存在，跳过")
             return
-        admin = User(
+        session.add(User(
             username="admin",
             password=hash_password(settings.admin_default_password),
             role="admin",
             is_active=True,
-        )
-        session.add(admin)
+        ))
         await session.commit()
-        print("Admin user created successfully.")
+        print("[admin] 创建成功")
+
+
+async def seed_global_variables():
+    """创建默认全局变量"""
+    async with async_session_factory() as session:
+        for var in DEFAULT_GLOBAL_VARIABLES:
+            result = await session.execute(select(GlobalVariable).where(GlobalVariable.key == var["key"]))
+            if result.scalar_one_or_none():
+                print(f"[全局变量] {var['key']} 已存在，跳过")
+                continue
+            session.add(GlobalVariable(**var))
+            print(f"[全局变量] {var['key']} = {var['value']}")
+        await session.commit()
+
+
+async def seed_environments():
+    """创建默认环境和环境变量"""
+    async with async_session_factory() as session:
+        for env_data in DEFAULT_ENVIRONMENTS:
+            result = await session.execute(select(Environment).where(Environment.name == env_data["name"]))
+            existing = result.scalar_one_or_none()
+            if existing:
+                print(f"[环境] {env_data['name']} 已存在，跳过")
+                continue
+
+            env = Environment(name=env_data["name"], description=env_data["description"])
+            session.add(env)
+            await session.flush()
+
+            for i, var in enumerate(env_data["variables"]):
+                session.add(EnvironmentVariable(
+                    environment_id=env.id,
+                    key=var["key"],
+                    value=var["value"],
+                    description=var.get("description"),
+                    sort_order=i,
+                ))
+            print(f"[环境] {env_data['name']} + {len(env_data['variables'])} 个变量")
+
+        await session.commit()
+
+
+async def main():
+    print("=" * 50)
+    print("testBench 种子数据初始化")
+    print("=" * 50)
+    await seed_admin()
+    await seed_global_variables()
+    await seed_environments()
+    print("=" * 50)
+    print("初始化完成")
 
 
 if __name__ == "__main__":
-    asyncio.run(seed_admin())
+    asyncio.run(main())

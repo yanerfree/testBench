@@ -1,7 +1,7 @@
 """全局变量服务"""
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -63,3 +63,27 @@ async def delete_variable(session: AsyncSession, var_id: uuid.UUID) -> None:
         raise NotFoundError(code="VAR_NOT_FOUND", message="变量不存在")
     await session.delete(var)
     await session.flush()
+
+
+async def put_variables(session: AsyncSession, variables: list[dict]) -> list[GlobalVariable]:
+    """全量替换全局变量（一次请求搞定）。"""
+    for v in variables:
+        _check_reserved(v["key"])
+
+    # 删除所有旧变量
+    await session.execute(delete(GlobalVariable))
+
+    # 写入新变量
+    new_vars = []
+    for i, v in enumerate(variables):
+        gv = GlobalVariable(
+            key=v["key"],
+            value=v["value"],
+            description=v.get("description"),
+            sort_order=i,
+        )
+        session.add(gv)
+        new_vars.append(gv)
+
+    await session.flush()
+    return new_vars

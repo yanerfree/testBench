@@ -181,20 +181,10 @@ function GlobalVariablePanel() {
   useEffect(() => { fetchVars() }, [fetchVars])
 
   const handleSave = async (vars) => {
-    // 全局变量用逐条 create/update/delete 方式（与环境变量的 PUT 全量替换不同）
-    // 简化处理：先全部删除再重新创建
-    // TODO: 优化为差量更新
     try {
-      // 删除已有的
-      for (const v of variables) {
-        if (v.id) await api.del(`/global-variables/${v.id}`)
-      }
-      // 创建新的
-      for (const v of vars) {
-        if (v.key && v.value) {
-          await api.post('/global-variables', { key: v.key, value: v.value, description: v.description || null })
-        }
-      }
+      await api.put('/global-variables', vars.filter(v => v.key && v.value).map(v => ({
+        key: v.key, value: v.value, description: v.description || null,
+      })))
       message.success('全局变量已保存')
       fetchVars()
     } catch { /* request.js 已展示错误 */ }

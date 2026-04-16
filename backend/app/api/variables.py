@@ -58,6 +58,17 @@ async def create_global_variable(
     return {"data": VarResponse.model_validate(var, from_attributes=True).model_dump(by_alias=True)}
 
 
+@router.put("/api/global-variables")
+async def put_global_variables(
+    body: list[CreateVarRequest],
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """全量替换全局变量（一次请求保存所有变量）"""
+    variables = await variable_service.put_variables(session, [v.model_dump() for v in body])
+    return {"data": [VarResponse.model_validate(v, from_attributes=True).model_dump(by_alias=True) for v in variables]}
+
+
 @router.put("/api/global-variables/{var_id}")
 async def update_global_variable(
     var_id: uuid.UUID,
