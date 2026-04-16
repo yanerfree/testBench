@@ -14,20 +14,20 @@ class TestProjectsForbidden:
     """项目 CUD 权限拦截：非 admin 返回 403"""
 
     @pytest.mark.asyncio
-    async def test_regular_user_cannot_create_project(self, client, db_session):
-        # Given: 普通用户
+    async def test_regular_user_can_create_project(self, client, db_session):
+        # Given: 普通用户（create_project 已改为所有登录用户可用）
         user = await create_test_user(db_session, username="proj_user", role="user")
         headers, _ = make_auth_headers(user)
 
-        # When: 尝试创建项目
+        # When: 创建项目
         response = await client.post("/api/projects", headers=headers, json={
-            "name": "forbidden-proj",
+            "name": "user-proj",
             "gitUrl": "git@x.com:r.git",
             "scriptBasePath": "/f",
         })
 
-        # Then: 403
-        assert response.status_code == 403
+        # Then: 201 成功（用户自动成为 project_admin）
+        assert response.status_code == 201
 
     @pytest.mark.asyncio
     async def test_regular_user_cannot_delete_project(self, client, db_session):
