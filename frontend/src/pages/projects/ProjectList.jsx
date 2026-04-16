@@ -319,11 +319,11 @@ export default function ProjectList() {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <GitlabOutlined />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.gitUrl}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.gitUrl || '未配置 Git 仓库'}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <FolderOpenOutlined />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.scriptBasePath}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.scriptBasePath || '未配置脚本路径'}</span>
                   </div>
                 </div>
 
@@ -384,20 +384,11 @@ export default function ProjectList() {
           <Form.Item name="description" label="项目描述">
             <Input placeholder="简要描述项目用途" />
           </Form.Item>
-          <Form.Item
-            name="gitUrl" label="Git 仓库地址"
-            rules={[
-              { required: true, message: '请输入 Git 仓库地址' },
-              { pattern: /^(git@|https?:\/\/)/, message: '请输入有效的 Git 地址（git@ 或 https://）' },
-            ]}
-          >
-            <Input prefix={<GitlabOutlined style={{ color: '#bfc4cd' }} />} placeholder="git@code.example.com:team/repo.git" />
+          <Form.Item name="gitUrl" label="Git 仓库地址（可选）">
+            <Input prefix={<GitlabOutlined style={{ color: '#bfc4cd' }} />} placeholder="git@code.example.com:team/repo.git（不填则为纯手动用例项目）" />
           </Form.Item>
-          <Form.Item
-            name="scriptBasePath" label="脚本基础路径"
-            rules={[{ required: true, message: '请输入脚本基础路径' }]}
-          >
-            <Input prefix={<FolderOpenOutlined style={{ color: '#bfc4cd' }} />} placeholder="/workspace/repos/project-name" />
+          <Form.Item name="scriptBasePath" label="脚本基础路径（可选）">
+            <Input prefix={<FolderOpenOutlined style={{ color: '#bfc4cd' }} />} placeholder="/workspace/repos/project-name（不填则不支持脚本同步）" />
           </Form.Item>
           {!editingProject && (
             <div style={{ padding: '8px 12px', background: '#f0f4ff', borderRadius: 8, fontSize: 12, color: '#6b7ef5' }}>

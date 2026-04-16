@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message } from 'antd'
 import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
-import { mockModules, mockCases, mockBranches } from '../../mock/data'
+import { api } from '../../utils/request'
+import { mockModules, mockCases } from '../../mock/data'
 
 const priorityColors = { P0: '#f08a8e', P1: '#f5b87a', P2: '#7c8cf8', P3: '#a8adb6' }
 const priorityBg = { P0: '#fef0f1', P1: '#fef5eb', P2: '#f0f1fe', P3: '#f5f5f7' }
@@ -12,7 +13,8 @@ const statusBg = { '已自动化': '#eefbf3', '待自动化': '#fef5eb', '脚本
 export default function CaseManagement() {
   const navigate = useNavigate()
   const { projectId } = useParams()
-  const [currentBranch, setCurrentBranch] = useState('br-001')
+  const [branches, setBranches] = useState([])
+  const [currentBranch, setCurrentBranch] = useState(null)
   const [selectedModule, setSelectedModule] = useState(null)
   const [selectedSub, setSelectedSub] = useState(null)
   const [keyword, setKeyword] = useState('')
@@ -24,8 +26,25 @@ export default function CaseManagement() {
   const [importOpen, setImportOpen] = useState(false)
   const [importPreview, setImportPreview] = useState(null)
 
-  const activeBranches = mockBranches.filter(b => b.status === 'active')
-  const branch = mockBranches.find(b => b.id === currentBranch)
+  // 从后端加载分支列表
+  const fetchBranches = useCallback(async () => {
+    if (!projectId) return
+    try {
+      const res = await api.get(`/projects/${projectId}/branches`)
+      const list = res.data || []
+      setBranches(list)
+      // 默认选中第一个活跃分支
+      if (!currentBranch && list.length > 0) {
+        const active = list.find(b => b.status === 'active')
+        if (active) setCurrentBranch(active.id)
+      }
+    } catch { /* request.js 已展示错误 */ }
+  }, [projectId])
+
+  useEffect(() => { fetchBranches() }, [fetchBranches])
+
+  const activeBranches = branches.filter(b => b.status === 'active')
+  const branch = branches.find(b => b.id === currentBranch)
 
   // 模拟解析 tea-cases.json
   const mockImportPreview = {
@@ -130,9 +149,9 @@ export default function CaseManagement() {
                 label: <span>{b.name} <span style={{ fontSize: 11, color: '#bfc4cd' }}>({b.branch})</span></span>,
               }))}
             />
-            {branch && (
+            {branch && branch.lastSyncAt && (
               <span style={{ fontSize: 11, color: '#bfc4cd' }}>
-                最近同步: {branch.lastSyncAt} · {branch.lastCommitSha.substring(0, 7)}
+                最近同步: {new Date(branch.lastSyncAt).toLocaleString('zh-CN')} · {branch.lastCommitSha?.substring(0, 7) || '-'}
               </span>
             )}
           </div>
