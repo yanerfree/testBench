@@ -32,3 +32,12 @@ class BranchResponse(BaseSchema):
     last_commit_sha: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class SyncBranchResponse(BaseSchema):
+    """分支同步响应"""
+    commit_sha: str
+    first_time: bool
+    added: int = 0
+    modified: int = 0
+    deleted: int = 0

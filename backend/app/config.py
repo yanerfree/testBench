@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     jwt_expire_hours: int = 8
     bcrypt_cost: int = 12  # >= 10
 
+    # Redis
+    redis_url: str = "redis://localhost:6379/0"
+
     # CORS
     cors_origins: list[str] = ["http://localhost:5173"]
 

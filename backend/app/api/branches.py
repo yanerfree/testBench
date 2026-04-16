@@ -1,11 +1,17 @@
 import uuid
 
+from arq import ArqRedis
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.status import HTTP_201_CREATED
+from starlette.status import HTTP_201_CREATED, HTTP_202_ACCEPTED
 
+from app.core.exceptions import NotFoundError, ValidationError
 from app.deps.auth import require_project_role
 from app.deps.db import get_db
+from app.deps.worker import get_arq_pool
+from app.engine.task_status import set_task_status
+from app.models.project import Branch, Project
 from app.models.user import User
 from app.schemas.branch import BranchResponse, CreateBranchRequest, UpdateBranchRequest
 from app.services import branch_service
@@ -84,3 +90,47 @@ async def activate_branch(
     return {
         "data": BranchResponse.model_validate(branch, from_attributes=True).model_dump(by_alias=True)
     }
+
+
+@router.post("/{branch_id}/sync", status_code=HTTP_202_ACCEPTED)
+async def sync_branch_endpoint(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    pool: ArqRedis = Depends(get_arq_pool),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """
+    同步分支脚本（更新脚本）— 异步任务。
+
+    返回 202 + taskId，前端通过 GET /api/tasks/{taskId}/status 轮询进度。
+    """
+    # 1. 加载 branch + project 做前置校验
+    result = await session.execute(select(Branch).where(Branch.id == branch_id))
+    branch = result.scalar_one_or_none()
+    if branch is None:
+        raise NotFoundError(code="BRANCH_NOT_FOUND", message="分支配置不存在")
+
+    result = await session.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if project is None:
+        raise NotFoundError(code="PROJECT_NOT_FOUND", message="项目不存在")
+
+    if not project.git_url:
+        raise ValidationError(code="NO_GIT_URL", message="项目未配置 Git 仓库地址")
+    if not project.script_base_path:
+        raise ValidationError(code="NO_SCRIPT_PATH", message="项目未配置脚本基础路径")
+    if branch.status == "archived":
+        raise ValidationError(code="BRANCH_ARCHIVED", message="已归档的分支不能同步")
+
+    # 2. 提交异步任务
+    task_id = uuid.uuid4().hex
+    await set_task_status(task_id, "pending", message="任务已提交，等待 Worker 执行...")
+    await pool.enqueue_job(
+        "run_git_sync",
+        task_id,
+        str(branch_id),
+        str(project_id),
+    )
+
+    return {"data": {"taskId": task_id}}
