@@ -1,14 +1,16 @@
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.status import HTTP_201_CREATED
 
 from app.core.exceptions import AppError
 from app.deps.auth import require_project_role
 from app.deps.db import get_db
 from app.models.user import User
-from app.services import import_service
+from app.schemas.case import CaseResponse, CreateCaseRequest, UpdateCaseRequest
+from app.services import case_service, import_service
 
 router = APIRouter(prefix="/api/projects/{project_id}/branches/{branch_id}/cases", tags=["cases"])
 
@@ -51,3 +53,69 @@ async def import_cases(
     summary = await import_service.import_cases(session, branch_id, cases_list)
 
     return {"data": summary}
+
+
+@router.post("", status_code=HTTP_201_CREATED)
+async def create_case(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    body: CreateCaseRequest,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """手动创建用例"""
+    case = await case_service.create_case(session, branch_id, body)
+    return {
+        "data": CaseResponse.model_validate(case, from_attributes=True).model_dump(by_alias=True)
+    }
+
+
+@router.get("")
+async def list_cases(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100, alias="pageSize"),
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """用例列表（分页）"""
+    cases, total = await case_service.list_cases(session, branch_id, page, page_size)
+    return {
+        "data": [
+            CaseResponse.model_validate(c, from_attributes=True).model_dump(by_alias=True)
+            for c in cases
+        ],
+        "pagination": {"page": page, "pageSize": page_size, "total": total},
+    }
+
+
+@router.get("/{case_id}")
+async def get_case(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """用例详情"""
+    case = await case_service.get_case(session, case_id)
+    return {
+        "data": CaseResponse.model_validate(case, from_attributes=True).model_dump(by_alias=True)
+    }
+
+
+@router.put("/{case_id}")
+async def update_case(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    body: UpdateCaseRequest,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """更新用例"""
+    case = await case_service.update_case(session, case_id, body)
+    return {
+        "data": CaseResponse.model_validate(case, from_attributes=True).model_dump(by_alias=True)
+    }
