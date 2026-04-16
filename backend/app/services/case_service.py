@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -184,3 +185,71 @@ async def batch_cases(
 
     await session.flush()
     return {"succeeded": succeeded, "failed": failed, "errors": errors}
+
+
+async def delete_case(session: AsyncSession, case_id: uuid.UUID) -> None:
+    """软删除用例（标记 deleted_at）。"""
+    case = await get_case(session, case_id)
+    case.deleted_at = datetime.now(timezone.utc)
+    await session.flush()
+
+
+async def copy_cases_from_branch(
+    session: AsyncSession,
+    target_branch_id: uuid.UUID,
+    source_branch_id: uuid.UUID,
+    case_ids: list[uuid.UUID],
+) -> dict:
+    """跨分支复制用例（深拷贝）。返回 { copied: N }。"""
+    from app.services.import_service import _get_or_create_folder, _next_case_code
+    from app.models.case import CaseFolder
+
+    copied = 0
+    for cid in case_ids:
+        result = await session.execute(
+            select(Case).where(Case.id == cid, Case.branch_id == source_branch_id, Case.deleted_at.is_(None))
+        )
+        source = result.scalar_one_or_none()
+        if source is None:
+            continue
+
+        # 获取源用例的 module 信息（从 folder path 反推）
+        module = None
+        submodule = None
+        if source.folder_id:
+            folder_result = await session.execute(
+                select(CaseFolder).where(CaseFolder.id == source.folder_id)
+            )
+            folder = folder_result.scalar_one_or_none()
+            if folder:
+                parts = folder.path.split("/")
+                module = parts[0] if len(parts) >= 1 else None
+                submodule = parts[1] if len(parts) >= 2 else None
+
+        # 在目标分支创建目录 + 生成新 case_code
+        folder_id = None
+        if module:
+            folder_id, _, _ = await _get_or_create_folder(session, target_branch_id, module, submodule)
+        case_code = await _next_case_code(session, target_branch_id, module or "UNKNOWN")
+
+        new_case = Case(
+            branch_id=target_branch_id,
+            case_code=case_code,
+            title=source.title,
+            type=source.type,
+            folder_id=folder_id,
+            priority=source.priority,
+            preconditions=source.preconditions,
+            steps=source.steps,
+            expected_result=source.expected_result,
+            source=source.source,
+            automation_status="pending",
+            script_ref_file=source.script_ref_file,
+            script_ref_func=source.script_ref_func,
+            remark=source.remark,
+        )
+        session.add(new_case)
+        copied += 1
+
+    await session.flush()
+    return {"copied": copied}

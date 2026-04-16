@@ -46,6 +46,12 @@ class BatchCaseRequest(BaseSchema):
     priority: Literal["P0", "P1", "P2", "P3"] | None = None  # action=set_priority 时必填
 
 
+class CopyFromBranchRequest(BaseSchema):
+    """跨分支复制请求"""
+    source_branch_id: uuid.UUID
+    case_ids: list[uuid.UUID] = Field(min_length=1)
+
+
 class CaseResponse(BaseSchema):
     """用例响应"""
     id: uuid.UUID

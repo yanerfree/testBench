@@ -9,7 +9,7 @@ from app.core.exceptions import AppError
 from app.deps.auth import require_project_role
 from app.deps.db import get_db
 from app.models.user import User
-from app.schemas.case import BatchCaseRequest, CaseResponse, CreateCaseRequest, UpdateCaseRequest
+from app.schemas.case import BatchCaseRequest, CaseResponse, CopyFromBranchRequest, CreateCaseRequest, UpdateCaseRequest
 from app.schemas.common import MessageResponse
 from app.services import case_service, folder_service, import_service
 
@@ -147,6 +147,34 @@ async def batch_cases(
         case_ids=body.case_ids,
         folder_id=body.folder_id,
         priority=body.priority,
+    )
+    return {"data": result}
+
+
+@router.delete("/{case_id}")
+async def delete_case(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """软删除用例（标记 deleted_at）"""
+    await case_service.delete_case(session, case_id)
+    return MessageResponse(message="删除成功").model_dump()
+
+
+@router.post("/copy-from")
+async def copy_from_branch(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    body: CopyFromBranchRequest,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """从其他分支复制用例到当前分支（深拷贝）"""
+    result = await case_service.copy_cases_from_branch(
+        session, branch_id, body.source_branch_id, body.case_ids
     )
     return {"data": result}
 
