@@ -77,11 +77,21 @@ async def list_cases(
     branch_id: uuid.UUID,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100, alias="pageSize"),
+    case_type: str | None = Query(default=None, alias="type"),
+    folder_id: uuid.UUID | None = Query(default=None, alias="folderId"),
+    priority: str | None = Query(default=None),
+    automation_status: str | None = Query(default=None, alias="automationStatus"),
+    is_flaky: bool | None = Query(default=None, alias="isFlaky"),
+    keyword: str | None = Query(default=None),
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
 ):
-    """用例列表（分页）"""
-    cases, total = await case_service.list_cases(session, branch_id, page, page_size)
+    """用例列表（分页 + 多条件筛选）"""
+    cases, total = await case_service.list_cases(
+        session, branch_id, page, page_size,
+        case_type=case_type, folder_id=folder_id, priority=priority,
+        automation_status=automation_status, is_flaky=is_flaky, keyword=keyword,
+    )
     return {
         "data": [
             CaseResponse.model_validate(c, from_attributes=True).model_dump(by_alias=True)

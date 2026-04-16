@@ -95,15 +95,36 @@ async def list_cases(
     branch_id: uuid.UUID,
     page: int = 1,
     page_size: int = 20,
+    case_type: str | None = None,
+    folder_id: uuid.UUID | None = None,
+    priority: str | None = None,
+    automation_status: str | None = None,
+    is_flaky: bool | None = None,
+    keyword: str | None = None,
 ) -> tuple[list[Case], int]:
-    """分页查询用例列表（未删除的）。返回 (cases, total)。"""
+    """分页查询用例列表（未删除的），支持多条件筛选。返回 (cases, total)。"""
+    from sqlalchemy import func, or_
+
     base = select(Case).where(
         Case.branch_id == branch_id,
         Case.deleted_at.is_(None),
     )
 
+    if case_type:
+        base = base.where(Case.type == case_type)
+    if folder_id:
+        base = base.where(Case.folder_id == folder_id)
+    if priority:
+        base = base.where(Case.priority == priority)
+    if automation_status:
+        base = base.where(Case.automation_status == automation_status)
+    if is_flaky is not None:
+        base = base.where(Case.is_flaky == is_flaky)
+    if keyword:
+        like = f"%{keyword}%"
+        base = base.where(or_(Case.title.ilike(like), Case.case_code.ilike(like)))
+
     # 总数
-    from sqlalchemy import func
     count_result = await session.execute(
         select(func.count()).select_from(base.subquery())
     )
