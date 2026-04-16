@@ -23,6 +23,7 @@ from app.models.user import User, Base
 from app.models.project import Project, Branch, ProjectMember  # noqa: F401 — 确保 metadata 包含新表
 from app.models.case import CaseFolder, Case  # noqa: F401
 from app.models.environment import GlobalVariable, Environment, EnvironmentVariable, NotificationChannel  # noqa: F401
+from app.models.plan import Plan, PlanCase  # noqa: F401
 
 
 # Use a separate test database
