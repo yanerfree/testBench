@@ -9,7 +9,7 @@ from app.core.exceptions import AppError
 from app.deps.auth import require_project_role
 from app.deps.db import get_db
 from app.models.user import User
-from app.schemas.case import CaseResponse, CreateCaseRequest, UpdateCaseRequest
+from app.schemas.case import BatchCaseRequest, CaseResponse, CreateCaseRequest, UpdateCaseRequest
 from app.schemas.common import MessageResponse
 from app.services import case_service, folder_service, import_service
 
@@ -130,6 +130,25 @@ async def update_case(
     return {
         "data": CaseResponse.model_validate(case, from_attributes=True).model_dump(by_alias=True)
     }
+
+
+@router.post("/batch")
+async def batch_cases(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    body: BatchCaseRequest,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """批量操作用例（移动/归档/取消归档/修改优先级/标记Flaky）"""
+    result = await case_service.batch_cases(
+        session, branch_id,
+        action=body.action,
+        case_ids=body.case_ids,
+        folder_id=body.folder_id,
+        priority=body.priority,
+    )
+    return {"data": result}
 
 
 # ---- 用例目录 ----

@@ -136,3 +136,51 @@ async def list_cases(
     cases = list(result.scalars().all())
 
     return cases, total
+
+
+async def batch_cases(
+    session: AsyncSession,
+    branch_id: uuid.UUID,
+    action: str,
+    case_ids: list[uuid.UUID],
+    folder_id: uuid.UUID | None = None,
+    priority: str | None = None,
+) -> dict:
+    """批量操作用例。返回 { succeeded, failed, errors }。"""
+    succeeded = 0
+    failed = 0
+    errors = []
+
+    for cid in case_ids:
+        result = await session.execute(
+            select(Case).where(Case.id == cid, Case.branch_id == branch_id, Case.deleted_at.is_(None))
+        )
+        case = result.scalar_one_or_none()
+        if case is None:
+            failed += 1
+            errors.append(f"{cid}: 用例不存在")
+            continue
+
+        # 已归档用例只允许 unarchive 操作
+        if case.automation_status == "archived" and action != "unarchive":
+            failed += 1
+            errors.append(f"{case.case_code}: 已归档用例不可操作")
+            continue
+
+        if action == "move":
+            case.folder_id = folder_id
+        elif action == "archive":
+            case.automation_status = "archived"
+        elif action == "unarchive":
+            case.automation_status = "pending"
+        elif action == "set_priority":
+            case.priority = priority
+        elif action == "set_flaky":
+            case.is_flaky = True
+        elif action == "unset_flaky":
+            case.is_flaky = False
+
+        succeeded += 1
+
+    await session.flush()
+    return {"succeeded": succeeded, "failed": failed, "errors": errors}

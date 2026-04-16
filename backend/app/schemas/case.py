@@ -38,6 +38,14 @@ class UpdateCaseRequest(BaseSchema):
     remark: str | None = None
 
 
+class BatchCaseRequest(BaseSchema):
+    """批量操作请求"""
+    action: Literal["move", "archive", "unarchive", "set_priority", "set_flaky", "unset_flaky"]
+    case_ids: list[uuid.UUID] = Field(min_length=1)
+    folder_id: uuid.UUID | None = None      # action=move 时必填
+    priority: Literal["P0", "P1", "P2", "P3"] | None = None  # action=set_priority 时必填
+
+
 class CaseResponse(BaseSchema):
     """用例响应"""
     id: uuid.UUID
