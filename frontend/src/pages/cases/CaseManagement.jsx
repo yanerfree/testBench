@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message } from 'antd'
-import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined } from '@ant-design/icons'
+import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip } from 'antd'
+import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 import { mockModules, mockCases } from '../../mock/data'
@@ -10,6 +10,207 @@ const priorityBg = { P0: '#fef0f1', P1: '#fef5eb', P2: '#f0f1fe', P3: '#f5f5f7' 
 const statusColors = { '已自动化': '#6ecf96', '待自动化': '#f5b87a', '脚本已移除': '#f08a8e' }
 const statusBg = { '已自动化': '#eefbf3', '待自动化': '#fef5eb', '脚本已移除': '#fef0f1' }
 
+// ---- 分支管理弹窗 ----
+function BranchManageModal({ projectId, open, onClose, onBranchesChanged }) {
+  const [branches, setBranches] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editBranch, setEditBranch] = useState(null)
+  const [createForm] = Form.useForm()
+  const [editForm] = Form.useForm()
+  const [saving, setSaving] = useState(false)
+
+  const fetchBranches = useCallback(async () => {
+    if (!projectId) return
+    setLoading(true)
+    try {
+      const res = await api.get(`/projects/${projectId}/branches`)
+      setBranches(res.data || [])
+    } catch { /* */ } finally { setLoading(false) }
+  }, [projectId])
+
+  useEffect(() => { if (open) fetchBranches() }, [open, fetchBranches])
+
+  const activeBranches = branches.filter(b => b.status === 'active')
+  const archivedBranches = branches.filter(b => b.status === 'archived')
+
+  const handleCreate = async () => {
+    let values
+    try { values = await createForm.validateFields() } catch { return }
+    setSaving(true)
+    try {
+      await api.post(`/projects/${projectId}/branches`, {
+        name: values.name,
+        branch: values.branch || 'main',
+        description: values.description || null,
+      })
+      message.success('分支配置创建成功')
+      setCreateOpen(false)
+      createForm.resetFields()
+      fetchBranches()
+      onBranchesChanged?.()
+    } catch { /* */ } finally { setSaving(false) }
+  }
+
+  const handleEdit = async () => {
+    let values
+    try { values = await editForm.validateFields() } catch { return }
+    setSaving(true)
+    try {
+      await api.put(`/projects/${projectId}/branches/${editBranch.id}`, {
+        branch: values.branch,
+        description: values.description || null,
+      })
+      message.success('分支配置已更新')
+      setEditBranch(null)
+      fetchBranches()
+      onBranchesChanged?.()
+    } catch { /* */ } finally { setSaving(false) }
+  }
+
+  const handleArchive = async (branch) => {
+    try {
+      await api.post(`/projects/${projectId}/branches/${branch.id}/archive`)
+      message.success(`「${branch.name}」已归档`)
+      fetchBranches()
+      onBranchesChanged?.()
+    } catch { /* */ }
+  }
+
+  const handleActivate = async (branch) => {
+    try {
+      await api.post(`/projects/${projectId}/branches/${branch.id}/activate`)
+      message.success(`「${branch.name}」已恢复`)
+      fetchBranches()
+      onBranchesChanged?.()
+    } catch { /* */ }
+  }
+
+  const openEdit = (b) => {
+    setEditBranch(b)
+    editForm.setFieldsValue({ branch: b.branch, description: b.description })
+  }
+
+  const renderBranchItem = (b) => (
+    <div key={b.id} style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '10px 12px', borderRadius: 8, background: '#fafbfc', marginBottom: 6,
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 500, fontSize: 14 }}>
+          {b.name}
+          <span style={{ fontSize: 12, color: '#8c919e', marginLeft: 8 }}>({b.branch})</span>
+        </div>
+        {b.description && <div style={{ fontSize: 12, color: '#8c919e', marginTop: 2 }}>{b.description}</div>}
+      </div>
+      <Space size={4}>
+        <Tooltip title="编辑 Git 分支名">
+          <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(b)} />
+        </Tooltip>
+        {b.status === 'active' ? (
+          <Popconfirm title={`确定归档「${b.name}」？归档后用例数据变为只读`} onConfirm={() => handleArchive(b)}>
+            <Tooltip title="归档">
+              <Button size="small" type="text" icon={<PauseCircleOutlined />} style={{ color: '#f5b87a' }} />
+            </Tooltip>
+          </Popconfirm>
+        ) : (
+          <Tooltip title="恢复">
+            <Button size="small" type="text" icon={<PlayCircleOutlined />} style={{ color: '#6ecf96' }} onClick={() => handleActivate(b)} />
+          </Tooltip>
+        )}
+      </Space>
+    </div>
+  )
+
+  return (
+    <>
+      <Modal
+        title="分支配置管理"
+        open={open}
+        onCancel={onClose}
+        footer={null}
+        width={560}
+      >
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => { createForm.resetFields(); setCreateOpen(true) }}>
+            新建分支配置
+          </Button>
+        </div>
+
+        {loading ? <div style={{ textAlign: 'center', padding: 24 }}>加载中...</div> : (
+          <>
+            {activeBranches.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, color: '#8c919e', marginBottom: 6, fontWeight: 600 }}>活跃（{activeBranches.length}）</div>
+                {activeBranches.map(renderBranchItem)}
+              </div>
+            )}
+            {archivedBranches.length > 0 && (
+              <div>
+                <div style={{ fontSize: 12, color: '#8c919e', marginBottom: 6, fontWeight: 600 }}>已归档（{archivedBranches.length}）</div>
+                {archivedBranches.map(renderBranchItem)}
+              </div>
+            )}
+          </>
+        )}
+      </Modal>
+
+      {/* 创建分支子弹窗 */}
+      <Modal
+        title="新建分支配置"
+        open={createOpen}
+        onOk={handleCreate}
+        onCancel={() => setCreateOpen(false)}
+        okText="创建"
+        cancelText="取消"
+        confirmLoading={saving}
+        width={420}
+      >
+        <Form form={createForm} layout="vertical" style={{ marginTop: 12 }}>
+          <Form.Item name="name" label="配置名称" rules={[
+            { required: true, message: '请输入名称' },
+            { pattern: /^[a-zA-Z0-9_-]+$/, message: '仅允许字母、数字、下划线、中划线' },
+            { max: 50, message: '最长 50 字符' },
+          ]}>
+            <Input placeholder="如 release-v2（创建后不可修改）" />
+          </Form.Item>
+          <Form.Item name="branch" label="Git 分支名" initialValue="main">
+            <Input placeholder="如 main、release/2.0、develop" />
+          </Form.Item>
+          <Form.Item name="description" label="描述">
+            <Input placeholder="可选" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 编辑分支子弹窗 */}
+      <Modal
+        title={`编辑分支配置 — ${editBranch?.name || ''}`}
+        open={!!editBranch}
+        onOk={handleEdit}
+        onCancel={() => setEditBranch(null)}
+        okText="保存"
+        cancelText="取消"
+        confirmLoading={saving}
+        width={420}
+      >
+        <Form form={editForm} layout="vertical" style={{ marginTop: 12 }}>
+          <Form.Item label="配置名称">
+            <Input value={editBranch?.name} disabled />
+          </Form.Item>
+          <Form.Item name="branch" label="Git 分支名" rules={[{ required: true, message: '请输入 Git 分支名' }]}>
+            <Input placeholder="如 main、release/2.0" />
+          </Form.Item>
+          <Form.Item name="description" label="描述">
+            <Input placeholder="可选" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
+  )
+}
+
+// ---- 主页面 ----
 export default function CaseManagement() {
   const navigate = useNavigate()
   const { projectId } = useParams()
@@ -25,6 +226,7 @@ export default function CaseManagement() {
 
   const [importOpen, setImportOpen] = useState(false)
   const [importPreview, setImportPreview] = useState(null)
+  const [branchManageOpen, setBranchManageOpen] = useState(false)
 
   // 从后端加载分支列表
   const fetchBranches = useCallback(async () => {
@@ -34,9 +236,11 @@ export default function CaseManagement() {
       const list = res.data || []
       setBranches(list)
       // 默认选中第一个活跃分支
-      if (!currentBranch && list.length > 0) {
+      if (list.length > 0) {
         const active = list.find(b => b.status === 'active')
-        if (active) setCurrentBranch(active.id)
+        if (active && !list.find(b => b.id === currentBranch)) {
+          setCurrentBranch(active.id)
+        }
       }
     } catch { /* request.js 已展示错误 */ }
   }, [projectId])
@@ -65,9 +269,8 @@ export default function CaseManagement() {
   }
 
   const handleImportFile = (file) => {
-    // 模拟文件解析
     setTimeout(() => setImportPreview(mockImportPreview), 500)
-    return false // 阻止自动上传
+    return false
   }
 
   const handleImportConfirm = () => {
@@ -154,6 +357,9 @@ export default function CaseManagement() {
                 最近同步: {new Date(branch.lastSyncAt).toLocaleString('zh-CN')} · {branch.lastCommitSha?.substring(0, 7) || '-'}
               </span>
             )}
+            <Button size="small" type="text" icon={<SettingOutlined />} onClick={() => setBranchManageOpen(true)} style={{ color: '#8c919e' }}>
+              管理
+            </Button>
           </div>
           <Button size="small" icon={<SyncOutlined />}>更新脚本</Button>
         </div>
@@ -248,7 +454,6 @@ export default function CaseManagement() {
           </Upload.Dragger>
         ) : (
           <>
-            {/* 摘要 */}
             <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
               {[
                 { label: '新增', count: importPreview.newCount, color: '#6ecf96', bg: '#eefbf3' },
@@ -264,7 +469,6 @@ export default function CaseManagement() {
                 </div>
               ))}
             </div>
-            {/* 预览表格 */}
             <Table
               dataSource={importPreview.cases}
               rowKey="tea_id"
@@ -286,6 +490,14 @@ export default function CaseManagement() {
           </>
         )}
       </Modal>
+
+      {/* 分支管理弹窗 */}
+      <BranchManageModal
+        projectId={projectId}
+        open={branchManageOpen}
+        onClose={() => setBranchManageOpen(false)}
+        onBranchesChanged={fetchBranches}
+      />
     </div>
   )
 }
