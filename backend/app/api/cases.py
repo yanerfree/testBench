@@ -10,7 +10,8 @@ from app.deps.auth import require_project_role
 from app.deps.db import get_db
 from app.models.user import User
 from app.schemas.case import CaseResponse, CreateCaseRequest, UpdateCaseRequest
-from app.services import case_service, import_service
+from app.schemas.common import MessageResponse
+from app.services import case_service, folder_service, import_service
 
 router = APIRouter(prefix="/api/projects/{project_id}/branches/{branch_id}/cases", tags=["cases"])
 
@@ -119,3 +120,49 @@ async def update_case(
     return {
         "data": CaseResponse.model_validate(case, from_attributes=True).model_dump(by_alias=True)
     }
+
+
+# ---- 用例目录 ----
+
+folders_router = APIRouter(
+    prefix="/api/projects/{project_id}/branches/{branch_id}/folders", tags=["folders"]
+)
+
+
+@folders_router.get("")
+async def list_folders(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """目录树（含用例计数）"""
+    tree = await folder_service.list_folder_tree(session, branch_id)
+    return {"data": tree}
+
+
+@folders_router.post("", status_code=HTTP_201_CREATED)
+async def create_folder(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    name: str = Query(..., min_length=1, max_length=100),
+    parent_id: uuid.UUID | None = Query(default=None, alias="parentId"),
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """创建模块/子模块目录"""
+    folder = await folder_service.create_folder(session, branch_id, name, parent_id)
+    return {"data": folder}
+
+
+@folders_router.delete("/{folder_id}")
+async def delete_folder(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    folder_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin")),
+):
+    """删除空目录"""
+    await folder_service.delete_folder(session, folder_id)
+    return MessageResponse(message="删除成功").model_dump()
