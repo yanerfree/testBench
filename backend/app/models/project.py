@@ -25,8 +25,8 @@ class Project(Base):
     )
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    git_url: Mapped[str] = mapped_column(String(500), nullable=False)
-    script_base_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    git_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    script_base_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
