@@ -243,18 +243,40 @@ export default function CaseManagement() {
   }
 
   // ---- 导出 ----
-  const handleExport = () => {
-    if (!cases.length) { message.info('当前无用例数据'); return }
-    // 简易 CSV 导出
-    const headers = ['用例ID', '标题', '类型', '优先级', '状态', '来源']
-    const rows = cases.map(c => [c.caseCode, c.title, c.type, c.priority, c.automationStatus, c.source])
-    const csv = [headers, ...rows].map(r => r.join('\t')).join('\n')
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = `cases-${new Date().toISOString().slice(0, 10)}.csv`
-    a.click(); URL.revokeObjectURL(url)
-    message.success(`已导出 ${cases.length} 条用例`)
+  // ---- 导出 Excel（后端生成） ----
+  const [exporting, setExporting] = useState(false)
+  const handleExport = async () => {
+    if (!currentBranch) { message.warning('请先选择分支'); return }
+    setExporting(true)
+    try {
+      const params = new URLSearchParams()
+      if (keyword) params.set('keyword', keyword)
+      if (statusFilter) params.set('automationStatus', statusFilter)
+      if (selectedFolderId) params.set('folderId', selectedFolderId)
+
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/projects/${projectId}/branches/${currentBranch}/cases/export/excel?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (!res.ok) {
+        message.error('导出失败')
+        return
+      }
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `用例导出-${new Date().toISOString().slice(0, 10)}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+      message.success('导出成功')
+    } catch {
+      message.error('导出失败')
+    } finally {
+      setExporting(false)
+    }
   }
 
   // ---- 导入 ----
@@ -410,7 +432,7 @@ export default function CaseManagement() {
               </Space>
               <Space>
                 <Button icon={<UploadOutlined />} size="small" onClick={() => setImportOpen(true)}>导入</Button>
-                <Button icon={<DownloadOutlined />} size="small" onClick={handleExport}>导出</Button>
+                <Button icon={<DownloadOutlined />} size="small" onClick={handleExport} loading={exporting}>导出</Button>
                 <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => { createCaseForm.resetFields(); setCreateCaseOpen(true) }}>新建用例</Button>
               </Space>
             </div>

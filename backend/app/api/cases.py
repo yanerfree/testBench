@@ -223,3 +223,85 @@ async def delete_folder(
     """删除空目录"""
     await folder_service.delete_folder(session, folder_id)
     return MessageResponse(message="删除成功").model_dump()
+
+
+@router.get("/export/excel")
+async def export_cases_excel(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+    keyword: str | None = Query(default=None),
+    automation_status: str | None = Query(default=None, alias="automationStatus"),
+    folder_id: uuid.UUID | None = Query(default=None, alias="folderId"),
+):
+    """导出用例为 Excel"""
+    import io
+    from fastapi.responses import StreamingResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+
+    cases, _ = await case_service.list_cases(
+        session, branch_id, page=1, page_size=10000,
+        keyword=keyword, automation_status=automation_status, folder_id=folder_id,
+    )
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "用例列表"
+
+    headers = [
+        "用例ID", "标题", "测试类型", "优先级", "模块", "子模块",
+        "自动化状态", "来源", "Flaky", "前置条件", "测试步骤",
+        "预期结果", "脚本文件", "脚本函数", "TEA ID", "备注",
+        "创建时间", "更新时间",
+    ]
+
+    header_fill = PatternFill(start_color="E6F0FF", end_color="E6F0FF", fill_type="solid")
+    header_font = Font(bold=True, size=11)
+
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+
+    status_map = {"automated": "已自动化", "pending": "待自动化", "script_removed": "脚本已移除", "archived": "已归档"}
+
+    for row_idx, c in enumerate(cases, 2):
+        steps_text = ""
+        if c.steps:
+            steps_text = "\n".join(f"{i+1}. {s.get('action', s) if isinstance(s, dict) else s}" for i, s in enumerate(c.steps))
+
+        ws.cell(row=row_idx, column=1, value=c.case_code or "")
+        ws.cell(row=row_idx, column=2, value=c.title or "")
+        ws.cell(row=row_idx, column=3, value=(c.type or "").upper())
+        ws.cell(row=row_idx, column=4, value=c.priority or "")
+        ws.cell(row=row_idx, column=5, value=c.module or "")
+        ws.cell(row=row_idx, column=6, value=c.sub_module or "")
+        ws.cell(row=row_idx, column=7, value=status_map.get(c.automation_status, c.automation_status or ""))
+        ws.cell(row=row_idx, column=8, value="导入" if c.source == "imported" else "手动")
+        ws.cell(row=row_idx, column=9, value="是" if c.is_flaky else "否")
+        ws.cell(row=row_idx, column=10, value=c.preconditions or "")
+        ws.cell(row=row_idx, column=11, value=steps_text)
+        ws.cell(row=row_idx, column=12, value=c.expected_result or "")
+        ws.cell(row=row_idx, column=13, value=c.script_ref_file or "")
+        ws.cell(row=row_idx, column=14, value=c.script_ref_func or "")
+        ws.cell(row=row_idx, column=15, value=c.tea_id or "")
+        ws.cell(row=row_idx, column=16, value=c.remark or "")
+        ws.cell(row=row_idx, column=17, value=c.created_at.strftime("%Y-%m-%d %H:%M") if c.created_at else "")
+        ws.cell(row=row_idx, column=18, value=c.updated_at.strftime("%Y-%m-%d %H:%M") if c.updated_at else "")
+
+    col_widths = [18, 40, 8, 6, 12, 12, 12, 6, 5, 30, 50, 30, 40, 25, 20, 20, 18, 18]
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = w
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=cases-export.xlsx"},
+    )
