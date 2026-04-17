@@ -77,8 +77,8 @@ development_status:
   4-2-execution-engine-sandbox-and-pytest: done
   4-3-automated-plan-execution-flow: done
   4-4-manual-plan-execution: done
-  4-5-mixed-execution-auto-then-manual: backlog
-  4-6-circuit-breaker-pause-resume-abort-queue: backlog
+  4-5-mixed-execution-auto-then-manual: done
+  4-6-circuit-breaker-pause-resume-abort-queue: done
   4-7-plan-reopen-and-archive: done
   epic-4-retrospective: optional
 

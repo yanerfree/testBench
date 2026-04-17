@@ -109,9 +109,48 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
     executed = 0
     passed = 0
     failed = 0
+    consecutive_failures = 0
+
+    # 熔断配置
+    cb = plan.circuit_breaker or {}
+    cb_consecutive = cb.get("consecutive", 5)
+    cb_rate = cb.get("rate", 50)
 
     try:
         for i, (plan_case, case) in enumerate(plan_cases):
+            # 熔断检查
+            if consecutive_failures >= cb_consecutive:
+                plan.status = "paused"
+                await session.flush()
+                await set_task_status(
+                    task_id, "completed",
+                    message=f"熔断触发：连续失败 {consecutive_failures} 条，计划已暂停",
+                    result={"executed": executed, "passed": passed, "failed": failed, "total": total, "paused": True},
+                )
+                return {"executed": executed, "paused": True, "reason": "consecutive_failures"}
+
+            if executed > 0 and failed > 0:
+                fail_rate = (failed / executed) * 100
+                if fail_rate >= cb_rate and executed >= 5:
+                    plan.status = "paused"
+                    await session.flush()
+                    await set_task_status(
+                        task_id, "completed",
+                        message=f"熔断触发：失败率 {fail_rate:.0f}% 超过阈值 {cb_rate}%，计划已暂停",
+                        result={"executed": executed, "passed": passed, "failed": failed, "total": total, "paused": True},
+                    )
+                    return {"executed": executed, "paused": True, "reason": "fail_rate"}
+
+            # 检查计划是否被手动暂停
+            await session.refresh(plan)
+            if plan.status == "paused":
+                await set_task_status(
+                    task_id, "completed",
+                    message=f"计划已被手动暂停，已执行 {executed}/{total}",
+                    result={"executed": executed, "passed": passed, "failed": failed, "total": total, "paused": True},
+                )
+                return {"executed": executed, "paused": True, "reason": "manual_pause"}
+
             # 找到对应的 scenario
             scenario = (await session.execute(
                 select(TestReportScenario).where(
@@ -191,8 +230,10 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
             executed += 1
             if case_result["status"] == "passed":
                 passed += 1
+                consecutive_failures = 0
             elif case_result["status"] in ("failed", "error"):
                 failed += 1
+                consecutive_failures += 1
 
     finally:
         # 5. 清理沙箱（无论成败）

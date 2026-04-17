@@ -1,12 +1,13 @@
 """测试计划 API"""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_201_CREATED
 
+from app.core.exceptions import ValidationError
 from app.deps.auth import get_current_user, require_project_role
 from app.deps.db import get_db
 from app.deps.worker import get_arq_pool
@@ -328,3 +329,116 @@ async def get_scenario_steps(
             for s in steps
         ]
     }
+
+
+# ---- Story 4.5: 处理人分配 ----
+
+class AssignRequest(BaseSchema):
+    scenario_ids: list[uuid.UUID]
+    assignee_id: uuid.UUID
+
+
+@router.put("/{plan_id}/assign")
+async def assign_scenarios(
+    project_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    body: AssignRequest,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """批量分配处理人"""
+    from sqlalchemy import select, update
+    from app.models.plan import PlanCase
+    from app.models.report import TestReportScenario
+
+    for sid in body.scenario_ids:
+        # 更新 PlanCase 的 assignee
+        scenario = (await session.execute(
+            select(TestReportScenario).where(TestReportScenario.id == sid)
+        )).scalar_one_or_none()
+        if scenario and scenario.case_id:
+            await session.execute(
+                update(PlanCase).where(
+                    PlanCase.plan_id == plan_id,
+                    PlanCase.case_id == scenario.case_id,
+                ).values(assignee_id=body.assignee_id)
+            )
+    await session.flush()
+    return MessageResponse(message="分配成功").model_dump()
+
+
+# ---- Story 4.6: 暂停/恢复/终止 ----
+
+@router.post("/{plan_id}/pause")
+async def pause_plan(
+    project_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """手动暂停执行中的计划"""
+    plan = await plan_service.get_plan(session, plan_id)
+    if plan.status != "executing":
+        raise ValidationError(code="INVALID_STATUS", message=f"当前状态「{plan.status}」不可暂停")
+    plan.status = "paused"
+    await session.flush()
+    await session.refresh(plan)
+    return {"data": PlanResponse.model_validate(plan, from_attributes=True).model_dump(by_alias=True)}
+
+
+@router.post("/{plan_id}/resume")
+async def resume_plan(
+    project_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """恢复已暂停的计划"""
+    plan = await plan_service.get_plan(session, plan_id)
+    if plan.status != "paused":
+        raise ValidationError(code="INVALID_STATUS", message=f"当前状态「{plan.status}」不可恢复")
+    plan.status = "executing"
+    await session.flush()
+    await session.refresh(plan)
+    return {"data": PlanResponse.model_validate(plan, from_attributes=True).model_dump(by_alias=True)}
+
+
+@router.post("/{plan_id}/abort")
+async def abort_plan(
+    project_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """终止计划 — 未执行用例标记为 skipped，状态改为 completed"""
+    from sqlalchemy import select, update
+    from app.models.report import TestReportScenario, TestReport
+
+    plan = await plan_service.get_plan(session, plan_id)
+    if plan.status not in ("executing", "paused"):
+        raise ValidationError(code="INVALID_STATUS", message=f"当前状态「{plan.status}」不可终止")
+
+    # 获取报告
+    report = (await session.execute(
+        select(TestReport).where(TestReport.plan_id == plan_id).order_by(TestReport.created_at.desc())
+    )).scalars().first()
+
+    if report:
+        # 未执行的 scenario 标记为 skipped
+        await session.execute(
+            update(TestReportScenario).where(
+                TestReportScenario.report_id == report.id,
+                TestReportScenario.status == "pending",
+            ).values(status="skipped", error_summary="计划已终止")
+        )
+
+    plan.status = "completed"
+    plan.completed_at = datetime.now(timezone.utc)
+    await session.flush()
+
+    # 汇总报告
+    if report:
+        await execution_service.complete_execution(session, plan_id)
+        await session.refresh(plan)
+
+    return {"data": PlanResponse.model_validate(plan, from_attributes=True).model_dump(by_alias=True)}
