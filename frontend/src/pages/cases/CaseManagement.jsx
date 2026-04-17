@@ -126,7 +126,7 @@ export default function CaseManagement() {
   const [loading, setLoading] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [selectedRows, setSelectedRows] = useState([])
+  const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
 
@@ -205,21 +205,40 @@ export default function CaseManagement() {
     } catch { /* */ } finally { setSavingFolder(false) }
   }
 
-  // 构建模块 TreeSelect 数据（支持 N 层）
-  const buildFolderTreeSelect = (nodes) => nodes.map(n => ({
-    value: n.name,
-    title: n.name,
-    id: n.id,
-    children: n.children?.length > 0 ? buildFolderTreeSelect(n.children) : undefined,
-  }))
+  // 从 folderTree 中根据 id 找到 folder name（递归查找）
+  const findFolderNameById = (nodes, targetId) => {
+    for (const n of nodes) {
+      if (n.id === targetId) return n.name
+      if (n.children?.length) {
+        const found = findFolderNameById(n.children, targetId)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
+  // 构建模块 TreeSelect 数据（支持 N 层，显示完整路径）
+  const buildFolderTreeSelect = (nodes, parentPath = '') => nodes.map(n => {
+    const fullPath = parentPath ? `${parentPath} / ${n.name}` : n.name
+    return {
+      value: n.name,
+      title: fullPath,
+      id: n.id,
+      fullPath,
+      children: n.children?.length > 0 ? buildFolderTreeSelect(n.children, fullPath) : undefined,
+    }
+  })
   const folderTreeSelectData = buildFolderTreeSelect(folderTree)
 
   // 构建父模块 TreeSelect（创建模块时选父级）
-  const buildParentTreeSelect = (nodes) => nodes.map(n => ({
-    value: n.id,
-    title: n.name,
-    children: n.children?.length > 0 ? buildParentTreeSelect(n.children) : undefined,
-  }))
+  const buildParentTreeSelect = (nodes, parentPath = '') => nodes.map(n => {
+    const fullPath = parentPath ? `${parentPath} / ${n.name}` : n.name
+    return {
+      value: n.id,
+      title: fullPath,
+      children: n.children?.length > 0 ? buildParentTreeSelect(n.children, fullPath) : undefined,
+    }
+  })
   const parentTreeSelectData = buildParentTreeSelect(folderTree)
 
   // ---- 新建用例 ----
@@ -233,7 +252,6 @@ export default function CaseManagement() {
         title: values.title,
         type: values.type,
         module: values.module,
-        submodule: values.submodule || null,
         priority: values.priority || 'P2',
         steps: [{ action: '待补充' }],
       })
@@ -479,15 +497,22 @@ export default function CaseManagement() {
               <Space>
                 <Button icon={<UploadOutlined />} size="small" onClick={() => setImportOpen(true)}>导入</Button>
                 <Button icon={<DownloadOutlined />} size="small" onClick={handleExport} loading={exporting}>导出</Button>
-                <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => { createCaseForm.resetFields(); setCreateCaseOpen(true) }}>新建用例</Button>
+                <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => {
+                  createCaseForm.resetFields()
+                  if (selectedFolderId) {
+                    const folderName = findFolderNameById(folderTree, selectedFolderId)
+                    if (folderName) createCaseForm.setFieldValue('module', folderName)
+                  }
+                  setCreateCaseOpen(true)
+                }}>新建用例</Button>
               </Space>
             </div>
-            {selectedRows.length > 0 && (
+            {selectedRowKeys.length > 0 && (
               <div style={{ marginTop: 10, padding: '8px 12px', background: '#e6f4ff', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 13, color: '#7c8cf8' }}>已选 {selectedRows.length} 条</span>
-                <Popconfirm title={`确定归档 ${selectedRows.length} 条用例？`} onConfirm={async () => {
+                <span style={{ fontSize: 13, color: '#7c8cf8' }}>已选 {selectedRowKeys.length} 条</span>
+                <Popconfirm title={`确定归档 ${selectedRowKeys.length} 条用例？`} onConfirm={async () => {
                   try {
-                    await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: selectedRows.map(r => r.id), action: 'archive' })
+                    await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: selectedRowKeys, action: 'archive' })
                     message.success('批量归档成功'); setSelectedRows([]); fetchCases()
                   } catch { /* */ }
                 }}>
@@ -496,17 +521,17 @@ export default function CaseManagement() {
                 <Select size="small" placeholder="修改优先级" style={{ width: 110 }}
                   onChange={async (val) => {
                     try {
-                      await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: selectedRows.map(r => r.id), action: 'set_priority', priority: val })
+                      await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: selectedRowKeys, action: 'set_priority', priority: val })
                       message.success('优先级已修改'); setSelectedRows([]); fetchCases()
                     } catch { /* */ }
                   }}
                   options={['P0','P1','P2','P3'].map(p => ({ value: p, label: p }))}
                 />
-                <Popconfirm title={`确定删除 ${selectedRows.length} 条用例？`} onConfirm={async () => {
-                  for (const row of selectedRows) {
-                    try { await api.del(`/projects/${projectId}/branches/${currentBranch}/cases/${row.id}`) } catch { /* */ }
+                <Popconfirm title={`确定删除 ${selectedRowKeys.length} 条用例？`} onConfirm={async () => {
+                  for (const caseId of selectedRowKeys) {
+                    try { await api.del(`/projects/${projectId}/branches/${currentBranch}/cases/${caseId}`) } catch { /* */ }
                   }
-                  message.success('批量删除成功'); setSelectedRows([]); fetchCases()
+                  message.success('批量删除成功'); setSelectedRowKeys([]); fetchCases()
                 }}>
                   <Button size="small" type="link" danger>批量删除</Button>
                 </Popconfirm>
@@ -524,7 +549,7 @@ export default function CaseManagement() {
               size="small"
               loading={loading}
               scroll={{ y: 'calc(100vh - 330px)' }}
-              rowSelection={{ selectedRowKeys: selectedRows, onChange: setSelectedRows }}
+              rowSelection={{ selectedRowKeys: selectedRowKeys, onChange: setSelectedRows }}
               style={{ flex: 1 }}
               locale={{ emptyText: <Empty description="暂无用例" /> }}
               onRow={(record) => ({ style: { cursor: 'pointer' }, onDoubleClick: () => navigate(`/projects/${projectId}/cases/${record.id}?branchId=${currentBranch}`) })}
@@ -597,19 +622,17 @@ export default function CaseManagement() {
               <Select options={[{ value: 'P0', label: 'P0' }, { value: 'P1', label: 'P1' }, { value: 'P2', label: 'P2' }, { value: 'P3', label: 'P3' }]} />
             </Form.Item>
           </div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <Form.Item name="module" label="模块" rules={[{ required: true, message: '请选择模块' }]} style={{ flex: 1 }}>
+          <div>
+            <Form.Item name="module" label="所属目录" rules={[{ required: true, message: '请选择目录' }]}>
               <TreeSelect
                 placeholder="选择目录"
                 showSearch
                 treeNodeFilterProp="title"
                 treeData={folderTreeSelectData}
                 treeDefaultExpandAll
-                notFoundContent={<span style={{ color: '#8c919e', fontSize: 12 }}>无模块，请先在左侧导航创建</span>}
+                style={{ width: '100%' }}
+                notFoundContent={<span style={{ color: '#8c919e', fontSize: 12 }}>无目录，请先在左侧导航创建</span>}
               />
-            </Form.Item>
-            <Form.Item name="submodule" label="子模块" style={{ flex: 1 }}>
-              <Input placeholder="可选，如需新建子模块" />
             </Form.Item>
           </div>
         </Form>
