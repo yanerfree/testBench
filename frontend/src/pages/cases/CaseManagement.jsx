@@ -196,8 +196,7 @@ export default function CaseManagement() {
         module: values.module,
         submodule: values.submodule || null,
         priority: values.priority || 'P2',
-        steps: [{ action: values.firstStep || '待补充' }],
-        preconditions: values.preconditions || null,
+        steps: [{ action: '待补充' }],
       })
       message.success('用例创建成功')
       setCreateCaseOpen(false)
@@ -438,18 +437,12 @@ export default function CaseManagement() {
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="module" label="模块" rules={[{ required: true, message: '请输入模块名' }]} style={{ flex: 1 }}>
-              <Input placeholder="如：auth" />
+              <Input placeholder="如：AUTH" />
             </Form.Item>
             <Form.Item name="submodule" label="子模块" style={{ flex: 1 }}>
-              <Input placeholder="如：login（可选）" />
+              <Input placeholder="如：LOGIN（可选）" />
             </Form.Item>
           </div>
-          <Form.Item name="firstStep" label="第一个步骤">
-            <Input placeholder="如：输入用户名和密码点击登录" />
-          </Form.Item>
-          <Form.Item name="preconditions" label="前置条件">
-            <Input.TextArea placeholder="如：用户已注册且账号未锁定" rows={2} />
-          </Form.Item>
         </Form>
       </Modal>
     </div>

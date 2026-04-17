@@ -74,8 +74,12 @@ function DropdownList({ items, activeKey, onSelect }) {
 }
 
 export default function CaseDetail() {
-  const { projectId, branchId, caseId } = useParams()
+  const { projectId, caseId } = useParams()
   const navigate = useNavigate()
+
+  // branchId 从 URL query string 获取
+  const searchParams = new URLSearchParams(window.location.search)
+  const branchId = searchParams.get('branchId')
 
   const [loading, setLoading] = useState(true)
   const [caseData, setCaseData] = useState(null)
@@ -101,10 +105,16 @@ export default function CaseDetail() {
   const [steps, setSteps] = useState([{ seq: 1, action: '' }])
 
   useEffect(() => {
-    loadData()
+  useEffect(() => {
+    if (branchId) loadData()
   }, [projectId, branchId, caseId])
 
   async function loadData() {
+    if (!branchId) {
+      message.error('缺少分支信息')
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
       const [caseRes, envRes, folderRes] = await Promise.all([
