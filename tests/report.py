@@ -62,12 +62,14 @@ def run_and_report():
         func_name = parts[2] if len(parts) > 2 else parts[1] if len(parts) > 1 else ""
 
         path_parts = file_path.replace("tests/", "").replace(".py", "").split("/")
+        # 提取测试级别: tests/api/... → API, tests/unit/... → UNIT, tests/atdd/... → ATDD, tests/e2e/... → E2E
+        level = path_parts[0].upper() if path_parts else "OTHER"
         module_key = path_parts[1] if len(path_parts) >= 2 else path_parts[0]
 
         if module_key not in modules:
             modules[module_key] = []
         modules[module_key].append({
-            "file": file_path, "class": class_name, "func": func_name, "status": status,
+            "file": file_path, "class": class_name, "func": func_name, "status": status, "level": level,
         })
 
     # 从源码提取描述
@@ -87,6 +89,12 @@ def run_and_report():
     passed = sum(1 for _, s in tests if s == "PASSED")
     failed = sum(1 for _, s in tests if s == "FAILED")
 
+    # 按级别统计
+    level_counts = {}
+    for module_tests in modules.values():
+        for t in module_tests:
+            level_counts[t["level"]] = level_counts.get(t["level"], 0) + 1
+
     # 中文数字
     cn_nums = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十",
                "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"]
@@ -96,8 +104,10 @@ def run_and_report():
     out.append(f"testBench 自动化测试报告")
     out.append(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     out.append(f"总计: {total} 个 | 通过: {passed} | 失败: {failed}")
+    level_summary = " | ".join(f"{k}: {v}" for k, v in sorted(level_counts.items()))
+    out.append(f"按类型: {level_summary}")
     out.append("")
-    out.append(f"序号\t测试模块\t测试场景\t步骤（断言描述）\t结果")
+    out.append(f"序号\t类型\t测试模块\t测试场景\t步骤（断言描述）\t结果")
 
     seq = 0
     for idx, module_key in enumerate(sorted(modules.keys())):
@@ -109,7 +119,7 @@ def run_and_report():
         for t in module_tests:
             seq += 1
             scenario = t["func"].replace("test_", "").replace("_", " ")
-            out.append(f"{seq}\t{t['class']}\t{scenario}\t{t['desc']}\t{t['status']}")
+            out.append(f"{seq}\t{t['level']}\t{t['class']}\t{scenario}\t{t['desc']}\t{t['status']}")
 
     report_text = "\n".join(out)
 

@@ -86,4 +86,6 @@ async def put_variables(session: AsyncSession, variables: list[dict]) -> list[Gl
         new_vars.append(gv)
 
     await session.flush()
+    for v in new_vars:
+        await session.refresh(v)
     return new_vars

@@ -30,6 +30,7 @@ async def create_user(session: AsyncSession, data: CreateUserRequest) -> User:
     except IntegrityError:
         await session.rollback()
         raise ConflictError(code="USERNAME_EXISTS", message="用户名已存在")
+    await session.refresh(user)
     return user
 
 

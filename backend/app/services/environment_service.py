@@ -77,6 +77,8 @@ async def put_env_variables(session: AsyncSession, env_id: uuid.UUID, variables:
         new_vars.append(ev)
 
     await session.flush()
+    for v in new_vars:
+        await session.refresh(v)
     return new_vars
 
 
