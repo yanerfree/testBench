@@ -246,6 +246,20 @@ async def export_cases_excel(
         keyword=keyword, automation_status=automation_status, folder_id=folder_id,
     )
 
+    # 加载目录映射: folder_id → (模块名, 子模块名)
+    from sqlalchemy import select
+    from app.models.case import CaseFolder
+    folder_result = await session.execute(select(CaseFolder).where(CaseFolder.branch_id == branch_id))
+    all_folders = {f.id: f for f in folder_result.scalars().all()}
+
+    def get_folder_names(fid):
+        if not fid or fid not in all_folders:
+            return "", ""
+        folder = all_folders[fid]
+        if folder.parent_id and folder.parent_id in all_folders:
+            return all_folders[folder.parent_id].name, folder.name
+        return folder.name, ""
+
     wb = Workbook()
     ws = wb.active
     ws.title = "用例列表"
@@ -273,12 +287,14 @@ async def export_cases_excel(
         if c.steps:
             steps_text = "\n".join(f"{i+1}. {s.get('action', s) if isinstance(s, dict) else s}" for i, s in enumerate(c.steps))
 
+        module_name, sub_module_name = get_folder_names(c.folder_id)
+
         ws.cell(row=row_idx, column=1, value=c.case_code or "")
         ws.cell(row=row_idx, column=2, value=c.title or "")
         ws.cell(row=row_idx, column=3, value=(c.type or "").upper())
         ws.cell(row=row_idx, column=4, value=c.priority or "")
-        ws.cell(row=row_idx, column=5, value=c.module or "")
-        ws.cell(row=row_idx, column=6, value=c.sub_module or "")
+        ws.cell(row=row_idx, column=5, value=module_name)
+        ws.cell(row=row_idx, column=6, value=sub_module_name)
         ws.cell(row=row_idx, column=7, value=status_map.get(c.automation_status, c.automation_status or ""))
         ws.cell(row=row_idx, column=8, value="导入" if c.source == "imported" else "手动")
         ws.cell(row=row_idx, column=9, value="是" if c.is_flaky else "否")
