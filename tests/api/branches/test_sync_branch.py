@@ -10,11 +10,24 @@ Priority: P0
 - 归档分支不能同步
 - guest 不能执行同步
 - 任务状态轮询 GET /api/tasks/{taskId}/status
+
+注意: 依赖 Redis（arq），无 Redis 时自动跳过。
 """
 import pytest
 from unittest.mock import AsyncMock, patch
 
 from tests.conftest import create_test_user, make_auth_headers
+
+# 检测 Redis 是否可用
+try:
+    import redis
+    _r = redis.Redis(host="localhost", port=6379, socket_connect_timeout=1)
+    _r.ping()
+    REDIS_AVAILABLE = True
+except Exception:
+    REDIS_AVAILABLE = False
+
+pytestmark = pytest.mark.skipif(not REDIS_AVAILABLE, reason="Redis not available")
 
 
 class TestSyncBranchValidation:

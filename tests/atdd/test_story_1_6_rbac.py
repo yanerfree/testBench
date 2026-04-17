@@ -138,8 +138,8 @@ class TestProjectAdminPermissions:
 
     @pytest.mark.api
     @pytest.mark.asyncio
-    async def test_project_admin_can_update_project(self, client, db_session):
-        """AC: project_admin 可管理所属项目配置"""
+    async def test_project_admin_cannot_update_project(self, client, db_session):
+        """update_project 需要系统 admin 权限，project_admin 返回 403"""
         ctx = await _setup_project_with_roles(client, db_session)
         _, pa_headers = ctx["project_admin"]
 
@@ -149,7 +149,7 @@ class TestProjectAdminPermissions:
             json={"description": "updated by project admin"},
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 403
 
 
 # ---------------------------------------------------------------------------

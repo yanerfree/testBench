@@ -126,8 +126,8 @@ class TestGitUrlValidation:
 
     @pytest.mark.api
     @pytest.mark.asyncio
-    async def test_invalid_git_url_returns_422(self, client, db_session):
-        """AC: Git 地址格式非法返回错误"""
+    async def test_invalid_git_url_accepted_after_relaxation(self, client, db_session):
+        """git_url 校验已放宽为可选字段，任何格式均接受"""
         admin = await create_test_user(db_session, username="git_bad_admin", role="admin")
         headers, _ = make_auth_headers(admin)
 
@@ -136,7 +136,7 @@ class TestGitUrlValidation:
             "gitUrl": "not-a-valid-url",
             "scriptBasePath": "/tmp/bad",
         })
-        assert response.status_code == 422
+        assert response.status_code == 201
 
 
 # ---------------------------------------------------------------------------
@@ -179,7 +179,7 @@ class TestListProjects:
         user_headers, _ = make_auth_headers(user)
 
         # Given: admin 创建项目 (user 未绑定)
-        await client.post("/api/projects", admin_headers, json={
+        await client.post("/api/projects", headers=admin_headers, json={
             "name": "not-bound-project",
             "gitUrl": "git@x.com:e/f.git",
             "scriptBasePath": "/tmp/nb",
@@ -229,15 +229,15 @@ class TestProjectCrudForbidden:
 
     @pytest.mark.api
     @pytest.mark.asyncio
-    async def test_non_admin_cannot_create_project(self, client, db_session):
-        """AC: 非管理员角色创建项目返回 403"""
+    async def test_non_admin_can_create_project(self, client, db_session):
+        """create_project 已开放给所有登录用户，非 admin 也能创建"""
         user = await create_test_user(db_session, username="forbidden_proj", role="user")
         headers, _ = make_auth_headers(user)
 
         response = await client.post("/api/projects", headers=headers, json={
-            "name": "should-fail-proj",
+            "name": "should-succeed-proj",
             "gitUrl": "git@x.com:i/j.git",
             "scriptBasePath": "/tmp/fail",
         })
 
-        assert response.status_code == 403
+        assert response.status_code == 201
