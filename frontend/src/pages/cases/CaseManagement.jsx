@@ -135,6 +135,11 @@ export default function CaseManagement() {
   const [importResult, setImportResult] = useState(null)
   const [importing, setImporting] = useState(false)
 
+  // 新建用例
+  const [createCaseOpen, setCreateCaseOpen] = useState(false)
+  const [createCaseForm] = Form.useForm()
+  const [savingCase, setSavingCase] = useState(false)
+
   // ---- 数据加载 ----
   const fetchBranches = useCallback(async () => {
     if (!projectId) return
@@ -177,6 +182,45 @@ export default function CaseManagement() {
 
   const activeBranches = branches.filter(b => b.status === 'active')
   const branch = branches.find(b => b.id === currentBranch)
+
+  // ---- 新建用例 ----
+  const handleCreateCase = async () => {
+    let values
+    try { values = await createCaseForm.validateFields() } catch { return }
+    if (!currentBranch) { message.warning('请先选择分支'); return }
+    setSavingCase(true)
+    try {
+      await api.post(`/projects/${projectId}/branches/${currentBranch}/cases`, {
+        title: values.title,
+        type: values.type,
+        module: values.module,
+        submodule: values.submodule || null,
+        priority: values.priority || 'P2',
+        steps: [{ action: values.firstStep || '待补充' }],
+        preconditions: values.preconditions || null,
+      })
+      message.success('用例创建成功')
+      setCreateCaseOpen(false)
+      createCaseForm.resetFields()
+      fetchCases()
+      fetchFolders()
+    } catch { /* */ } finally { setSavingCase(false) }
+  }
+
+  // ---- 导出 ----
+  const handleExport = () => {
+    if (!cases.length) { message.info('当前无用例数据'); return }
+    // 简易 CSV 导出
+    const headers = ['用例ID', '标题', '类型', '优先级', '状态', '来源']
+    const rows = cases.map(c => [c.caseCode, c.title, c.type, c.priority, c.automationStatus, c.source])
+    const csv = [headers, ...rows].map(r => r.join('\t')).join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `cases-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click(); URL.revokeObjectURL(url)
+    message.success(`已导出 ${cases.length} 条用例`)
+  }
 
   // ---- 导入 ----
   const handleImportFile = async (file) => {
@@ -294,8 +338,8 @@ export default function CaseManagement() {
               </Space>
               <Space>
                 <Button icon={<UploadOutlined />} size="small" onClick={() => setImportOpen(true)}>导入</Button>
-                <Button icon={<DownloadOutlined />} size="small">导出</Button>
-                <Button type="primary" icon={<PlusOutlined />} size="small">新建用例</Button>
+                <Button icon={<DownloadOutlined />} size="small" onClick={handleExport}>导出</Button>
+                <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => { createCaseForm.resetFields(); setCreateCaseOpen(true) }}>新建用例</Button>
               </Space>
             </div>
             {selectedRows.length > 0 && (
@@ -368,6 +412,46 @@ export default function CaseManagement() {
 
       {/* 分支管理弹窗 */}
       <BranchManageModal projectId={projectId} open={branchManageOpen} onClose={() => setBranchManageOpen(false)} onBranchesChanged={fetchBranches} />
+
+      {/* 新建用例弹窗 */}
+      <Modal
+        title="新建用例"
+        open={createCaseOpen}
+        onOk={handleCreateCase}
+        onCancel={() => setCreateCaseOpen(false)}
+        okText="创建"
+        cancelText="取消"
+        confirmLoading={savingCase}
+        width={520}
+      >
+        <Form form={createCaseForm} layout="vertical" style={{ marginTop: 12 }} initialValues={{ type: 'api', priority: 'P2' }}>
+          <Form.Item name="title" label="用例标题" rules={[{ required: true, message: '请输入标题' }]}>
+            <Input placeholder="如：登录成功跳转首页" maxLength={200} />
+          </Form.Item>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <Form.Item name="type" label="测试类型" rules={[{ required: true }]} style={{ flex: 1 }}>
+              <Select options={[{ value: 'api', label: 'API' }, { value: 'e2e', label: 'E2E' }]} />
+            </Form.Item>
+            <Form.Item name="priority" label="优先级" style={{ flex: 1 }}>
+              <Select options={[{ value: 'P0', label: 'P0' }, { value: 'P1', label: 'P1' }, { value: 'P2', label: 'P2' }, { value: 'P3', label: 'P3' }]} />
+            </Form.Item>
+          </div>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <Form.Item name="module" label="模块" rules={[{ required: true, message: '请输入模块名' }]} style={{ flex: 1 }}>
+              <Input placeholder="如：auth" />
+            </Form.Item>
+            <Form.Item name="submodule" label="子模块" style={{ flex: 1 }}>
+              <Input placeholder="如：login（可选）" />
+            </Form.Item>
+          </div>
+          <Form.Item name="firstStep" label="第一个步骤">
+            <Input placeholder="如：输入用户名和密码点击登录" />
+          </Form.Item>
+          <Form.Item name="preconditions" label="前置条件">
+            <Input.TextArea placeholder="如：用户已注册且账号未锁定" rows={2} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   )
 }
