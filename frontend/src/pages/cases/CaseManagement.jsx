@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin } from 'antd'
+import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin, TreeSelect } from 'antd'
 import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
@@ -205,9 +205,22 @@ export default function CaseManagement() {
     } catch { /* */ } finally { setSavingFolder(false) }
   }
 
-  // 构建模块下拉选项（一级目录）
-  const topLevelModules = folderTree.map(n => ({ value: n.name, label: n.name, id: n.id, children: n.children || [] }))
-  const parentFolderOptions = folderTree.map(n => ({ value: n.id, label: n.name }))
+  // 构建模块 TreeSelect 数据（支持 N 层）
+  const buildFolderTreeSelect = (nodes) => nodes.map(n => ({
+    value: n.name,
+    title: n.name,
+    id: n.id,
+    children: n.children?.length > 0 ? buildFolderTreeSelect(n.children) : undefined,
+  }))
+  const folderTreeSelectData = buildFolderTreeSelect(folderTree)
+
+  // 构建父模块 TreeSelect（创建模块时选父级）
+  const buildParentTreeSelect = (nodes) => nodes.map(n => ({
+    value: n.id,
+    title: n.name,
+    children: n.children?.length > 0 ? buildParentTreeSelect(n.children) : undefined,
+  }))
+  const parentTreeSelectData = buildParentTreeSelect(folderTree)
 
   // ---- 新建用例 ----
   const handleCreateCase = async () => {
@@ -337,6 +350,17 @@ export default function CaseManagement() {
     { key: 'teaId', title: 'TEA ID', dataIndex: 'teaId', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v || '-'}</span> },
     { key: 'createdAt', title: '创建时间', dataIndex: 'createdAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#8c919e' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
     { key: 'updatedAt', title: '更新时间', dataIndex: 'updatedAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#8c919e' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
+    { key: 'actions', title: '操作', width: 60, align: 'center', defaultVisible: true, render: (_, row) => (
+      <Popconfirm title="确定删除此用例？" onConfirm={async () => {
+        try {
+          await api.del(`/projects/${projectId}/branches/${currentBranch}/cases/${row.id}`)
+          message.success('已删除')
+          fetchCases()
+        } catch { /* */ }
+      }}>
+        <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#f08a8e' }} />
+      </Popconfirm>
+    )},
   ]
 
   const [visibleColumnKeys, setVisibleColumnKeys] = useState(() =>
@@ -461,10 +485,31 @@ export default function CaseManagement() {
             {selectedRows.length > 0 && (
               <div style={{ marginTop: 10, padding: '8px 12px', background: '#e6f4ff', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{ fontSize: 13, color: '#7c8cf8' }}>已选 {selectedRows.length} 条</span>
-                <Button size="small" type="link">批量移动</Button>
-                <Button size="small" type="link">批量归档</Button>
-                <Button size="small" type="link">修改优先级</Button>
-                <Button size="small" type="link">加入计划</Button>
+                <Popconfirm title={`确定归档 ${selectedRows.length} 条用例？`} onConfirm={async () => {
+                  try {
+                    await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: selectedRows.map(r => r.id), action: 'archive' })
+                    message.success('批量归档成功'); setSelectedRows([]); fetchCases()
+                  } catch { /* */ }
+                }}>
+                  <Button size="small" type="link">批量归档</Button>
+                </Popconfirm>
+                <Select size="small" placeholder="修改优先级" style={{ width: 110 }}
+                  onChange={async (val) => {
+                    try {
+                      await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: selectedRows.map(r => r.id), action: 'set_priority', priority: val })
+                      message.success('优先级已修改'); setSelectedRows([]); fetchCases()
+                    } catch { /* */ }
+                  }}
+                  options={['P0','P1','P2','P3'].map(p => ({ value: p, label: p }))}
+                />
+                <Popconfirm title={`确定删除 ${selectedRows.length} 条用例？`} onConfirm={async () => {
+                  for (const row of selectedRows) {
+                    try { await api.del(`/projects/${projectId}/branches/${currentBranch}/cases/${row.id}`) } catch { /* */ }
+                  }
+                  message.success('批量删除成功'); setSelectedRows([]); fetchCases()
+                }}>
+                  <Button size="small" type="link" danger>批量删除</Button>
+                </Popconfirm>
               </div>
             )}
           </Card>
@@ -554,30 +599,17 @@ export default function CaseManagement() {
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="module" label="模块" rules={[{ required: true, message: '请选择模块' }]} style={{ flex: 1 }}>
-              <Select
-                placeholder="选择模块"
+              <TreeSelect
+                placeholder="选择目录"
                 showSearch
-                optionFilterProp="label"
-                options={topLevelModules}
-                onChange={() => createCaseForm.setFieldValue('submodule', null)}
+                treeNodeFilterProp="title"
+                treeData={folderTreeSelectData}
+                treeDefaultExpandAll
                 notFoundContent={<span style={{ color: '#8c919e', fontSize: 12 }}>无模块，请先在左侧导航创建</span>}
               />
             </Form.Item>
-            <Form.Item name="submodule" label="子模块" style={{ flex: 1 }}
-              shouldUpdate={(prev, cur) => prev?.module !== cur?.module}>
-              {() => {
-                const selectedModule = createCaseForm.getFieldValue('module')
-                const parent = topLevelModules.find(m => m.value === selectedModule)
-                const subOptions = (parent?.children || []).map(c => ({ value: c.name, label: c.name }))
-                return (
-                  <Select
-                    placeholder={subOptions.length ? '选择子模块' : '无子模块'}
-                    allowClear
-                    options={subOptions}
-                    disabled={!selectedModule || subOptions.length === 0}
-                  />
-                )
-              }}
+            <Form.Item name="submodule" label="子模块" style={{ flex: 1 }}>
+              <Input placeholder="可选，如需新建子模块" />
             </Form.Item>
           </div>
         </Form>
@@ -601,10 +633,11 @@ export default function CaseManagement() {
             <Input placeholder="如：AUTH、USER_MGMT" style={{ textTransform: 'uppercase' }} />
           </Form.Item>
           <Form.Item name="parentId" label="父模块（可选）">
-            <Select
+            <TreeSelect
               placeholder="顶级模块（不选则为一级模块）"
               allowClear
-              options={parentFolderOptions}
+              treeData={parentTreeSelectData}
+              treeDefaultExpandAll
             />
           </Form.Item>
         </Form>

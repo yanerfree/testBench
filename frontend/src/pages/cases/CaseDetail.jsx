@@ -155,6 +155,29 @@ export default function CaseDetail() {
   const currentSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRef, remark, steps })
   const isDirty = caseData && currentSnap !== savedRef.current
 
+  // 离开未保存确认
+  useEffect(() => {
+    const handler = (e) => {
+      if (isDirty) { e.preventDefault(); e.returnValue = '' }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
+
+  const handleBack = () => {
+    if (isDirty) {
+      Modal.confirm({
+        title: '未保存的修改',
+        content: '当前有未保存的修改，确定离开吗？',
+        okText: '离开',
+        cancelText: '继续编辑',
+        onOk: () => navigate(-1),
+      })
+    } else {
+      navigate(-1)
+    }
+  }
+
   const addStep = () => setSteps(prev => [...prev, { seq: prev.length + 1, action: '' }])
   const removeStep = (idx) => setSteps(prev => prev.filter((_, i) => i !== idx).map((s, i) => ({ ...s, seq: i + 1 })))
   const updateStep = (idx, value) => setSteps(prev => prev.map((s, i) => i === idx ? { ...s, action: value } : s))
@@ -184,7 +207,7 @@ export default function CaseDetail() {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
         <Button type="text" icon={<ArrowLeftOutlined />} size="small"
-          onClick={() => navigate(-1)} style={{ color: '#86909c' }} />
+          onClick={handleBack} style={{ color: '#86909c' }} />
         <span style={{ fontSize: 12, color: '#c0c4cc' }}>用例管理</span>
         <span style={{ color: '#e5e6eb', fontSize: 12 }}>/</span>
         <span style={{ fontSize: 12, color: '#86909c', fontFamily: 'monospace' }}>{caseCode}</span>
@@ -216,8 +239,7 @@ export default function CaseDetail() {
               items={['api','e2e'].map(t => ({ key: t, label: t.toUpperCase() }))} />
           </InlineProp>
 
-          <ReadonlyProp icon={<AppstoreOutlined />} label="模块" value={module || '-'} />
-          {subModule && <ReadonlyProp icon={<BranchesOutlined />} label="子模块" value={subModule} />}
+          <ReadonlyProp icon={<AppstoreOutlined />} label="模块" value={[module, subModule].filter(Boolean).join(' / ') || '未分类'} />
 
           <InlineProp icon={<ThunderboltOutlined />} value={statusLabels[automationStatus] || automationStatus}
             color={statusColors[automationStatus]} bg={statusBg[automationStatus]}>
