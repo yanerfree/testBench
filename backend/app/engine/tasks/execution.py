@@ -142,16 +142,26 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
                 message=f"执行中 ({i+1}/{total}): {case.title[:50]}"
             )
 
-            # 在线程中执行 pytest
-            case_result = await anyio.to_thread.run_sync(
-                lambda c=case: execute_single_case(
-                    sandbox_dir=str(sandbox_dir),
-                    script_ref_file=c.script_ref_file,
-                    script_ref_func=c.script_ref_func,
-                    env_vars=env_vars,
-                    timeout=300,
+            # 在线程中执行 pytest（含重试）
+            retry_count = plan.retry_count or 0
+            case_result = None
+            for attempt in range(retry_count + 1):
+                case_result = await anyio.to_thread.run_sync(
+                    lambda c=case: execute_single_case(
+                        sandbox_dir=str(sandbox_dir),
+                        script_ref_file=c.script_ref_file,
+                        script_ref_func=c.script_ref_func,
+                        env_vars=env_vars,
+                        timeout=300,
+                    )
                 )
-            )
+                if case_result["status"] == "passed" or attempt == retry_count:
+                    break
+                # 重试中
+                await set_task_status(
+                    task_id, "running",
+                    message=f"重试中 ({attempt+1}/{retry_count}): {case.title[:50]}"
+                )
 
             # 更新 scenario
             scenario.status = case_result["status"]

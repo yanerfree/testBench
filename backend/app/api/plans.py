@@ -9,6 +9,8 @@ from starlette.status import HTTP_201_CREATED
 
 from app.deps.auth import get_current_user, require_project_role
 from app.deps.db import get_db
+from app.deps.worker import get_arq_pool
+from app.engine.task_status import set_task_status
 from app.models.user import User
 from app.schemas.common import BaseSchema, MessageResponse
 from app.schemas.plan import CreatePlanRequest, PlanListItem, PlanResponse
@@ -171,8 +173,34 @@ async def execute_plan(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
-    """启动计划执行（创建报告 + scenarios，状态改为 executing）"""
+    """启动计划执行。
+
+    手动计划: 创建报告 + scenarios，直接返回。
+    自动化计划: 创建报告后提交 arq 异步任务执行，返回 taskId 供轮询。
+    """
     report = await execution_service.start_execution(session, plan_id, current_user.id)
+
+    # 判断是否自动化计划
+    plan = await plan_service.get_plan(session, plan_id)
+    if plan.plan_type == "automated":
+        # 提交异步执行任务
+        pool = await get_arq_pool()
+        task_id = uuid.uuid4().hex
+        await set_task_status(task_id, "pending", message="自动化执行任务已提交...")
+        await pool.enqueue_job(
+            "run_automated_execution",
+            task_id,
+            str(plan_id),
+            str(report.id),
+            str(current_user.id),
+        )
+        return {
+            "data": {
+                **ReportResponse.model_validate(report, from_attributes=True).model_dump(by_alias=True),
+                "taskId": task_id,
+            }
+        }
+
     return {"data": ReportResponse.model_validate(report, from_attributes=True).model_dump(by_alias=True)}
 
 

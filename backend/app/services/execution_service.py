@@ -15,16 +15,19 @@ from app.models.report import TestReport, TestReportScenario
 async def start_execution(
     session: AsyncSession, plan_id: uuid.UUID, executed_by: uuid.UUID
 ) -> TestReport:
-    """启动计划执行 — 创建 report + scenarios，计划状态改为 executing。"""
-    # 加载计划
+    """
+    启动计划执行 — 创建 report + scenarios，计划状态改为 executing。
+
+    自动化计划: scenarios 按 automation_status 设置 execution_type (automated/manual)
+    手动计划: 所有 scenarios 设为 manual
+    """
     result = await session.execute(select(Plan).where(Plan.id == plan_id))
     plan = result.scalar_one_or_none()
     if plan is None:
         raise NotFoundError(code="PLAN_NOT_FOUND", message="计划不存在")
-    if plan.status != "draft":
+    if plan.status not in ("draft",):
         raise ValidationError(code="INVALID_STATUS", message=f"当前状态「{plan.status}」不可执行")
 
-    # 加载关联用例
     pc_result = await session.execute(
         select(PlanCase, Case)
         .join(Case, Case.id == PlanCase.case_id)
@@ -35,33 +38,52 @@ async def start_execution(
     if not plan_cases:
         raise ValidationError(code="NO_CASES", message="计划中没有用例")
 
-    # 创建报告
     now = datetime.now(timezone.utc)
+
+    # 统计自动化/手动用例数
+    automated_count = 0
+    manual_count = 0
+    for _, case in plan_cases:
+        if plan.plan_type == "automated" and case.automation_status == "automated" and not case.is_flaky:
+            automated_count += 1
+        else:
+            manual_count += 1
+
     report = TestReport(
         plan_id=plan_id,
         environment_id=plan.environment_id,
         executed_by=executed_by,
         executed_at=now,
         total_scenarios=len(plan_cases),
-        manual_count=len(plan_cases),
+        manual_count=manual_count,
     )
     session.add(report)
     await session.flush()
 
-    # 创建每条用例的 scenario 记录
     for i, (pc, case) in enumerate(plan_cases):
+        # 确定 execution_type
+        if plan.plan_type == "automated" and case.automation_status == "automated" and not case.is_flaky:
+            exec_type = "automated"
+            status = "pending"
+        elif plan.plan_type == "automated" and case.is_flaky:
+            exec_type = "manual"
+            status = "skipped"  # Flaky 跳过
+        else:
+            exec_type = "manual"
+            status = "pending"
+
         scenario = TestReportScenario(
             report_id=report.id,
             case_id=case.id,
             case_code=case.case_code,
             scenario_name=case.title,
-            status="pending",
-            execution_type="manual",
+            status=status,
+            execution_type=exec_type,
             sort_order=i,
+            error_summary="Flaky 用例已跳过" if status == "skipped" else None,
         )
         session.add(scenario)
 
-    # 更新计划状态
     plan.status = "executing"
     plan.executed_at = now
     await session.flush()
@@ -97,15 +119,15 @@ async def record_manual_result(
 
 
 async def complete_execution(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
-    """确认完成 — 计算汇总，更新计划状态为 completed。"""
+    """确认完成 — 计算汇总，更新计划状态。
+
+    如果还有 pending 的手动用例，状态改为 pending_manual 而非 completed。
+    """
     result = await session.execute(select(Plan).where(Plan.id == plan_id))
     plan = result.scalar_one_or_none()
     if plan is None:
         raise NotFoundError(code="PLAN_NOT_FOUND", message="计划不存在")
-    if plan.status != "executing":
-        raise ValidationError(code="INVALID_STATUS", message=f"当前状态「{plan.status}」不可完成")
 
-    # 获取报告
     report_result = await session.execute(
         select(TestReport).where(TestReport.plan_id == plan_id).order_by(TestReport.created_at.desc())
     )
@@ -113,7 +135,7 @@ async def complete_execution(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
     if report is None:
         raise ValidationError(code="NO_REPORT", message="未找到执行报告")
 
-    # 汇总 scenario 结果
+    # 汇总
     stats = await session.execute(
         select(TestReportScenario.status, func.count())
         .where(TestReportScenario.report_id == report.id)
@@ -127,14 +149,18 @@ async def complete_execution(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
     report.skipped = status_counts.get("skipped", 0)
     report.completed_at = datetime.now(timezone.utc)
 
-    # 计算通过率
     denominator = report.passed + report.failed + report.error
     if denominator > 0:
         report.pass_rate = Decimal(str(round(report.passed / denominator * 100, 2)))
 
-    # 更新计划状态
-    plan.status = "completed"
-    plan.completed_at = report.completed_at
+    # 检查是否有待手动录入的用例
+    pending_manual = status_counts.get("pending", 0)
+    if pending_manual > 0 and plan.plan_type == "automated":
+        plan.status = "pending_manual"
+    else:
+        plan.status = "completed"
+        plan.completed_at = report.completed_at
+
     await session.flush()
     await session.refresh(plan)
     return plan
@@ -142,7 +168,7 @@ async def complete_execution(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
 
 async def get_report_with_scenarios(
     session: AsyncSession, plan_id: uuid.UUID
-) -> dict:
+) -> dict | None:
     """获取计划的执行报告 + 场景列表。"""
     report_result = await session.execute(
         select(TestReport).where(TestReport.plan_id == plan_id).order_by(TestReport.created_at.desc())
