@@ -265,10 +265,11 @@ async def export_cases_excel(
     ws.title = "用例列表"
 
     headers = [
-        "用例ID", "标题", "测试类型", "优先级", "模块", "子模块",
-        "自动化状态", "来源", "Flaky", "前置条件", "测试步骤",
-        "预期结果", "脚本文件", "脚本函数", "TEA ID", "备注",
-        "创建时间", "更新时间",
+        "用例ID", "标题", "模块", "子模块", "测试类型", "优先级",
+        "自动化状态", "来源", "Flaky",
+        "前置条件", "测试步骤", "预期结果",
+        "脚本文件", "脚本函数", "TEA ID",
+        "备注", "创建时间", "更新时间",
     ]
 
     header_fill = PatternFill(start_color="E6F0FF", end_color="E6F0FF", fill_type="solid")
@@ -289,26 +290,30 @@ async def export_cases_excel(
 
         module_name, sub_module_name = get_folder_names(c.folder_id)
 
-        ws.cell(row=row_idx, column=1, value=c.case_code or "")
-        ws.cell(row=row_idx, column=2, value=c.title or "")
-        ws.cell(row=row_idx, column=3, value=(c.type or "").upper())
-        ws.cell(row=row_idx, column=4, value=c.priority or "")
-        ws.cell(row=row_idx, column=5, value=module_name)
-        ws.cell(row=row_idx, column=6, value=sub_module_name)
-        ws.cell(row=row_idx, column=7, value=status_map.get(c.automation_status, c.automation_status or ""))
-        ws.cell(row=row_idx, column=8, value="导入" if c.source == "imported" else "手动")
-        ws.cell(row=row_idx, column=9, value="是" if c.is_flaky else "否")
-        ws.cell(row=row_idx, column=10, value=c.preconditions or "")
-        ws.cell(row=row_idx, column=11, value=steps_text)
-        ws.cell(row=row_idx, column=12, value=c.expected_result or "")
-        ws.cell(row=row_idx, column=13, value=c.script_ref_file or "")
-        ws.cell(row=row_idx, column=14, value=c.script_ref_func or "")
-        ws.cell(row=row_idx, column=15, value=c.tea_id or "")
-        ws.cell(row=row_idx, column=16, value=c.remark or "")
-        ws.cell(row=row_idx, column=17, value=c.created_at.strftime("%Y-%m-%d %H:%M") if c.created_at else "")
-        ws.cell(row=row_idx, column=18, value=c.updated_at.strftime("%Y-%m-%d %H:%M") if c.updated_at else "")
+        row = [
+            c.case_code or "",
+            c.title or "",
+            module_name,
+            sub_module_name,
+            (c.type or "").upper(),
+            c.priority or "",
+            status_map.get(c.automation_status, c.automation_status or ""),
+            "导入" if c.source == "imported" else "手动",
+            "是" if c.is_flaky else "否",
+            c.preconditions or "",
+            steps_text,
+            c.expected_result or "",
+            c.script_ref_file or "",
+            c.script_ref_func or "",
+            c.tea_id or "",
+            c.remark or "",
+            c.created_at.strftime("%Y-%m-%d %H:%M") if c.created_at else "",
+            c.updated_at.strftime("%Y-%m-%d %H:%M") if c.updated_at else "",
+        ]
+        for col_idx, val in enumerate(row, 1):
+            ws.cell(row=row_idx, column=col_idx, value=val)
 
-    col_widths = [18, 40, 8, 6, 12, 12, 12, 6, 5, 30, 50, 30, 40, 25, 20, 20, 18, 18]
+    col_widths = [18, 40, 12, 12, 8, 6, 12, 6, 5, 30, 50, 30, 40, 25, 20, 20, 18, 18]
     for i, w in enumerate(col_widths, 1):
         ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = w
 

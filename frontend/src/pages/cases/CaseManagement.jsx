@@ -325,10 +325,10 @@ export default function CaseManagement() {
     setPage(1)
   }
 
-  // ---- 列表列 ----
-  const columns = [
-    { title: '用例ID', dataIndex: 'caseCode', width: 155, render: v => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#86909c' }}>{v}</span> },
-    { title: '标题', dataIndex: 'title', ellipsis: true, render: (v, row) => (
+  // ---- 列表列（可配置） ----
+  const allColumns = [
+    { key: 'caseCode', title: '用例ID', dataIndex: 'caseCode', width: 155, defaultVisible: true, render: v => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#86909c' }}>{v}</span> },
+    { key: 'title', title: '标题', dataIndex: 'title', ellipsis: true, defaultVisible: true, fixed: true, render: (v, row) => (
       <span
         onClick={() => navigate(`/projects/${projectId}/cases/${row.id}?branchId=${currentBranch}`)}
         style={{ color: '#1d2129', cursor: 'pointer', fontWeight: 500 }}
@@ -336,12 +336,25 @@ export default function CaseManagement() {
         onMouseLeave={e => e.target.style.color = '#1d2129'}
       >{v}</span>
     )},
-    { title: '类型', dataIndex: 'type', width: 65, render: v => <Tag color={v === 'api' ? '#e6f4ff' : '#f6ffed'} style={{ color: v === 'api' ? '#7c8cf8' : '#6ecf96' }}>{v?.toUpperCase()}</Tag> },
-    { title: '优先级', dataIndex: 'priority', width: 68, align: 'center', render: v => <Tag style={{ background: priorityBg[v], color: priorityColors[v], border: 'none' }}>{v}</Tag> },
-    { title: '状态', dataIndex: 'automationStatus', width: 100, render: v => <Tag style={{ background: statusBg[v] || '#f5f5f7', color: statusColors[v] || '#a8adb6', border: 'none' }}>{statusMap[v] || v}</Tag> },
-    { title: '来源', dataIndex: 'source', width: 60, align: 'center', render: v => <span style={{ fontSize: 12, color: '#c0c4cc' }}>{v === 'imported' ? '导入' : '手动'}</span> },
-    { title: 'Flaky', dataIndex: 'isFlaky', width: 46, align: 'center', render: v => v ? <Tag color="#fff7e6" style={{ color: '#f5b87a', border: 'none' }}>F</Tag> : null },
+    { key: 'type', title: '类型', dataIndex: 'type', width: 65, defaultVisible: true, render: v => <Tag color={v === 'api' ? '#e6f4ff' : '#f6ffed'} style={{ color: v === 'api' ? '#7c8cf8' : '#6ecf96' }}>{v?.toUpperCase()}</Tag> },
+    { key: 'priority', title: '优先级', dataIndex: 'priority', width: 68, align: 'center', defaultVisible: true, render: v => <Tag style={{ background: priorityBg[v], color: priorityColors[v], border: 'none' }}>{v}</Tag> },
+    { key: 'module', title: '模块', dataIndex: 'module', width: 100, defaultVisible: false, render: v => <span style={{ fontSize: 12 }}>{v || '-'}</span> },
+    { key: 'subModule', title: '子模块', dataIndex: 'subModule', width: 100, defaultVisible: false, render: v => <span style={{ fontSize: 12 }}>{v || '-'}</span> },
+    { key: 'automationStatus', title: '状态', dataIndex: 'automationStatus', width: 100, defaultVisible: true, render: v => <Tag style={{ background: statusBg[v] || '#f5f5f7', color: statusColors[v] || '#a8adb6', border: 'none' }}>{statusMap[v] || v}</Tag> },
+    { key: 'source', title: '来源', dataIndex: 'source', width: 60, align: 'center', defaultVisible: true, render: v => <span style={{ fontSize: 12, color: '#c0c4cc' }}>{v === 'imported' ? '导入' : '手动'}</span> },
+    { key: 'isFlaky', title: 'Flaky', dataIndex: 'isFlaky', width: 46, align: 'center', defaultVisible: true, render: v => v ? <Tag color="#fff7e6" style={{ color: '#f5b87a', border: 'none' }}>F</Tag> : null },
+    { key: 'scriptRefFile', title: '脚本文件', dataIndex: 'scriptRefFile', width: 200, ellipsis: true, defaultVisible: false, render: v => <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#86909c' }}>{v || '-'}</span> },
+    { key: 'teaId', title: 'TEA ID', dataIndex: 'teaId', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v || '-'}</span> },
+    { key: 'createdAt', title: '创建时间', dataIndex: 'createdAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#8c919e' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
+    { key: 'updatedAt', title: '更新时间', dataIndex: 'updatedAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#8c919e' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
   ]
+
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState(() =>
+    allColumns.filter(c => c.defaultVisible).map(c => c.key)
+  )
+  const [columnSettingOpen, setColumnSettingOpen] = useState(false)
+
+  const columns = allColumns.filter(c => c.fixed || visibleColumnKeys.includes(c.key))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: 'calc(100vh - 96px)' }}>
@@ -433,6 +446,9 @@ export default function CaseManagement() {
               <Space>
                 <Button icon={<UploadOutlined />} size="small" onClick={() => setImportOpen(true)}>导入</Button>
                 <Button icon={<DownloadOutlined />} size="small" onClick={handleExport} loading={exporting}>导出</Button>
+                <Tooltip title="列设置">
+                  <Button icon={<SettingOutlined />} size="small" onClick={() => setColumnSettingOpen(true)} />
+                </Tooltip>
                 <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => { createCaseForm.resetFields(); setCreateCaseOpen(true) }}>新建用例</Button>
               </Space>
             </div>
@@ -572,6 +588,41 @@ export default function CaseManagement() {
             />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 列设置弹窗 */}
+      <Modal
+        title="列表字段设置"
+        open={columnSettingOpen}
+        onCancel={() => setColumnSettingOpen(false)}
+        footer={[
+          <Button key="reset" onClick={() => setVisibleColumnKeys(allColumns.filter(c => c.defaultVisible).map(c => c.key))}>恢复默认</Button>,
+          <Button key="ok" type="primary" onClick={() => setColumnSettingOpen(false)}>确定</Button>,
+        ]}
+        width={400}
+      >
+        <div style={{ marginTop: 12 }}>
+          <p style={{ fontSize: 12, color: '#8c919e', marginBottom: 12 }}>勾选需要显示的列（标题列始终显示）</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {allColumns.filter(c => !c.fixed).map(col => (
+              <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 8px', borderRadius: 6, background: visibleColumnKeys.includes(col.key) ? '#f0f7ff' : 'transparent' }}>
+                <input
+                  type="checkbox"
+                  checked={visibleColumnKeys.includes(col.key)}
+                  onChange={e => {
+                    if (e.target.checked) {
+                      setVisibleColumnKeys(prev => [...prev, col.key])
+                    } else {
+                      setVisibleColumnKeys(prev => prev.filter(k => k !== col.key))
+                    }
+                  }}
+                />
+                <span style={{ fontSize: 13 }}>{col.title}</span>
+                {col.defaultVisible && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e6f4ff', color: '#7c8cf8' }}>默认</Tag>}
+              </label>
+            ))}
+          </div>
+        </div>
       </Modal>
     </div>
   )
