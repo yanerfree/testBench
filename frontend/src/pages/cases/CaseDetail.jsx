@@ -216,8 +216,8 @@ export default function CaseDetail() {
               items={['api','e2e'].map(t => ({ key: t, label: t.toUpperCase() }))} />
           </InlineProp>
 
-          <ReadonlyProp icon={<AppstoreOutlined />} value={module || '-'} />
-          {subModule && <ReadonlyProp icon={<BranchesOutlined />} value={subModule} />}
+          <ReadonlyProp icon={<AppstoreOutlined />} label="模块" value={module || '-'} />
+          {subModule && <ReadonlyProp icon={<BranchesOutlined />} label="子模块" value={subModule} />}
 
           <InlineProp icon={<ThunderboltOutlined />} value={statusLabels[automationStatus] || automationStatus}
             color={statusColors[automationStatus]} bg={statusBg[automationStatus]}>
@@ -268,7 +268,17 @@ export default function CaseDetail() {
                         }}>{s.seq}</span>
                         <Input value={s.action} onChange={e => updateStep(i, e.target.value)}
                           placeholder="描述操作步骤..." variant="borderless"
-                          style={{ flex: 1, fontSize: 13 }} />
+                          style={{ flex: 1, fontSize: 13 }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && i === steps.length - 1 && s.action.trim()) {
+                              e.preventDefault()
+                              addStep()
+                              setTimeout(() => {
+                                const inputs = document.querySelectorAll('[placeholder="描述操作步骤..."]')
+                                inputs[inputs.length - 1]?.focus()
+                              }, 50)
+                            }
+                          }} />
                         <Button type="text" danger size="small" icon={<DeleteOutlined />}
                           onClick={() => removeStep(i)} disabled={steps.length <= 1}
                           style={{ flexShrink: 0, opacity: steps.length <= 1 ? 0.3 : 1 }} />

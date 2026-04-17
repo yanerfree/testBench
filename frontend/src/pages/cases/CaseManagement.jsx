@@ -205,18 +205,8 @@ export default function CaseManagement() {
     } catch { /* */ } finally { setSavingFolder(false) }
   }
 
-  // 构建模块下拉选项（扁平化 folderTree）
-  const flattenFolders = (nodes, prefix = '') => {
-    let result = []
-    for (const n of nodes) {
-      result.push({ value: n.name, label: prefix ? `${prefix} / ${n.name}` : n.name, id: n.id })
-      if (n.children?.length) {
-        result = result.concat(flattenFolders(n.children, prefix ? `${prefix} / ${n.name}` : n.name))
-      }
-    }
-    return result
-  }
-  const moduleOptions = flattenFolders(folderTree)
+  // 构建模块下拉选项（一级目录）
+  const topLevelModules = folderTree.map(n => ({ value: n.name, label: n.name, id: n.id, children: n.children || [] }))
   const parentFolderOptions = folderTree.map(n => ({ value: n.id, label: n.name }))
 
   // ---- 新建用例 ----
@@ -459,6 +449,7 @@ export default function CaseManagement() {
                   <Radio.Button value="automated">已自动化</Radio.Button>
                   <Radio.Button value="pending">待自动化</Radio.Button>
                   <Radio.Button value="script_removed">已移除</Radio.Button>
+                  <Radio.Button value="archived">已归档</Radio.Button>
                 </Radio.Group>
               </Space>
               <Space>
@@ -567,12 +558,26 @@ export default function CaseManagement() {
                 placeholder="选择模块"
                 showSearch
                 optionFilterProp="label"
-                options={moduleOptions}
+                options={topLevelModules}
+                onChange={() => createCaseForm.setFieldValue('submodule', null)}
                 notFoundContent={<span style={{ color: '#8c919e', fontSize: 12 }}>无模块，请先在左侧导航创建</span>}
               />
             </Form.Item>
-            <Form.Item name="submodule" label="子模块" style={{ flex: 1 }}>
-              <Input placeholder="如：LOGIN（可选）" />
+            <Form.Item name="submodule" label="子模块" style={{ flex: 1 }}
+              shouldUpdate={(prev, cur) => prev?.module !== cur?.module}>
+              {() => {
+                const selectedModule = createCaseForm.getFieldValue('module')
+                const parent = topLevelModules.find(m => m.value === selectedModule)
+                const subOptions = (parent?.children || []).map(c => ({ value: c.name, label: c.name }))
+                return (
+                  <Select
+                    placeholder={subOptions.length ? '选择子模块' : '无子模块'}
+                    allowClear
+                    options={subOptions}
+                    disabled={!selectedModule || subOptions.length === 0}
+                  />
+                )
+              }}
             </Form.Item>
           </div>
         </Form>
