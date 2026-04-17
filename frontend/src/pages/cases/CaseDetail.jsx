@@ -105,7 +105,6 @@ export default function CaseDetail() {
   const [steps, setSteps] = useState([{ seq: 1, action: '' }])
 
   useEffect(() => {
-  useEffect(() => {
     if (branchId) loadData()
   }, [projectId, branchId, caseId])
 
