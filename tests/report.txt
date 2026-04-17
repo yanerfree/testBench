@@ -1,7 +1,7 @@
 testBench 自动化测试报告
-生成时间: 2026-04-17 13:40:29
-总计: 207 个 | 通过: 207 | 失败: 0
-按类型: API: 124 | ATDD: 76 | UNIT: 7
+生成时间: 2026-04-17 14:34:54
+总计: 211 个 | 通过: 211 | 失败: 0
+按类型: API: 128 | ATDD: 76 | UNIT: 7
 
 序号	类型	测试模块	测试场景	步骤（断言描述）	结果
 一、Auth（25 个）
@@ -85,145 +85,149 @@ testBench 自动化测试报告
 74	API	TestGlobalLogsAPI	pagination	断言: len(data["items"]) == 2 → 断言: data["total"] >= 5 → 断言: data["page"] == 1 → 断言: data["pageSize"] == 2	PASSED
 75	API	TestProjectLogsAPI	project member can view project logs	创建项目 → 写入项目级日志 → 断言: response.status_code == 200 → 断言: data["total"] >= 1	PASSED
 76	API	TestProjectLogsAPI	unbound user cannot view project logs	断言: response.status_code == 403	PASSED
-六、Plans（6 个）
-77	API	TestPlanCRUD	create plan	断言: response.status_code == 201 → 断言: data["name"] == "冒烟测试计划" → 断言: data["planType"] == "automated" → 断言: data["status"] == "draft"	PASSED
-78	API	TestPlanCRUD	list plans	断言: response.status_code == 200 → 断言: len(data) >= 1 → 断言: data[0]["caseCount"] == 2	PASSED
-79	API	TestPlanCRUD	get plan detail	断言: response.status_code == 200 → 断言: response.json()["data"]["name"] == "详情测试"	PASSED
-80	API	TestPlanCRUD	archive plan	断言: response.status_code == 200 → 断言: response.json()["data"]["status"] == "archived"	PASSED
-81	API	TestPlanCRUD	delete draft plan	断言: response.status_code == 200	PASSED
-82	API	TestPlanCRUD	create plan without cases returns 422	断言: response.status_code == 422	PASSED
+六、Plans（10 个）
+77	API	TestManualExecution	execute creates report	When: 启动执行 → Then: 200，报告已创建 → 断言: response.status_code == 200 → 断言: data["totalScenarios"] == 3 → 断言: data["manualCount"] == 3	PASSED
+78	API	TestManualExecution	manual record and complete	启动执行 → 获取 scenarios → 断言: len(scenarios) == 3 → 断言: all(s["status"] == "pending" for s in scenarios) → 录入结果：2 passed + 1 failed → 确认完成 → 断言: complete_r.status_code == 200 → 断言: complete_r.json()["data"]["status"] == "completed" → 验证报告汇总 → 断言: report["passed"] == 2 → 断言: report["failed"] == 1 → 断言: report["passRate"] is not None	PASSED
+79	API	TestManualExecution	cannot execute non draft plan	先执行一次 → 再次执行应该失败 → 断言: response.status_code == 422	PASSED
+80	API	TestManualExecution	results before execution returns null	断言: response.status_code == 200 → 断言: response.json()["data"] is None	PASSED
+81	API	TestPlanCRUD	create plan	断言: response.status_code == 201 → 断言: data["name"] == "冒烟测试计划" → 断言: data["planType"] == "automated" → 断言: data["status"] == "draft"	PASSED
+82	API	TestPlanCRUD	list plans	断言: response.status_code == 200 → 断言: len(data) >= 1 → 断言: data[0]["caseCount"] == 2	PASSED
+83	API	TestPlanCRUD	get plan detail	断言: response.status_code == 200 → 断言: response.json()["data"]["name"] == "详情测试"	PASSED
+84	API	TestPlanCRUD	archive plan	断言: response.status_code == 200 → 断言: response.json()["data"]["status"] == "archived"	PASSED
+85	API	TestPlanCRUD	delete draft plan	断言: response.status_code == 200	PASSED
+86	API	TestPlanCRUD	create plan without cases returns 422	断言: response.status_code == 422	PASSED
 七、Projects（17 个）
-83	API	TestAddMember	add member success	Given: admin 创建了项目，另有一个普通用户 → When: 添加成员 → Then: 201 + 成员信息 → 断言: response.status_code == 201 → 断言: data["username"] == "mem_user" → 断言: data["role"] == "tester"	PASSED
-84	API	TestAddMember	add duplicate member returns 409	Given: 用户已是项目成员 → When: 重复添加 → Then: 409 → 断言: response.status_code == 409	PASSED
-85	API	TestCreateProject	create project success	Given: admin 已登录 → When: 创建项目 → Then: 返回 201 和项目信息 → 断言: response.status_code == 201 → 断言: data["name"] == "my-test-project" → 断言: data["gitUrl"] == "git@github.com:team/repo.git" → 断言: "id" in data → Then: 自动创建了默认 branch → 断言: len(branches) == 1 → 断言: branches[0].name == "default" → 断言: branches[0].branch == "main" → Then: 创建者自动加入 project_members → 断言: len(members) == 1 → 断言: members[0].user_id == admin.id → 断言: members[0].role == "project_admin"	PASSED
-86	API	TestCreateProjectDuplicate	duplicate name returns 409	Given: admin 已创建一个项目 → When: 再次创建同名项目 → Then: 返回 409 → 断言: response.status_code == 409 → 断言: response.json()["error"]["code"] == "PROJECT_NAME_EXISTS"	PASSED
-87	API	TestDeleteProject	delete project success	Given: admin 创建了项目 → When: 删除项目 → Then: 返回成功 → 断言: response.status_code == 200 → 断言: response.json()["message"] == "删除成功" → Then: branches 和 members 也被 CASCADE 删除 → 断言: len(branches) == 0 → 断言: len(members) == 0	PASSED
-88	API	TestDeleteProject	delete nonexistent returns 404	Given: admin 已登录 → When: 删除不存在的项目 → Then: 404 → 断言: response.status_code == 404	PASSED
-89	API	TestListMembers	list members includes creator	Given: admin 创建了项目（自动加入 member） → When: 查询成员列表 → Then: 包含创建者 → 断言: response.status_code == 200 → 断言: len(data) >= 1 → 断言: data[0]["username"] == "list_mem_admin" → 断言: data[0]["role"] == "project_admin"	PASSED
-90	API	TestListProjects	admin sees all projects	Given: admin 创建了两个项目 → When: admin 查询列表 → Then: 看到所有项目 → 断言: response.status_code == 200 → 断言: "proj-a" in names → 断言: "proj-b" in names	PASSED
-91	API	TestListProjects	regular user sees only bound projects	Given: admin 创建了两个项目，普通用户只绑定了一个 → 创建普通用户并绑定到第一个项目 → When: 普通用户查询列表 → Then: 只看到绑定的项目 → 断言: response.status_code == 200 → 断言: "visible-proj" in names → 断言: "invisible-proj" not in names	PASSED
-92	API	TestProjectsForbidden	regular user can create project	Given: 普通用户（create_project 已改为所有登录用户可用） → When: 创建项目 → Then: 201 成功（用户自动成为 project_admin） → 断言: response.status_code == 201	PASSED
-93	API	TestProjectsForbidden	regular user cannot delete project	Given: 普通用户 → When: 尝试删除项目 → Then: 403 → 断言: response.status_code == 403	PASSED
-94	API	TestProjectsForbidden	unauthenticated cannot list	Given: 不携带 token → When: 访问项目列表 → Then: 401 → 断言: response.status_code == 401	PASSED
-95	API	TestRemoveMember	remove member success	Given: admin 创建项目并添加了一个 tester → When: 移除成员 → Then: 200 → 断言: response.status_code == 200 → 断言: response.json()["message"] == "移除成功" → Then: 成员列表中不再包含该用户 → 断言: "rm_mem_user" not in usernames	PASSED
-96	API	TestRemoveMember	cannot remove last admin	Given: 项目只有一个 project_admin → When: 尝试移除唯一的 project_admin → Then: 422 → 断言: response.status_code == 422 → 断言: response.json()["error"]["code"] == "LAST_ADMIN"	PASSED
-97	API	TestUpdateMemberRole	update role success	Given: admin 创建项目，添加一个 tester → When: 将 tester 改为 developer → Then: 200，角色已更新 → 断言: response.status_code == 200 → 断言: response.json()["data"]["role"] == "developer"	PASSED
-98	API	TestUpdateMemberRole	cannot downgrade last admin	Given: 项目只有一个 project_admin（创建者） → When: 尝试将唯一的 project_admin 降级 → Then: 422 → 断言: response.status_code == 422 → 断言: response.json()["error"]["code"] == "LAST_ADMIN"	PASSED
-99	API	TestUpdateProject	update git url	Given: admin 创建了项目 → When: 更新 git_url → Then: 返回 200，git_url 已更新 → 断言: response.status_code == 200 → 断言: response.json()["data"]["gitUrl"] == "https://new-repo.com/r.git"	PASSED
+87	API	TestAddMember	add member success	Given: admin 创建了项目，另有一个普通用户 → When: 添加成员 → Then: 201 + 成员信息 → 断言: response.status_code == 201 → 断言: data["username"] == "mem_user" → 断言: data["role"] == "tester"	PASSED
+88	API	TestAddMember	add duplicate member returns 409	Given: 用户已是项目成员 → When: 重复添加 → Then: 409 → 断言: response.status_code == 409	PASSED
+89	API	TestCreateProject	create project success	Given: admin 已登录 → When: 创建项目 → Then: 返回 201 和项目信息 → 断言: response.status_code == 201 → 断言: data["name"] == "my-test-project" → 断言: data["gitUrl"] == "git@github.com:team/repo.git" → 断言: "id" in data → Then: 自动创建了默认 branch → 断言: len(branches) == 1 → 断言: branches[0].name == "default" → 断言: branches[0].branch == "main" → Then: 创建者自动加入 project_members → 断言: len(members) == 1 → 断言: members[0].user_id == admin.id → 断言: members[0].role == "project_admin"	PASSED
+90	API	TestCreateProjectDuplicate	duplicate name returns 409	Given: admin 已创建一个项目 → When: 再次创建同名项目 → Then: 返回 409 → 断言: response.status_code == 409 → 断言: response.json()["error"]["code"] == "PROJECT_NAME_EXISTS"	PASSED
+91	API	TestDeleteProject	delete project success	Given: admin 创建了项目 → When: 删除项目 → Then: 返回成功 → 断言: response.status_code == 200 → 断言: response.json()["message"] == "删除成功" → Then: branches 和 members 也被 CASCADE 删除 → 断言: len(branches) == 0 → 断言: len(members) == 0	PASSED
+92	API	TestDeleteProject	delete nonexistent returns 404	Given: admin 已登录 → When: 删除不存在的项目 → Then: 404 → 断言: response.status_code == 404	PASSED
+93	API	TestListMembers	list members includes creator	Given: admin 创建了项目（自动加入 member） → When: 查询成员列表 → Then: 包含创建者 → 断言: response.status_code == 200 → 断言: len(data) >= 1 → 断言: data[0]["username"] == "list_mem_admin" → 断言: data[0]["role"] == "project_admin"	PASSED
+94	API	TestListProjects	admin sees all projects	Given: admin 创建了两个项目 → When: admin 查询列表 → Then: 看到所有项目 → 断言: response.status_code == 200 → 断言: "proj-a" in names → 断言: "proj-b" in names	PASSED
+95	API	TestListProjects	regular user sees only bound projects	Given: admin 创建了两个项目，普通用户只绑定了一个 → 创建普通用户并绑定到第一个项目 → When: 普通用户查询列表 → Then: 只看到绑定的项目 → 断言: response.status_code == 200 → 断言: "visible-proj" in names → 断言: "invisible-proj" not in names	PASSED
+96	API	TestProjectsForbidden	regular user can create project	Given: 普通用户（create_project 已改为所有登录用户可用） → When: 创建项目 → Then: 201 成功（用户自动成为 project_admin） → 断言: response.status_code == 201	PASSED
+97	API	TestProjectsForbidden	regular user cannot delete project	Given: 普通用户 → When: 尝试删除项目 → Then: 403 → 断言: response.status_code == 403	PASSED
+98	API	TestProjectsForbidden	unauthenticated cannot list	Given: 不携带 token → When: 访问项目列表 → Then: 401 → 断言: response.status_code == 401	PASSED
+99	API	TestRemoveMember	remove member success	Given: admin 创建项目并添加了一个 tester → When: 移除成员 → Then: 200 → 断言: response.status_code == 200 → 断言: response.json()["message"] == "移除成功" → Then: 成员列表中不再包含该用户 → 断言: "rm_mem_user" not in usernames	PASSED
+100	API	TestRemoveMember	cannot remove last admin	Given: 项目只有一个 project_admin → When: 尝试移除唯一的 project_admin → Then: 422 → 断言: response.status_code == 422 → 断言: response.json()["error"]["code"] == "LAST_ADMIN"	PASSED
+101	API	TestUpdateMemberRole	update role success	Given: admin 创建项目，添加一个 tester → When: 将 tester 改为 developer → Then: 200，角色已更新 → 断言: response.status_code == 200 → 断言: response.json()["data"]["role"] == "developer"	PASSED
+102	API	TestUpdateMemberRole	cannot downgrade last admin	Given: 项目只有一个 project_admin（创建者） → When: 尝试将唯一的 project_admin 降级 → Then: 422 → 断言: response.status_code == 422 → 断言: response.json()["error"]["code"] == "LAST_ADMIN"	PASSED
+103	API	TestUpdateProject	update git url	Given: admin 创建了项目 → When: 更新 git_url → Then: 返回 200，git_url 已更新 → 断言: response.status_code == 200 → 断言: response.json()["data"]["gitUrl"] == "https://new-repo.com/r.git"	PASSED
 八、Rbac（6 个）
-100	API	TestProjectRoleAccess	admin bypasses project role	Given: 系统 admin（未绑定到项目也可以） → When: 访问成员列表 → Then: 200 通过 → 断言: response.status_code == 200	PASSED
-101	API	TestProjectRoleAccess	project admin can add member	Given: project_admin 用户 → When: 添加新成员 → Then: 201 成功 → 断言: response.status_code == 201	PASSED
-102	API	TestProjectRoleAccess	developer can view members	Given: developer 用户 → When: 查看成员列表（所有成员都可查看） → Then: 200 → 断言: response.status_code == 200	PASSED
-103	API	TestProjectRoleAccess	developer cannot add member	Given: developer 用户 → When: 尝试添加成员 → Then: 403 → 断言: response.status_code == 403 → 断言: response.json()["error"]["code"] == "PROJECT_ROLE_DENIED"	PASSED
-104	API	TestProjectRoleAccess	guest cannot add member	Given: guest 用户 → When: 尝试添加成员 → Then: 403 → 断言: response.status_code == 403	PASSED
-105	API	TestProjectRoleAccess	unbound user rejected	Given: 未绑定到项目的用户 → When: 尝试访问成员列表 → Then: 403 → 断言: response.status_code == 403 → 断言: response.json()["error"]["code"] == "NOT_PROJECT_MEMBER"	PASSED
+104	API	TestProjectRoleAccess	admin bypasses project role	Given: 系统 admin（未绑定到项目也可以） → When: 访问成员列表 → Then: 200 通过 → 断言: response.status_code == 200	PASSED
+105	API	TestProjectRoleAccess	project admin can add member	Given: project_admin 用户 → When: 添加新成员 → Then: 201 成功 → 断言: response.status_code == 201	PASSED
+106	API	TestProjectRoleAccess	developer can view members	Given: developer 用户 → When: 查看成员列表（所有成员都可查看） → Then: 200 → 断言: response.status_code == 200	PASSED
+107	API	TestProjectRoleAccess	developer cannot add member	Given: developer 用户 → When: 尝试添加成员 → Then: 403 → 断言: response.status_code == 403 → 断言: response.json()["error"]["code"] == "PROJECT_ROLE_DENIED"	PASSED
+108	API	TestProjectRoleAccess	guest cannot add member	Given: guest 用户 → When: 尝试添加成员 → Then: 403 → 断言: response.status_code == 403	PASSED
+109	API	TestProjectRoleAccess	unbound user rejected	Given: 未绑定到项目的用户 → When: 尝试访问成员列表 → Then: 403 → 断言: response.status_code == 403 → 断言: response.json()["error"]["code"] == "NOT_PROJECT_MEMBER"	PASSED
 九、Story 1 1 Scaffold（13 个）
-106	ATDD	TestHealthzEndpoint	healthz returns ok	When: 访问健康检查端点 → Then: 返回 200 和 status ok → 断言: response.status_code == 200 → 断言: data["status"] == "ok"	PASSED
-107	ATDD	TestDatabaseConnection	database connection	When: 执行简单查询 → Then: 返回结果 → 断言: result.scalar() == 1	PASSED
-108	ATDD	TestUsersTableSchema	users table has required columns	When: 查询 users 表列信息（通过 SQLAlchemy text） → Then: 包含所有必需字段 → 断言: expected_columns.issubset(column_names), f"缺少字段: {expected_columns - column_names}"	PASSED
-109	ATDD	TestAdminSeedData	admin seed exists	在测试库中手动创建 admin（seed 脚本只在主库运行） → 断言: found is not None → 断言: found.role == "admin" → 断言: found.is_active is True	PASSED
-110	ATDD	TestBcryptPasswordHashing	password hash is bcrypt	When: 对密码进行加密 → Then: 结果是 bcrypt 格式 ($2b$ 前缀) → 断言: hashed.startswith(("$2b$", "$2a$")), f"不是 bcrypt 格式: {hashed[:10]}"	PASSED
-111	ATDD	TestBcryptPasswordHashing	password hash cost at least 10	When: 加密密码 → Then: cost factor >= 10 (从 hash 字符串中提取) → 断言: cost >= 10, f"bcrypt cost {cost} < 10"	PASSED
-112	ATDD	TestBcryptPasswordHashing	plaintext password not in hash	断言: password not in hashed	PASSED
-113	ATDD	TestUnifiedExceptionFormat	not found error format	When: 访问不存在的项目 → Then: 404 统一格式 → 断言: response.status_code == 404 → 断言: "error" in body → 断言: "code" in body["error"] → 断言: "message" in body["error"]	PASSED
-114	ATDD	TestUnifiedExceptionFormat	forbidden error format	When: 非 admin 访问用户管理 → Then: 403 统一格式 → 断言: response.status_code == 403 → 断言: "error" in body	PASSED
-115	ATDD	TestUnifiedExceptionFormat	conflict error format	Given: 创建一个用户 → When: 重复创建同名用户 → Then: 409 统一格式 → 断言: response.status_code == 409 → 断言: "error" in body	PASSED
-116	ATDD	TestCamelCaseResponse	response uses camel case	When: 获取用户信息 → Then: 响应字段使用 camelCase → 检查是否使用了 camelCase (如 isActive 而非 is_active) → 不应该有 snake_case 的 key → 断言: "is_active" not in all_keys or "isActive" in all_keys	PASSED
-117	ATDD	TestCorsMiddleware	cors preflight response	When: 发送 OPTIONS 预检请求（Origin 需匹配 CORS 配置的 localhost:5173） → Then: CORS headers 存在 → 断言: response.status_code in (200, 204) → 断言: "access-control-allow-origin" in response.headers	PASSED
-118	ATDD	TestTraceIdMiddleware	response contains trace id	When: 发送任意请求 → Then: 响应头包含 trace_id → 断言: "x-trace-id" in response.headers or "X-Trace-Id" in response.headers	PASSED
+110	ATDD	TestHealthzEndpoint	healthz returns ok	When: 访问健康检查端点 → Then: 返回 200 和 status ok → 断言: response.status_code == 200 → 断言: data["status"] == "ok"	PASSED
+111	ATDD	TestDatabaseConnection	database connection	When: 执行简单查询 → Then: 返回结果 → 断言: result.scalar() == 1	PASSED
+112	ATDD	TestUsersTableSchema	users table has required columns	When: 查询 users 表列信息（通过 SQLAlchemy text） → Then: 包含所有必需字段 → 断言: expected_columns.issubset(column_names), f"缺少字段: {expected_columns - column_names}"	PASSED
+113	ATDD	TestAdminSeedData	admin seed exists	在测试库中手动创建 admin（seed 脚本只在主库运行） → 断言: found is not None → 断言: found.role == "admin" → 断言: found.is_active is True	PASSED
+114	ATDD	TestBcryptPasswordHashing	password hash is bcrypt	When: 对密码进行加密 → Then: 结果是 bcrypt 格式 ($2b$ 前缀) → 断言: hashed.startswith(("$2b$", "$2a$")), f"不是 bcrypt 格式: {hashed[:10]}"	PASSED
+115	ATDD	TestBcryptPasswordHashing	password hash cost at least 10	When: 加密密码 → Then: cost factor >= 10 (从 hash 字符串中提取) → 断言: cost >= 10, f"bcrypt cost {cost} < 10"	PASSED
+116	ATDD	TestBcryptPasswordHashing	plaintext password not in hash	断言: password not in hashed	PASSED
+117	ATDD	TestUnifiedExceptionFormat	not found error format	When: 访问不存在的项目 → Then: 404 统一格式 → 断言: response.status_code == 404 → 断言: "error" in body → 断言: "code" in body["error"] → 断言: "message" in body["error"]	PASSED
+118	ATDD	TestUnifiedExceptionFormat	forbidden error format	When: 非 admin 访问用户管理 → Then: 403 统一格式 → 断言: response.status_code == 403 → 断言: "error" in body	PASSED
+119	ATDD	TestUnifiedExceptionFormat	conflict error format	Given: 创建一个用户 → When: 重复创建同名用户 → Then: 409 统一格式 → 断言: response.status_code == 409 → 断言: "error" in body	PASSED
+120	ATDD	TestCamelCaseResponse	response uses camel case	When: 获取用户信息 → Then: 响应字段使用 camelCase → 检查是否使用了 camelCase (如 isActive 而非 is_active) → 不应该有 snake_case 的 key → 断言: "is_active" not in all_keys or "isActive" in all_keys	PASSED
+121	ATDD	TestCorsMiddleware	cors preflight response	When: 发送 OPTIONS 预检请求（Origin 需匹配 CORS 配置的 localhost:5173） → Then: CORS headers 存在 → 断言: response.status_code in (200, 204) → 断言: "access-control-allow-origin" in response.headers	PASSED
+122	ATDD	TestTraceIdMiddleware	response contains trace id	When: 发送任意请求 → Then: 响应头包含 trace_id → 断言: "x-trace-id" in response.headers or "X-Trace-Id" in response.headers	PASSED
 十、Story 1 2 Jwt Auth（17 个）
-119	ATDD	TestLoginSuccess	login correct credentials returns token	Given: 数据库中存在活跃用户 → When: 用正确凭据登录 → Then: 返回 200 和 token → 断言: response.status_code == 200 → 断言: "token" in data → 断言: len(data["token"]) > 0	PASSED
-120	ATDD	TestLoginSuccess	login returns user info without password	断言: response.status_code == 200 → 断言: user_data["username"] == "atdd_login2" → 断言: user_data["role"] == "admin" → 断言: "password" not in user_data	PASSED
-121	ATDD	TestLoginFailure	login wrong password returns error	断言: response.status_code == 401	PASSED
-122	ATDD	TestLoginFailure	login nonexistent user same error	When: 用不存在的用户名登录 → Then: 返回与错误密码相同的错误 → 断言: response_nonexistent.status_code == 401	PASSED
-123	ATDD	TestLoginFailure	login error does not leak field	When: 错误密码 → When: 不存在用户 → Then: 两者错误信息应相同或不区分字段 → 不应包含"用户名不存在"或"密码错误"等区分性信息 → 断言: "username" not in msg_str or "password" not in msg_str	PASSED
-124	ATDD	TestLoginInactiveUser	inactive user cannot login	断言: response.status_code in (401, 403)	PASSED
-125	ATDD	TestJwtTokenUnit	jwt token expires in 8 hours	Then: exp - iat ≈ 8 hours (28800 seconds) → 断言: 28000 <= duration <= 29000, f"Token 有效期 {duration}s，不在 8h 范围内"	PASSED
-126	ATDD	TestJwtTokenUnit	jwt valid token decodes correctly	断言: payload["sub"] == str(user_id) → 断言: payload["role"] == "admin"	PASSED
-127	ATDD	TestJwtTokenUnit	jwt expired token raises	test jwt expired token raises	PASSED
-128	ATDD	TestJwtTokenUnit	jwt invalid signature raises	test jwt invalid signature raises	PASSED
-129	ATDD	TestAuthMe	me returns current user	断言: response.status_code == 200 → 断言: data["username"] == "atdd_me" → 断言: data["role"] == "user" → 断言: "id" in data	PASSED
-130	ATDD	TestAuthUnauthorized	me without token returns 401	断言: response.status_code == 401	PASSED
-131	ATDD	TestAuthUnauthorized	me with expired token returns 401	断言: response.status_code == 401	PASSED
-132	ATDD	TestAuthUnauthorized	me with invalid token returns 401	断言: response.status_code == 401	PASSED
-133	ATDD	TestTokenSlidingRefresh	token near expiry returns new token	Given: 创建一个剩余不到 2 小时的 token → 需要 mock 或使用特殊参数创建接近过期的 token → When: 发起请求 (正常 token 不会触发续期，此处验证机制存在即可) → 断言: response.status_code == 200	PASSED
-134	ATDD	TestTokenSlidingRefresh	token far from expiry no new token	断言: response.status_code == 200 → 断言: "x-new-token" not in response.headers	PASSED
-135	ATDD	TestLogout	logout success	断言: response.status_code in (200, 204)	PASSED
+123	ATDD	TestLoginSuccess	login correct credentials returns token	Given: 数据库中存在活跃用户 → When: 用正确凭据登录 → Then: 返回 200 和 token → 断言: response.status_code == 200 → 断言: "token" in data → 断言: len(data["token"]) > 0	PASSED
+124	ATDD	TestLoginSuccess	login returns user info without password	断言: response.status_code == 200 → 断言: user_data["username"] == "atdd_login2" → 断言: user_data["role"] == "admin" → 断言: "password" not in user_data	PASSED
+125	ATDD	TestLoginFailure	login wrong password returns error	断言: response.status_code == 401	PASSED
+126	ATDD	TestLoginFailure	login nonexistent user same error	When: 用不存在的用户名登录 → Then: 返回与错误密码相同的错误 → 断言: response_nonexistent.status_code == 401	PASSED
+127	ATDD	TestLoginFailure	login error does not leak field	When: 错误密码 → When: 不存在用户 → Then: 两者错误信息应相同或不区分字段 → 不应包含"用户名不存在"或"密码错误"等区分性信息 → 断言: "username" not in msg_str or "password" not in msg_str	PASSED
+128	ATDD	TestLoginInactiveUser	inactive user cannot login	断言: response.status_code in (401, 403)	PASSED
+129	ATDD	TestJwtTokenUnit	jwt token expires in 8 hours	Then: exp - iat ≈ 8 hours (28800 seconds) → 断言: 28000 <= duration <= 29000, f"Token 有效期 {duration}s，不在 8h 范围内"	PASSED
+130	ATDD	TestJwtTokenUnit	jwt valid token decodes correctly	断言: payload["sub"] == str(user_id) → 断言: payload["role"] == "admin"	PASSED
+131	ATDD	TestJwtTokenUnit	jwt expired token raises	test jwt expired token raises	PASSED
+132	ATDD	TestJwtTokenUnit	jwt invalid signature raises	test jwt invalid signature raises	PASSED
+133	ATDD	TestAuthMe	me returns current user	断言: response.status_code == 200 → 断言: data["username"] == "atdd_me" → 断言: data["role"] == "user" → 断言: "id" in data	PASSED
+134	ATDD	TestAuthUnauthorized	me without token returns 401	断言: response.status_code == 401	PASSED
+135	ATDD	TestAuthUnauthorized	me with expired token returns 401	断言: response.status_code == 401	PASSED
+136	ATDD	TestAuthUnauthorized	me with invalid token returns 401	断言: response.status_code == 401	PASSED
+137	ATDD	TestTokenSlidingRefresh	token near expiry returns new token	Given: 创建一个剩余不到 2 小时的 token → 需要 mock 或使用特殊参数创建接近过期的 token → When: 发起请求 (正常 token 不会触发续期，此处验证机制存在即可) → 断言: response.status_code == 200	PASSED
+138	ATDD	TestTokenSlidingRefresh	token far from expiry no new token	断言: response.status_code == 200 → 断言: "x-new-token" not in response.headers	PASSED
+139	ATDD	TestLogout	logout success	断言: response.status_code in (200, 204)	PASSED
 十一、Story 1 3 User Crud（12 个）
-136	ATDD	TestCreateUser	admin creates user successfully	断言: response.status_code == 201 → 断言: data["username"] == "new_atdd_user" → 断言: data["role"] == "user" → 断言: "password" not in data	PASSED
-137	ATDD	TestCreateUser	created user password is hashed	断言: user.password != "PlainText@123" → 断言: user.password.startswith(("$2b$", "$2a$"))	PASSED
-138	ATDD	TestCreateUserDuplicate	duplicate username returns 409	Given: 创建第一个用户 → When: 用相同用户名创建 → Then: 409 → 断言: response.status_code == 409	PASSED
-139	ATDD	TestListUsers	admin lists all users	断言: response.status_code == 200 → 断言: isinstance(data, list) → 断言: len(data) >= 3	PASSED
-140	ATDD	TestUpdateUser	admin updates user role	断言: response.status_code == 200 → 断言: response.json()["data"]["role"] == "admin"	PASSED
-141	ATDD	TestUpdateUser	admin updates user active status	断言: response.status_code == 200	PASSED
-142	ATDD	TestDeleteUser	admin deletes user	断言: response.status_code in (200, 204)	PASSED
-143	ATDD	TestDeleteUserWithProjects	delete user bound to project succeeds with unbind	Given: 创建项目并添加用户为成员 → When: 删除该用户 → Then: 删除成功 → 断言: response.status_code in (200, 204)	PASSED
-144	ATDD	TestUserCrudForbidden	non admin cannot list users	断言: response.status_code == 403	PASSED
-145	ATDD	TestUserCrudForbidden	non admin cannot create user	断言: response.status_code == 403	PASSED
-146	ATDD	TestUserCrudForbidden	non admin cannot delete user	断言: response.status_code == 403	PASSED
-147	ATDD	TestUpdateUserNotFound	update nonexistent user returns 404	断言: response.status_code == 404	PASSED
+140	ATDD	TestCreateUser	admin creates user successfully	断言: response.status_code == 201 → 断言: data["username"] == "new_atdd_user" → 断言: data["role"] == "user" → 断言: "password" not in data	PASSED
+141	ATDD	TestCreateUser	created user password is hashed	断言: user.password != "PlainText@123" → 断言: user.password.startswith(("$2b$", "$2a$"))	PASSED
+142	ATDD	TestCreateUserDuplicate	duplicate username returns 409	Given: 创建第一个用户 → When: 用相同用户名创建 → Then: 409 → 断言: response.status_code == 409	PASSED
+143	ATDD	TestListUsers	admin lists all users	断言: response.status_code == 200 → 断言: isinstance(data, list) → 断言: len(data) >= 3	PASSED
+144	ATDD	TestUpdateUser	admin updates user role	断言: response.status_code == 200 → 断言: response.json()["data"]["role"] == "admin"	PASSED
+145	ATDD	TestUpdateUser	admin updates user active status	断言: response.status_code == 200	PASSED
+146	ATDD	TestDeleteUser	admin deletes user	断言: response.status_code in (200, 204)	PASSED
+147	ATDD	TestDeleteUserWithProjects	delete user bound to project succeeds with unbind	Given: 创建项目并添加用户为成员 → When: 删除该用户 → Then: 删除成功 → 断言: response.status_code in (200, 204)	PASSED
+148	ATDD	TestUserCrudForbidden	non admin cannot list users	断言: response.status_code == 403	PASSED
+149	ATDD	TestUserCrudForbidden	non admin cannot create user	断言: response.status_code == 403	PASSED
+150	ATDD	TestUserCrudForbidden	non admin cannot delete user	断言: response.status_code == 403	PASSED
+151	ATDD	TestUpdateUserNotFound	update nonexistent user returns 404	断言: response.status_code == 404	PASSED
 十二、Story 1 4 Project Crud（9 个）
-148	ATDD	TestCreateProject	admin creates project with defaults	Then: 201 成功 → 断言: response.status_code == 201 → 断言: data["name"] == "atdd-project-1" → Then: 自动创建默认 branch (name=default, branch=main) → 断言: len(branches) == 1 → 断言: branches[0].name == "default" → 断言: branches[0].branch == "main" → Then: 创建者自动加入 project_members (role=project_admin) → 断言: len(members) == 1 → 断言: members[0].user_id == admin.id → 断言: members[0].role == "project_admin"	PASSED
-149	ATDD	TestCreateProjectDuplicate	duplicate project name returns 409	断言: response.status_code == 409	PASSED
-150	ATDD	TestGitUrlValidation	ssh git url accepted	断言: response.status_code == 201	PASSED
-151	ATDD	TestGitUrlValidation	https git url accepted	断言: response.status_code == 201	PASSED
-152	ATDD	TestGitUrlValidation	invalid git url accepted after relaxation	断言: response.status_code == 201	PASSED
-153	ATDD	TestListProjects	admin sees all projects	Given: 创建 2 个项目 → 断言: response.status_code == 200 → 断言: len(data) >= 2	PASSED
-154	ATDD	TestListProjects	non admin sees only bound projects	Given: admin 创建项目 (user 未绑定) → When: 非 admin 查看列表 → 断言: response.status_code == 200 → Then: 不包含未绑定的项目 → 断言: "not-bound-project" not in project_names	PASSED
-155	ATDD	TestUpdateProject	update project info	断言: response.status_code == 200	PASSED
-156	ATDD	TestProjectCrudForbidden	non admin can create project	断言: response.status_code == 201	PASSED
+152	ATDD	TestCreateProject	admin creates project with defaults	Then: 201 成功 → 断言: response.status_code == 201 → 断言: data["name"] == "atdd-project-1" → Then: 自动创建默认 branch (name=default, branch=main) → 断言: len(branches) == 1 → 断言: branches[0].name == "default" → 断言: branches[0].branch == "main" → Then: 创建者自动加入 project_members (role=project_admin) → 断言: len(members) == 1 → 断言: members[0].user_id == admin.id → 断言: members[0].role == "project_admin"	PASSED
+153	ATDD	TestCreateProjectDuplicate	duplicate project name returns 409	断言: response.status_code == 409	PASSED
+154	ATDD	TestGitUrlValidation	ssh git url accepted	断言: response.status_code == 201	PASSED
+155	ATDD	TestGitUrlValidation	https git url accepted	断言: response.status_code == 201	PASSED
+156	ATDD	TestGitUrlValidation	invalid git url accepted after relaxation	断言: response.status_code == 201	PASSED
+157	ATDD	TestListProjects	admin sees all projects	Given: 创建 2 个项目 → 断言: response.status_code == 200 → 断言: len(data) >= 2	PASSED
+158	ATDD	TestListProjects	non admin sees only bound projects	Given: admin 创建项目 (user 未绑定) → When: 非 admin 查看列表 → 断言: response.status_code == 200 → Then: 不包含未绑定的项目 → 断言: "not-bound-project" not in project_names	PASSED
+159	ATDD	TestUpdateProject	update project info	断言: response.status_code == 200	PASSED
+160	ATDD	TestProjectCrudForbidden	non admin can create project	断言: response.status_code == 201	PASSED
 十三、Story 1 5 Project Members（9 个）
-157	ATDD	TestAddMember	add member to project	断言: response.status_code in (200, 201)	PASSED
-158	ATDD	TestAddMember	added member can see project	Given: 添加用户为成员 → When: 用户查看项目列表 → 断言: response.status_code == 200 → 断言: f"mem-proj-see_proj_admin" in project_names	PASSED
-159	ATDD	TestDuplicateMember	duplicate member returns 409	Given: 第一次绑定 → When: 重复绑定 → 断言: response.status_code == 409	PASSED
-160	ATDD	TestUpdateMemberRole	update member role	断言: response.status_code == 200	PASSED
-161	ATDD	TestRemoveMember	remove member from project	Given: 添加成员 → When: 移除成员 → 断言: response.status_code in (200, 204) → Then: 用户不再能看到该项目 → 断言: f"mem-proj-rm_mem_admin" not in project_names	PASSED
-162	ATDD	TestLastAdminProtection	cannot remove last project admin	When: 尝试移除唯一的 project_admin (创建者) → Then: 422 "项目至少需要一个管理员" → 断言: response.status_code == 422	PASSED
-163	ATDD	TestMemberManagementForbidden	non admin cannot add member	Given: 添加 tester 为普通成员 → When: tester 尝试添加新成员 → 断言: response.status_code == 403	PASSED
-164	ATDD	TestMemberManagementForbidden	non admin cannot remove member	添加两个成员 → When: tester 尝试移除 target → 断言: response.status_code == 403	PASSED
-165	ATDD	TestListMembers	list project members	断言: response.status_code == 200 → 断言: len(data) >= 2	PASSED
+161	ATDD	TestAddMember	add member to project	断言: response.status_code in (200, 201)	PASSED
+162	ATDD	TestAddMember	added member can see project	Given: 添加用户为成员 → When: 用户查看项目列表 → 断言: response.status_code == 200 → 断言: f"mem-proj-see_proj_admin" in project_names	PASSED
+163	ATDD	TestDuplicateMember	duplicate member returns 409	Given: 第一次绑定 → When: 重复绑定 → 断言: response.status_code == 409	PASSED
+164	ATDD	TestUpdateMemberRole	update member role	断言: response.status_code == 200	PASSED
+165	ATDD	TestRemoveMember	remove member from project	Given: 添加成员 → When: 移除成员 → 断言: response.status_code in (200, 204) → Then: 用户不再能看到该项目 → 断言: f"mem-proj-rm_mem_admin" not in project_names	PASSED
+166	ATDD	TestLastAdminProtection	cannot remove last project admin	When: 尝试移除唯一的 project_admin (创建者) → Then: 422 "项目至少需要一个管理员" → 断言: response.status_code == 422	PASSED
+167	ATDD	TestMemberManagementForbidden	non admin cannot add member	Given: 添加 tester 为普通成员 → When: tester 尝试添加新成员 → 断言: response.status_code == 403	PASSED
+168	ATDD	TestMemberManagementForbidden	non admin cannot remove member	添加两个成员 → When: tester 尝试移除 target → 断言: response.status_code == 403	PASSED
+169	ATDD	TestListMembers	list project members	断言: response.status_code == 200 → 断言: len(data) >= 2	PASSED
 十四、Story 1 6 Rbac（16 个）
-166	ATDD	TestAdminAccessAll	admin can access any project	When: admin 访问项目成员列表 → Then: 成功 → 断言: response.status_code == 200	PASSED
-167	ATDD	TestAdminAccessAll	admin sees all projects in list	断言: response.status_code == 200 → 断言: "rbac-test-project" in names	PASSED
-168	ATDD	TestUnboundUserDenied	unbound user cannot access project	断言: response.status_code == 403	PASSED
-169	ATDD	TestProjectAdminPermissions	project admin can manage members	When: project_admin 添加成员 → 断言: response.status_code in (200, 201)	PASSED
-170	ATDD	TestProjectAdminPermissions	project admin cannot update project	断言: response.status_code == 403	PASSED
-171	ATDD	TestDeveloperTesterPermissions	developer cannot modify project config	断言: response.status_code == 403	PASSED
-172	ATDD	TestDeveloperTesterPermissions	tester cannot modify project config	断言: response.status_code == 403	PASSED
-173	ATDD	TestDeveloperTesterPermissions	developer cannot manage members	断言: response.status_code == 403	PASSED
-174	ATDD	TestDeveloperTesterPermissions	developer can read project data	断言: response.status_code == 200	PASSED
-175	ATDD	TestGuestPermissions	guest cannot modify project	断言: response.status_code == 403	PASSED
-176	ATDD	TestGuestPermissions	guest cannot add member	断言: response.status_code == 403	PASSED
-177	ATDD	TestGuestPermissions	guest can read project data	断言: response.status_code == 200	PASSED
-178	ATDD	TestRoleDecorators	require role blocks non admin	用户管理需要 admin 角色 → 断言: response.status_code == 403	PASSED
-179	ATDD	TestRoleDecorators	require role allows admin	断言: response.status_code == 200	PASSED
-180	ATDD	TestRoleDecorators	require project role blocks unbound	断言: response.status_code == 403	PASSED
-181	ATDD	TestRoleDecorators	require project role allows member	断言: response.status_code == 200	PASSED
+170	ATDD	TestAdminAccessAll	admin can access any project	When: admin 访问项目成员列表 → Then: 成功 → 断言: response.status_code == 200	PASSED
+171	ATDD	TestAdminAccessAll	admin sees all projects in list	断言: response.status_code == 200 → 断言: "rbac-test-project" in names	PASSED
+172	ATDD	TestUnboundUserDenied	unbound user cannot access project	断言: response.status_code == 403	PASSED
+173	ATDD	TestProjectAdminPermissions	project admin can manage members	When: project_admin 添加成员 → 断言: response.status_code in (200, 201)	PASSED
+174	ATDD	TestProjectAdminPermissions	project admin cannot update project	断言: response.status_code == 403	PASSED
+175	ATDD	TestDeveloperTesterPermissions	developer cannot modify project config	断言: response.status_code == 403	PASSED
+176	ATDD	TestDeveloperTesterPermissions	tester cannot modify project config	断言: response.status_code == 403	PASSED
+177	ATDD	TestDeveloperTesterPermissions	developer cannot manage members	断言: response.status_code == 403	PASSED
+178	ATDD	TestDeveloperTesterPermissions	developer can read project data	断言: response.status_code == 200	PASSED
+179	ATDD	TestGuestPermissions	guest cannot modify project	断言: response.status_code == 403	PASSED
+180	ATDD	TestGuestPermissions	guest cannot add member	断言: response.status_code == 403	PASSED
+181	ATDD	TestGuestPermissions	guest can read project data	断言: response.status_code == 200	PASSED
+182	ATDD	TestRoleDecorators	require role blocks non admin	用户管理需要 admin 角色 → 断言: response.status_code == 403	PASSED
+183	ATDD	TestRoleDecorators	require role allows admin	断言: response.status_code == 200	PASSED
+184	ATDD	TestRoleDecorators	require project role blocks unbound	断言: response.status_code == 403	PASSED
+185	ATDD	TestRoleDecorators	require project role allows member	断言: response.status_code == 200	PASSED
 十五、Users（12 个）
-182	API	TestCreateUser	create user success	Given: admin 已登录 → When: 创建新用户 → Then: 返回 201 和用户信息 → 断言: response.status_code == 201 → 断言: data["username"] == "new_user_1" → 断言: data["role"] == "user" → 断言: data["isActive"] is True → 断言: "id" in data → 断言: "password" not in data	PASSED
-183	API	TestCreateUser	create admin user	Given: admin 已登录 → When: 创建 admin 角色用户 → Then: 返回 201，role 为 admin → 断言: response.status_code == 201 → 断言: response.json()["data"]["role"] == "admin"	PASSED
-184	API	TestCreateUserDuplicate	duplicate username returns 409	Given: 数据库中已存在同名用户 → When: 再次创建同名用户 → Then: 返回 409 → 断言: response.status_code == 409 → 断言: error["code"] == "USERNAME_EXISTS"	PASSED
-185	API	TestDeleteUser	delete user success	Given: admin 和一个待删除的用户 → When: 删除该用户 → Then: 返回 200 和成功消息 → 断言: response.status_code == 200 → 断言: response.json()["message"] == "删除成功"	PASSED
-186	API	TestDeleteUser	delete nonexistent user returns 404	Given: admin 已登录，目标 ID 不存在 → When: 删除不存在的用户 → Then: 返回 404 → 断言: response.status_code == 404	PASSED
-187	API	TestListUsers	admin can list users	Given: 数据库中有两个用户 → When: admin 请求用户列表 → Then: 返回 200 和用户数组 → 断言: response.status_code == 200 → 断言: isinstance(data, list) → 断言: len(data) >= 2 → 断言: "list_admin" in usernames → 断言: "list_user" in usernames → 密码不泄露 → 断言: "password" not in u	PASSED
-188	API	TestUpdateUser	update role	Given: admin 和一个普通用户 → When: 将用户角色改为 admin → Then: 返回 200，role 已更新 → 断言: response.status_code == 200 → 断言: response.json()["data"]["role"] == "admin"	PASSED
-189	API	TestUpdateUser	update is active	Given: admin 和一个活跃用户 → When: 禁用该用户 → Then: 返回 200，is_active 为 false → 断言: response.status_code == 200 → 断言: response.json()["data"]["isActive"] is False	PASSED
-190	API	TestUpdateUserNotFound	update nonexistent user returns 404	Given: admin 已登录，目标用户 ID 不存在 → When: 尝试更新不存在的用户 → Then: 返回 404 → 断言: response.status_code == 404 → 断言: response.json()["error"]["code"] == "USER_NOT_FOUND"	PASSED
-191	API	TestUsersForbidden	regular user cannot list users	Given: 一个普通 user 角色的用户 → When: 尝试访问用户列表 → Then: 返回 403 → 断言: response.status_code == 403 → 断言: response.json()["error"]["code"] == "ROLE_DENIED"	PASSED
-192	API	TestUsersForbidden	regular user cannot create user	Given: 普通用户 → When: 尝试创建用户 → Then: 返回 403 → 断言: response.status_code == 403	PASSED
-193	API	TestUsersForbidden	unauthenticated returns 401	Given: 不携带 token → When: 访问用户列表 → Then: 返回 401 → 断言: response.status_code == 401	PASSED
+186	API	TestCreateUser	create user success	Given: admin 已登录 → When: 创建新用户 → Then: 返回 201 和用户信息 → 断言: response.status_code == 201 → 断言: data["username"] == "new_user_1" → 断言: data["role"] == "user" → 断言: data["isActive"] is True → 断言: "id" in data → 断言: "password" not in data	PASSED
+187	API	TestCreateUser	create admin user	Given: admin 已登录 → When: 创建 admin 角色用户 → Then: 返回 201，role 为 admin → 断言: response.status_code == 201 → 断言: response.json()["data"]["role"] == "admin"	PASSED
+188	API	TestCreateUserDuplicate	duplicate username returns 409	Given: 数据库中已存在同名用户 → When: 再次创建同名用户 → Then: 返回 409 → 断言: response.status_code == 409 → 断言: error["code"] == "USERNAME_EXISTS"	PASSED
+189	API	TestDeleteUser	delete user success	Given: admin 和一个待删除的用户 → When: 删除该用户 → Then: 返回 200 和成功消息 → 断言: response.status_code == 200 → 断言: response.json()["message"] == "删除成功"	PASSED
+190	API	TestDeleteUser	delete nonexistent user returns 404	Given: admin 已登录，目标 ID 不存在 → When: 删除不存在的用户 → Then: 返回 404 → 断言: response.status_code == 404	PASSED
+191	API	TestListUsers	admin can list users	Given: 数据库中有两个用户 → When: admin 请求用户列表 → Then: 返回 200 和用户数组 → 断言: response.status_code == 200 → 断言: isinstance(data, list) → 断言: len(data) >= 2 → 断言: "list_admin" in usernames → 断言: "list_user" in usernames → 密码不泄露 → 断言: "password" not in u	PASSED
+192	API	TestUpdateUser	update role	Given: admin 和一个普通用户 → When: 将用户角色改为 admin → Then: 返回 200，role 已更新 → 断言: response.status_code == 200 → 断言: response.json()["data"]["role"] == "admin"	PASSED
+193	API	TestUpdateUser	update is active	Given: admin 和一个活跃用户 → When: 禁用该用户 → Then: 返回 200，is_active 为 false → 断言: response.status_code == 200 → 断言: response.json()["data"]["isActive"] is False	PASSED
+194	API	TestUpdateUserNotFound	update nonexistent user returns 404	Given: admin 已登录，目标用户 ID 不存在 → When: 尝试更新不存在的用户 → Then: 返回 404 → 断言: response.status_code == 404 → 断言: response.json()["error"]["code"] == "USER_NOT_FOUND"	PASSED
+195	API	TestUsersForbidden	regular user cannot list users	Given: 一个普通 user 角色的用户 → When: 尝试访问用户列表 → Then: 返回 403 → 断言: response.status_code == 403 → 断言: response.json()["error"]["code"] == "ROLE_DENIED"	PASSED
+196	API	TestUsersForbidden	regular user cannot create user	Given: 普通用户 → When: 尝试创建用户 → Then: 返回 403 → 断言: response.status_code == 403	PASSED
+197	API	TestUsersForbidden	unauthenticated returns 401	Given: 不携带 token → When: 访问用户列表 → Then: 返回 401 → 断言: response.status_code == 401	PASSED
 十六、Variables（14 个）
-194	API	TestNotificationChannels	create and list	断言: r.status_code == 201 → 断言: r.json()["data"]["name"] == "测试群" → 断言: any(c["name"] == "测试群" for c in r2.json()["data"])	PASSED
-195	API	TestNotificationChannels	update channel	断言: r2.status_code == 200 → 断言: r2.json()["data"]["name"] == "新名"	PASSED
-196	API	TestNotificationChannels	delete channel	断言: r2.status_code == 200	PASSED
-197	API	TestNotificationChannels	duplicate name returns 409	断言: r.status_code == 409	PASSED
-198	API	TestEnvironments	create and list env	断言: r.status_code == 201 → 断言: r.json()["data"]["name"] == "staging" → 断言: any(e["name"] == "staging" for e in r2.json()["data"])	PASSED
-199	API	TestEnvironments	put and list env variables	批量写入变量 → 断言: r2.status_code == 200 → 断言: len(r2.json()["data"]) == 2 → 查询 → 断言: "DB_HOST" in keys → 断言: "DB_PORT" in keys	PASSED
-200	API	TestEnvironments	merged variables	创建全局变量 → 创建环境 + 环境变量（覆盖 SHARED） → 合并预览 → 断言: merged["TIMEOUT"]["source"] == "global" → 断言: merged["SHARED"]["source"] == "environment" → 断言: merged["SHARED"]["value"] == "env_val" → 断言: merged["ENV_ONLY"]["source"] == "environment"	PASSED
-201	API	TestEnvironments	clone environment	克隆 → 断言: r2.status_code == 201 → 验证变量已复制 → 断言: any(v["key"] == "KEY_A" for v in r3.json()["data"])	PASSED
-202	API	TestEnvironments	duplicate env name returns 409	断言: r.status_code == 409	PASSED
-203	API	TestGlobalVariables	create and list	创建 → 断言: r.status_code == 201 → 断言: r.json()["data"]["key"] == "API_TIMEOUT" → 列表 → 断言: r2.status_code == 200 → 断言: "API_TIMEOUT" in keys	PASSED
-204	API	TestGlobalVariables	update variable	断言: r2.status_code == 200 → 断言: r2.json()["data"]["value"] == "new"	PASSED
-205	API	TestGlobalVariables	delete variable	断言: r2.status_code == 200	PASSED
-206	API	TestGlobalVariables	duplicate key returns 409	断言: r.status_code == 409	PASSED
-207	API	TestGlobalVariables	reserved key returns 422	断言: r.status_code == 422 → 断言: r.json()["error"]["code"] == "RESERVED_KEY"	PASSED
+198	API	TestNotificationChannels	create and list	断言: r.status_code == 201 → 断言: r.json()["data"]["name"] == "测试群" → 断言: any(c["name"] == "测试群" for c in r2.json()["data"])	PASSED
+199	API	TestNotificationChannels	update channel	断言: r2.status_code == 200 → 断言: r2.json()["data"]["name"] == "新名"	PASSED
+200	API	TestNotificationChannels	delete channel	断言: r2.status_code == 200	PASSED
+201	API	TestNotificationChannels	duplicate name returns 409	断言: r.status_code == 409	PASSED
+202	API	TestEnvironments	create and list env	断言: r.status_code == 201 → 断言: r.json()["data"]["name"] == "staging" → 断言: any(e["name"] == "staging" for e in r2.json()["data"])	PASSED
+203	API	TestEnvironments	put and list env variables	批量写入变量 → 断言: r2.status_code == 200 → 断言: len(r2.json()["data"]) == 2 → 查询 → 断言: "DB_HOST" in keys → 断言: "DB_PORT" in keys	PASSED
+204	API	TestEnvironments	merged variables	创建全局变量 → 创建环境 + 环境变量（覆盖 SHARED） → 合并预览 → 断言: merged["TIMEOUT"]["source"] == "global" → 断言: merged["SHARED"]["source"] == "environment" → 断言: merged["SHARED"]["value"] == "env_val" → 断言: merged["ENV_ONLY"]["source"] == "environment"	PASSED
+205	API	TestEnvironments	clone environment	克隆 → 断言: r2.status_code == 201 → 验证变量已复制 → 断言: any(v["key"] == "KEY_A" for v in r3.json()["data"])	PASSED
+206	API	TestEnvironments	duplicate env name returns 409	断言: r.status_code == 409	PASSED
+207	API	TestGlobalVariables	create and list	创建 → 断言: r.status_code == 201 → 断言: r.json()["data"]["key"] == "API_TIMEOUT" → 列表 → 断言: r2.status_code == 200 → 断言: "API_TIMEOUT" in keys	PASSED
+208	API	TestGlobalVariables	update variable	断言: r2.status_code == 200 → 断言: r2.json()["data"]["value"] == "new"	PASSED
+209	API	TestGlobalVariables	delete variable	断言: r2.status_code == 200	PASSED
+210	API	TestGlobalVariables	duplicate key returns 409	断言: r.status_code == 409	PASSED
+211	API	TestGlobalVariables	reserved key returns 422	断言: r.status_code == 422 → 断言: r.json()["error"]["code"] == "RESERVED_KEY"	PASSED
