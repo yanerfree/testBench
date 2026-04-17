@@ -41,7 +41,6 @@ class TestReportScenario(Base):
     case_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     scenario_name: Mapped[str] = mapped_column(String(200), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", server_default="pending")
-    # pending / passed / failed / error / skipped
     execution_type: Mapped[str] = mapped_column(String(20), nullable=False)  # automated / manual
     duration_ms: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     error_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -51,19 +50,20 @@ class TestReportScenario(Base):
 
 
 class TestReportStep(Base):
+    """步骤级执行详情（L3/L4 下钻数据）"""
     __tablename__ = "test_report_steps"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=func.gen_random_uuid())
     scenario_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("test_report_scenarios.id", ondelete="CASCADE"), nullable=False)
-    step_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    step_name: Mapped[str] = mapped_column(String(200), nullable=False)
     http_method: Mapped[str | None] = mapped_column(String(10), nullable=True)
     url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
     status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
     duration_ms: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     request_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     response_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    assertions: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    assertions: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     error_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

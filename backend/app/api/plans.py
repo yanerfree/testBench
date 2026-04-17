@@ -12,7 +12,7 @@ from app.deps.db import get_db
 from app.models.user import User
 from app.schemas.common import BaseSchema, MessageResponse
 from app.schemas.plan import CreatePlanRequest, PlanListItem, PlanResponse
-from app.services import execution_service, plan_service, report_service
+from app.services import execution_service, export_service, plan_service, report_service
 
 router = APIRouter(prefix="/api/projects/{project_id}/plans", tags=["plans"])
 
@@ -242,3 +242,61 @@ async def get_report_dashboard(
     if data is None:
         return {"data": None}
     return {"data": data}
+
+
+@router.get("/{plan_id}/export/excel")
+async def export_excel(
+    project_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """导出 Excel 报告"""
+    from fastapi.responses import StreamingResponse
+    output = await export_service.export_excel(session, plan_id)
+    if output is None:
+        from app.core.exceptions import NotFoundError
+        raise NotFoundError(code="NO_REPORT", message="报告不存在")
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=report-{plan_id}.xlsx"},
+    )
+
+
+@router.get("/{plan_id}/scenarios/{scenario_id}/steps")
+async def get_scenario_steps(
+    project_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """获取场景的步骤列表（L3 下钻）"""
+    from sqlalchemy import select
+    from app.models.report import TestReportStep
+    result = await session.execute(
+        select(TestReportStep)
+        .where(TestReportStep.scenario_id == scenario_id)
+        .order_by(TestReportStep.sort_order)
+    )
+    steps = result.scalars().all()
+    return {
+        "data": [
+            {
+                "id": str(s.id),
+                "stepName": s.step_name,
+                "httpMethod": s.http_method,
+                "url": s.url,
+                "status": s.status,
+                "statusCode": s.status_code,
+                "durationMs": s.duration_ms,
+                "sortOrder": s.sort_order,
+                "errorSummary": s.error_summary,
+                "requestData": s.request_data,
+                "responseData": s.response_data,
+                "assertions": s.assertions,
+            }
+            for s in steps
+        ]
+    }
