@@ -354,7 +354,25 @@ export default function CaseManagement() {
   )
   const [columnSettingOpen, setColumnSettingOpen] = useState(false)
 
-  const columns = allColumns.filter(c => c.fixed || visibleColumnKeys.includes(c.key))
+  const columns = [
+    ...allColumns.filter(c => c.fixed || visibleColumnKeys.includes(c.key)),
+    {
+      title: (
+        <Tooltip title="列设置">
+          <SettingOutlined
+            onClick={() => setColumnSettingOpen(true)}
+            style={{ color: '#bfc4cd', cursor: 'pointer', fontSize: 14 }}
+            onMouseEnter={e => e.target.style.color = '#6b7ef5'}
+            onMouseLeave={e => e.target.style.color = '#bfc4cd'}
+          />
+        </Tooltip>
+      ),
+      key: '_settings',
+      width: 40,
+      align: 'center',
+      render: () => null,
+    },
+  ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: 'calc(100vh - 96px)' }}>
@@ -446,9 +464,6 @@ export default function CaseManagement() {
               <Space>
                 <Button icon={<UploadOutlined />} size="small" onClick={() => setImportOpen(true)}>导入</Button>
                 <Button icon={<DownloadOutlined />} size="small" onClick={handleExport} loading={exporting}>导出</Button>
-                <Tooltip title="列设置">
-                  <Button icon={<SettingOutlined />} size="small" onClick={() => setColumnSettingOpen(true)} />
-                </Tooltip>
                 <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => { createCaseForm.resetFields(); setCreateCaseOpen(true) }}>新建用例</Button>
               </Space>
             </div>
