@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-15
-last_updated: 2026-04-16
+last_updated: 2026-04-17
 project: testBench
 project_key: NOKEY
 tracking_system: file-system
@@ -53,27 +53,27 @@ development_status:
   epic-1-retrospective: done
 
   # Epic 2: 分支与用例管理
-  epic-2: backlog
-  2-1-branch-config-crud: backlog
-  2-2-git-service-and-script-sync: backlog
-  2-3-case-import-tea-cases-json: backlog
-  2-4-case-manual-crud-and-detail: backlog
-  2-5-case-folder-tree-navigation: backlog
-  2-6-case-list-filter-pagination: backlog
-  2-7-case-batch-operations: backlog
-  2-8-case-archive-delete-flaky-cross-branch-copy: backlog
+  epic-2: done
+  2-1-branch-config-crud: done
+  2-2-git-service-and-script-sync: done
+  2-3-case-import-tea-cases-json: done
+  2-4-case-manual-crud-and-detail: done
+  2-5-case-folder-tree-navigation: done
+  2-6-case-list-filter-pagination: done
+  2-7-case-batch-operations: done
+  2-8-case-archive-delete-flaky-cross-branch-copy: done
   epic-2-retrospective: optional
 
   # Epic 3: 变量与环境配置
-  epic-3: backlog
-  3-1-global-variables-crud: backlog
-  3-2-environment-and-env-variables-crud: backlog
-  3-3-notification-channel-crud: backlog
+  epic-3: done
+  3-1-global-variables-crud: done
+  3-2-environment-and-env-variables-crud: done
+  3-3-notification-channel-crud: done
   epic-3-retrospective: optional
 
   # Epic 4: 测试计划与执行引擎
-  epic-4: backlog
-  4-1-test-plan-crud: backlog
+  epic-4: in-progress
+  4-1-test-plan-crud: done
   4-2-execution-engine-sandbox-and-pytest: backlog
   4-3-automated-plan-execution-flow: backlog
   4-4-manual-plan-execution: backlog
@@ -91,7 +91,7 @@ development_status:
   epic-5-retrospective: optional
 
   # Epic 6: 审计与运维
-  epic-6: backlog
-  6-1-audit-log-recording-and-query: backlog
-  6-2-health-check-endpoints: backlog
+  epic-6: done
+  6-1-audit-log-recording-and-query: done
+  6-2-health-check-endpoints: done
   epic-6-retrospective: optional

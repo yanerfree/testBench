@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react'
-import { Table, Tag, Input, Select, DatePicker, Space } from 'antd'
+import { useState, useEffect, useCallback } from 'react'
+import { Table, Tag, Input, Select, DatePicker, Space, message } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
+import { api } from '../../utils/request'
 
 const { RangePicker } = DatePicker
 
@@ -12,102 +13,89 @@ const ACTION_CONFIG = {
   import: { label: '导入', color: '#7ec2f7', bg: '#eef6fe' },
   archive: { label: '归档', color: '#bfc4cd', bg: '#f5f5f7' },
   login: { label: '登录', color: '#b89aed', bg: '#f5f0fe' },
+  sync: { label: '同步', color: '#7ec2f7', bg: '#eef6fe' },
 }
 
-const TARGET_TYPES = ['用例', '计划', '项目', '环境', '用户', '分支配置', '通知渠道']
-
-const mockLogs = (() => {
-  const operators = ['admin', 'zhangsan', 'lisi', 'wangwu', 'zhaoliu']
-  const actions = Object.keys(ACTION_CONFIG)
-  const targets = [
-    { type: '用例', name: 'TC-AUTH-00001 登录-密码错误锁定' },
-    { type: '用例', name: 'TC-API-00015 创建API-重名校验' },
-    { type: '计划', name: 'API审批流程回归-Sprint 12' },
-    { type: '计划', name: '用户认证模块冒烟测试' },
-    { type: '项目', name: 'API网关管理系统' },
-    { type: '项目', name: '用户中心服务' },
-    { type: '环境', name: 'staging' },
-    { type: '环境', name: 'production' },
-    { type: '用户', name: 'zhangsan' },
-    { type: '用户', name: 'lisi' },
-    { type: '分支配置', name: 'default (main)' },
-    { type: '通知渠道', name: '测试团队群' },
-  ]
-  const logs = []
-  const baseTime = new Date('2026-04-15T10:00:00')
-  for (let i = 0; i < 50; i++) {
-    const target = targets[Math.floor(Math.random() * targets.length)]
-    const action = actions[Math.floor(Math.random() * actions.length)]
-    const time = new Date(baseTime.getTime() - i * 1000 * 60 * (5 + Math.floor(Math.random() * 30)))
-    logs.push({
-      id: `log-${String(i + 1).padStart(3, '0')}`,
-      operator: operators[Math.floor(Math.random() * operators.length)],
-      action,
-      targetType: target.type,
-      targetName: target.name,
-      createdAt: time.toISOString().replace('T', ' ').substring(0, 19),
-      summary: getSummary(action, target),
-    })
-  }
-  return logs
-})()
-
-function getSummary(action, target) {
-  const map = {
-    create: `创建了${target.type}「${target.name}」`,
-    update: `修改了${target.type}「${target.name}」的配置`,
-    delete: `删除了${target.type}「${target.name}」`,
-    execute: `执行了${target.type}「${target.name}」`,
-    import: `导入了${target.type}「${target.name}」`,
-    archive: `归档了${target.type}「${target.name}」`,
-    login: `用户登录系统`,
-  }
-  return map[action] || `操作了${target.type}「${target.name}」`
+const TARGET_TYPES = ['user', 'project', 'branch', 'case', 'plan', 'environment', 'channel']
+const TARGET_TYPE_LABELS = {
+  user: '用户', project: '项目', branch: '分支配置', case: '用例',
+  plan: '计划', environment: '环境', channel: '通知渠道',
 }
 
 export default function AuditLogs() {
+  const [logs, setLogs] = useState([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(15)
   const [keyword, setKeyword] = useState('')
   const [actionFilter, setActionFilter] = useState(null)
   const [targetFilter, setTargetFilter] = useState(null)
+  const [dateRange, setDateRange] = useState(null)
 
-  const filteredLogs = useMemo(() => {
-    let result = mockLogs
-    if (keyword) {
-      const kw = keyword.toLowerCase()
-      result = result.filter(l =>
-        l.operator.toLowerCase().includes(kw) ||
-        l.targetName.toLowerCase().includes(kw) ||
-        l.summary.toLowerCase().includes(kw)
-      )
+  const fetchLogs = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      params.append('page', page)
+      params.append('pageSize', pageSize)
+      if (keyword) params.append('keyword', keyword)
+      if (actionFilter) params.append('action', actionFilter)
+      if (targetFilter) params.append('targetType', targetFilter)
+      if (dateRange?.[0]) params.append('startTime', dateRange[0].toISOString())
+      if (dateRange?.[1]) params.append('endTime', dateRange[1].toISOString())
+
+      const res = await api.get(`/logs?${params.toString()}`)
+      const data = res.data
+      setLogs(data.items || [])
+      setTotal(data.total || 0)
+    } catch (err) {
+      // 非 admin 会收到 403，静默处理
+      if (err?.response?.status !== 403) {
+        message.error('加载日志失败')
+      }
+      setLogs([])
+      setTotal(0)
+    } finally {
+      setLoading(false)
     }
-    if (actionFilter) result = result.filter(l => l.action === actionFilter)
-    if (targetFilter) result = result.filter(l => l.targetType === targetFilter)
-    return result
-  }, [keyword, actionFilter, targetFilter])
+  }, [page, pageSize, keyword, actionFilter, targetFilter, dateRange])
+
+  useEffect(() => { fetchLogs() }, [fetchLogs])
 
   const columns = [
     {
       title: '时间', dataIndex: 'createdAt', width: 170,
-      render: v => <span style={{ fontSize: 13, color: '#8c919e', fontFamily: 'monospace' }}>{v}</span>,
+      render: v => <span style={{ fontSize: 13, color: '#8c919e', fontFamily: 'monospace' }}>
+        {v ? new Date(v).toLocaleString('zh-CN', { hour12: false }) : '-'}
+      </span>,
     },
     {
-      title: '操作人', dataIndex: 'operator', width: 100,
-      render: v => <span style={{ fontWeight: 500 }}>{v}</span>,
+      title: '操作人', dataIndex: 'username', width: 100,
+      render: v => <span style={{ fontWeight: 500 }}>{v || '-'}</span>,
     },
     {
       title: '操作', dataIndex: 'action', width: 80, align: 'center',
       render: v => {
-        const cfg = ACTION_CONFIG[v]
+        const cfg = ACTION_CONFIG[v] || { label: v, color: '#86909c', bg: '#f5f5f7' }
         return <Tag style={{ color: cfg.color, background: cfg.bg, border: 'none' }}>{cfg.label}</Tag>
       },
     },
     {
       title: '对象类型', dataIndex: 'targetType', width: 90, align: 'center',
-      render: v => <Tag style={{ color: '#555a65', background: '#f5f5f7', border: 'none' }}>{v}</Tag>,
+      render: v => <Tag style={{ color: '#555a65', background: '#f5f5f7', border: 'none' }}>
+        {TARGET_TYPE_LABELS[v] || v}
+      </Tag>,
     },
     {
-      title: '操作详情', dataIndex: 'summary',
-      render: v => <span style={{ fontSize: 13, color: '#555a65' }}>{v}</span>,
+      title: '对象名称', dataIndex: 'targetName', width: 200,
+      render: v => <span style={{ fontSize: 13, color: '#555a65' }}>{v || '-'}</span>,
+    },
+    {
+      title: '变更摘要', dataIndex: 'changes',
+      render: v => <span style={{ fontSize: 13, color: '#86909c' }}>
+        {v ? JSON.stringify(v).substring(0, 60) : '-'}
+      </span>,
     },
   ]
 
@@ -118,23 +106,23 @@ export default function AuditLogs() {
         <span style={{ fontSize: 13, color: '#8c919e' }}>记录所有用户操作行为，默认展示最近 7 天</span>
       </div>
 
-      {/* 筛选栏 */}
       <div style={{
         display: 'flex', gap: 10, marginBottom: 12, padding: '12px 16px',
         background: '#fff', borderRadius: 10, border: '1px solid #f0f0f3',
       }}>
         <Input
           prefix={<SearchOutlined style={{ color: '#bfc4cd' }} />}
-          placeholder="搜索操作人、对象名称..."
+          placeholder="搜索对象名称..."
           value={keyword}
           onChange={e => setKeyword(e.target.value)}
+          onPressEnter={fetchLogs}
           allowClear
           style={{ width: 260 }}
         />
         <Select
           placeholder="操作类型"
           value={actionFilter}
-          onChange={setActionFilter}
+          onChange={v => { setActionFilter(v); setPage(1) }}
           allowClear
           style={{ width: 130 }}
           options={Object.entries(ACTION_CONFIG).map(([k, v]) => ({ value: k, label: v.label }))}
@@ -142,26 +130,34 @@ export default function AuditLogs() {
         <Select
           placeholder="对象类型"
           value={targetFilter}
-          onChange={setTargetFilter}
+          onChange={v => { setTargetFilter(v); setPage(1) }}
           allowClear
           style={{ width: 130 }}
-          options={TARGET_TYPES.map(t => ({ value: t, label: t }))}
+          options={TARGET_TYPES.map(t => ({ value: t, label: TARGET_TYPE_LABELS[t] || t }))}
         />
-        <RangePicker size="middle" style={{ width: 260 }} placeholder={['开始日期', '结束日期']} />
+        <RangePicker
+          size="middle" style={{ width: 260 }}
+          placeholder={['开始日期', '结束日期']}
+          onChange={v => { setDateRange(v); setPage(1) }}
+        />
       </div>
 
       <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #f0f0f3', padding: 2 }}>
         <Table
-          dataSource={filteredLogs}
+          dataSource={logs}
           columns={columns}
           rowKey="id"
           size="small"
+          loading={loading}
           pagination={{
-            pageSize: 15,
+            current: page,
+            pageSize,
+            total,
             size: 'small',
             showTotal: t => `共 ${t} 条记录`,
             showSizeChanger: true,
             pageSizeOptions: [15, 30, 50],
+            onChange: (p, ps) => { setPage(p); setPageSize(ps) },
           }}
         />
       </div>
