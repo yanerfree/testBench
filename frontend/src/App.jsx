@@ -18,6 +18,7 @@ import ManualRecord from './pages/plan/ManualRecord'
 import EnvConfig from './pages/settings/EnvConfig'
 import UserManagement from './pages/settings/UserManagement'
 import AuditLogs from './pages/settings/AuditLogs'
+import ChannelConfig from './pages/settings/ChannelConfig'
 
 const { Header, Sider, Content } = Layout
 
@@ -63,6 +64,7 @@ function AppLayout() {
     { key: '/projects', icon: <FolderOutlined />, label: '项目列表' },
     { type: 'divider' },
     { key: '/settings/env', icon: <SettingOutlined />, label: '环境配置' },
+    { key: '/settings/channels', icon: <BellOutlined />, label: '通知渠道' },
     ...(user.role === 'admin' ? [
       { key: '/settings/users', icon: <UserOutlined />, label: '用户管理' },
     ] : []),
@@ -162,6 +164,7 @@ function AppLayout() {
             <Route path="/projects/:projectId/reports/:reportId" element={<ReportDetail />} />
             <Route path="/projects/:projectId/logs" element={<AuditLogs />} />
             <Route path="/settings/env" element={<EnvConfig />} />
+            <Route path="/settings/channels" element={<ChannelConfig />} />
             <Route path="/settings/users" element={<UserManagement />} />
             <Route path="/settings/logs" element={<AuditLogs />} />
           </Routes>
