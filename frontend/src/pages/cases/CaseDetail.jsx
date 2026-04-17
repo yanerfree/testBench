@@ -165,7 +165,10 @@ export default function CaseDetail() {
         title, type, priority, module, subModule, automationStatus,
         isFlaky: flaky, preconditions, expectedResult, scriptRef, remark, steps,
       })
-      savedRef.current = currentSnap
+      // 重新计算快照确保 isDirty 变为 false
+      const newSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRef, remark, steps })
+      savedRef.current = newSnap
+      setCaseData(prev => ({ ...prev }))  // 触发重渲染
       message.success('保存成功')
     } catch {
       message.error('保存失败')
