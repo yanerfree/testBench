@@ -103,6 +103,34 @@ def _extract_target_info(result: Any) -> tuple[uuid.UUID | None, str | None]:
     return target_id, None
 
 
+def _extract_changes(action: str, args: tuple, kwargs: dict, result: Any) -> dict | None:
+    """自动从函数参数中提取变更摘要。"""
+    changes = {}
+
+    # 从 args/kwargs 中找 Pydantic BaseModel（即请求 schema）
+    from pydantic import BaseModel
+    for arg in list(args[1:]) + list(kwargs.values()):
+        if isinstance(arg, BaseModel):
+            # 只保留非 None 的字段，排除密码
+            for k, v in arg.model_dump(exclude_none=True).items():
+                if "password" in k.lower():
+                    changes[k] = "***"
+                elif isinstance(v, list) and len(v) > 5:
+                    changes[k] = f"[{len(v)} items]"
+                else:
+                    changes[k] = str(v) if not isinstance(v, (str, int, float, bool)) else v
+            break
+
+    if not changes and action == "create" and result is not None:
+        # create 但没有 schema 参数时，记录创建的对象关键字段
+        for attr in ("name", "username", "title", "role", "status"):
+            val = getattr(result, attr, None)
+            if val is not None:
+                changes[attr] = val
+
+    return changes if changes else None
+
+
 def audit_log(
     action: str,
     target_type: str,
@@ -142,6 +170,11 @@ def audit_log(
             if changes_extractor is not None:
                 try:
                     changes = changes_extractor(result, *args[1:], **kwargs)
+                except Exception:
+                    pass
+            else:
+                try:
+                    changes = _extract_changes(action, args, kwargs, result)
                 except Exception:
                     pass
 
