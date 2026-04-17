@@ -172,20 +172,29 @@ export default function UserManagement() {
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
             name="username" label="用户名"
-            rules={[{ required: true, message: '请输入用户名' }]}
+            rules={[
+              { required: true, message: '请输入用户名' },
+              { min: 2, message: '用户名至少 2 个字符' },
+              { max: 50, message: '用户名最多 50 个字符' },
+              { pattern: /^[a-zA-Z0-9_]+$/, message: '只允许字母、数字和下划线' },
+            ]}
           >
             <Input
               prefix={<UserOutlined style={{ color: '#bfc4cd' }} />}
-              placeholder="用户名"
+              placeholder="字母、数字、下划线，2-50 位"
               disabled={!!editingUser}
             />
           </Form.Item>
           {!editingUser && (
             <Form.Item
               name="password" label="密码"
-              rules={[{ required: true, message: '请输入密码' }, { min: 6, message: '密码至少 6 位' }]}
+              rules={[
+                { required: true, message: '请输入密码' },
+                { min: 6, message: '密码至少 6 个字符' },
+                { max: 128, message: '密码最多 128 个字符' },
+              ]}
             >
-              <Input.Password placeholder="密码" />
+              <Input.Password placeholder="至少 6 位" />
             </Form.Item>
           )}
           <Form.Item

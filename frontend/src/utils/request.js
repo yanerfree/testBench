@@ -43,7 +43,16 @@ async function request(url, options = {}) {
   const data = await res.json()
 
   if (!res.ok) {
-    const errMsg = data?.error?.message || `请求失败 (${res.status})`
+    let errMsg = data?.error?.message
+    // Pydantic 422 验证错误: detail 是数组
+    if (!errMsg && Array.isArray(data?.detail)) {
+      const fieldErrors = data.detail.map(d => {
+        const field = d.loc?.[d.loc.length - 1] || ''
+        return `${field}: ${d.msg}`
+      })
+      errMsg = fieldErrors.join('；')
+    }
+    errMsg = errMsg || `请求失败 (${res.status})`
     message.error(errMsg)
     return Promise.reject(new Error(errMsg))
   }
