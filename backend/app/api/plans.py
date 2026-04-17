@@ -98,6 +98,37 @@ async def delete_plan(
     return MessageResponse(message="删除成功").model_dump()
 
 
+@router.post("/{plan_id}/reopen")
+async def reopen_plan(
+    project_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """重新打开已完成的计划（已有结果保留，可继续补充录入）"""
+    plan = await plan_service.get_plan(session, plan_id)
+
+    # 权限：仅 project_admin 或计划创建者
+    if current_user.role != "admin" and current_user.id != plan.created_by:
+        from app.deps.auth import require_project_role as _rpr
+        # 非创建者需要 project_admin 权限
+        from sqlalchemy import select
+        from app.models.project import ProjectMember
+        result = await session.execute(
+            select(ProjectMember).where(
+                ProjectMember.project_id == project_id,
+                ProjectMember.user_id == current_user.id,
+                ProjectMember.role == "project_admin",
+            )
+        )
+        if result.scalar_one_or_none() is None:
+            from app.core.exceptions import ForbiddenError
+            raise ForbiddenError(code="REOPEN_DENIED", message="仅项目管理员或计划创建者可重新打开")
+
+    plan = await plan_service.reopen_plan(session, plan_id)
+    return {"data": PlanResponse.model_validate(plan, from_attributes=True).model_dump(by_alias=True)}
+
+
 # ---- 执行相关 Schema ----
 
 class ManualRecordRequest(BaseSchema):

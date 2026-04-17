@@ -116,3 +116,15 @@ async def delete_plan(session: AsyncSession, plan_id: uuid.UUID) -> None:
     await session.execute(delete(PlanCase).where(PlanCase.plan_id == plan_id))
     await session.delete(plan)
     await session.flush()
+
+
+@audit_log(action="reopen", target_type="plan")
+async def reopen_plan(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
+    """重新打开已完成的计划，状态改为 executing，已有结果保留。"""
+    plan = await get_plan(session, plan_id)
+    if plan.status != "completed":
+        raise ValidationError(code="INVALID_STATUS", message=f"当前状态「{plan.status}」不可重新打开，仅已完成的计划可重新打开")
+    plan.status = "executing"
+    await session.flush()
+    await session.refresh(plan)
+    return plan

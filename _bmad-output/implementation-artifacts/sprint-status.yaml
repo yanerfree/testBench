@@ -79,12 +79,12 @@ development_status:
   4-4-manual-plan-execution: done
   4-5-mixed-execution-auto-then-manual: backlog
   4-6-circuit-breaker-pause-resume-abort-queue: backlog
-  4-7-plan-reopen-and-archive: backlog
+  4-7-plan-reopen-and-archive: done
   epic-4-retrospective: optional
 
   # Epic 5: 报告与通知
-  epic-5: backlog
-  5-1-report-dashboard-l1-l2: backlog
+  epic-5: in-progress
+  5-1-report-dashboard-l1-l2: done
   5-2-report-drilldown-l3-l4: backlog
   5-3-failure-detail-three-layer-display: backlog
   5-4-html-excel-export-and-dingtalk-notification: backlog
