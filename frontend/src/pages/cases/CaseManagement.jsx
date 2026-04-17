@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin } from 'antd'
-import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined } from '@ant-design/icons'
+import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 
@@ -140,6 +140,11 @@ export default function CaseManagement() {
   const [createCaseForm] = Form.useForm()
   const [savingCase, setSavingCase] = useState(false)
 
+  // 新建模块
+  const [folderModalOpen, setFolderModalOpen] = useState(false)
+  const [folderForm] = Form.useForm()
+  const [savingFolder, setSavingFolder] = useState(false)
+
   // ---- 数据加载 ----
   const fetchBranches = useCallback(async () => {
     if (!projectId) return
@@ -182,6 +187,37 @@ export default function CaseManagement() {
 
   const activeBranches = branches.filter(b => b.status === 'active')
   const branch = branches.find(b => b.id === currentBranch)
+
+  // ---- 新建模块 ----
+  const handleCreateFolder = async () => {
+    let values
+    try { values = await folderForm.validateFields() } catch { return }
+    if (!currentBranch) { message.warning('请先选择分支'); return }
+    setSavingFolder(true)
+    try {
+      const params = new URLSearchParams({ name: values.name })
+      if (values.parentId) params.set('parentId', values.parentId)
+      await api.post(`/projects/${projectId}/branches/${currentBranch}/folders?${params}`)
+      message.success('模块创建成功')
+      setFolderModalOpen(false)
+      folderForm.resetFields()
+      fetchFolders()
+    } catch { /* */ } finally { setSavingFolder(false) }
+  }
+
+  // 构建模块下拉选项（扁平化 folderTree）
+  const flattenFolders = (nodes, prefix = '') => {
+    let result = []
+    for (const n of nodes) {
+      result.push({ value: n.name, label: prefix ? `${prefix} / ${n.name}` : n.name, id: n.id })
+      if (n.children?.length) {
+        result = result.concat(flattenFolders(n.children, prefix ? `${prefix} / ${n.name}` : n.name))
+      }
+    }
+    return result
+  }
+  const moduleOptions = flattenFolders(folderTree)
+  const parentFolderOptions = folderTree.map(n => ({ value: n.id, label: n.name }))
 
   // ---- 新建用例 ----
   const handleCreateCase = async () => {
@@ -310,12 +346,49 @@ export default function CaseManagement() {
 
       <div style={{ flex: 1, display: 'flex', gap: 16, minHeight: 0 }}>
         {/* 左侧树 */}
-        <Card style={{ width: 240, flexShrink: 0, overflow: 'auto' }} styles={{ body: { padding: '12px 8px' }, header: { padding: '0 16px', minHeight: 40, borderBottom: '1px solid #f2f3f5' } }}
-          title={<span style={{ fontSize: 13, fontWeight: 600 }}>用例导航</span>}>
+        <Card style={{ width: 240, flexShrink: 0, overflow: 'auto' }}
+          styles={{ body: { padding: '12px 8px' }, header: { padding: '0 16px', minHeight: 40, borderBottom: '1px solid #f2f3f5' } }}
+          title={<span style={{ fontSize: 13, fontWeight: 600 }}>用例导航</span>}
+          extra={<Button type="text" size="small" icon={<PlusOutlined />} onClick={() => setFolderModalOpen(true)} style={{ color: '#6b7ef5' }} />}>
           {treeData.length > 0 ? (
-            <Tree treeData={treeData} defaultExpandAll onSelect={onTreeSelect} blockNode style={{ fontSize: 13 }} selectedKeys={selectedFolderId ? [selectedFolderId] : []} />
+            <Tree
+              treeData={treeData}
+              defaultExpandAll
+              onSelect={onTreeSelect}
+              blockNode
+              style={{ fontSize: 13 }}
+              selectedKeys={selectedFolderId ? [selectedFolderId] : []}
+              titleRender={(node) => (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <span>{node.title}</span>
+                  <Popconfirm
+                    title="确定删除此目录？"
+                    description="仅允许删除空目录"
+                    onConfirm={async (e) => {
+                      e?.stopPropagation()
+                      try {
+                        await api.del(`/projects/${projectId}/branches/${currentBranch}/folders/${node.key}`)
+                        message.success('目录已删除')
+                        fetchFolders()
+                      } catch { /* request.js 显示错误 */ }
+                    }}
+                    onCancel={e => e?.stopPropagation()}
+                  >
+                    <Button type="text" size="small" icon={<DeleteOutlined />}
+                      onClick={e => e.stopPropagation()}
+                      style={{ color: '#c0c4cc', opacity: 0.5, fontSize: 11 }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                      onMouseLeave={e => e.currentTarget.style.opacity = 0.5} />
+                  </Popconfirm>
+                </div>
+              )}
+            />
           ) : (
-            <div style={{ textAlign: 'center', padding: 20, color: '#8c919e', fontSize: 12 }}>暂无目录，导入用例后自动生成</div>
+            <div style={{ textAlign: 'center', padding: 20, color: '#8c919e', fontSize: 12 }}>
+              暂无目录
+              <br />
+              <Button type="link" size="small" onClick={() => setFolderModalOpen(true)}>+ 创建模块</Button>
+            </div>
           )}
         </Card>
 
@@ -436,13 +509,46 @@ export default function CaseManagement() {
             </Form.Item>
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
-            <Form.Item name="module" label="模块" rules={[{ required: true, message: '请输入模块名' }]} style={{ flex: 1 }}>
-              <Input placeholder="如：AUTH" />
+            <Form.Item name="module" label="模块" rules={[{ required: true, message: '请选择模块' }]} style={{ flex: 1 }}>
+              <Select
+                placeholder="选择模块"
+                showSearch
+                optionFilterProp="label"
+                options={moduleOptions}
+                notFoundContent={<span style={{ color: '#8c919e', fontSize: 12 }}>无模块，请先在左侧导航创建</span>}
+              />
             </Form.Item>
             <Form.Item name="submodule" label="子模块" style={{ flex: 1 }}>
               <Input placeholder="如：LOGIN（可选）" />
             </Form.Item>
           </div>
+        </Form>
+      </Modal>
+
+      {/* 新建模块弹窗 */}
+      <Modal
+        title="新建模块"
+        open={folderModalOpen}
+        onOk={handleCreateFolder}
+        onCancel={() => { setFolderModalOpen(false); folderForm.resetFields() }}
+        okText="创建"
+        cancelText="取消"
+        confirmLoading={savingFolder}
+        width={420}
+      >
+        <Form form={folderForm} layout="vertical" style={{ marginTop: 12 }}>
+          <Form.Item name="name" label="模块名称"
+            rules={[{ required: true, message: '请输入模块名称' }, { pattern: /^[A-Za-z0-9_-]+$/, message: '仅允许字母、数字、下划线、横线' }]}
+          >
+            <Input placeholder="如：AUTH、USER_MGMT" style={{ textTransform: 'uppercase' }} />
+          </Form.Item>
+          <Form.Item name="parentId" label="父模块（可选）">
+            <Select
+              placeholder="顶级模块（不选则为一级模块）"
+              allowClear
+              options={parentFolderOptions}
+            />
+          </Form.Item>
         </Form>
       </Modal>
     </div>
