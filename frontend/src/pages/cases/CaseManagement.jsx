@@ -513,7 +513,7 @@ export default function CaseManagement() {
                 <Popconfirm title={`确定归档 ${selectedRowKeys.length} 条用例？`} onConfirm={async () => {
                   try {
                     await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: selectedRowKeys, action: 'archive' })
-                    message.success('批量归档成功'); setSelectedRows([]); fetchCases()
+                    message.success('批量归档成功'); setSelectedRowKeys([]); fetchCases()
                   } catch { /* */ }
                 }}>
                   <Button size="small" type="link">批量归档</Button>
@@ -522,7 +522,7 @@ export default function CaseManagement() {
                   onChange={async (val) => {
                     try {
                       await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: selectedRowKeys, action: 'set_priority', priority: val })
-                      message.success('优先级已修改'); setSelectedRows([]); fetchCases()
+                      message.success('优先级已修改'); setSelectedRowKeys([]); fetchCases()
                     } catch { /* */ }
                   }}
                   options={['P0','P1','P2','P3'].map(p => ({ value: p, label: p }))}
@@ -549,7 +549,7 @@ export default function CaseManagement() {
               size="small"
               loading={loading}
               scroll={{ y: 'calc(100vh - 330px)' }}
-              rowSelection={{ selectedRowKeys: selectedRowKeys, onChange: setSelectedRows }}
+              rowSelection={{ selectedRowKeys: selectedRowKeys, onChange: setSelectedRowKeys }}
               style={{ flex: 1 }}
               locale={{ emptyText: <Empty description="暂无用例" /> }}
               onRow={(record) => ({ style: { cursor: 'pointer' }, onDoubleClick: () => navigate(`/projects/${projectId}/cases/${record.id}?branchId=${currentBranch}`) })}
