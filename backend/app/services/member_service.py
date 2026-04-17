@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.audit import audit_log
 from app.models.project import ProjectMember
 from app.models.user import User
 from app.schemas.project import AddMemberRequest, UpdateMemberRequest
@@ -31,6 +32,7 @@ async def list_members(session: AsyncSession, project_id: uuid.UUID) -> list[dic
     ]
 
 
+@audit_log(action="create", target_type="project_member")
 async def add_member(
     session: AsyncSession, project_id: uuid.UUID, data: AddMemberRequest
 ) -> dict:
@@ -90,6 +92,7 @@ async def _count_project_admins(session: AsyncSession, project_id: uuid.UUID) ->
     return result.scalar_one()
 
 
+@audit_log(action="update", target_type="project_member")
 async def update_member_role(
     session: AsyncSession, project_id: uuid.UUID, user_id: uuid.UUID, data: UpdateMemberRequest
 ) -> dict:
@@ -118,6 +121,7 @@ async def update_member_role(
     }
 
 
+@audit_log(action="delete", target_type="project_member")
 async def remove_member(
     session: AsyncSession, project_id: uuid.UUID, user_id: uuid.UUID
 ) -> None:

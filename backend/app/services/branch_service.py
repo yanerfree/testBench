@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.audit import audit_log
 from app.models.project import Branch
 from app.schemas.branch import CreateBranchRequest, UpdateBranchRequest
 
@@ -20,6 +21,7 @@ async def list_branches(session: AsyncSession, project_id: uuid.UUID) -> list[Br
     return list(result.scalars().all())
 
 
+@audit_log(action="create", target_type="branch")
 async def create_branch(
     session: AsyncSession, project_id: uuid.UUID, data: CreateBranchRequest
 ) -> Branch:
@@ -74,6 +76,7 @@ async def _count_active_branches(session: AsyncSession, project_id: uuid.UUID) -
     return result.scalar_one()
 
 
+@audit_log(action="archive", target_type="branch")
 async def archive_branch(session: AsyncSession, branch_id: uuid.UUID) -> Branch:
     """归档分支配置。最后一个活跃分支不可归档。"""
     branch = await _get_branch(session, branch_id)
@@ -88,6 +91,7 @@ async def archive_branch(session: AsyncSession, branch_id: uuid.UUID) -> Branch:
     return branch
 
 
+@audit_log(action="activate", target_type="branch")
 async def activate_branch(session: AsyncSession, branch_id: uuid.UUID) -> Branch:
     """恢复已归档的分支配置。"""
     branch = await _get_branch(session, branch_id)

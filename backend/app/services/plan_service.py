@@ -5,9 +5,11 @@ from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, ValidationError
+from app.core.audit import audit_log
 from app.models.plan import Plan, PlanCase
 
 
+@audit_log(action="create", target_type="plan")
 async def create_plan(
     session: AsyncSession,
     project_id: uuid.UUID,
@@ -95,6 +97,7 @@ async def get_plan_cases(session: AsyncSession, plan_id: uuid.UUID) -> list[Plan
     return list(result.scalars().all())
 
 
+@audit_log(action="archive", target_type="plan")
 async def archive_plan(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
     plan = await get_plan(session, plan_id)
     if plan.status not in ("completed", "draft"):
@@ -105,6 +108,7 @@ async def archive_plan(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
     return plan
 
 
+@audit_log(action="delete", target_type="plan")
 async def delete_plan(session: AsyncSession, plan_id: uuid.UUID) -> None:
     plan = await get_plan(session, plan_id)
     if plan.status not in ("archived", "draft"):

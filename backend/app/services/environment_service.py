@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.audit import audit_log
 from app.models.environment import Environment, EnvironmentVariable, GlobalVariable
 from app.services.variable_service import RESERVED_VAR_NAMES, _check_reserved
 
@@ -15,6 +16,7 @@ async def list_environments(session: AsyncSession) -> list[Environment]:
     return list(result.scalars().all())
 
 
+@audit_log(action="create", target_type="environment")
 async def create_environment(session: AsyncSession, name: str, description: str | None = None) -> Environment:
     env = Environment(name=name, description=description)
     session.add(env)
@@ -35,6 +37,7 @@ async def get_environment(session: AsyncSession, env_id: uuid.UUID) -> Environme
     return env
 
 
+@audit_log(action="delete", target_type="environment")
 async def delete_environment(session: AsyncSession, env_id: uuid.UUID) -> None:
     env = await get_environment(session, env_id)
     await session.delete(env)

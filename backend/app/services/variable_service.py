@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.audit import audit_log
 from app.models.environment import GlobalVariable
 
 RESERVED_VAR_NAMES = frozenset({
@@ -30,6 +31,7 @@ async def list_variables(session: AsyncSession) -> list[GlobalVariable]:
     return list(result.scalars().all())
 
 
+@audit_log(action="create", target_type="global_variable")
 async def create_variable(session: AsyncSession, key: str, value: str, description: str | None = None) -> GlobalVariable:
     _check_reserved(key)
     var = GlobalVariable(key=key, value=value, description=description)
@@ -56,6 +58,7 @@ async def update_variable(session: AsyncSession, var_id: uuid.UUID, value: str, 
     return var
 
 
+@audit_log(action="delete", target_type="global_variable")
 async def delete_variable(session: AsyncSession, var_id: uuid.UUID) -> None:
     result = await session.execute(select(GlobalVariable).where(GlobalVariable.id == var_id))
     var = result.scalar_one_or_none()

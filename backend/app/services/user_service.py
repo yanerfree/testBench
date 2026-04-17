@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.security import hash_password
+from app.core.audit import audit_log
 from app.models.user import User
 from app.schemas.user import CreateUserRequest, UpdateUserRequest
 
@@ -17,6 +18,7 @@ async def list_users(session: AsyncSession) -> list[User]:
     return list(result.scalars().all())
 
 
+@audit_log(action="create", target_type="user")
 async def create_user(session: AsyncSession, data: CreateUserRequest) -> User:
     """创建用户，密码 bcrypt 加密。用户名重复时抛 ConflictError。"""
     user = User(
@@ -43,6 +45,7 @@ async def get_user(session: AsyncSession, user_id: uuid.UUID) -> User:
     return user
 
 
+@audit_log(action="update", target_type="user")
 async def update_user(session: AsyncSession, user_id: uuid.UUID, data: UpdateUserRequest) -> User:
     """更新用户的角色或激活状态。"""
     user = await get_user(session, user_id)
@@ -55,6 +58,7 @@ async def update_user(session: AsyncSession, user_id: uuid.UUID, data: UpdateUse
     return user
 
 
+@audit_log(action="delete", target_type="user")
 async def delete_user(session: AsyncSession, user_id: uuid.UUID) -> None:
     """删除用户。"""
     user = await get_user(session, user_id)

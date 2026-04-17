@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError
+from app.core.audit import audit_log
 from app.models.environment import NotificationChannel
 
 
@@ -14,6 +15,7 @@ async def list_channels(session: AsyncSession) -> list[NotificationChannel]:
     return list(result.scalars().all())
 
 
+@audit_log(action="create", target_type="channel")
 async def create_channel(session: AsyncSession, name: str, webhook_url: str) -> NotificationChannel:
     ch = NotificationChannel(name=name, webhook_url=webhook_url)
     session.add(ch)
@@ -26,6 +28,7 @@ async def create_channel(session: AsyncSession, name: str, webhook_url: str) -> 
     return ch
 
 
+@audit_log(action="update", target_type="channel")
 async def update_channel(session: AsyncSession, ch_id: uuid.UUID, name: str | None = None, webhook_url: str | None = None) -> NotificationChannel:
     result = await session.execute(select(NotificationChannel).where(NotificationChannel.id == ch_id))
     ch = result.scalar_one_or_none()
@@ -40,6 +43,7 @@ async def update_channel(session: AsyncSession, ch_id: uuid.UUID, name: str | No
     return ch
 
 
+@audit_log(action="delete", target_type="channel")
 async def delete_channel(session: AsyncSession, ch_id: uuid.UUID) -> None:
     result = await session.execute(select(NotificationChannel).where(NotificationChannel.id == ch_id))
     ch = result.scalar_one_or_none()

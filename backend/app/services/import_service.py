@@ -2,6 +2,7 @@
 import uuid
 
 from sqlalchemy import select, func
+from app.core.audit import audit_log
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.case import Case, CaseFolder

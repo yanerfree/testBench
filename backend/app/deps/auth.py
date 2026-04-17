@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.core.security import decode_token
+from app.core.audit import set_audit_context
 from app.deps.db import get_db
 from app.models.project import ProjectMember
 from app.models.user import User
@@ -35,6 +36,10 @@ async def get_current_user(request: Request, session: AsyncSession = Depends(get
 
     if user is None or not user.is_active:
         raise UnauthorizedError(code="USER_DISABLED", message="用户已禁用")
+
+    # 设置审计上下文（供 @audit_log 装饰器使用）
+    trace_id = getattr(getattr(request, "state", None), "trace_id", None)
+    set_audit_context(user_id=user.id, trace_id=trace_id)
 
     return user
 

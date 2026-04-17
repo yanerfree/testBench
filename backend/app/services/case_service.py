@@ -5,11 +5,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
+from app.core.audit import audit_log
 from app.models.case import Case
 from app.schemas.case import CreateCaseRequest, UpdateCaseRequest
 from app.services.import_service import _get_or_create_folder, _next_case_code
 
 
+@audit_log(action="create", target_type="case")
 async def create_case(
     session: AsyncSession, branch_id: uuid.UUID, data: CreateCaseRequest
 ) -> Case:
@@ -52,6 +54,7 @@ async def get_case(session: AsyncSession, case_id: uuid.UUID) -> Case:
     return case
 
 
+@audit_log(action="update", target_type="case")
 async def update_case(
     session: AsyncSession, case_id: uuid.UUID, data: UpdateCaseRequest
 ) -> Case:
@@ -187,6 +190,7 @@ async def batch_cases(
     return {"succeeded": succeeded, "failed": failed, "errors": errors}
 
 
+@audit_log(action="delete", target_type="case")
 async def delete_case(session: AsyncSession, case_id: uuid.UUID) -> None:
     """软删除用例（标记 deleted_at）。"""
     case = await get_case(session, case_id)

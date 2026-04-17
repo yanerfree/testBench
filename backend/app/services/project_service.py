@@ -5,11 +5,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError
+from app.core.audit import audit_log
 from app.models.project import Branch, Project, ProjectMember
 from app.models.user import User
 from app.schemas.project import CreateProjectRequest, UpdateProjectRequest
 
 
+@audit_log(action="create", target_type="project")
 async def create_project(
     session: AsyncSession, data: CreateProjectRequest, creator: User
 ) -> Project:
@@ -71,6 +73,7 @@ async def get_project(session: AsyncSession, project_id: uuid.UUID) -> Project:
     return project
 
 
+@audit_log(action="update", target_type="project")
 async def update_project(
     session: AsyncSession, project_id: uuid.UUID, data: UpdateProjectRequest
 ) -> Project:
@@ -87,6 +90,7 @@ async def update_project(
     return project
 
 
+@audit_log(action="delete", target_type="project")
 async def delete_project(session: AsyncSession, project_id: uuid.UUID) -> None:
     """删除项目（CASCADE 自动清理 branches 和 project_members）。"""
     project = await get_project(session, project_id)

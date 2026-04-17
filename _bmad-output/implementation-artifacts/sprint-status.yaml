@@ -76,7 +76,7 @@ development_status:
   4-1-test-plan-crud: done
   4-2-execution-engine-sandbox-and-pytest: backlog
   4-3-automated-plan-execution-flow: backlog
-  4-4-manual-plan-execution: backlog
+  4-4-manual-plan-execution: done
   4-5-mixed-execution-auto-then-manual: backlog
   4-6-circuit-breaker-pause-resume-abort-queue: backlog
   4-7-plan-reopen-and-archive: backlog
