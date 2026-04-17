@@ -12,7 +12,7 @@ from app.deps.db import get_db
 from app.models.user import User
 from app.schemas.common import BaseSchema, MessageResponse
 from app.schemas.plan import CreatePlanRequest, PlanListItem, PlanResponse
-from app.services import execution_service, plan_service
+from app.services import execution_service, plan_service, report_service
 
 router = APIRouter(prefix="/api/projects/{project_id}/plans", tags=["plans"])
 
@@ -197,3 +197,17 @@ async def get_results(
             ],
         }
     }
+
+
+@router.get("/{plan_id}/report")
+async def get_report_dashboard(
+    project_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """报告仪表盘（L1 汇总 + L2 模块分组）"""
+    data = await report_service.get_report_dashboard(session, plan_id)
+    if data is None:
+        return {"data": None}
+    return {"data": data}
