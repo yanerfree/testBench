@@ -7,14 +7,14 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_201_CREATED
 
-from app.core.exceptions import ValidationError
+from app.core.exceptions import AppError, ValidationError
 from app.deps.auth import get_current_user, require_project_role
 from app.deps.db import get_db
 from app.deps.worker import get_arq_pool
 from app.engine.task_status import set_task_status
 from app.models.user import User
 from app.schemas.common import BaseSchema, MessageResponse
-from app.schemas.plan import CreatePlanRequest, PlanListItem, PlanResponse
+from app.schemas.plan import CreatePlanRequest, UpdatePlanRequest, PlanListItem, PlanResponse
 from app.services import execution_service, export_service, plan_service, report_service
 
 router = APIRouter(prefix="/api/projects/{project_id}/plans", tags=["plans"])
@@ -74,7 +74,26 @@ async def get_plan(
 ):
     """计划详情"""
     plan = await plan_service.get_plan(session, plan_id)
-    return {"data": PlanResponse.model_validate(plan, from_attributes=True).model_dump(by_alias=True)}
+    plan_cases = await plan_service.get_plan_cases(session, plan_id)
+    data = PlanResponse.model_validate(plan, from_attributes=True).model_dump(by_alias=True)
+    data["caseIds"] = [str(pc.case_id) for pc in plan_cases]
+    return {"data": data}
+
+
+@router.put("/{plan_id}")
+async def update_plan(
+    project_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    body: UpdatePlanRequest,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """更新测试计划（仅 draft 状态）"""
+    plan = await plan_service.update_plan(session, plan_id, body)
+    plan_cases = await plan_service.get_plan_cases(session, plan_id)
+    data = PlanResponse.model_validate(plan, from_attributes=True).model_dump(by_alias=True)
+    data["caseIds"] = [str(pc.case_id) for pc in plan_cases]
+    return {"data": data}
 
 
 @router.post("/{plan_id}/archive")
@@ -185,7 +204,14 @@ async def execute_plan(
     plan = await plan_service.get_plan(session, plan_id)
     if plan.plan_type == "automated":
         # 提交异步执行任务
-        pool = await get_arq_pool()
+        try:
+            pool = await get_arq_pool()
+        except Exception:
+            raise AppError(
+                code="TASK_QUEUE_UNAVAILABLE",
+                message="异步任务队列不可用，请检查 Redis / arq 配置",
+                status_code=503,
+            )
         task_id = uuid.uuid4().hex
         await set_task_status(task_id, "pending", message="自动化执行任务已提交...")
         await pool.enqueue_job(

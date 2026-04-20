@@ -19,6 +19,16 @@ class CreatePlanRequest(BaseSchema):
     circuit_breaker: dict | None = None
 
 
+class UpdatePlanRequest(BaseSchema):
+    """更新测试计划请求（仅 draft 状态可用）"""
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    case_ids: list[uuid.UUID] | None = None
+    environment_id: uuid.UUID | None = None
+    channel_id: uuid.UUID | None = None
+    retry_count: int | None = Field(default=None, ge=0, le=3)
+    circuit_breaker: dict | None = None
+
+
 class PlanResponse(BaseSchema):
     """计划详情响应"""
     id: uuid.UUID
@@ -36,6 +46,7 @@ class PlanResponse(BaseSchema):
     completed_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    case_ids: list[uuid.UUID] = []
 
 
 class PlanListItem(BaseSchema):

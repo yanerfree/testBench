@@ -117,7 +117,11 @@ async def list_cases(
     if case_type:
         base = base.where(Case.type == case_type)
     if folder_id:
-        base = base.where(Case.folder_id == folder_id)
+        # 查该目录及所有子目录下的用例
+        from app.services.folder_service import _collect_descendant_ids
+        descendant_ids = await _collect_descendant_ids(session, folder_id)
+        all_ids = [folder_id] + descendant_ids
+        base = base.where(Case.folder_id.in_(all_ids))
     if priority:
         base = base.where(Case.priority == priority)
     if automation_status:
@@ -183,6 +187,9 @@ async def batch_cases(
             case.is_flaky = True
         elif action == "unset_flaky":
             case.is_flaky = False
+        elif action == "delete":
+            case.deleted_at = datetime.now(timezone.utc)
+            case.folder_id = None
 
         succeeded += 1
 

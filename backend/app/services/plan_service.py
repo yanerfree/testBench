@@ -90,6 +90,38 @@ async def get_plan(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
     return plan
 
 
+@audit_log(action="update", target_type="plan")
+async def update_plan(session: AsyncSession, plan_id: uuid.UUID, data) -> Plan:
+    """更新测试计划（仅 draft 状态可修改）。"""
+    plan = await get_plan(session, plan_id)
+    if plan.status != "draft":
+        raise ValidationError(code="INVALID_STATUS", message=f"当前状态「{plan.status}」不可编辑，仅草稿状态可修改")
+
+    if data.name is not None:
+        plan.name = data.name
+    if data.environment_id is not None:
+        plan.environment_id = data.environment_id
+    if data.channel_id is not None:
+        plan.channel_id = data.channel_id
+    if data.retry_count is not None:
+        plan.retry_count = data.retry_count
+    if data.circuit_breaker is not None:
+        plan.circuit_breaker = data.circuit_breaker
+
+    if data.case_ids is not None:
+        if not data.case_ids:
+            raise ValidationError(code="NO_CASES", message="用例集不能为空")
+        if len(data.case_ids) > 1000:
+            raise ValidationError(code="TOO_MANY_CASES", message="单个计划最多 1000 条用例")
+        await session.execute(delete(PlanCase).where(PlanCase.plan_id == plan_id))
+        for i, cid in enumerate(data.case_ids):
+            session.add(PlanCase(plan_id=plan.id, case_id=cid, sort_order=i))
+
+    await session.flush()
+    await session.refresh(plan)
+    return plan
+
+
 async def get_plan_cases(session: AsyncSession, plan_id: uuid.UUID) -> list[PlanCase]:
     result = await session.execute(
         select(PlanCase).where(PlanCase.plan_id == plan_id).order_by(PlanCase.sort_order)

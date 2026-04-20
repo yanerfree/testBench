@@ -71,15 +71,15 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """未捕获异常兜底（生产环境不暴露堆栈）"""
-    import traceback; traceback.print_exc()  # 打印堆栈便于排查
+    """未捕获异常兜底 — detail 暴露异常类型和消息，方便排查。"""
+    import traceback; traceback.print_exc()
     return JSONResponse(
         status_code=500,
         content={
             "error": {
                 "code": "INTERNAL_ERROR",
                 "message": "服务内部错误",
-                "detail": None,
+                "detail": f"{type(exc).__name__}: {exc}",
             }
         },
     )

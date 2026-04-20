@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Table, Tag, Input, Select, DatePicker, Space, message } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
+import { useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 
 const { RangePicker } = DatePicker
@@ -23,6 +24,7 @@ const TARGET_TYPE_LABELS = {
 }
 
 export default function AuditLogs() {
+  const { projectId } = useParams()
   const [logs, setLogs] = useState([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -45,7 +47,8 @@ export default function AuditLogs() {
       if (dateRange?.[0]) params.append('startTime', dateRange[0].toISOString())
       if (dateRange?.[1]) params.append('endTime', dateRange[1].toISOString())
 
-      const res = await api.get(`/logs?${params.toString()}`)
+      const basePath = projectId ? `/projects/${projectId}/logs` : '/logs'
+      const res = await api.get(`${basePath}?${params.toString()}`)
       const data = res.data
       setLogs(data.items || [])
       setTotal(data.total || 0)
@@ -59,7 +62,7 @@ export default function AuditLogs() {
     } finally {
       setLoading(false)
     }
-  }, [page, pageSize, keyword, actionFilter, targetFilter, dateRange])
+  }, [projectId, page, pageSize, keyword, actionFilter, targetFilter, dateRange])
 
   useEffect(() => { fetchLogs() }, [fetchLogs])
 
@@ -102,8 +105,8 @@ export default function AuditLogs() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#2e3138' }}>操作日志</h2>
-        <span style={{ fontSize: 13, color: '#8c919e' }}>记录所有用户操作行为，默认展示最近 7 天</span>
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#2e3138' }}>{projectId ? '项目操作日志' : '操作日志'}</h2>
+        <span style={{ fontSize: 13, color: '#8c919e' }}>{projectId ? '记录本项目内的操作行为' : '记录所有用户操作行为，默认展示最近 7 天'}</span>
       </div>
 
       <div style={{

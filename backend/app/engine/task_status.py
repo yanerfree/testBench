@@ -30,8 +30,9 @@ async def set_task_status(
         data = {
             "status": status,
             "message": message,
-            "result": json.dumps(result) if result else None,
         }
+        if result is not None:
+            data["result"] = json.dumps(result)
         await r.hset(f"{_TASK_PREFIX}{task_id}", mapping=data)
         await r.expire(f"{_TASK_PREFIX}{task_id}", _TASK_TTL)
     finally:

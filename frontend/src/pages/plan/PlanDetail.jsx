@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { Card, Tag, Button, Radio, Table, Descriptions, Space, Row, Col, Spin, Empty, message } from 'antd'
-import { DownloadOutlined, UserOutlined, ClockCircleOutlined, EditOutlined, PlayCircleOutlined, CheckOutlined, ArrowLeftOutlined } from '@ant-design/icons'
+import { Card, Tag, Button, Radio, Table, Descriptions, Space, Row, Col, Spin, Empty, message, Input, Modal } from 'antd'
+import { DownloadOutlined, UserOutlined, ClockCircleOutlined, EditOutlined, PlayCircleOutlined, CheckOutlined, ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 
@@ -27,6 +27,8 @@ export default function PlanDetail() {
   const [scenarios, setScenarios] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('all')
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState('')
 
   const fetchData = useCallback(async () => {
     if (!projectId || !planId) return
@@ -51,7 +53,9 @@ export default function PlanDetail() {
       await api.post(`/projects/${projectId}/plans/${planId}/execute`)
       message.success('计划已启动执行')
       fetchData()
-    } catch { /* */ }
+    } catch (err) {
+      message.error(err?.response?.data?.error?.message || err?.message || '执行失败')
+    }
   }
 
   const handleComplete = async () => {
@@ -59,7 +63,26 @@ export default function PlanDetail() {
       await api.post(`/projects/${projectId}/plans/${planId}/complete`)
       message.success('计划已完成')
       fetchData()
-    } catch { /* */ }
+    } catch (err) {
+      message.error(err?.response?.data?.error?.message || err?.message || '操作失败')
+    }
+  }
+
+  const handleSave = async () => {
+    if (!editName.trim()) { message.warning('计划名称不能为空'); return }
+    try {
+      await api.put(`/projects/${projectId}/plans/${planId}`, { name: editName })
+      message.success('保存成功')
+      setEditing(false)
+      fetchData()
+    } catch (err) {
+      message.error(err?.response?.data?.error?.message || err?.message || '保存失败')
+    }
+  }
+
+  const startEdit = () => {
+    setEditName(plan?.name || '')
+    setEditing(true)
   }
 
   const filtered = useMemo(() => {
@@ -106,7 +129,12 @@ export default function PlanDetail() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} />
-              <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>{plan.name}</h2>
+              {editing ? (
+                <Input value={editName} onChange={e => setEditName(e.target.value)} style={{ width: 300, fontSize: 18, fontWeight: 600 }}
+                  onPressEnter={handleSave} autoFocus />
+              ) : (
+                <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>{plan.name}</h2>
+              )}
               <Tag style={{ background: ps.bg, color: ps.color, border: 'none' }}>{ps.label}</Tag>
               <Tag style={{ background: '#f7f8fa', color: '#86909c', border: 'none' }}>{plan.planType === 'automated' ? '自动化' : '手动'}</Tag>
               <Tag style={{ background: '#f7f8fa', color: '#86909c', border: 'none' }}>{plan.testType?.toUpperCase()}</Tag>
@@ -117,7 +145,14 @@ export default function PlanDetail() {
             </Space>
           </div>
           <Space>
-            {plan.status === 'draft' && (
+            {plan.status === 'draft' && !editing && (
+              <Button icon={<EditOutlined />} onClick={startEdit}>编辑</Button>
+            )}
+            {editing && (<>
+              <Button onClick={() => setEditing(false)}>取消</Button>
+              <Button type="primary" icon={<SaveOutlined />} onClick={handleSave}>保存</Button>
+            </>)}
+            {plan.status === 'draft' && !editing && (
               <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleExecute}>启动执行</Button>
             )}
             {plan.status === 'executing' && (<>
@@ -161,6 +196,7 @@ export default function PlanDetail() {
           <Descriptions.Item label="计划类型">{plan.planType === 'automated' ? '自动化' : '手动'}</Descriptions.Item>
           <Descriptions.Item label="测试类型">{plan.testType?.toUpperCase()}</Descriptions.Item>
           <Descriptions.Item label="失败重试">{plan.retryCount} 次</Descriptions.Item>
+          <Descriptions.Item label="关联用例">{plan.caseIds?.length || 0} 条</Descriptions.Item>
           {plan.circuitBreaker && <>
             <Descriptions.Item label="熔断-连续失败">{plan.circuitBreaker.consecutive} 条</Descriptions.Item>
             <Descriptions.Item label="熔断-失败率">{plan.circuitBreaker.rate}%</Descriptions.Item>

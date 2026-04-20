@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from app.schemas.common import BaseSchema
 
@@ -63,3 +64,4 @@ class ChannelResponse(BaseSchema):
     id: uuid.UUID
     name: str
     webhook_url: str
+    created_at: datetime | None = None

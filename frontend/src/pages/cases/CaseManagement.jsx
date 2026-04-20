@@ -134,6 +134,7 @@ export default function CaseManagement() {
   const [importOpen, setImportOpen] = useState(false)
   const [importResult, setImportResult] = useState(null)
   const [importing, setImporting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   // 新建用例
   const [createCaseOpen, setCreateCaseOpen] = useState(false)
@@ -300,6 +301,46 @@ export default function CaseManagement() {
     }
   }
 
+  // ---- 同步用例（Git pull + 导入 tea-cases.json） ----
+  const handleSyncBranch = async () => {
+    if (!currentBranch) { message.warning('请先选择分支'); return }
+    setSyncing(true)
+    try {
+      const res = await api.post(`/projects/${projectId}/branches/${currentBranch}/sync`)
+      const taskId = res.data?.taskId
+      if (!taskId) { message.success('同步任务已提交'); return }
+      message.loading({ content: '正在同步...', key: 'sync', duration: 0 })
+      const poll = setInterval(async () => {
+        try {
+          const status = await api.get(`/tasks/${taskId}/status`)
+          const s = status.data
+          if (s.status === 'completed') {
+            clearInterval(poll)
+            message.destroy('sync')
+            const imp = s.result?.import
+            if (imp && !imp.error) {
+              message.success(`同步完成：新增 ${imp.new || 0} / 更新 ${imp.updated || 0} / 移除 ${imp.removed || 0} 条用例`)
+            } else {
+              message.success(s.message || '同步完成')
+            }
+            fetchBranches()
+            fetchCases()
+            fetchFolders()
+            setSyncing(false)
+          } else if (s.status === 'failed') {
+            clearInterval(poll)
+            message.destroy('sync')
+            message.error(s.message || '同步失败')
+            setSyncing(false)
+          }
+        } catch { /* polling error, ignore */ }
+      }, 2000)
+    } catch (err) {
+      message.error(err?.response?.data?.error?.message || err?.message || '同步失败')
+      setSyncing(false)
+    }
+  }
+
   // ---- 导入 ----
   const handleImportFile = async (file) => {
     if (!currentBranch) return false
@@ -374,6 +415,7 @@ export default function CaseManagement() {
           await api.del(`/projects/${projectId}/branches/${currentBranch}/cases/${row.id}`)
           message.success('已删除')
           fetchCases()
+          fetchFolders()
         } catch { /* */ }
       }}>
         <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#f08a8e' }} />
@@ -425,7 +467,7 @@ export default function CaseManagement() {
             )}
             <Button size="small" type="text" icon={<SettingOutlined />} onClick={() => setBranchManageOpen(true)} style={{ color: '#8c919e' }}>管理</Button>
           </div>
-          <Button size="small" icon={<SyncOutlined />}>更新脚本</Button>
+          <Button size="small" icon={<SyncOutlined spin={syncing} />} onClick={handleSyncBranch} loading={syncing}>同步用例</Button>
         </div>
       </Card>
 
@@ -490,7 +532,6 @@ export default function CaseManagement() {
                   <Radio.Button value="">全部 ({total})</Radio.Button>
                   <Radio.Button value="automated">已自动化</Radio.Button>
                   <Radio.Button value="pending">待自动化</Radio.Button>
-                  <Radio.Button value="script_removed">已移除</Radio.Button>
                   <Radio.Button value="archived">已归档</Radio.Button>
                 </Radio.Group>
               </Space>
@@ -528,10 +569,15 @@ export default function CaseManagement() {
                   options={['P0','P1','P2','P3'].map(p => ({ value: p, label: p }))}
                 />
                 <Popconfirm title={`确定删除 ${selectedRowKeys.length} 条用例？`} onConfirm={async () => {
-                  for (const caseId of selectedRowKeys) {
-                    try { await api.del(`/projects/${projectId}/branches/${currentBranch}/cases/${caseId}`) } catch { /* */ }
-                  }
-                  message.success('批量删除成功'); setSelectedRowKeys([]); fetchCases()
+                  try {
+                    await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, {
+                      action: 'delete', caseIds: selectedRowKeys,
+                    })
+                    message.success('批量删除成功')
+                    setSelectedRowKeys([])
+                    fetchCases()
+                    fetchFolders()
+                  } catch { /* */ }
                 }}>
                   <Button size="small" type="link" danger>批量删除</Button>
                 </Popconfirm>
@@ -565,18 +611,18 @@ export default function CaseManagement() {
 
       {/* 导入用例弹窗 */}
       <Modal
-        title="导入用例（tea-cases.json）"
+        title="导入用例"
         open={importOpen}
         onCancel={handleImportClose}
         footer={importResult ? [<Button key="ok" type="primary" onClick={handleImportClose}>完成</Button>] : null}
         width={520}
       >
         {!importResult ? (
-          <Upload.Dragger accept=".json" showUploadList={false} beforeUpload={handleImportFile} disabled={importing} style={{ padding: '32px 0' }}>
+          <Upload.Dragger accept=".json,.xlsx" showUploadList={false} beforeUpload={handleImportFile} disabled={importing} style={{ padding: '32px 0' }}>
             {importing ? <Spin tip="正在导入..." /> : (<>
               <p><InboxOutlined style={{ fontSize: 40, color: '#6b7ef5' }} /></p>
-              <p style={{ fontSize: 14, color: '#2e3138', marginTop: 8 }}>点击或拖拽上传 tea-cases.json</p>
-              <p style={{ fontSize: 12, color: '#8c919e' }}>支持 TEA 框架生成的标准用例清单文件</p>
+              <p style={{ fontSize: 14, color: '#2e3138', marginTop: 8 }}>点击或拖拽上传用例文件</p>
+              <p style={{ fontSize: 12, color: '#8c919e' }}>支持 .json（TEA 格式）和 .xlsx（Excel 导出格式）</p>
             </>)}
           </Upload.Dragger>
         ) : (

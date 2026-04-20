@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Card, Tag, Button, Radio, Input, Space, Modal, Form, Select, InputNumber, message, Empty, Spin } from 'antd'
-import { PlusOutlined, SearchOutlined, ClockCircleOutlined, UserOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Card, Tag, Button, Radio, Input, Space, Modal, Form, Select, InputNumber, Table, message, Empty, Spin } from 'antd'
+import { PlusOutlined, SearchOutlined, ClockCircleOutlined, UserOutlined, ReloadOutlined, PlayCircleOutlined, EditOutlined, CheckOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 
@@ -35,6 +35,8 @@ export default function PlanList() {
   const [environments, setEnvironments] = useState([])
   const [channels, setChannels] = useState([])
   const [selectedBranch, setSelectedBranch] = useState(null)
+  const [casePickerOpen, setCasePickerOpen] = useState(false)
+  const [caseSearch, setCaseSearch] = useState('')
 
   // 加载计划列表
   const fetchPlans = useCallback(async () => {
@@ -111,6 +113,37 @@ export default function PlanList() {
     } catch { /* */ } finally { setSaving(false) }
   }
 
+  const handleQuickExecute = async (e, planId) => {
+    e.stopPropagation()
+    try {
+      await api.post(`/projects/${projectId}/plans/${planId}/execute`)
+      message.success('计划已启动执行')
+      fetchPlans()
+    } catch (err) {
+      message.error(err?.response?.data?.error?.message || err?.message || '执行失败')
+    }
+  }
+
+  const handleQuickDelete = (e, planId, planName) => {
+    e.stopPropagation()
+    Modal.confirm({
+      title: '确认删除',
+      content: `确定删除计划「${planName}」？`,
+      okText: '删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await api.delete(`/projects/${projectId}/plans/${planId}`)
+          message.success('删除成功')
+          fetchPlans()
+        } catch (err) {
+          message.error(err?.response?.data?.error?.message || err?.message || '删除失败')
+        }
+      },
+    })
+  }
+
   const filteredPlans = keyword
     ? plans.filter(p => p.name.toLowerCase().includes(keyword.toLowerCase()))
     : plans
@@ -161,8 +194,19 @@ export default function PlanList() {
                       <span>用例: {plan.caseCount} 条</span>
                     </Space>
                   </div>
-                  <div style={{ textAlign: 'right', width: 90, fontSize: 13, color: '#c2c6cf' }}>
-                    {plan.status === 'draft' ? '未执行' : plan.status}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    {plan.status === 'draft' && (
+                      <Button type="primary" size="small" icon={<PlayCircleOutlined />}
+                        onClick={e => handleQuickExecute(e, plan.id)}>执行</Button>
+                    )}
+                    {plan.status === 'executing' && (
+                      <Button size="small" icon={<EditOutlined />}
+                        onClick={e => { e.stopPropagation(); navigate(`/projects/${projectId}/plans/${plan.id}/manual-record`) }}>录入</Button>
+                    )}
+                    {(plan.status === 'draft' || plan.status === 'archived') && (
+                      <Button size="small" danger icon={<DeleteOutlined />}
+                        onClick={e => handleQuickDelete(e, plan.id, plan.name)} />
+                    )}
                   </div>
                 </div>
               </Card>
@@ -191,8 +235,16 @@ export default function PlanList() {
               options={branches.filter(b => b.status === 'active').map(b => ({ value: b.id, label: `${b.name} (${b.branch})` }))} />
           </Form.Item>
           <Form.Item name="caseIds" label="选择用例" rules={[{ required: true, message: '请至少选择 1 条用例' }]}>
-            <Select mode="multiple" placeholder="搜索并选择用例" maxTagCount={5} showSearch filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              options={cases.map(c => ({ value: c.id, label: `${c.caseCode} ${c.title}` }))} />
+            <div>
+              <Space>
+                <Button onClick={() => setCasePickerOpen(true)} disabled={!selectedBranch}>
+                  {selectedBranch ? '选择用例' : '请先选择分支'}
+                </Button>
+                <span style={{ fontSize: 13, color: '#86909c' }}>
+                  已选 {(form.getFieldValue('caseIds') || []).length} 条
+                </span>
+              </Space>
+            </div>
           </Form.Item>
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="environmentId" label="目标环境"
@@ -217,6 +269,28 @@ export default function PlanList() {
             </div>
           )}
         </Form>
+      </Modal>
+
+      <Modal title="选择用例" open={casePickerOpen} width={800}
+        onOk={() => setCasePickerOpen(false)} onCancel={() => setCasePickerOpen(false)}
+        okText="确定" cancelText="取消">
+        <Input placeholder="搜索用例编号或标题" value={caseSearch} onChange={e => setCaseSearch(e.target.value)}
+          allowClear style={{ marginBottom: 12 }} prefix={<SearchOutlined style={{ color: '#c2c6cf' }} />} />
+        <Table size="small" rowKey="id" pagination={{ pageSize: 10, size: 'small', showTotal: t => `共 ${t} 条` }}
+          rowSelection={{
+            selectedRowKeys: form.getFieldValue('caseIds') || [],
+            onChange: keys => form.setFieldsValue({ caseIds: keys }),
+          }}
+          dataSource={cases.filter(c =>
+            !caseSearch || (c.caseCode + ' ' + c.title).toLowerCase().includes(caseSearch.toLowerCase())
+          )}
+          columns={[
+            { title: '编号', dataIndex: 'caseCode', width: 120, render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v}</span> },
+            { title: '标题', dataIndex: 'title', ellipsis: true },
+            { title: '优先级', dataIndex: 'priority', width: 70, align: 'center', render: v => <Tag>{v}</Tag> },
+            { title: '类型', dataIndex: 'type', width: 60, align: 'center', render: v => v?.toUpperCase() },
+          ]}
+        />
       </Modal>
     </div>
   )

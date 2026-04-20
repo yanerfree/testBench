@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import write_audit_log
 from app.core.security import create_access_token
 from app.deps.auth import get_current_user
 from app.deps.db import get_db
@@ -18,6 +19,11 @@ async def login(body: LoginRequest, session: AsyncSession = Depends(get_db)):
     """用户名 + 密码登录，返回 JWT token"""
     user = await auth_service.authenticate(session, body.username, body.password)
     token = create_access_token(user.id, user.role)
+    await write_audit_log(
+        session, action="login", target_type="user",
+        target_id=user.id, target_name=user.username,
+        user_id=user.id,
+    )
     return {
         "data": TokenResponse(
             token=token,
@@ -35,6 +41,14 @@ async def me(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/logout")
-async def logout(current_user: User = Depends(get_current_user)):
-    """登出（前端清除 token，后端仅返回确认）"""
+async def logout(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """登出（前端清除 token，后端记录审计日志）"""
+    await write_audit_log(
+        session, action="logout", target_type="user",
+        target_id=current_user.id, target_name=current_user.username,
+        user_id=current_user.id,
+    )
     return MessageResponse(message="登出成功").model_dump()

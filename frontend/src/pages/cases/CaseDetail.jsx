@@ -73,6 +73,17 @@ function DropdownList({ items, activeKey, onSelect }) {
   )
 }
 
+function findFolderPath(tree, targetId) {
+  for (const node of tree) {
+    if (node.id === targetId) return node.path || node.name
+    if (node.children?.length) {
+      const found = findFolderPath(node.children, targetId)
+      if (found) return found
+    }
+  }
+  return null
+}
+
 export default function CaseDetail() {
   const { projectId, caseId } = useParams()
   const navigate = useNavigate()
@@ -100,7 +111,8 @@ export default function CaseDetail() {
   const [flaky, setFlaky] = useState(false)
   const [preconditions, setPreconditions] = useState('')
   const [expectedResult, setExpectedResult] = useState('')
-  const [scriptRef, setScriptRef] = useState('')
+  const [scriptRefFile, setScriptRefFile] = useState('')
+  const [scriptRefFunc, setScriptRefFunc] = useState('')
   const [remark, setRemark] = useState('')
   const [steps, setSteps] = useState([{ seq: 1, action: '' }])
 
@@ -127,18 +139,28 @@ export default function CaseDetail() {
       setTitle(c.title || '')
       setType(c.type || 'api')
       setPriority(c.priority || 'P1')
-      setModule(c.module || '')
-      setSubModule(c.subModule || '')
+
+      const allFolders = folderRes.data || []
+      setFolders(allFolders)
+      const folderPath = c.folderId ? findFolderPath(allFolders, c.folderId) : ''
+      if (folderPath) {
+        const parts = folderPath.split('/')
+        setModule(parts.slice(0, -1).join('/') || parts[0] || '')
+        setSubModule(parts.length > 1 ? parts[parts.length - 1] : '')
+      } else {
+        setModule(c.module || '')
+        setSubModule(c.subModule || '')
+      }
       setAutomationStatus(c.automationStatus || 'pending')
       setFlaky(c.isFlaky || false)
       setPreconditions(c.preconditions || '')
       setExpectedResult(c.expectedResult || '')
-      setScriptRef(c.scriptRef || '')
+      setScriptRefFile(c.scriptRefFile || '')
+      setScriptRefFunc(c.scriptRefFunc || '')
       setRemark(c.remark || '')
-      setSteps(c.steps?.length ? c.steps : [{ seq: 1, action: '' }])
+      setSteps(c.steps?.length ? c.steps.map((s, i) => ({ ...s, seq: s.seq || i + 1 })) : [{ seq: 1, action: '' }])
 
       setEnvironments(envRes.data || [])
-      setFolders(folderRes.data || [])
       if (envRes.data?.length) setRunEnv(envRes.data[0].id)
     } catch (err) {
       message.error('加载用例详情失败')
@@ -149,10 +171,10 @@ export default function CaseDetail() {
 
   const savedRef = useRef('')
   useEffect(() => {
-    if (caseData) savedRef.current = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRef, remark, steps })
+    if (caseData) savedRef.current = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps })
   }, [caseData])
 
-  const currentSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRef, remark, steps })
+  const currentSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps })
   const isDirty = caseData && currentSnap !== savedRef.current
 
   // 离开未保存确认
@@ -186,10 +208,10 @@ export default function CaseDetail() {
     try {
       await api.put(`/projects/${projectId}/branches/${branchId}/cases/${caseId}`, {
         title, type, priority, module, subModule, automationStatus,
-        isFlaky: flaky, preconditions, expectedResult, scriptRef, remark, steps,
+        isFlaky: flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps,
       })
       // 重新计算快照确保 isDirty 变为 false
-      const newSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRef, remark, steps })
+      const newSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps })
       savedRef.current = newSnap
       setCaseData(prev => ({ ...prev }))  // 触发重渲染
       message.success('保存成功')
@@ -321,8 +343,12 @@ export default function CaseDetail() {
 
                 <div style={{ marginBottom: 20 }}>
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>脚本引用</h4>
-                  <Input value={scriptRef} onChange={e => setScriptRef(e.target.value)} size="small"
-                    placeholder="tests/api/..." style={{ fontFamily: 'monospace', fontSize: 12, background: '#fafbfc', borderColor: '#f2f3f5' }} />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Input value={scriptRefFile} onChange={e => setScriptRefFile(e.target.value)} size="small"
+                      placeholder="脚本文件路径，如 tests/api/test_user.py" style={{ flex: 2, fontFamily: 'monospace', fontSize: 12, background: '#fafbfc', borderColor: '#f2f3f5' }} />
+                    <Input value={scriptRefFunc} onChange={e => setScriptRefFunc(e.target.value)} size="small"
+                      placeholder="函数名，如 test_create_user" style={{ flex: 1, fontFamily: 'monospace', fontSize: 12, background: '#fafbfc', borderColor: '#f2f3f5' }} />
+                  </div>
                 </div>
 
                 <div>

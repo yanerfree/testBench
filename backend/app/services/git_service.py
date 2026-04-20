@@ -72,18 +72,22 @@ def get_paths(script_base_path: str, branch_name: str) -> dict[str, Path]:
 
 
 def ensure_bare_repo(git_url: str, bare_repo: Path, timeout: int = 300) -> bool:
-    """确保 bare 仓库存在。返回 True 表示新建，False 表示已存在。"""
-    if (bare_repo / "HEAD").exists():
-        logger.info("bare repo already exists: %s", bare_repo)
-        return False
+    """确保 bare 仓库存在且 fetch refspec 正确。返回 True 表示新建，False 表示已存在。"""
+    first_time = False
+    if not (bare_repo / "HEAD").exists():
+        bare_repo.parent.mkdir(parents=True, exist_ok=True)
+        _run_git(
+            ["clone", "--bare", git_url, str(bare_repo)],
+            timeout=timeout,
+        )
+        logger.info("bare repo cloned: %s", bare_repo)
+        first_time = True
 
-    bare_repo.parent.mkdir(parents=True, exist_ok=True)
     _run_git(
-        ["clone", "--bare", git_url, str(bare_repo)],
-        timeout=timeout,
+        ["--git-dir", str(bare_repo), "config", "remote.origin.fetch",
+         "+refs/heads/*:refs/remotes/origin/*"],
     )
-    logger.info("bare repo cloned: %s", bare_repo)
-    return True
+    return first_time
 
 
 def fetch_origin(bare_repo: Path, lock_path: Path, timeout: int = 120) -> None:

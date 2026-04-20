@@ -13,3 +13,15 @@ __pycache__/
 .venv/
 *.egg
 .pytest_cache/
+
+# 环境变量（含密码）
+.env
+backend/.env
+
+# Playwright 临时文件
+.playwright-cli/
+frontend/.playwright-cli/
+frontend/ui-*.png
+
+# 测试报告
+discover_test/

@@ -49,6 +49,17 @@ async def list_folder_tree(session: AsyncSession, branch_id: uuid.UUID) -> list[
         else:
             roots.append(node)
 
+    # 从叶子到根汇总 caseCount
+    def _sum_counts(node):
+        total = node["caseCount"]
+        for child in node["children"]:
+            total += _sum_counts(child)
+        node["caseCount"] = total
+        return total
+
+    for root in roots:
+        _sum_counts(root)
+
     return roots
 
 
@@ -111,7 +122,7 @@ async def create_folder(
 
 
 async def delete_folder(session: AsyncSession, folder_id: uuid.UUID) -> None:
-    """删除空目录。有用例时拒绝。"""
+    """删除目录。该目录及子目录下有活跃用例时拒绝，否则级联删除子目录。"""
     result = await session.execute(
         select(CaseFolder).where(CaseFolder.id == folder_id)
     )
@@ -119,10 +130,13 @@ async def delete_folder(session: AsyncSession, folder_id: uuid.UUID) -> None:
     if folder is None:
         raise NotFoundError(code="FOLDER_NOT_FOUND", message="目录不存在")
 
-    # 检查是否有用例
+    descendant_ids = await _collect_descendant_ids(session, folder_id)
+    all_ids = [folder_id] + descendant_ids
+
+    # 检查该目录及所有子目录下是否有活跃用例
     case_count = await session.execute(
         select(func.count(Case.id)).where(
-            Case.folder_id == folder_id,
+            Case.folder_id.in_(all_ids),
             Case.deleted_at.is_(None),
         )
     )
@@ -133,15 +147,28 @@ async def delete_folder(session: AsyncSession, folder_id: uuid.UUID) -> None:
             message=f"该目录下存在 {count} 条用例，请先移动或删除",
         )
 
-    # 检查是否有子目录
-    child_count = await session.execute(
-        select(func.count(CaseFolder.id)).where(CaseFolder.parent_id == folder_id)
+    # 解除软删除用例的 folder_id 引用
+    from sqlalchemy import update, delete as sql_delete
+    await session.execute(
+        update(Case).where(Case.folder_id.in_(all_ids)).values(folder_id=None)
     )
-    if child_count.scalar_one() > 0:
-        raise ValidationError(
-            code="FOLDER_HAS_CHILDREN",
-            message="该目录下存在子目录，请先删除子目录",
-        )
 
-    await session.delete(folder)
+    # 清除子目录的 parent_id 引用后批量删除
+    await session.execute(
+        update(CaseFolder).where(CaseFolder.parent_id.in_(all_ids)).values(parent_id=None)
+    )
     await session.flush()
+    await session.execute(sql_delete(CaseFolder).where(CaseFolder.id.in_(all_ids)))
+    await session.flush()
+
+
+async def _collect_descendant_ids(session: AsyncSession, parent_id: uuid.UUID) -> list:
+    """递归收集所有子目录 ID。"""
+    result = await session.execute(
+        select(CaseFolder.id).where(CaseFolder.parent_id == parent_id)
+    )
+    child_ids = [row[0] for row in result.all()]
+    all_ids = list(child_ids)
+    for cid in child_ids:
+        all_ids.extend(await _collect_descendant_ids(session, cid))
+    return all_ids

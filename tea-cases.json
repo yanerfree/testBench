@@ -1,148 +1,4099 @@
 {
   "version": "1.0",
-  "generatedAt": "2026-04-15T20:00:00Z",
   "project": "testBench",
-  "summary": {
-    "total": 9,
-    "byLevel": { "unit": 2, "integration": 0, "api": 7, "e2e": 0 },
-    "byPriority": { "P0": 6, "P1": 3, "P2": 0, "P3": 0 },
-    "byModule": { "auth": 9 }
-  },
+  "generated_by": "auto-scan",
   "cases": [
     {
-      "tea_id": "auth_jwt_create_token",
-      "title": "JWT token 签发功能验证",
-      "module": "auth",
-      "submodule": "jwt",
+      "tea_id": "api_auth_test_inactive_user_cannot_login",
+      "title": "inactive user cannot login",
+      "module": "api",
       "type": "api",
-      "level": "unit",
-      "priority": "P0",
-      "script_ref": {
-        "file": "tests/unit/auth/test_jwt_create_token.py",
-        "class": "TestJwtCreateToken",
-        "func": "test_token_contains_required_claims"
-      },
-      "tags": ["security"]
-    },
-    {
-      "tea_id": "auth_jwt_decode_token",
-      "title": "JWT token 解码与验证",
-      "module": "auth",
-      "submodule": "jwt",
-      "type": "api",
-      "level": "unit",
-      "priority": "P0",
-      "script_ref": {
-        "file": "tests/unit/auth/test_jwt_decode_token.py",
-        "class": "TestJwtDecodeToken",
-        "func": "test_decode_valid_token"
-      },
-      "tags": ["security"]
-    },
-    {
-      "tea_id": "auth_login_success",
-      "title": "正确凭据登录返回 JWT token",
-      "module": "auth",
-      "submodule": "login",
-      "type": "api",
-      "level": "api",
-      "priority": "P0",
-      "script_ref": {
-        "file": "tests/api/auth/test_login_success.py",
-        "class": "TestLoginSuccess",
-        "func": "test_correct_credentials_return_token"
-      },
-      "tags": ["smoke", "security"]
-    },
-    {
-      "tea_id": "auth_login_wrong_password",
-      "title": "错误密码登录返回 401",
-      "module": "auth",
-      "submodule": "login",
-      "type": "api",
-      "level": "api",
-      "priority": "P0",
-      "script_ref": {
-        "file": "tests/api/auth/test_login_wrong_password.py",
-        "class": "TestLoginWrongPassword",
-        "func": "test_wrong_password_returns_401"
-      },
-      "tags": ["security"]
-    },
-    {
-      "tea_id": "auth_login_inactive_user",
-      "title": "禁用用户登录返回 401",
-      "module": "auth",
-      "submodule": "login",
-      "type": "api",
-      "level": "api",
       "priority": "P1",
       "script_ref": {
         "file": "tests/api/auth/test_login_inactive_user.py",
-        "class": "TestLoginInactiveUser",
-        "func": "test_inactive_user_cannot_login"
+        "func": "test_inactive_user_cannot_login",
+        "class": "TestLoginInactiveUser"
       },
-      "tags": ["security"]
+      "submodule": "auth"
     },
     {
-      "tea_id": "auth_me_success",
-      "title": "已登录用户获取自身信息",
-      "module": "auth",
-      "submodule": "me",
+      "tea_id": "api_auth_test_correct_credentials_return_token",
+      "title": "correct credentials return token",
+      "module": "api",
       "type": "api",
-      "level": "api",
-      "priority": "P0",
+      "priority": "P1",
       "script_ref": {
-        "file": "tests/api/auth/test_me_success.py",
-        "class": "TestMeSuccess",
-        "func": "test_me_returns_current_user"
+        "file": "tests/api/auth/test_login_success.py",
+        "func": "test_correct_credentials_return_token",
+        "class": "TestLoginSuccess"
       },
-      "tags": []
+      "submodule": "auth"
     },
     {
-      "tea_id": "auth_me_unauthorized",
-      "title": "未授权访问 /me 返回 401",
-      "module": "auth",
-      "submodule": "me",
+      "tea_id": "api_auth_test_admin_login_returns_admin_role",
+      "title": "admin login returns admin role",
+      "module": "api",
       "type": "api",
-      "level": "api",
-      "priority": "P0",
+      "priority": "P1",
       "script_ref": {
-        "file": "tests/api/auth/test_me_unauthorized.py",
-        "class": "TestMeUnauthorized",
-        "func": "test_no_token_returns_401"
+        "file": "tests/api/auth/test_login_success.py",
+        "func": "test_admin_login_returns_admin_role",
+        "class": "TestLoginSuccess"
       },
-      "tags": ["security"]
+      "submodule": "auth"
     },
     {
-      "tea_id": "auth_logout",
-      "title": "登出接口返回成功确认",
-      "module": "auth",
-      "submodule": "logout",
+      "tea_id": "api_auth_test_wrong_password_returns_401",
+      "title": "wrong password returns 401",
+      "module": "api",
       "type": "api",
-      "level": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_login_wrong_password.py",
+        "func": "test_wrong_password_returns_401",
+        "class": "TestLoginWrongPassword"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_auth_test_nonexistent_user_returns_401",
+      "title": "nonexistent user returns 401",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_login_wrong_password.py",
+        "func": "test_nonexistent_user_returns_401",
+        "class": "TestLoginWrongPassword"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_auth_test_logout_returns_success",
+      "title": "logout returns success",
+      "module": "api",
+      "type": "api",
       "priority": "P1",
       "script_ref": {
         "file": "tests/api/auth/test_logout.py",
-        "class": "TestLogout",
-        "func": "test_logout_returns_success"
+        "func": "test_logout_returns_success",
+        "class": "TestLogout"
       },
-      "tags": []
+      "submodule": "auth"
     },
     {
-      "tea_id": "auth_token_refresh",
-      "title": "Token 滑动续期中间件验证",
-      "module": "auth",
-      "submodule": "token",
+      "tea_id": "api_auth_test_logout_without_token_returns_401",
+      "title": "logout without token returns 401",
+      "module": "api",
       "type": "api",
-      "level": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_logout.py",
+        "func": "test_logout_without_token_returns_401",
+        "class": "TestLogout"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_auth_test_me_returns_current_user",
+      "title": "me returns current user",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_me_success.py",
+        "func": "test_me_returns_current_user",
+        "class": "TestMeSuccess"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_auth_test_me_returns_user_role",
+      "title": "me returns user role",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_me_success.py",
+        "func": "test_me_returns_user_role",
+        "class": "TestMeSuccess"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_auth_test_no_token_returns_401",
+      "title": "no token returns 401",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_me_unauthorized.py",
+        "func": "test_no_token_returns_401",
+        "class": "TestMeUnauthorized"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_auth_test_invalid_token_returns_401",
+      "title": "invalid token returns 401",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_me_unauthorized.py",
+        "func": "test_invalid_token_returns_401",
+        "class": "TestMeUnauthorized"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_auth_test_malformed_auth_header_returns_401",
+      "title": "malformed auth header returns 401",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_me_unauthorized.py",
+        "func": "test_malformed_auth_header_returns_401",
+        "class": "TestMeUnauthorized"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_auth_test_hash_and_verify_match",
+      "title": "hash and verify match",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_password_hashing.py",
+        "func": "test_hash_and_verify_match",
+        "class": "TestPasswordHashing"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_auth_test_hash_and_verify_mismatch",
+      "title": "hash and verify mismatch",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_password_hashing.py",
+        "func": "test_hash_and_verify_mismatch",
+        "class": "TestPasswordHashing"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_auth_test_hash_produces_different_outputs",
+      "title": "hash produces different outputs",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_password_hashing.py",
+        "func": "test_hash_produces_different_outputs",
+        "class": "TestPasswordHashing"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_auth_test_hash_is_not_plaintext",
+      "title": "hash is not plaintext",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_password_hashing.py",
+        "func": "test_hash_is_not_plaintext",
+        "class": "TestPasswordHashing"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_auth_test_fresh_token_no_refresh",
+      "title": "fresh token no refresh",
+      "module": "api",
+      "type": "api",
       "priority": "P1",
       "script_ref": {
         "file": "tests/api/auth/test_token_refresh.py",
-        "class": "TestTokenRefresh",
-        "func": "test_near_expiry_token_returns_new_token"
+        "func": "test_fresh_token_no_refresh",
+        "class": "TestTokenRefresh"
       },
-      "tags": ["middleware"]
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_auth_test_near_expiry_token_returns_new_token",
+      "title": "near expiry token returns new token",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/auth/test_token_refresh.py",
+        "func": "test_near_expiry_token_returns_new_token",
+        "class": "TestTokenRefresh"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "api_branches_test_archive_branch_success",
+      "title": "archive branch success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/branches/test_archive_activate_branch.py",
+        "func": "test_archive_branch_success",
+        "class": "TestArchiveActivateBranch"
+      },
+      "submodule": "branches"
+    },
+    {
+      "tea_id": "api_branches_test_cannot_archive_last_active_branch",
+      "title": "cannot archive last active branch",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/branches/test_archive_activate_branch.py",
+        "func": "test_cannot_archive_last_active_branch",
+        "class": "TestArchiveActivateBranch"
+      },
+      "submodule": "branches"
+    },
+    {
+      "tea_id": "api_branches_test_activate_archived_branch",
+      "title": "activate archived branch",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/branches/test_archive_activate_branch.py",
+        "func": "test_activate_archived_branch",
+        "class": "TestArchiveActivateBranch"
+      },
+      "submodule": "branches"
+    },
+    {
+      "tea_id": "api_branches_test_create_branch_success",
+      "title": "create branch success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/branches/test_create_branch.py",
+        "func": "test_create_branch_success",
+        "class": "TestCreateBranch"
+      },
+      "submodule": "branches"
+    },
+    {
+      "tea_id": "api_branches_test_duplicate_name_returns_409",
+      "title": "duplicate name returns 409",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/branches/test_create_branch.py",
+        "func": "test_duplicate_name_returns_409",
+        "class": "TestCreateBranch"
+      },
+      "submodule": "branches"
+    },
+    {
+      "tea_id": "api_branches_test_list_includes_default_branch",
+      "title": "list includes default branch",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/branches/test_list_branches.py",
+        "func": "test_list_includes_default_branch",
+        "class": "TestListBranches"
+      },
+      "submodule": "branches"
+    },
+    {
+      "tea_id": "api_branches_test_sync_requires_git_url",
+      "title": "AC: 项目未配置 Git URL 时返回 422",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/branches/test_sync_branch.py",
+        "func": "test_sync_requires_git_url",
+        "class": "TestSyncBranchValidation"
+      },
+      "submodule": "branches"
+    },
+    {
+      "tea_id": "api_branches_test_sync_requires_script_base_path",
+      "title": "AC: 项目未配置脚本路径时返回 422",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/branches/test_sync_branch.py",
+        "func": "test_sync_requires_script_base_path",
+        "class": "TestSyncBranchValidation"
+      },
+      "submodule": "branches"
+    },
+    {
+      "tea_id": "api_branches_test_sync_archived_branch_returns_422",
+      "title": "AC: 已归档分支不能同步",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/branches/test_sync_branch.py",
+        "func": "test_sync_archived_branch_returns_422",
+        "class": "TestSyncBranchValidation"
+      },
+      "submodule": "branches"
+    },
+    {
+      "tea_id": "api_branches_test_sync_returns_202_with_task_id",
+      "title": "AC: 提交任务返回 202 + taskId",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/branches/test_sync_branch.py",
+        "func": "test_sync_returns_202_with_task_id",
+        "class": "TestSyncBranchAsync"
+      },
+      "submodule": "branches"
+    },
+    {
+      "tea_id": "api_branches_test_sync_enqueues_arq_job",
+      "title": "AC: 端点调用后 arq 任务被提交",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/branches/test_sync_branch.py",
+        "func": "test_sync_enqueues_arq_job",
+        "class": "TestSyncBranchAsync"
+      },
+      "submodule": "branches"
+    },
+    {
+      "tea_id": "api_branches_test_guest_cannot_sync",
+      "title": "AC: guest 不能执行同步",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/branches/test_sync_branch.py",
+        "func": "test_guest_cannot_sync",
+        "class": "TestSyncBranchPermissions"
+      },
+      "submodule": "branches"
+    },
+    {
+      "tea_id": "api_cases_test_batch_set_priority",
+      "title": "batch set priority",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_batch_cases.py",
+        "func": "test_batch_set_priority",
+        "class": "TestBatchCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_batch_set_flaky",
+      "title": "batch set flaky",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_batch_cases.py",
+        "func": "test_batch_set_flaky",
+        "class": "TestBatchCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_batch_archive_and_unarchive",
+      "title": "batch archive and unarchive",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_batch_cases.py",
+        "func": "test_batch_archive_and_unarchive",
+        "class": "TestBatchCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_batch_with_invalid_id",
+      "title": "batch with invalid id",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_batch_cases.py",
+        "func": "test_batch_with_invalid_id",
+        "class": "TestBatchCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_copy_success",
+      "title": "copy success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_copy_from_branch.py",
+        "func": "test_copy_success",
+        "class": "TestCopyFromBranch"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_copy_creates_folders_in_target",
+      "title": "copy creates folders in target",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_copy_from_branch.py",
+        "func": "test_copy_creates_folders_in_target",
+        "class": "TestCopyFromBranch"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_create_case_success",
+      "title": "create case success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_create_case.py",
+        "func": "test_create_case_success",
+        "class": "TestCreateCase"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_create_case_auto_generates_folder",
+      "title": "create case auto generates folder",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_create_case.py",
+        "func": "test_create_case_auto_generates_folder",
+        "class": "TestCreateCase"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_soft_delete_success",
+      "title": "soft delete success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_delete_case.py",
+        "func": "test_soft_delete_success",
+        "class": "TestDeleteCase"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_delete_nonexistent_returns_404",
+      "title": "delete nonexistent returns 404",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_delete_case.py",
+        "func": "test_delete_nonexistent_returns_404",
+        "class": "TestDeleteCase"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_empty_tree",
+      "title": "empty tree",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_folders.py",
+        "func": "test_empty_tree",
+        "class": "TestFolders"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_create_module",
+      "title": "create module",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_folders.py",
+        "func": "test_create_module",
+        "class": "TestFolders"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_create_submodule",
+      "title": "create submodule",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_folders.py",
+        "func": "test_create_submodule",
+        "class": "TestFolders"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_tree_with_case_count",
+      "title": "tree with case count",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_folders.py",
+        "func": "test_tree_with_case_count",
+        "class": "TestFolders"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_delete_empty_folder",
+      "title": "delete empty folder",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_folders.py",
+        "func": "test_delete_empty_folder",
+        "class": "TestFolders"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_cannot_delete_non_empty_folder",
+      "title": "cannot delete non empty folder",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_folders.py",
+        "func": "test_cannot_delete_non_empty_folder",
+        "class": "TestFolders"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_duplicate_folder_returns_409",
+      "title": "duplicate folder returns 409",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_folders.py",
+        "func": "test_duplicate_folder_returns_409",
+        "class": "TestFolders"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_get_case_success",
+      "title": "get case success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_get_case.py",
+        "func": "test_get_case_success",
+        "class": "TestGetCase"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_get_nonexistent_case_returns_404",
+      "title": "get nonexistent case returns 404",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_get_case.py",
+        "func": "test_get_nonexistent_case_returns_404",
+        "class": "TestGetCase"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_import_new_cases",
+      "title": "import new cases",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_import_cases.py",
+        "func": "test_import_new_cases",
+        "class": "TestImportCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_reimport_updates_existing",
+      "title": "reimport updates existing",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_import_cases.py",
+        "func": "test_reimport_updates_existing",
+        "class": "TestImportCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_missing_tea_id_marks_removed",
+      "title": "missing tea id marks removed",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_import_cases.py",
+        "func": "test_missing_tea_id_marks_removed",
+        "class": "TestImportCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_skip_cases_missing_fields",
+      "title": "skip cases missing fields",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_import_cases.py",
+        "func": "test_skip_cases_missing_fields",
+        "class": "TestImportCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_reject_non_json_file",
+      "title": "reject non json file",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_import_cases.py",
+        "func": "test_reject_non_json_file",
+        "class": "TestImportCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_list_all_with_pagination",
+      "title": "list all with pagination",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_list_cases.py",
+        "func": "test_list_all_with_pagination",
+        "class": "TestListCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_filter_by_type",
+      "title": "filter by type",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_list_cases.py",
+        "func": "test_filter_by_type",
+        "class": "TestListCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_filter_by_priority",
+      "title": "filter by priority",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_list_cases.py",
+        "func": "test_filter_by_priority",
+        "class": "TestListCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_filter_by_flaky",
+      "title": "filter by flaky",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_list_cases.py",
+        "func": "test_filter_by_flaky",
+        "class": "TestListCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_keyword_search",
+      "title": "keyword search",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_list_cases.py",
+        "func": "test_keyword_search",
+        "class": "TestListCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_pagination_page_size",
+      "title": "pagination page size",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_list_cases.py",
+        "func": "test_pagination_page_size",
+        "class": "TestListCases"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_update_title_and_priority",
+      "title": "update title and priority",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_update_case.py",
+        "func": "test_update_title_and_priority",
+        "class": "TestUpdateCase"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_update_flaky_flag",
+      "title": "update flaky flag",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_update_case.py",
+        "func": "test_update_flaky_flag",
+        "class": "TestUpdateCase"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_cases_test_update_steps",
+      "title": "update steps",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/cases/test_update_case.py",
+        "func": "test_update_steps",
+        "class": "TestUpdateCase"
+      },
+      "submodule": "cases"
+    },
+    {
+      "tea_id": "api_health_test_healthz_returns_ok",
+      "title": "healthz returns ok",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/health/test_healthz.py",
+        "func": "test_healthz_returns_ok",
+        "class": "TestHealthEndpoint"
+      },
+      "submodule": "health"
+    },
+    {
+      "tea_id": "api_health_test_readyz_returns_components",
+      "title": "AC: 返回各组件状态详情",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/health/test_readyz.py",
+        "func": "test_readyz_returns_components",
+        "class": "TestReadyzEndpoint"
+      },
+      "submodule": "health"
+    },
+    {
+      "tea_id": "api_health_test_readyz_healthy_returns_200",
+      "title": "AC: 全部健康返回 200",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/health/test_readyz.py",
+        "func": "test_readyz_healthy_returns_200",
+        "class": "TestReadyzEndpoint"
+      },
+      "submodule": "health"
+    },
+    {
+      "tea_id": "api_health_test_readyz_no_auth_required",
+      "title": "AC: 无需鉴权",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/health/test_readyz.py",
+        "func": "test_readyz_no_auth_required",
+        "class": "TestReadyzEndpoint"
+      },
+      "submodule": "health"
+    },
+    {
+      "tea_id": "api_logs_test_write_audit_log_creates_record",
+      "title": "AC: write_audit_log 写入审计日志",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/logs/test_audit_logs.py",
+        "func": "test_write_audit_log_creates_record",
+        "class": "TestAuditLogWrite"
+      },
+      "submodule": "logs"
+    },
+    {
+      "tea_id": "api_logs_test_write_audit_log_uses_context",
+      "title": "AC: write_audit_log 从 contextvars 获取 user_id 和 trace_id",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/logs/test_audit_logs.py",
+        "func": "test_write_audit_log_uses_context",
+        "class": "TestAuditLogWrite"
+      },
+      "submodule": "logs"
+    },
+    {
+      "tea_id": "api_logs_test_audit_log_decorator",
+      "title": "AC: @audit_log 装饰器自动记录",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/logs/test_audit_logs.py",
+        "func": "test_audit_log_decorator",
+        "class": "TestAuditLogWrite"
+      },
+      "submodule": "logs"
+    },
+    {
+      "tea_id": "api_logs_test_audit_log_decorator_does_not_break_on_failure",
+      "title": "AC: 装饰器写日志失败不影响主业务",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/logs/test_audit_logs.py",
+        "func": "test_audit_log_decorator_does_not_break_on_failure",
+        "class": "TestAuditLogWrite"
+      },
+      "submodule": "logs"
+    },
+    {
+      "tea_id": "api_logs_test_admin_can_list_global_logs",
+      "title": "AC: GET /api/logs admin 可查看全局日志",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/logs/test_audit_logs.py",
+        "func": "test_admin_can_list_global_logs",
+        "class": "TestGlobalLogsAPI"
+      },
+      "submodule": "logs"
+    },
+    {
+      "tea_id": "api_logs_test_non_admin_cannot_list_global_logs",
+      "title": "AC: 非 admin 返回 403",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/logs/test_audit_logs.py",
+        "func": "test_non_admin_cannot_list_global_logs",
+        "class": "TestGlobalLogsAPI"
+      },
+      "submodule": "logs"
+    },
+    {
+      "tea_id": "api_logs_test_filter_by_action",
+      "title": "AC: 支持按操作类型筛选",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/logs/test_audit_logs.py",
+        "func": "test_filter_by_action",
+        "class": "TestGlobalLogsAPI"
+      },
+      "submodule": "logs"
+    },
+    {
+      "tea_id": "api_logs_test_filter_by_keyword",
+      "title": "AC: 支持关键字搜索（对象名称）",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/logs/test_audit_logs.py",
+        "func": "test_filter_by_keyword",
+        "class": "TestGlobalLogsAPI"
+      },
+      "submodule": "logs"
+    },
+    {
+      "tea_id": "api_logs_test_pagination",
+      "title": "AC: 分页加载",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/logs/test_audit_logs.py",
+        "func": "test_pagination",
+        "class": "TestGlobalLogsAPI"
+      },
+      "submodule": "logs"
+    },
+    {
+      "tea_id": "api_logs_test_project_member_can_view_project_logs",
+      "title": "AC: 项目成员可查看项目级日志",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/logs/test_audit_logs.py",
+        "func": "test_project_member_can_view_project_logs",
+        "class": "TestProjectLogsAPI"
+      },
+      "submodule": "logs"
+    },
+    {
+      "tea_id": "api_logs_test_unbound_user_cannot_view_project_logs",
+      "title": "AC: 未绑定用户不能查看项目日志",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/logs/test_audit_logs.py",
+        "func": "test_unbound_user_cannot_view_project_logs",
+        "class": "TestProjectLogsAPI"
+      },
+      "submodule": "logs"
+    },
+    {
+      "tea_id": "api_plans_test_execute_creates_report",
+      "title": "execute creates report",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_manual_execution.py",
+        "func": "test_execute_creates_report",
+        "class": "TestManualExecution"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_manual_record_and_complete",
+      "title": "manual record and complete",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_manual_execution.py",
+        "func": "test_manual_record_and_complete",
+        "class": "TestManualExecution"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_cannot_execute_non_draft_plan",
+      "title": "cannot execute non draft plan",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_manual_execution.py",
+        "func": "test_cannot_execute_non_draft_plan",
+        "class": "TestManualExecution"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_results_before_execution_returns_null",
+      "title": "results before execution returns null",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_manual_execution.py",
+        "func": "test_results_before_execution_returns_null",
+        "class": "TestManualExecution"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_pause_executing_plan",
+      "title": "暂停执行中的计划",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_control.py",
+        "func": "test_pause_executing_plan",
+        "class": "TestPauseResumeAbort"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_resume_paused_plan",
+      "title": "恢复已暂停的计划",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_control.py",
+        "func": "test_resume_paused_plan",
+        "class": "TestPauseResumeAbort"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_resume_non_paused_returns_422",
+      "title": "非暂停状态不能恢复",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_control.py",
+        "func": "test_resume_non_paused_returns_422",
+        "class": "TestPauseResumeAbort"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_abort_executing_plan",
+      "title": "终止执行中的计划",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_control.py",
+        "func": "test_abort_executing_plan",
+        "class": "TestPauseResumeAbort"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_abort_paused_plan",
+      "title": "终止已暂停的计划",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_control.py",
+        "func": "test_abort_paused_plan",
+        "class": "TestPauseResumeAbort"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_abort_draft_returns_422",
+      "title": "草稿状态不能终止",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_control.py",
+        "func": "test_abort_draft_returns_422",
+        "class": "TestPauseResumeAbort"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_assign_handler",
+      "title": "分配处理人",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_control.py",
+        "func": "test_assign_handler",
+        "class": "TestAssignScenarios"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_create_plan",
+      "title": "create plan",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_crud.py",
+        "func": "test_create_plan",
+        "class": "TestPlanCRUD"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_list_plans",
+      "title": "list plans",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_crud.py",
+        "func": "test_list_plans",
+        "class": "TestPlanCRUD"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_get_plan_detail",
+      "title": "get plan detail",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_crud.py",
+        "func": "test_get_plan_detail",
+        "class": "TestPlanCRUD"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_archive_plan",
+      "title": "archive plan",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_crud.py",
+        "func": "test_archive_plan",
+        "class": "TestPlanCRUD"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_delete_draft_plan",
+      "title": "delete draft plan",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_crud.py",
+        "func": "test_delete_draft_plan",
+        "class": "TestPlanCRUD"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_create_plan_without_cases_returns_422",
+      "title": "create plan without cases returns 422",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_crud.py",
+        "func": "test_create_plan_without_cases_returns_422",
+        "class": "TestPlanCRUD"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_guest_cannot_create_plan",
+      "title": "guest 不能创建计划",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_permissions.py",
+        "func": "test_guest_cannot_create_plan",
+        "class": "TestPlanPermissions"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_guest_can_list_plans",
+      "title": "guest 可以查看计划列表",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_permissions.py",
+        "func": "test_guest_can_list_plans",
+        "class": "TestPlanPermissions"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_guest_cannot_archive_plan",
+      "title": "guest 不能归档计划",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_permissions.py",
+        "func": "test_guest_cannot_archive_plan",
+        "class": "TestPlanPermissions"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_guest_cannot_delete_plan",
+      "title": "guest 不能删除计划",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_permissions.py",
+        "func": "test_guest_cannot_delete_plan",
+        "class": "TestPlanPermissions"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_get_nonexistent_plan_returns_404",
+      "title": "不存在的计划返回 404",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_permissions.py",
+        "func": "test_get_nonexistent_plan_returns_404",
+        "class": "TestPlanPermissions"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_unbound_user_cannot_list_plans",
+      "title": "未绑定用户不能查看计划",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_permissions.py",
+        "func": "test_unbound_user_cannot_list_plans",
+        "class": "TestPlanPermissions"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_reopen_completed_plan",
+      "title": "AC: 已完成计划可重新打开，状态变为 executing",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_reopen.py",
+        "func": "test_reopen_completed_plan",
+        "class": "TestPlanReopen"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_reopen_draft_plan_returns_422",
+      "title": "AC: 非已完成状态不可重新打开",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_reopen.py",
+        "func": "test_reopen_draft_plan_returns_422",
+        "class": "TestPlanReopen"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_reopen_preserves_results",
+      "title": "AC: 重新打开后已有执行结果保留",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_reopen.py",
+        "func": "test_reopen_preserves_results",
+        "class": "TestPlanReopen"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_plans_test_non_creator_non_admin_cannot_reopen",
+      "title": "AC: 非项目管理员且非计划创建者返回 403",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/plans/test_plan_reopen.py",
+        "func": "test_non_creator_non_admin_cannot_reopen",
+        "class": "TestPlanReopen"
+      },
+      "submodule": "plans"
+    },
+    {
+      "tea_id": "api_projects_test_add_member_success",
+      "title": "add member success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_add_member.py",
+        "func": "test_add_member_success",
+        "class": "TestAddMember"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_add_duplicate_member_returns_409",
+      "title": "add duplicate member returns 409",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_add_member.py",
+        "func": "test_add_duplicate_member_returns_409",
+        "class": "TestAddMember"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_create_project_success",
+      "title": "create project success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_create_project.py",
+        "func": "test_create_project_success",
+        "class": "TestCreateProject"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_duplicate_name_returns_409",
+      "title": "duplicate name returns 409",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_create_project_duplicate.py",
+        "func": "test_duplicate_name_returns_409",
+        "class": "TestCreateProjectDuplicate"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_delete_project_success",
+      "title": "delete project success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_delete_project.py",
+        "func": "test_delete_project_success",
+        "class": "TestDeleteProject"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_delete_nonexistent_returns_404",
+      "title": "delete nonexistent returns 404",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_delete_project.py",
+        "func": "test_delete_nonexistent_returns_404",
+        "class": "TestDeleteProject"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_list_members_includes_creator",
+      "title": "list members includes creator",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_list_members.py",
+        "func": "test_list_members_includes_creator",
+        "class": "TestListMembers"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_admin_sees_all_projects",
+      "title": "admin sees all projects",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_list_projects.py",
+        "func": "test_admin_sees_all_projects",
+        "class": "TestListProjects"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_regular_user_sees_only_bound_projects",
+      "title": "regular user sees only bound projects",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_list_projects.py",
+        "func": "test_regular_user_sees_only_bound_projects",
+        "class": "TestListProjects"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_regular_user_can_create_project",
+      "title": "regular user can create project",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_projects_forbidden.py",
+        "func": "test_regular_user_can_create_project",
+        "class": "TestProjectsForbidden"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_regular_user_cannot_delete_project",
+      "title": "regular user cannot delete project",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_projects_forbidden.py",
+        "func": "test_regular_user_cannot_delete_project",
+        "class": "TestProjectsForbidden"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_unauthenticated_cannot_list",
+      "title": "unauthenticated cannot list",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_projects_forbidden.py",
+        "func": "test_unauthenticated_cannot_list",
+        "class": "TestProjectsForbidden"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_remove_member_success",
+      "title": "remove member success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_remove_member.py",
+        "func": "test_remove_member_success",
+        "class": "TestRemoveMember"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_cannot_remove_last_admin",
+      "title": "cannot remove last admin",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_remove_member.py",
+        "func": "test_cannot_remove_last_admin",
+        "class": "TestRemoveMember"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_update_role_success",
+      "title": "update role success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_update_member_role.py",
+        "func": "test_update_role_success",
+        "class": "TestUpdateMemberRole"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_cannot_downgrade_last_admin",
+      "title": "cannot downgrade last admin",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_update_member_role.py",
+        "func": "test_cannot_downgrade_last_admin",
+        "class": "TestUpdateMemberRole"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_projects_test_update_git_url",
+      "title": "update git url",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/projects/test_update_project.py",
+        "func": "test_update_git_url",
+        "class": "TestUpdateProject"
+      },
+      "submodule": "projects"
+    },
+    {
+      "tea_id": "api_rbac_test_admin_bypasses_project_role",
+      "title": "admin bypasses project role",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/rbac/test_project_role_access.py",
+        "func": "test_admin_bypasses_project_role",
+        "class": "TestProjectRoleAccess"
+      },
+      "submodule": "rbac"
+    },
+    {
+      "tea_id": "api_rbac_test_project_admin_can_add_member",
+      "title": "project admin can add member",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/rbac/test_project_role_access.py",
+        "func": "test_project_admin_can_add_member",
+        "class": "TestProjectRoleAccess"
+      },
+      "submodule": "rbac"
+    },
+    {
+      "tea_id": "api_rbac_test_developer_can_view_members",
+      "title": "developer can view members",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/rbac/test_project_role_access.py",
+        "func": "test_developer_can_view_members",
+        "class": "TestProjectRoleAccess"
+      },
+      "submodule": "rbac"
+    },
+    {
+      "tea_id": "api_rbac_test_developer_cannot_add_member",
+      "title": "developer cannot add member",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/rbac/test_project_role_access.py",
+        "func": "test_developer_cannot_add_member",
+        "class": "TestProjectRoleAccess"
+      },
+      "submodule": "rbac"
+    },
+    {
+      "tea_id": "api_rbac_test_guest_cannot_add_member",
+      "title": "guest cannot add member",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/rbac/test_project_role_access.py",
+        "func": "test_guest_cannot_add_member",
+        "class": "TestProjectRoleAccess"
+      },
+      "submodule": "rbac"
+    },
+    {
+      "tea_id": "api_rbac_test_unbound_user_rejected",
+      "title": "unbound user rejected",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/rbac/test_project_role_access.py",
+        "func": "test_unbound_user_rejected",
+        "class": "TestProjectRoleAccess"
+      },
+      "submodule": "rbac"
+    },
+    {
+      "tea_id": "api_reports_test_export_excel_success",
+      "title": "export excel success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/reports/test_export_excel.py",
+        "func": "test_export_excel_success",
+        "class": "TestExportExcel"
+      },
+      "submodule": "reports"
+    },
+    {
+      "tea_id": "api_reports_test_export_no_report_returns_404",
+      "title": "export no report returns 404",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/reports/test_export_excel.py",
+        "func": "test_export_no_report_returns_404",
+        "class": "TestExportExcel"
+      },
+      "submodule": "reports"
+    },
+    {
+      "tea_id": "api_reports_test_report_summary",
+      "title": "report summary",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/reports/test_report_dashboard.py",
+        "func": "test_report_summary",
+        "class": "TestReportDashboard"
+      },
+      "submodule": "reports"
+    },
+    {
+      "tea_id": "api_reports_test_report_modules",
+      "title": "report modules",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/reports/test_report_dashboard.py",
+        "func": "test_report_modules",
+        "class": "TestReportDashboard"
+      },
+      "submodule": "reports"
+    },
+    {
+      "tea_id": "api_reports_test_report_before_execution_returns_null",
+      "title": "report before execution returns null",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/reports/test_report_dashboard.py",
+        "func": "test_report_before_execution_returns_null",
+        "class": "TestReportDashboard"
+      },
+      "submodule": "reports"
+    },
+    {
+      "tea_id": "api_tasks_test_unauthenticated_returns_401",
+      "title": "未认证用户不能查询任务状态",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/tasks/test_task_status.py",
+        "func": "test_unauthenticated_returns_401",
+        "class": "TestTaskStatus"
+      },
+      "submodule": "tasks"
+    },
+    {
+      "tea_id": "api_tasks_test_nonexistent_task_returns_404",
+      "title": "不存在的任务返回 404",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/tasks/test_task_status.py",
+        "func": "test_nonexistent_task_returns_404",
+        "class": "TestTaskStatus"
+      },
+      "submodule": "tasks"
+    },
+    {
+      "tea_id": "api_tasks_test_pending_task_returns_status",
+      "title": "pending 状态的任务正确返回",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/tasks/test_task_status.py",
+        "func": "test_pending_task_returns_status",
+        "class": "TestTaskStatus"
+      },
+      "submodule": "tasks"
+    },
+    {
+      "tea_id": "api_tasks_test_completed_task_includes_result",
+      "title": "completed 任务包含 result",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/tasks/test_task_status.py",
+        "func": "test_completed_task_includes_result",
+        "class": "TestTaskStatus"
+      },
+      "submodule": "tasks"
+    },
+    {
+      "tea_id": "api_tasks_test_failed_task_returns_error_message",
+      "title": "failed 任务包含错误信息",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/tasks/test_task_status.py",
+        "func": "test_failed_task_returns_error_message",
+        "class": "TestTaskStatus"
+      },
+      "submodule": "tasks"
+    },
+    {
+      "tea_id": "api_users_test_create_user_success",
+      "title": "create user success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/users/test_create_user.py",
+        "func": "test_create_user_success",
+        "class": "TestCreateUser"
+      },
+      "submodule": "users"
+    },
+    {
+      "tea_id": "api_users_test_create_admin_user",
+      "title": "create admin user",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/users/test_create_user.py",
+        "func": "test_create_admin_user",
+        "class": "TestCreateUser"
+      },
+      "submodule": "users"
+    },
+    {
+      "tea_id": "api_users_test_duplicate_username_returns_409",
+      "title": "duplicate username returns 409",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/users/test_create_user_duplicate.py",
+        "func": "test_duplicate_username_returns_409",
+        "class": "TestCreateUserDuplicate"
+      },
+      "submodule": "users"
+    },
+    {
+      "tea_id": "api_users_test_delete_user_success",
+      "title": "delete user success",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/users/test_delete_user.py",
+        "func": "test_delete_user_success",
+        "class": "TestDeleteUser"
+      },
+      "submodule": "users"
+    },
+    {
+      "tea_id": "api_users_test_delete_nonexistent_user_returns_404",
+      "title": "delete nonexistent user returns 404",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/users/test_delete_user.py",
+        "func": "test_delete_nonexistent_user_returns_404",
+        "class": "TestDeleteUser"
+      },
+      "submodule": "users"
+    },
+    {
+      "tea_id": "api_users_test_admin_can_list_users",
+      "title": "admin can list users",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/users/test_list_users.py",
+        "func": "test_admin_can_list_users",
+        "class": "TestListUsers"
+      },
+      "submodule": "users"
+    },
+    {
+      "tea_id": "api_users_test_update_role",
+      "title": "update role",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/users/test_update_user.py",
+        "func": "test_update_role",
+        "class": "TestUpdateUser"
+      },
+      "submodule": "users"
+    },
+    {
+      "tea_id": "api_users_test_update_is_active",
+      "title": "update is active",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/users/test_update_user.py",
+        "func": "test_update_is_active",
+        "class": "TestUpdateUser"
+      },
+      "submodule": "users"
+    },
+    {
+      "tea_id": "api_users_test_update_nonexistent_user_returns_404",
+      "title": "update nonexistent user returns 404",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/users/test_update_user_not_found.py",
+        "func": "test_update_nonexistent_user_returns_404",
+        "class": "TestUpdateUserNotFound"
+      },
+      "submodule": "users"
+    },
+    {
+      "tea_id": "api_users_test_regular_user_cannot_list_users",
+      "title": "regular user cannot list users",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/users/test_users_forbidden.py",
+        "func": "test_regular_user_cannot_list_users",
+        "class": "TestUsersForbidden"
+      },
+      "submodule": "users"
+    },
+    {
+      "tea_id": "api_users_test_regular_user_cannot_create_user",
+      "title": "regular user cannot create user",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/users/test_users_forbidden.py",
+        "func": "test_regular_user_cannot_create_user",
+        "class": "TestUsersForbidden"
+      },
+      "submodule": "users"
+    },
+    {
+      "tea_id": "api_users_test_unauthenticated_returns_401",
+      "title": "unauthenticated returns 401",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/users/test_users_forbidden.py",
+        "func": "test_unauthenticated_returns_401",
+        "class": "TestUsersForbidden"
+      },
+      "submodule": "users"
+    },
+    {
+      "tea_id": "api_variables_test_create_and_list",
+      "title": "create and list",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_channels.py",
+        "func": "test_create_and_list",
+        "class": "TestNotificationChannels"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_update_channel",
+      "title": "update channel",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_channels.py",
+        "func": "test_update_channel",
+        "class": "TestNotificationChannels"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_delete_channel",
+      "title": "delete channel",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_channels.py",
+        "func": "test_delete_channel",
+        "class": "TestNotificationChannels"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_duplicate_name_returns_409",
+      "title": "duplicate name returns 409",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_channels.py",
+        "func": "test_duplicate_name_returns_409",
+        "class": "TestNotificationChannels"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_create_and_list_env",
+      "title": "create and list env",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_environments.py",
+        "func": "test_create_and_list_env",
+        "class": "TestEnvironments"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_put_and_list_env_variables",
+      "title": "put and list env variables",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_environments.py",
+        "func": "test_put_and_list_env_variables",
+        "class": "TestEnvironments"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_merged_variables",
+      "title": "merged variables",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_environments.py",
+        "func": "test_merged_variables",
+        "class": "TestEnvironments"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_clone_environment",
+      "title": "clone environment",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_environments.py",
+        "func": "test_clone_environment",
+        "class": "TestEnvironments"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_duplicate_env_name_returns_409",
+      "title": "duplicate env name returns 409",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_environments.py",
+        "func": "test_duplicate_env_name_returns_409",
+        "class": "TestEnvironments"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_create_and_list",
+      "title": "create and list",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_global_variables.py",
+        "func": "test_create_and_list",
+        "class": "TestGlobalVariables"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_update_variable",
+      "title": "update variable",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_global_variables.py",
+        "func": "test_update_variable",
+        "class": "TestGlobalVariables"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_delete_variable",
+      "title": "delete variable",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_global_variables.py",
+        "func": "test_delete_variable",
+        "class": "TestGlobalVariables"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_duplicate_key_returns_409",
+      "title": "duplicate key returns 409",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_global_variables.py",
+        "func": "test_duplicate_key_returns_409",
+        "class": "TestGlobalVariables"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_reserved_key_returns_422",
+      "title": "reserved key returns 422",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_global_variables.py",
+        "func": "test_reserved_key_returns_422",
+        "class": "TestGlobalVariables"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_global_variables_requires_auth",
+      "title": "未认证不能访问全局变量",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_variables_auth.py",
+        "func": "test_global_variables_requires_auth",
+        "class": "TestVariablesAuth"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_environments_requires_auth",
+      "title": "未认证不能访问环境",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_variables_auth.py",
+        "func": "test_environments_requires_auth",
+        "class": "TestVariablesAuth"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_channels_requires_auth",
+      "title": "未认证不能访问通知渠道",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_variables_auth.py",
+        "func": "test_channels_requires_auth",
+        "class": "TestVariablesAuth"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_create_global_variable_requires_auth",
+      "title": "未认证不能创建全局变量",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_variables_auth.py",
+        "func": "test_create_global_variable_requires_auth",
+        "class": "TestVariablesAuth"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_create_environment_requires_auth",
+      "title": "未认证不能创建环境",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_variables_auth.py",
+        "func": "test_create_environment_requires_auth",
+        "class": "TestVariablesAuth"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "api_variables_test_create_channel_requires_auth",
+      "title": "未认证不能创建渠道",
+      "module": "api",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/api/variables/test_variables_auth.py",
+        "func": "test_create_channel_requires_auth",
+        "class": "TestVariablesAuth"
+      },
+      "submodule": "variables"
+    },
+    {
+      "tea_id": "atdd_test_healthz_returns_ok",
+      "title": "AC: FastAPI 应用启动成功，GET /api/healthz 返回 {\"status\": \"ok\"}",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_1_scaffold.py",
+        "func": "test_healthz_returns_ok",
+        "class": "TestHealthzEndpoint"
+      }
+    },
+    {
+      "tea_id": "atdd_test_database_connection",
+      "title": "AC: PostgreSQL 数据库连接成功 (asyncpg)",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_1_scaffold.py",
+        "func": "test_database_connection",
+        "class": "TestDatabaseConnection"
+      }
+    },
+    {
+      "tea_id": "atdd_test_users_table_has_required_columns",
+      "title": "AC: users 表字段: id, username, password, role, is_active, created_at, updated_at",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_1_scaffold.py",
+        "func": "test_users_table_has_required_columns",
+        "class": "TestUsersTableSchema"
+      }
+    },
+    {
+      "tea_id": "atdd_test_admin_seed_exists",
+      "title": "AC: 验证 seed 脚本逻辑能创建 admin 用户（在测试库中模拟）",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_1_scaffold.py",
+        "func": "test_admin_seed_exists",
+        "class": "TestAdminSeedData"
+      }
+    },
+    {
+      "tea_id": "atdd_test_password_hash_is_bcrypt",
+      "title": "AC: 密码使用 bcrypt 加密存储",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_1_scaffold.py",
+        "func": "test_password_hash_is_bcrypt",
+        "class": "TestBcryptPasswordHashing"
+      }
+    },
+    {
+      "tea_id": "atdd_test_password_hash_cost_at_least_10",
+      "title": "AC: bcrypt cost >= 10",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_1_scaffold.py",
+        "func": "test_password_hash_cost_at_least_10",
+        "class": "TestBcryptPasswordHashing"
+      }
+    },
+    {
+      "tea_id": "atdd_test_plaintext_password_not_in_hash",
+      "title": "AC: 明文不落库",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_1_scaffold.py",
+        "func": "test_plaintext_password_not_in_hash",
+        "class": "TestBcryptPasswordHashing"
+      }
+    },
+    {
+      "tea_id": "atdd_test_not_found_error_format",
+      "title": "AC: NotFoundError → 404 {\"error\": {\"code\": ..., \"message\": ..., \"detail\": ...}}",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_1_scaffold.py",
+        "func": "test_not_found_error_format",
+        "class": "TestUnifiedExceptionFormat"
+      }
+    },
+    {
+      "tea_id": "atdd_test_forbidden_error_format",
+      "title": "AC: ForbiddenError → 403 统一格式",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_1_scaffold.py",
+        "func": "test_forbidden_error_format",
+        "class": "TestUnifiedExceptionFormat"
+      }
+    },
+    {
+      "tea_id": "atdd_test_conflict_error_format",
+      "title": "AC: ConflictError → 409 统一格式",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_1_scaffold.py",
+        "func": "test_conflict_error_format",
+        "class": "TestUnifiedExceptionFormat"
+      }
+    },
+    {
+      "tea_id": "atdd_test_response_uses_camel_case",
+      "title": "AC: API 响应自动 snake_case → camelCase 转换",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_1_scaffold.py",
+        "func": "test_response_uses_camel_case",
+        "class": "TestCamelCaseResponse"
+      }
+    },
+    {
+      "tea_id": "atdd_test_cors_preflight_response",
+      "title": "AC: CORS 中间件已配置，OPTIONS 预检请求正常",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_1_scaffold.py",
+        "func": "test_cors_preflight_response",
+        "class": "TestCorsMiddleware"
+      }
+    },
+    {
+      "tea_id": "atdd_test_response_contains_trace_id",
+      "title": "AC: 响应头包含 X-Trace-Id",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_1_scaffold.py",
+        "func": "test_response_contains_trace_id",
+        "class": "TestTraceIdMiddleware"
+      }
+    },
+    {
+      "tea_id": "atdd_test_login_correct_credentials_returns_token",
+      "title": "AC: 正确用户名密码返回 JWT token (有效期 8h)",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_login_correct_credentials_returns_token",
+        "class": "TestLoginSuccess"
+      }
+    },
+    {
+      "tea_id": "atdd_test_login_returns_user_info_without_password",
+      "title": "AC: 返回用户信息 (id, username, role)，密码不泄露",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_login_returns_user_info_without_password",
+        "class": "TestLoginSuccess"
+      }
+    },
+    {
+      "tea_id": "atdd_test_login_wrong_password_returns_error",
+      "title": "AC: 错误密码返回错误提示",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_login_wrong_password_returns_error",
+        "class": "TestLoginFailure"
+      }
+    },
+    {
+      "tea_id": "atdd_test_login_nonexistent_user_same_error",
+      "title": "AC: 不泄露用户名是否存在 — 不存在用户与错误密码返回相同错误",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_login_nonexistent_user_same_error",
+        "class": "TestLoginFailure"
+      }
+    },
+    {
+      "tea_id": "atdd_test_login_error_does_not_leak_field",
+      "title": "AC: 错误信息不泄露具体哪个字段错误",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_login_error_does_not_leak_field",
+        "class": "TestLoginFailure"
+      }
+    },
+    {
+      "tea_id": "atdd_test_inactive_user_cannot_login",
+      "title": "AC: 非活跃用户拒绝登录",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_inactive_user_cannot_login",
+        "class": "TestLoginInactiveUser"
+      }
+    },
+    {
+      "tea_id": "atdd_test_jwt_token_expires_in_8_hours",
+      "title": "AC: JWT token 有效期 8 小时",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_jwt_token_expires_in_8_hours",
+        "class": "TestJwtTokenUnit"
+      }
+    },
+    {
+      "tea_id": "atdd_test_jwt_valid_token_decodes_correctly",
+      "title": "AC: 有效 token 正确解析",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_jwt_valid_token_decodes_correctly",
+        "class": "TestJwtTokenUnit"
+      }
+    },
+    {
+      "tea_id": "atdd_test_jwt_expired_token_raises",
+      "title": "AC: 过期 token 抛出异常",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_jwt_expired_token_raises",
+        "class": "TestJwtTokenUnit"
+      }
+    },
+    {
+      "tea_id": "atdd_test_jwt_invalid_signature_raises",
+      "title": "AC: 无效签名 token 抛出异常",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_jwt_invalid_signature_raises",
+        "class": "TestJwtTokenUnit"
+      }
+    },
+    {
+      "tea_id": "atdd_test_me_returns_current_user",
+      "title": "AC: GET /api/auth/me 返回当前用户信息 (id, username, role)",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_me_returns_current_user",
+        "class": "TestAuthMe"
+      }
+    },
+    {
+      "tea_id": "atdd_test_me_without_token_returns_401",
+      "title": "AC: 未携带 token 返回 401",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_me_without_token_returns_401",
+        "class": "TestAuthUnauthorized"
+      }
+    },
+    {
+      "tea_id": "atdd_test_me_with_expired_token_returns_401",
+      "title": "AC: 过期 token 返回 401",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_me_with_expired_token_returns_401",
+        "class": "TestAuthUnauthorized"
+      }
+    },
+    {
+      "tea_id": "atdd_test_me_with_invalid_token_returns_401",
+      "title": "AC: 无效 token 返回 401",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_me_with_invalid_token_returns_401",
+        "class": "TestAuthUnauthorized"
+      }
+    },
+    {
+      "tea_id": "atdd_test_token_near_expiry_returns_new_token",
+      "title": "AC: token 剩余 <2h 时响应包含 X-New-Token",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_token_near_expiry_returns_new_token",
+        "class": "TestTokenSlidingRefresh"
+      }
+    },
+    {
+      "tea_id": "atdd_test_token_far_from_expiry_no_new_token",
+      "title": "AC: token 剩余 >2h 时不返回 X-New-Token",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_token_far_from_expiry_no_new_token",
+        "class": "TestTokenSlidingRefresh"
+      }
+    },
+    {
+      "tea_id": "atdd_test_logout_success",
+      "title": "AC: 登出成功",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_2_jwt_auth.py",
+        "func": "test_logout_success",
+        "class": "TestLogout"
+      }
+    },
+    {
+      "tea_id": "atdd_test_admin_creates_user_successfully",
+      "title": "AC: POST /api/users 创建成功，密码 bcrypt 加密存储",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_3_user_crud.py",
+        "func": "test_admin_creates_user_successfully",
+        "class": "TestCreateUser"
+      }
+    },
+    {
+      "tea_id": "atdd_test_created_user_password_is_hashed",
+      "title": "AC: 密码 bcrypt 加密存储，明文不落库",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_3_user_crud.py",
+        "func": "test_created_user_password_is_hashed",
+        "class": "TestCreateUser"
+      }
+    },
+    {
+      "tea_id": "atdd_test_duplicate_username_returns_409",
+      "title": "AC: 用户名重复时返回 409 错误",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_3_user_crud.py",
+        "func": "test_duplicate_username_returns_409",
+        "class": "TestCreateUserDuplicate"
+      }
+    },
+    {
+      "tea_id": "atdd_test_admin_lists_all_users",
+      "title": "AC: 展示所有用户列表，包含用户名、角色、状态、创建时间",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_3_user_crud.py",
+        "func": "test_admin_lists_all_users",
+        "class": "TestListUsers"
+      }
+    },
+    {
+      "tea_id": "atdd_test_admin_updates_user_role",
+      "title": "AC: PUT /api/users/{id} 修改角色成功，变更立即生效",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_3_user_crud.py",
+        "func": "test_admin_updates_user_role",
+        "class": "TestUpdateUser"
+      }
+    },
+    {
+      "tea_id": "atdd_test_admin_updates_user_active_status",
+      "title": "AC: 修改激活状态成功",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_3_user_crud.py",
+        "func": "test_admin_updates_user_active_status",
+        "class": "TestUpdateUser"
+      }
+    },
+    {
+      "tea_id": "atdd_test_admin_deletes_user",
+      "title": "AC: DELETE /api/users/{id} 执行成功",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_3_user_crud.py",
+        "func": "test_admin_deletes_user",
+        "class": "TestDeleteUser"
+      }
+    },
+    {
+      "tea_id": "atdd_test_delete_user_bound_to_project_succeeds_with_unbind",
+      "title": "AC: 已绑定项目的用户删除后自动解除绑定",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_3_user_crud.py",
+        "func": "test_delete_user_bound_to_project_succeeds_with_unbind",
+        "class": "TestDeleteUserWithProjects"
+      }
+    },
+    {
+      "tea_id": "atdd_test_non_admin_cannot_list_users",
+      "title": "AC: 非系统管理员用户访问用户管理 API 返回 403",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_3_user_crud.py",
+        "func": "test_non_admin_cannot_list_users",
+        "class": "TestUserCrudForbidden"
+      }
+    },
+    {
+      "tea_id": "atdd_test_non_admin_cannot_create_user",
+      "title": "AC: 非 admin 创建用户返回 403",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_3_user_crud.py",
+        "func": "test_non_admin_cannot_create_user",
+        "class": "TestUserCrudForbidden"
+      }
+    },
+    {
+      "tea_id": "atdd_test_non_admin_cannot_delete_user",
+      "title": "AC: 非 admin 删除用户返回 403",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_3_user_crud.py",
+        "func": "test_non_admin_cannot_delete_user",
+        "class": "TestUserCrudForbidden"
+      }
+    },
+    {
+      "tea_id": "atdd_test_update_nonexistent_user_returns_404",
+      "title": "边界: 更新不存在的用户返回 404",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_3_user_crud.py",
+        "func": "test_update_nonexistent_user_returns_404",
+        "class": "TestUpdateUserNotFound"
+      }
+    },
+    {
+      "tea_id": "atdd_test_admin_creates_project_with_defaults",
+      "title": "AC: POST /api/projects 创建成功 + 默认 branch + 创建者自动加入",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_4_project_crud.py",
+        "func": "test_admin_creates_project_with_defaults",
+        "class": "TestCreateProject"
+      }
+    },
+    {
+      "tea_id": "atdd_test_duplicate_project_name_returns_409",
+      "title": "AC: 项目名称系统内唯一，重名返回 409",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_4_project_crud.py",
+        "func": "test_duplicate_project_name_returns_409",
+        "class": "TestCreateProjectDuplicate"
+      }
+    },
+    {
+      "tea_id": "atdd_test_ssh_git_url_accepted",
+      "title": "AC: 支持 git@host:user/repo.git 格式",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_4_project_crud.py",
+        "func": "test_ssh_git_url_accepted",
+        "class": "TestGitUrlValidation"
+      }
+    },
+    {
+      "tea_id": "atdd_test_https_git_url_accepted",
+      "title": "AC: 支持 https:// 格式",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_4_project_crud.py",
+        "func": "test_https_git_url_accepted",
+        "class": "TestGitUrlValidation"
+      }
+    },
+    {
+      "tea_id": "atdd_test_invalid_git_url_accepted_after_relaxation",
+      "title": "git_url 校验已放宽为可选字段，任何格式均接受",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_4_project_crud.py",
+        "func": "test_invalid_git_url_accepted_after_relaxation",
+        "class": "TestGitUrlValidation"
+      }
+    },
+    {
+      "tea_id": "atdd_test_admin_sees_all_projects",
+      "title": "AC: 系统管理员看到全部项目",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_4_project_crud.py",
+        "func": "test_admin_sees_all_projects",
+        "class": "TestListProjects"
+      }
+    },
+    {
+      "tea_id": "atdd_test_non_admin_sees_only_bound_projects",
+      "title": "AC: 其他角色仅看到已绑定的项目",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_4_project_crud.py",
+        "func": "test_non_admin_sees_only_bound_projects",
+        "class": "TestListProjects"
+      }
+    },
+    {
+      "tea_id": "atdd_test_update_project_info",
+      "title": "AC: PUT /api/projects/{id} 更新成功",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_4_project_crud.py",
+        "func": "test_update_project_info",
+        "class": "TestUpdateProject"
+      }
+    },
+    {
+      "tea_id": "atdd_test_non_admin_can_create_project",
+      "title": "create_project 已开放给所有登录用户，非 admin 也能创建",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_4_project_crud.py",
+        "func": "test_non_admin_can_create_project",
+        "class": "TestProjectCrudForbidden"
+      }
+    },
+    {
+      "tea_id": "atdd_test_add_member_to_project",
+      "title": "AC: POST /api/projects/{id}/members 绑定成功",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_5_project_members.py",
+        "func": "test_add_member_to_project",
+        "class": "TestAddMember"
+      }
+    },
+    {
+      "tea_id": "atdd_test_added_member_can_see_project",
+      "title": "AC: 绑定后该用户立即可在项目列表看到该项目",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_5_project_members.py",
+        "func": "test_added_member_can_see_project",
+        "class": "TestAddMember"
+      }
+    },
+    {
+      "tea_id": "atdd_test_duplicate_member_returns_409",
+      "title": "AC: 同一用户不可重复绑定同一项目",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_5_project_members.py",
+        "func": "test_duplicate_member_returns_409",
+        "class": "TestDuplicateMember"
+      }
+    },
+    {
+      "tea_id": "atdd_test_update_member_role",
+      "title": "AC: 角色变更立即生效",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_5_project_members.py",
+        "func": "test_update_member_role",
+        "class": "TestUpdateMemberRole"
+      }
+    },
+    {
+      "tea_id": "atdd_test_remove_member_from_project",
+      "title": "AC: DELETE 执行成功，该用户立即失去项目访问权",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_5_project_members.py",
+        "func": "test_remove_member_from_project",
+        "class": "TestRemoveMember"
+      }
+    },
+    {
+      "tea_id": "atdd_test_cannot_remove_last_project_admin",
+      "title": "AC: 移除最后一个项目管理员返回 422",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_5_project_members.py",
+        "func": "test_cannot_remove_last_project_admin",
+        "class": "TestLastAdminProtection"
+      }
+    },
+    {
+      "tea_id": "atdd_test_non_admin_cannot_add_member",
+      "title": "AC: 非管理员角色添加成员返回 403",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_5_project_members.py",
+        "func": "test_non_admin_cannot_add_member",
+        "class": "TestMemberManagementForbidden"
+      }
+    },
+    {
+      "tea_id": "atdd_test_non_admin_cannot_remove_member",
+      "title": "AC: 非管理员角色移除成员返回 403",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_5_project_members.py",
+        "func": "test_non_admin_cannot_remove_member",
+        "class": "TestMemberManagementForbidden"
+      }
+    },
+    {
+      "tea_id": "atdd_test_list_project_members",
+      "title": "AC: 获取项目成员列表",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_5_project_members.py",
+        "func": "test_list_project_members",
+        "class": "TestListMembers"
+      }
+    },
+    {
+      "tea_id": "atdd_test_admin_can_access_any_project",
+      "title": "AC: 系统管理员可访问所有项目所有数据",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_admin_can_access_any_project",
+        "class": "TestAdminAccessAll"
+      }
+    },
+    {
+      "tea_id": "atdd_test_admin_sees_all_projects_in_list",
+      "title": "AC: admin 项目列表包含所有项目",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_admin_sees_all_projects_in_list",
+        "class": "TestAdminAccessAll"
+      }
+    },
+    {
+      "tea_id": "atdd_test_unbound_user_cannot_access_project",
+      "title": "AC: 未绑定项目的用户访问该项目 API 返回 403",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_unbound_user_cannot_access_project",
+        "class": "TestUnboundUserDenied"
+      }
+    },
+    {
+      "tea_id": "atdd_test_project_admin_can_manage_members",
+      "title": "AC: project_admin 可管理所属项目成员",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_project_admin_can_manage_members",
+        "class": "TestProjectAdminPermissions"
+      }
+    },
+    {
+      "tea_id": "atdd_test_project_admin_cannot_update_project",
+      "title": "update_project 需要系统 admin 权限，project_admin 返回 403",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_project_admin_cannot_update_project",
+        "class": "TestProjectAdminPermissions"
+      }
+    },
+    {
+      "tea_id": "atdd_test_developer_cannot_modify_project_config",
+      "title": "AC: developer 不可改项目配置",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_developer_cannot_modify_project_config",
+        "class": "TestDeveloperTesterPermissions"
+      }
+    },
+    {
+      "tea_id": "atdd_test_tester_cannot_modify_project_config",
+      "title": "AC: tester 不可改项目配置",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_tester_cannot_modify_project_config",
+        "class": "TestDeveloperTesterPermissions"
+      }
+    },
+    {
+      "tea_id": "atdd_test_developer_cannot_manage_members",
+      "title": "AC: developer 不可管理成员",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_developer_cannot_manage_members",
+        "class": "TestDeveloperTesterPermissions"
+      }
+    },
+    {
+      "tea_id": "atdd_test_developer_can_read_project_data",
+      "title": "AC: developer 可查看项目数据",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_developer_can_read_project_data",
+        "class": "TestDeveloperTesterPermissions"
+      }
+    },
+    {
+      "tea_id": "atdd_test_guest_cannot_modify_project",
+      "title": "AC: guest 写操作返回 403",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_guest_cannot_modify_project",
+        "class": "TestGuestPermissions"
+      }
+    },
+    {
+      "tea_id": "atdd_test_guest_cannot_add_member",
+      "title": "AC: guest 不能添加成员",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_guest_cannot_add_member",
+        "class": "TestGuestPermissions"
+      }
+    },
+    {
+      "tea_id": "atdd_test_guest_can_read_project_data",
+      "title": "AC: guest 可以查看数据",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_guest_can_read_project_data",
+        "class": "TestGuestPermissions"
+      }
+    },
+    {
+      "tea_id": "atdd_test_require_role_blocks_non_admin",
+      "title": "AC: @require_role 装饰器正确拦截系统级权限",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_require_role_blocks_non_admin",
+        "class": "TestRoleDecorators"
+      }
+    },
+    {
+      "tea_id": "atdd_test_require_role_allows_admin",
+      "title": "AC: @require_role 允许 admin 通过",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_require_role_allows_admin",
+        "class": "TestRoleDecorators"
+      }
+    },
+    {
+      "tea_id": "atdd_test_require_project_role_blocks_unbound",
+      "title": "AC: @require_project_role 装饰器正确拦截项目级权限",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_require_project_role_blocks_unbound",
+        "class": "TestRoleDecorators"
+      }
+    },
+    {
+      "tea_id": "atdd_test_require_project_role_allows_member",
+      "title": "AC: @require_project_role 允许项目成员通过",
+      "module": "atdd",
+      "type": "api",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/atdd/test_story_1_6_rbac.py",
+        "func": "test_require_project_role_allows_member",
+        "class": "TestRoleDecorators"
+      }
+    },
+    {
+      "tea_id": "e2e_test_full_auth_lifecycle",
+      "title": "用户认证全链路：创建用户 → 登录 → /me → 登出",
+      "module": "e2e",
+      "type": "e2e",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/e2e/test_smoke.py",
+        "func": "test_full_auth_lifecycle",
+        "class": "TestE2EAuthLifecycle"
+      }
+    },
+    {
+      "tea_id": "e2e_test_project_member_lifecycle",
+      "title": "项目全链路：创建 → 默认分支 → 添加成员 → 可见性 → 移除 → 不可见",
+      "module": "e2e",
+      "type": "e2e",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/e2e/test_smoke.py",
+        "func": "test_project_member_lifecycle",
+        "class": "TestE2EProjectManagement"
+      }
+    },
+    {
+      "tea_id": "e2e_test_case_full_lifecycle",
+      "title": "用例全链路：目录 → 创建 → 导入 → 筛选 → 更新 → 删除",
+      "module": "e2e",
+      "type": "e2e",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/e2e/test_smoke.py",
+        "func": "test_case_full_lifecycle",
+        "class": "TestE2ECaseManagement"
+      }
+    },
+    {
+      "tea_id": "e2e_test_plan_full_lifecycle",
+      "title": "计划全链路：创建用例 → 创建计划 → 详情 → 归档 → 删除",
+      "module": "e2e",
+      "type": "e2e",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/e2e/test_smoke.py",
+        "func": "test_plan_full_lifecycle",
+        "class": "TestE2EPlanLifecycle"
+      }
+    },
+    {
+      "tea_id": "e2e_test_rbac_full_chain",
+      "title": "RBAC 全链路：admin/project_admin/developer/tester/guest 权限验证",
+      "module": "e2e",
+      "type": "e2e",
+      "priority": "P1",
+      "script_ref": {
+        "file": "tests/e2e/test_smoke.py",
+        "func": "test_rbac_full_chain",
+        "class": "TestE2ERBACEnforcement"
+      }
+    },
+    {
+      "tea_id": "integration_services_test_list_includes_default",
+      "title": "list includes default",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_branch_service.py",
+        "func": "test_list_includes_default",
+        "class": "TestBranchServiceCRUD"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_create_branch",
+      "title": "create branch",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_branch_service.py",
+        "func": "test_create_branch",
+        "class": "TestBranchServiceCRUD"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_duplicate_name_raises_conflict",
+      "title": "duplicate name raises conflict",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_branch_service.py",
+        "func": "test_duplicate_name_raises_conflict",
+        "class": "TestBranchServiceCRUD"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_archive_and_activate",
+      "title": "archive and activate",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_branch_service.py",
+        "func": "test_archive_and_activate",
+        "class": "TestBranchServiceArchive"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_cannot_archive_last_active",
+      "title": "cannot archive last active",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_branch_service.py",
+        "func": "test_cannot_archive_last_active",
+        "class": "TestBranchServiceArchive"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_add_member",
+      "title": "add member",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_member_service.py",
+        "func": "test_add_member",
+        "class": "TestMemberServiceAdd"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_duplicate_member_raises_conflict",
+      "title": "duplicate member raises conflict",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_member_service.py",
+        "func": "test_duplicate_member_raises_conflict",
+        "class": "TestMemberServiceAdd"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_cannot_remove_last_admin",
+      "title": "cannot remove last admin",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_member_service.py",
+        "func": "test_cannot_remove_last_admin",
+        "class": "TestMemberServiceLastAdmin"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_create_project_with_defaults",
+      "title": "create project with defaults",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_project_service.py",
+        "func": "test_create_project_with_defaults",
+        "class": "TestProjectServiceCreate"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_duplicate_name_raises_conflict",
+      "title": "duplicate name raises conflict",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_project_service.py",
+        "func": "test_duplicate_name_raises_conflict",
+        "class": "TestProjectServiceCreate"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_admin_sees_all",
+      "title": "admin sees all",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_project_service.py",
+        "func": "test_admin_sees_all",
+        "class": "TestProjectServiceList"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_regular_user_sees_only_bound",
+      "title": "regular user sees only bound",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_project_service.py",
+        "func": "test_regular_user_sees_only_bound",
+        "class": "TestProjectServiceList"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_create_user_hashes_password",
+      "title": "create user hashes password",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_user_service.py",
+        "func": "test_create_user_hashes_password",
+        "class": "TestUserServiceCreate"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_create_duplicate_raises_conflict",
+      "title": "create duplicate raises conflict",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_user_service.py",
+        "func": "test_create_duplicate_raises_conflict",
+        "class": "TestUserServiceCreate"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_list_returns_all",
+      "title": "list returns all",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_user_service.py",
+        "func": "test_list_returns_all",
+        "class": "TestUserServiceList"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_update_role",
+      "title": "update role",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_user_service.py",
+        "func": "test_update_role",
+        "class": "TestUserServiceUpdate"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_update_nonexistent_raises_404",
+      "title": "update nonexistent raises 404",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_user_service.py",
+        "func": "test_update_nonexistent_raises_404",
+        "class": "TestUserServiceUpdate"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "integration_services_test_delete_user",
+      "title": "delete user",
+      "module": "integration",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/integration/services/test_user_service.py",
+        "func": "test_delete_user",
+        "class": "TestUserServiceDelete"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "unit_auth_test_token_contains_required_claims",
+      "title": "token contains required claims",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/auth/test_jwt_create_token.py",
+        "func": "test_token_contains_required_claims",
+        "class": "TestJwtCreateToken"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "unit_auth_test_token_expiry_matches_config",
+      "title": "token expiry matches config",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/auth/test_jwt_create_token.py",
+        "func": "test_token_expiry_matches_config",
+        "class": "TestJwtCreateToken"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "unit_auth_test_different_users_produce_different_tokens",
+      "title": "different users produce different tokens",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/auth/test_jwt_create_token.py",
+        "func": "test_different_users_produce_different_tokens",
+        "class": "TestJwtCreateToken"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "unit_auth_test_decode_valid_token",
+      "title": "decode valid token",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/auth/test_jwt_decode_token.py",
+        "func": "test_decode_valid_token",
+        "class": "TestJwtDecodeToken"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "unit_auth_test_decode_tampered_token_raises",
+      "title": "decode tampered token raises",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/auth/test_jwt_decode_token.py",
+        "func": "test_decode_tampered_token_raises",
+        "class": "TestJwtDecodeToken"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "unit_auth_test_decode_garbage_string_raises",
+      "title": "decode garbage string raises",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/auth/test_jwt_decode_token.py",
+        "func": "test_decode_garbage_string_raises",
+        "class": "TestJwtDecodeToken"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "unit_auth_test_decode_expired_token_raises",
+      "title": "decode expired token raises",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/auth/test_jwt_decode_token.py",
+        "func": "test_decode_expired_token_raises",
+        "class": "TestJwtDecodeToken"
+      },
+      "submodule": "auth"
+    },
+    {
+      "tea_id": "unit_core_test_set_and_get_context",
+      "title": "set and get context",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_audit.py",
+        "func": "test_set_and_get_context",
+        "class": "TestAuditContext"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_overwrite_context",
+      "title": "overwrite context",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_audit.py",
+        "func": "test_overwrite_context",
+        "class": "TestAuditContext"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_orm_object_with_name",
+      "title": "orm object with name",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_audit.py",
+        "func": "test_orm_object_with_name",
+        "class": "TestExtractTargetInfo"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_orm_object_with_username",
+      "title": "orm object with username",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_audit.py",
+        "func": "test_orm_object_with_username",
+        "class": "TestExtractTargetInfo"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_orm_object_with_title",
+      "title": "orm object with title",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_audit.py",
+        "func": "test_orm_object_with_title",
+        "class": "TestExtractTargetInfo"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_none_returns_none",
+      "title": "none returns none",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_audit.py",
+        "func": "test_none_returns_none",
+        "class": "TestExtractTargetInfo"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_object_without_name_fields",
+      "title": "object without name fields",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_audit.py",
+        "func": "test_object_without_name_fields",
+        "class": "TestExtractTargetInfo"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_single_word",
+      "title": "single word",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_middleware.py",
+        "func": "test_single_word",
+        "class": "TestToCamel"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_two_words",
+      "title": "two words",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_middleware.py",
+        "func": "test_two_words",
+        "class": "TestToCamel"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_three_words",
+      "title": "three words",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_middleware.py",
+        "func": "test_three_words",
+        "class": "TestToCamel"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_already_camel",
+      "title": "already camel",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_middleware.py",
+        "func": "test_already_camel",
+        "class": "TestToCamel"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_empty_string",
+      "title": "empty string",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_middleware.py",
+        "func": "test_empty_string",
+        "class": "TestToCamel"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_flat_dict",
+      "title": "flat dict",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_middleware.py",
+        "func": "test_flat_dict",
+        "class": "TestToCamelCase"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_nested_dict",
+      "title": "nested dict",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_middleware.py",
+        "func": "test_nested_dict",
+        "class": "TestToCamelCase"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_list_of_dicts",
+      "title": "list of dicts",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_middleware.py",
+        "func": "test_list_of_dicts",
+        "class": "TestToCamelCase"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_non_dict_passthrough",
+      "title": "non dict passthrough",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_middleware.py",
+        "func": "test_non_dict_passthrough",
+        "class": "TestToCamelCase"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_empty_dict",
+      "title": "empty dict",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_middleware.py",
+        "func": "test_empty_dict",
+        "class": "TestToCamelCase"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_empty_list",
+      "title": "empty list",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_middleware.py",
+        "func": "test_empty_list",
+        "class": "TestToCamelCase"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_returns_bcrypt_format",
+      "title": "returns bcrypt format",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_security.py",
+        "func": "test_returns_bcrypt_format",
+        "class": "TestHashPassword"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_cost_at_least_10",
+      "title": "cost at least 10",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_security.py",
+        "func": "test_cost_at_least_10",
+        "class": "TestHashPassword"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_different_passwords_different_hashes",
+      "title": "different passwords different hashes",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_security.py",
+        "func": "test_different_passwords_different_hashes",
+        "class": "TestHashPassword"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_same_password_different_salt",
+      "title": "same password different salt",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_security.py",
+        "func": "test_same_password_different_salt",
+        "class": "TestHashPassword"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_correct_password_returns_true",
+      "title": "correct password returns true",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_security.py",
+        "func": "test_correct_password_returns_true",
+        "class": "TestVerifyPassword"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_wrong_password_returns_false",
+      "title": "wrong password returns false",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_security.py",
+        "func": "test_wrong_password_returns_false",
+        "class": "TestVerifyPassword"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_core_test_empty_password",
+      "title": "empty password",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/core/test_security.py",
+        "func": "test_empty_password",
+        "class": "TestVerifyPassword"
+      },
+      "submodule": "core"
+    },
+    {
+      "tea_id": "unit_engine_test_basic_command",
+      "title": "basic command",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_command_builder.py",
+        "func": "test_basic_command",
+        "class": "TestBuildPytestCommand"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_with_function",
+      "title": "with function",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_command_builder.py",
+        "func": "test_with_function",
+        "class": "TestBuildPytestCommand"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_with_junit_xml",
+      "title": "with junit xml",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_command_builder.py",
+        "func": "test_with_junit_xml",
+        "class": "TestBuildPytestCommand"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_with_timeout",
+      "title": "with timeout",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_command_builder.py",
+        "func": "test_with_timeout",
+        "class": "TestBuildPytestCommand"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_no_function_no_double_colon",
+      "title": "no function no double colon",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_command_builder.py",
+        "func": "test_no_function_no_double_colon",
+        "class": "TestBuildPytestCommand"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_parse_passed",
+      "title": "parse passed",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_result_parser.py",
+        "func": "test_parse_passed",
+        "class": "TestParseJunitXml"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_parse_failed",
+      "title": "parse failed",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_result_parser.py",
+        "func": "test_parse_failed",
+        "class": "TestParseJunitXml"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_parse_error",
+      "title": "parse error",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_result_parser.py",
+        "func": "test_parse_error",
+        "class": "TestParseJunitXml"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_parse_skipped",
+      "title": "parse skipped",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_result_parser.py",
+        "func": "test_parse_skipped",
+        "class": "TestParseJunitXml"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_file_not_found",
+      "title": "file not found",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_result_parser.py",
+        "func": "test_file_not_found",
+        "class": "TestParseJunitXml"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_multiple_cases",
+      "title": "multiple cases",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_result_parser.py",
+        "func": "test_multiple_cases",
+        "class": "TestParseJunitXml"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_parse_steps",
+      "title": "parse steps",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_result_parser.py",
+        "func": "test_parse_steps",
+        "class": "TestParseStepJson"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_file_not_found",
+      "title": "file not found",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_result_parser.py",
+        "func": "test_file_not_found",
+        "class": "TestParseStepJson"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_invalid_json",
+      "title": "invalid json",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_result_parser.py",
+        "func": "test_invalid_json",
+        "class": "TestParseStepJson"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_sandbox_dir_format",
+      "title": "sandbox dir format",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_sandbox.py",
+        "func": "test_sandbox_dir_format",
+        "class": "TestSandboxPaths"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_bare_repo_path",
+      "title": "bare repo path",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_sandbox.py",
+        "func": "test_bare_repo_path",
+        "class": "TestSandboxPaths"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_engine_test_lock_file_path",
+      "title": "lock file path",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/engine/test_sandbox.py",
+        "func": "test_lock_file_path",
+        "class": "TestSandboxPaths"
+      },
+      "submodule": "engine"
+    },
+    {
+      "tea_id": "unit_services_test_returns_correct_paths",
+      "title": "returns correct paths",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/services/test_git_service.py",
+        "func": "test_returns_correct_paths",
+        "class": "TestGetPaths"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "unit_services_test_different_branches_different_dirs",
+      "title": "different branches different dirs",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/services/test_git_service.py",
+        "func": "test_different_branches_different_dirs",
+        "class": "TestGetPaths"
+      },
+      "submodule": "services"
+    },
+    {
+      "tea_id": "unit_services_test_special_characters_in_branch_name",
+      "title": "special characters in branch name",
+      "module": "unit",
+      "type": "api",
+      "priority": "P2",
+      "script_ref": {
+        "file": "tests/unit/services/test_git_service.py",
+        "func": "test_special_characters_in_branch_name",
+        "class": "TestGetPaths"
+      },
+      "submodule": "services"
     }
   ]
 }

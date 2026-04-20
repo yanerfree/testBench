@@ -24,36 +24,105 @@ async def import_cases(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
-    """导入 tea-cases.json 用例文件"""
-    # 校验文件后缀
-    if not file.filename or not file.filename.endswith(".json"):
-        raise AppError(code="INVALID_FILE", message="仅接受 .json 文件", status_code=400)
+    """导入用例文件（支持 .json 和 .xlsx 格式）"""
+    filename = file.filename or ""
+    if not (filename.endswith(".json") or filename.endswith(".xlsx")):
+        raise AppError(code="INVALID_FILE", message="仅接受 .json 或 .xlsx 文件", status_code=400)
 
-    # 校验文件大小（50MB）
     content = await file.read()
     if len(content) > 50 * 1024 * 1024:
         raise AppError(code="FILE_TOO_LARGE", message="文件大小不能超过 50MB", status_code=400)
 
-    # 解析 JSON
-    try:
-        data = json.loads(content)
-    except json.JSONDecodeError as e:
-        raise AppError(
-            code="JSON_PARSE_ERROR",
-            message=f"JSON 解析失败：第 {e.lineno} 行",
-            status_code=400,
-            detail=str(e),
-        )
+    if filename.endswith(".json"):
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as e:
+            raise AppError(
+                code="JSON_PARSE_ERROR",
+                message=f"JSON 解析失败：第 {e.lineno} 行",
+                status_code=400,
+                detail=str(e),
+            )
+        cases_list = data.get("cases", [])
+        if not isinstance(cases_list, list):
+            raise AppError(code="INVALID_FORMAT", message="JSON 中缺少 cases 数组", status_code=400)
+    else:
+        cases_list = _parse_excel_to_cases(content)
 
-    # 提取 cases 数组
-    cases_list = data.get("cases", [])
-    if not isinstance(cases_list, list):
-        raise AppError(code="INVALID_FORMAT", message="JSON 中缺少 cases 数组", status_code=400)
-
-    # 执行导入
     summary = await import_service.import_cases(session, branch_id, cases_list)
-
     return {"data": summary}
+
+
+def _parse_excel_to_cases(content: bytes) -> list[dict]:
+    """解析导出的 Excel 文件为用例列表（兼容 export/excel 导出格式）。"""
+    import io
+    from openpyxl import load_workbook
+
+    wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    if len(rows) < 2:
+        return []
+
+    headers = [str(h).strip() if h else "" for h in rows[0]]
+    col = {h: i for i, h in enumerate(headers)}
+
+    cases = []
+    for row in rows[1:]:
+        def get(name, default=""):
+            idx = col.get(name)
+            if idx is None or idx >= len(row) or row[idx] is None:
+                return default
+            return str(row[idx]).strip()
+
+        title = get("标题")
+        if not title:
+            continue
+
+        module = get("模块")
+        submodule = get("子模块")
+        case_type = get("测试类型", "api").lower()
+        priority = get("优先级", "P2")
+        tea_id = get("TEA ID") or get("用例ID") or f"excel-{uuid.uuid4().hex[:8]}"
+
+        status_map = {"已自动化": "automated", "待自动化": "pending", "脚本已移除": "script_removed"}
+        auto_status_raw = get("自动化状态", "pending")
+        auto_status = status_map.get(auto_status_raw, auto_status_raw)
+
+        script_file = get("脚本文件")
+        script_func = get("脚本函数")
+        script_ref = {}
+        if script_file:
+            script_ref["file"] = script_file
+        if script_func:
+            script_ref["func"] = script_func
+
+        steps_text = get("测试步骤")
+        steps = []
+        if steps_text:
+            for line in steps_text.split("\n"):
+                line = line.strip()
+                if line:
+                    import re
+                    line = re.sub(r"^\d+\.\s*", "", line)
+                    steps.append({"action": line})
+
+        cases.append({
+            "tea_id": tea_id,
+            "title": title,
+            "type": case_type,
+            "module": module,
+            "submodule": submodule,
+            "priority": priority,
+            "script_ref": script_ref or None,
+            "preconditions": get("前置条件") or None,
+            "expected_result": get("预期结果") or None,
+            "steps": steps or None,
+            "remark": get("备注") or None,
+        })
+
+    wb.close()
+    return cases
 
 
 @router.post("", status_code=HTTP_201_CREATED)
@@ -220,7 +289,7 @@ async def delete_folder(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin")),
 ):
-    """删除空目录"""
+    """删除目录（空目录才可删除）"""
     await folder_service.delete_folder(session, folder_id)
     return MessageResponse(message="删除成功").model_dump()
 

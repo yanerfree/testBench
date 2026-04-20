@@ -1,5 +1,6 @@
 """用例导入服务 — 解析 tea-cases.json 并导入到指定分支配置"""
 import uuid
+from datetime import datetime, timezone
 
 from sqlalchemy import select, func
 from app.core.audit import audit_log
@@ -148,9 +149,18 @@ async def import_cases(
         )
         existing = result.scalar_one_or_none()
 
+        # 已删除的记录直接硬删，当作不存在
+        if existing is not None and existing.deleted_at is not None:
+            await session.delete(existing)
+            await session.flush()
+            existing = None
+
         script_ref = item.get("script_ref", {}) or {}
         priority = item.get("priority", "P2")
         tags = item.get("tags", [])
+        preconditions = item.get("preconditions")
+        steps = item.get("steps")
+        expected_result = item.get("expected_result")
 
         if existing is None:
             # 新增
@@ -163,6 +173,9 @@ async def import_cases(
                 type=case_type,
                 folder_id=folder_id,
                 priority=priority,
+                preconditions=preconditions,
+                steps=steps or [],
+                expected_result=expected_result,
                 source="imported",
                 automation_status="automated" if script_ref.get("file") else "pending",
                 script_ref_file=script_ref.get("file"),
@@ -179,27 +192,34 @@ async def import_cases(
             existing.script_ref_file = script_ref.get("file")
             existing.script_ref_func = script_ref.get("func")
             existing.remark = ", ".join(tags) if tags else existing.remark
+            if preconditions is not None:
+                existing.preconditions = preconditions
+            if steps is not None:
+                existing.steps = steps
+            if expected_result is not None:
+                existing.expected_result = expected_result
             if script_ref.get("file"):
                 existing.automation_status = "automated"
             updated_count += 1
 
     await session.flush()
 
-    # 标记本次未出现的已导入用例为 script_removed
+    # 软删除本次未出现的已导入用例（下次同步若重新出现会自动新增）
     result = await session.execute(
         select(Case).where(
             Case.branch_id == branch_id,
             Case.source == "imported",
-            Case.automation_status != "script_removed",
             Case.deleted_at.is_(None),
         )
     )
     all_imported = result.scalars().all()
 
     removed_count = 0
+    now = datetime.now(timezone.utc)
     for case in all_imported:
         if case.tea_id and case.tea_id not in imported_tea_ids:
-            case.automation_status = "script_removed"
+            case.deleted_at = now
+            case.folder_id = None
             removed_count += 1
 
     if removed_count > 0:

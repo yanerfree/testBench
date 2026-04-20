@@ -160,9 +160,9 @@ inputDocuments: []
 2. 创建项目 → 填写：项目名称、Git 地址、脚本路径、成员列表
 3. 项目创建成功 → 系统自动创建默认分支配置（分支 `main`）
 4. 如需管理多版本 → 创建新分支配置 → 填写分支配置名称和 Git 分支
-5. 进入「测试用例」页 → 选择目标分支 → 点击「更新脚本」→ 平台从 Git 拉取该分支最新代码
+5. 进入「测试用例」页 → 选择目标分支 → 点击「同步用例」→ 平台从 Git 拉取该分支最新代码
 6. 平台展示更新摘要：新增 N 个文件 / 修改 M / 删除 K
-7. 自动检测 script_ref 失效用例 → 标记「脚本已移除」
+7. 自动读取 tea-cases.json → 按 tea_id 匹配导入用例 → 新增/更新/移除
 8. 分支就绪，团队成员在用例管理页选择该分支开始工作
 ```
 
@@ -251,16 +251,66 @@ inputDocuments: []
 - AC3：移除成员后，该成员立即失去项目访问权
 - AC4：项目卡片展示当前活跃分支配置数量、总用例数、最近一次执行状态
 
-#### FR-PROJ-003：更新脚本
+#### FR-PROJ-003：同步用例（原"更新脚本"）
 
-**描述：** 在用例管理页面，用户选择分支后，点击「更新脚本」按钮触发，从 Git 仓库拉取该分支配置对应分支的最新代码到脚本存放路径，并更新该分支的用例状态。
+**描述：** 在用例管理页面，用户选择分支后，点击「同步用例」按钮触发完整同步流程：从 Git 仓库拉取最新代码 → 读取 `tea-cases.json` → 自动导入/更新/移除用例。
+
+**完整执行链路：**
+
+```
+用户点击「同步用例」
+    │
+    ▼
+POST /api/projects/{id}/branches/{id}/sync
+    │ 前置校验：项目已配置 git_url + script_base_path
+    │ 返回 202 + taskId（后台异步执行）
+    ▼
+① Git 同步（BackgroundTasks 后台执行）
+    │ 首次：git clone --bare → git worktree add
+    │ 后续：git fetch origin → git checkout origin/{branch}
+    │ 代码落盘到 {script_base_path}/{branch_name}/
+    ▼
+② 读取用例清单
+    │ 文件路径：{script_base_path}/{branch_name}/{json_file_path}
+    │ json_file_path 默认为 tea-cases.json（Branch 模型字段可配）
+    │ 文件不存在则跳过导入，仅完成 Git 同步
+    ▼
+③ 导入用例（import_service.import_cases）
+    │ 按 tea_id 匹配：
+    │   - JSON 有、DB 无 → 新增用例，自动创建模块目录
+    │   - JSON 有、DB 有（含软删除）→ 更新元数据，恢复软删除
+    │   - DB 有、JSON 无 → 软删除（deleted_at 标记）
+    ▼
+④ 更新 DB
+    │ branch.last_commit_sha = 最新 commit SHA
+    │ branch.last_sync_at = 当前时间
+    ▼
+⑤ 前端轮询 GET /api/tasks/{taskId}/status
+    │ 显示进度消息（正在拉取代码... → 正在导入用例...）
+    │ 完成后显示「同步完成：新增 N / 更新 M / 移除 K 条用例」
+    │ 自动刷新用例列表 + 目录树
+```
+
+**三层目录模型（Git 服务）：**
+
+```
+{script_base_path}/
+├── .repos/repo.git          ← bare 仓库（项目级唯一，fetch 用 FileLock 串行化）
+├── {branch_name}/           ← 分支工作目录（worktree，每个分支配置独立）
+│   ├── tea-cases.json       ← 用例清单（TEA 负责人维护）
+│   └── tests/               ← 测试脚本
+└── .sandboxes/{id}/         ← 执行沙箱（临时，执行引擎使用）
+```
 
 **验收标准：**
-- AC1：「更新脚本」按钮在用例管理页面的分支上下文中显示，触发后进度条显示 git pull 状态
-- AC2：完成后展示摘要：新增 N / 修改 M / 删除 K 文件
-- AC3：自动遍历该分支内用例的 script_ref，失效的标记为「脚本已移除」
-- AC4：拉取失败（如认证错误）时显示错误信息但不影响平台其他功能
-- AC5：不同分支的脚本更新互不影响
+- AC1：「同步用例」按钮在用例管理页面的分支上下文中显示，触发后显示 loading 状态
+- AC2：Git 同步完成后自动读取 tea-cases.json 并导入用例
+- AC3：完成后展示摘要：新增 N / 更新 M / 移除 K 条用例
+- AC4：移除的用例为软删除（deleted_at 标记），下次同步若重新出现会自动恢复
+- AC5：tea-cases.json 不存在时仅完成 Git 同步，提示"未找到 tea-cases.json，跳过用例导入"
+- AC6：拉取失败（如认证错误）时显示具体错误信息但不影响平台其他功能
+- AC7：不同分支的同步互不影响
+- AC8：无需额外 Worker 进程，使用 FastAPI BackgroundTasks 后台执行
 
 ---
 
