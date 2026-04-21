@@ -340,6 +340,8 @@ TEA 为测试管理平台生成测试脚本和用例清单，两者在同一 Git
 
 ### Git 目录三层模型
 
+> **只读原则：** 平台对本地代码目录（分支工作目录和执行沙箱）始终保持只读。同步仅执行 `git fetch` + `git checkout` 拉取远程最新代码，不执行 `commit`、`push` 或修改任何文件。平台的所有功能（用例管理、计划执行、报告查看等）都不会改动拉取后的脚本文件和 `tea-cases.json`。本地代码目录是远程仓库的只读镜像。
+
 #### 目录结构
 
 ```
@@ -347,14 +349,14 @@ TEA 为测试管理平台生成测试脚本和用例清单，两者在同一 Git
 ├── .repos/                                    # 第一层：bare 仓库（项目级唯一）
 │   └── repo.git/                              #   bare clone，所有分支配置共享 objects
 │
-├── {branch_config_name}/                      # 第二层：分支配置工作目录
+├── {branch_config_name}/                      # 第二层：分支配置工作目录（只读镜像，平台不做任何写入）
 │   ├── .git                                   #   worktree 链接文件（指向 .repos/repo.git）
-│   ├── tests/
-│   ├── tea-cases.json
+│   ├── tests/                                 #   测试脚本（平台只读取和执行，不修改）
+│   ├── tea-cases.json                         #   用例清单（TEA 在 Git 仓库中维护，平台只读取）
 │   └── ...
 │
-└── .sandboxes/                                # 第三层：执行沙箱（临时，用完即删）
-    └── {execution_id}/                        #   每次执行一个独立 worktree
+└── .sandboxes/                                # 第三层：执行沙箱（临时 worktree，执行完自动清理）
+    └── {execution_id}/                        #   每次执行一个独立 worktree（detached HEAD）
         └── ...
 ```
 

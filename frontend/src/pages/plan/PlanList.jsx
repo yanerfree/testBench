@@ -197,51 +197,69 @@ export default function PlanList() {
       </Card>
 
       {loading ? <div style={{ textAlign: 'center', padding: 60 }}><Spin /></div> :
-        filteredPlans.length === 0 ? <Empty description="暂无计划" style={{ marginTop: 60 }} /> :
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {filteredPlans.map(plan => {
+        filteredPlans.length === 0 ? <Empty description="暂无计划" style={{ marginTop: 60 }} /> : <>
+        {/* Table Header */}
+        <div style={{ display: 'flex', padding: '10px 20px', background: '#f7f8fa', borderRadius: '8px 8px 0 0', border: '1px solid #f0f0f3', borderBottom: 'none', fontSize: 13, color: '#86909c', fontWeight: 500 }}>
+          <div style={{ flex: 5 }}>计划信息</div>
+          <div style={{ flex: 2, textAlign: 'center' }}>状态</div>
+          <div style={{ flex: 3, textAlign: 'center' }}>操作</div>
+        </div>
+        <div style={{ border: '1px solid #f0f0f3', borderRadius: '0 0 8px 8px', background: '#fff' }}>
+          {filteredPlans.map((plan, i) => {
             const s = statusStyle[plan.status] || statusStyle.draft
             return (
-              <Card key={plan.id} styles={{ body: { padding: '14px 20px' } }} style={{ cursor: 'pointer' }}
+              <div key={plan.id}
                 onClick={() => navigate(`/projects/${projectId}/plans/${plan.id}`)}
-                onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'}
-                onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: '#2e3138' }}>{plan.name}</span>
-                      <Tag style={{ background: s.bg, color: s.color, border: 'none' }}>{s.label}</Tag>
-                      <Tag style={{ background: '#f5f5f7', color: '#8c919e', border: 'none' }}>{plan.planType === 'automated' ? '自动化' : '手动'}</Tag>
-                      <Tag style={{ background: '#f5f5f7', color: '#8c919e', border: 'none' }}>{plan.testType?.toUpperCase()}</Tag>
-                    </div>
-                    <Space size={16} style={{ fontSize: 12, color: '#8c919e' }}>
-                      <span><ClockCircleOutlined style={{ marginRight: 3 }} />{new Date(plan.createdAt).toLocaleDateString('zh-CN')}</span>
-                      <span>用例: {plan.caseCount} 条</span>
-                    </Space>
+                style={{
+                  display: 'flex', alignItems: 'center', padding: '14px 20px',
+                  borderBottom: i < filteredPlans.length - 1 ? '1px solid #f5f5f7' : 'none',
+                  cursor: 'pointer', transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#fafbfc'}
+                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+              >
+                {/* 计划信息 */}
+                <div style={{ flex: 5 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: '#2e3138', marginBottom: 4 }}>
+                    {plan.name}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                    {plan.status === 'draft' && (
-                      <Button type="primary" size="small" icon={<PlayCircleOutlined />}
-                        onClick={e => handleQuickExecute(e, plan.id)}>执行</Button>
-                    )}
-                    {(plan.status === 'completed' || plan.status === 'paused') && (
-                      <Button size="small" icon={<PlayCircleOutlined />}
-                        onClick={e => handleQuickExecute(e, plan.id)}>重新执行</Button>
-                    )}
-                    {plan.status === 'executing' && (
-                      <Button size="small" icon={<EditOutlined />}
-                        onClick={e => { e.stopPropagation(); navigate(`/projects/${projectId}/plans/${plan.id}/manual-record`) }}>录入</Button>
-                    )}
-                    {(plan.status === 'draft' || plan.status === 'archived') && (
-                      <Button size="small" danger icon={<DeleteOutlined />}
-                        onClick={e => handleQuickDelete(e, plan.id, plan.name)} />
-                    )}
-                  </div>
+                  <Space size={12} style={{ fontSize: 12, color: '#8c919e' }}>
+                    <span><ClockCircleOutlined style={{ marginRight: 3 }} />{new Date(plan.createdAt).toLocaleDateString('zh-CN')}</span>
+                    <Tag style={{ background: '#f5f5f7', color: '#8c919e', border: 'none', fontSize: 11 }}>{plan.planType === 'automated' ? '自动化' : '手动'}</Tag>
+                    <Tag style={{ background: '#f5f5f7', color: '#8c919e', border: 'none', fontSize: 11 }}>{plan.testType?.toUpperCase()}</Tag>
+                    <span>用例: {plan.caseCount} 条</span>
+                  </Space>
                 </div>
-              </Card>
+
+                {/* 状态 */}
+                <div style={{ flex: 2, textAlign: 'center' }}>
+                  <Tag style={{ background: s.bg, color: s.color, border: 'none' }}>{s.label}</Tag>
+                </div>
+
+                {/* 操作 */}
+                <div style={{ flex: 3, display: 'flex', justifyContent: 'center', gap: 6 }}>
+                  {plan.status === 'draft' && (
+                    <Button type="primary" size="small" icon={<PlayCircleOutlined />}
+                      onClick={e => handleQuickExecute(e, plan.id)}>执行</Button>
+                  )}
+                  {(plan.status === 'completed' || plan.status === 'paused') && (
+                    <Button size="small" icon={<PlayCircleOutlined />}
+                      onClick={e => handleQuickExecute(e, plan.id)}>重新执行</Button>
+                  )}
+                  {plan.status === 'executing' && (
+                    <Button size="small" icon={<EditOutlined />}
+                      onClick={e => { e.stopPropagation(); navigate(`/projects/${projectId}/plans/${plan.id}/manual-record`) }}>录入</Button>
+                  )}
+                  {(plan.status === 'draft' || plan.status === 'archived') && (
+                    <Button size="small" danger icon={<DeleteOutlined />}
+                      onClick={e => handleQuickDelete(e, plan.id, plan.name)} />
+                  )}
+                </div>
+              </div>
             )
           })}
         </div>
+        </>
       }
 
       {/* 创建计划弹窗 */}

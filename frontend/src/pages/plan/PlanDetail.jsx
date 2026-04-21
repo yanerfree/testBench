@@ -59,10 +59,9 @@ export default function PlanDetail() {
   const handleExecute = async () => {
     try {
       const res = await api.post(`/projects/${projectId}/plans/${planId}/execute`)
-      message.success('计划已启动执行')
       fetchData()
       const taskId = res.data?.taskId
-      if (!taskId) return
+      if (!taskId) { message.success('计划已启动执行'); return }
       setExecuting(true)
       setExecMessage('排队中...')
       const poll = setInterval(async () => {

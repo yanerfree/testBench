@@ -255,6 +255,8 @@ inputDocuments: []
 
 **描述：** 在用例管理页面，用户选择分支后，点击「同步用例」按钮触发完整同步流程：从 Git 仓库拉取最新代码 → 读取 `tea-cases.json` → 自动导入/更新/移除用例。
 
+> **只读原则：** 平台对 Git 仓库和拉取到本地的代码目录始终保持**只读**。同步用例仅执行 `git fetch` + `git checkout` 拉取远程最新代码，**不会执行任何 commit、push 或修改文件的操作**。平台的所有功能（用例管理、计划执行、报告查看等）都不会改动拉取后的脚本文件和 tea-cases.json。本地代码目录是远程仓库的只读镜像。
+
 **完整执行链路：**
 
 ```
@@ -296,10 +298,10 @@ POST /api/projects/{id}/branches/{id}/sync
 ```
 {script_base_path}/
 ├── .repos/repo.git          ← bare 仓库（项目级唯一，fetch 用 FileLock 串行化）
-├── {branch_name}/           ← 分支工作目录（worktree，每个分支配置独立）
-│   ├── tea-cases.json       ← 用例清单（TEA 负责人维护）
-│   └── tests/               ← 测试脚本
-└── .sandboxes/{id}/         ← 执行沙箱（临时，执行引擎使用）
+├── {branch_name}/           ← 分支工作目录（worktree，只读镜像，平台不做任何写入）
+│   ├── tea-cases.json       ← 用例清单（TEA 负责人在 Git 仓库中维护）
+│   └── tests/               ← 测试脚本（平台只读取和执行，不修改）
+└── .sandboxes/{id}/         ← 执行沙箱（临时 worktree，执行完自动清理）
 ```
 
 **验收标准：**
@@ -311,6 +313,8 @@ POST /api/projects/{id}/branches/{id}/sync
 - AC6：拉取失败（如认证错误）时显示具体错误信息但不影响平台其他功能
 - AC7：不同分支的同步互不影响
 - AC8：无需额外 Worker 进程，使用 FastAPI BackgroundTasks 后台执行
+- AC9：同步过程不执行 git commit / git push，不修改本地文件，仅 fetch + checkout 拉取远程最新
+- AC10：平台任何功能（用例编辑、计划执行、报告导出等）均不改动本地代码目录中的文件
 
 ---
 

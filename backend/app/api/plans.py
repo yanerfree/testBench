@@ -168,6 +168,7 @@ class ScenarioResponse(BaseSchema):
     execution_type: str
     duration_ms: int | None
     error_summary: str | None = None
+    execution_log: str | None = None
     remark: str | None
     sort_order: int
     script_ref_file: str | None = None
@@ -463,3 +464,56 @@ async def abort_plan(
         await session.refresh(plan)
 
     return {"data": PlanResponse.model_validate(plan, from_attributes=True).model_dump(by_alias=True)}
+
+
+# ---- 报告列表（项目级） ----
+
+reports_router = APIRouter(prefix="/api/projects/{project_id}/reports", tags=["reports"])
+
+
+@reports_router.get("")
+async def list_reports(
+    project_id: uuid.UUID,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100, alias="pageSize"),
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """项目下所有执行报告列表"""
+    from app.models.report import TestReport
+    from app.models.plan import Plan
+    from sqlalchemy import func, select
+
+    base = (
+        select(TestReport, Plan.name.label("plan_name"), Plan.plan_type, Plan.test_type)
+        .join(Plan, Plan.id == TestReport.plan_id)
+        .where(Plan.project_id == project_id)
+        .order_by(TestReport.created_at.desc())
+    )
+
+    count_result = await session.execute(select(func.count()).select_from(base.subquery()))
+    total = count_result.scalar_one()
+
+    result = await session.execute(base.offset((page - 1) * page_size).limit(page_size))
+    rows = result.all()
+
+    data = []
+    for report, plan_name, plan_type, test_type in rows:
+        data.append({
+            "id": str(report.id),
+            "planId": str(report.plan_id),
+            "planName": plan_name,
+            "planType": plan_type,
+            "testType": test_type,
+            "executedAt": report.executed_at.isoformat() if report.executed_at else None,
+            "completedAt": report.completed_at.isoformat() if report.completed_at else None,
+            "totalScenarios": report.total_scenarios,
+            "passed": report.passed,
+            "failed": report.failed,
+            "error": report.error,
+            "skipped": report.skipped,
+            "passRate": float(report.pass_rate) if report.pass_rate is not None else None,
+            "totalDurationMs": report.total_duration_ms,
+        })
+
+    return {"data": data, "pagination": {"page": page, "pageSize": page_size, "total": total}}

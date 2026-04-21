@@ -117,7 +117,9 @@ def sync_branch_first_time(bare_repo: Path, branch_dir: Path, git_branch: str) -
 
 
 def sync_branch_update(branch_dir: Path, git_branch: str) -> str:
-    """后续同步：checkout detached HEAD。返回 commit SHA。"""
+    """后续同步：丢弃本地改动后 checkout detached HEAD。返回 commit SHA。"""
+    _run_git(["checkout", "--", "."], cwd=str(branch_dir))
+    _run_git(["clean", "-fd"], cwd=str(branch_dir))
     _run_git(
         ["checkout", f"origin/{git_branch}"],
         cwd=str(branch_dir),

@@ -123,6 +123,6 @@ def execute_single_case(
         "status": status,
         "duration_ms": duration_ms,
         "error_summary": error_summary,
-        "stdout": (stdout or "")[:5000],
+        "stdout": ((stdout or "") + ("\n--- STDERR ---\n" + stderr if stderr else ""))[:10000],
         "steps": steps,
     }

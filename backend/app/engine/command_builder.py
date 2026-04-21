@@ -17,7 +17,7 @@ def build_pytest_command(
     if script_ref_func:
         test_target += f"::{script_ref_func}"
 
-    cmd = ["pytest", test_target, "--tb=short", "-q", "--no-header"]
+    cmd = ["pytest", test_target, "-v", "--tb=long"]
 
     if junit_xml_path:
         cmd.append(f"--junit-xml={junit_xml_path}")

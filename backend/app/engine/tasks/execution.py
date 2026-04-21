@@ -221,6 +221,7 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
             scenario.status = case_result["status"]
             scenario.duration_ms = case_result["duration_ms"]
             scenario.error_summary = case_result.get("error_summary")
+            scenario.execution_log = case_result.get("stdout")
             scenario.execution_type = "automated"
             await session.flush()
 
