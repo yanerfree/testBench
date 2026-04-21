@@ -35,8 +35,8 @@
       "expected_result": "返回 200 + JWT token，token 可解码且包含 sub 和 role",  // 预期结果
       "script_ref": {                        // 脚本引用
         "file": "tests/api/auth/test_login_success.py",  // 脚本文件路径（相对于仓库根）
-        "func": "test_correct_credentials_return_token",  // 测试函数名
-        "class": "TestLoginSuccess"                       // 测试类名（可选）
+        "func": "test_correct_credentials_return_token",  // 测试函数名（不含类名）
+        "class": "TestLoginSuccess"                       // 测试类名（函数定义在 class 内时必填）
       },
       "tags": ["security", "smoke"]          // 标签（可选，导入后存为备注）
     }
@@ -57,8 +57,31 @@
 | `preconditions` | | string | 前置条件，多条用换行分隔 |
 | `steps` | | array | 测试步骤，每项 `{ "seq": N, "action": "描述" }` |
 | `expected_result` | | string | 预期结果 |
-| `script_ref` | | object | 脚本引用：`file`（文件路径）、`func`（函数名）、`class`（类名，可选） |
+| `script_ref` | | object | 脚本引用：`file`（文件路径）、`func`（函数名）、`class`（类名，函数在 class 内时**必填**） |
 | `tags` | | array | 标签列表，导入后存为用例备注 |
+
+### script_ref 拼接规则
+
+系统执行用例时，通过 `script_ref` 构建 pytest 命令：
+
+- **无 class**：`pytest {file}::{func}` — 适用于模块级函数
+- **有 class**：`pytest {file}::{class}::{func}` — 适用于定义在类中的方法
+
+**重要**：如果测试函数定义在 class 内但未填写 `class` 字段，pytest 将无法找到该用例，执行报 `no match` 错误。
+
+```jsonc
+// ✅ 正确：函数在 class 内，填写了 class
+"script_ref": { "file": "tests/e2e/test_smoke.py", "func": "test_full_auth_lifecycle", "class": "TestE2EAuthLifecycle" }
+// → pytest tests/e2e/test_smoke.py::TestE2EAuthLifecycle::test_full_auth_lifecycle
+
+// ✅ 正确：函数在模块级，不需要 class
+"script_ref": { "file": "tests/api/test_login.py", "func": "test_login_success" }
+// → pytest tests/api/test_login.py::test_login_success
+
+// ❌ 错误：函数在 class 内但未填 class
+"script_ref": { "file": "tests/e2e/test_smoke.py", "func": "test_full_auth_lifecycle" }
+// → pytest tests/e2e/test_smoke.py::test_full_auth_lifecycle → no match!
+```
 
 ## 同步规则
 

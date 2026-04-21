@@ -65,4 +65,12 @@ export const api = {
   post: (url, body) => request(url, { method: 'POST', body }),
   put: (url, body) => request(url, { method: 'PUT', body }),
   del: (url) => request(url, { method: 'DELETE' }),
+  download: async (url) => {
+    const token = localStorage.getItem('token')
+    const res = await fetch(`${BASE_URL}${url}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) throw new Error(`下载失败 (${res.status})`)
+    return res.blob()
+  },
 }

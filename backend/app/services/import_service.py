@@ -156,6 +156,10 @@ async def import_cases(
             existing = None
 
         script_ref = item.get("script_ref", {}) or {}
+        script_func = script_ref.get("func")
+        script_class = script_ref.get("class")
+        if script_func and script_class and "::" not in script_func:
+            script_func = f"{script_class}::{script_func}"
         priority = item.get("priority", "P2")
         tags = item.get("tags", [])
         preconditions = item.get("preconditions")
@@ -179,7 +183,7 @@ async def import_cases(
                 source="imported",
                 automation_status="automated" if script_ref.get("file") else "pending",
                 script_ref_file=script_ref.get("file"),
-                script_ref_func=script_ref.get("func"),
+                script_ref_func=script_func,
                 remark=", ".join(tags) if tags else None,
             )
             session.add(case)
@@ -190,7 +194,7 @@ async def import_cases(
             existing.priority = priority
             existing.folder_id = folder_id
             existing.script_ref_file = script_ref.get("file")
-            existing.script_ref_func = script_ref.get("func")
+            existing.script_ref_func = script_func
             existing.remark = ", ".join(tags) if tags else existing.remark
             if preconditions is not None:
                 existing.preconditions = preconditions

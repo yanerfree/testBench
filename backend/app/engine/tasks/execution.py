@@ -1,8 +1,9 @@
 """
-自动化计划执行 arq 任务。
+自动化计划执行 — BackgroundTasks 后台任务。
 
 流程: 加载计划 → 合并变量 → 创建沙箱 → 逐条执行 → 写入结果 → 清理沙箱 → 汇总
 """
+import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -21,15 +22,29 @@ from app.models.report import TestReport, TestReportScenario, TestReportStep
 
 logger = logging.getLogger(__name__)
 
+_execution_semaphore = asyncio.Semaphore(6)
+_EXECUTION_TIMEOUT = 600
+
 
 async def run_automated_execution(
-    ctx: dict,
     task_id: str,
     plan_id: str,
     report_id: str,
     user_id: str,
 ) -> dict:
-    """arq 任务: 执行自动化测试计划。"""
+    """后台任务: 执行自动化测试计划。"""
+    async with _execution_semaphore:
+        try:
+            return await asyncio.wait_for(
+                _run_execution_inner(task_id, plan_id, report_id, user_id),
+                timeout=_EXECUTION_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            await set_task_status(task_id, "failed", message=f"执行超时（{_EXECUTION_TIMEOUT}s）")
+            return {"error": "timeout"}
+
+
+async def _run_execution_inner(task_id: str, plan_id: str, report_id: str, user_id: str) -> dict:
     await set_task_status(task_id, "running", message="正在准备执行环境...")
 
     engine = create_async_engine(settings.database_url, echo=False)

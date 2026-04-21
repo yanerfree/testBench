@@ -7,7 +7,6 @@ def build_pytest_command(
     script_ref_file: str,
     script_ref_func: str | None = None,
     junit_xml_path: str | None = None,
-    timeout: int = 300,
 ) -> list[str]:
     """
     构建 pytest 命令。
@@ -22,8 +21,6 @@ def build_pytest_command(
 
     if junit_xml_path:
         cmd.append(f"--junit-xml={junit_xml_path}")
-
-    cmd.append(f"--timeout={timeout}")
 
     return cmd
 

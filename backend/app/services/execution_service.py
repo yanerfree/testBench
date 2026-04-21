@@ -25,7 +25,7 @@ async def start_execution(
     plan = result.scalar_one_or_none()
     if plan is None:
         raise NotFoundError(code="PLAN_NOT_FOUND", message="计划不存在")
-    if plan.status not in ("draft",):
+    if plan.status not in ("draft", "completed", "paused"):
         raise ValidationError(code="INVALID_STATUS", message=f"当前状态「{plan.status}」不可执行")
 
     pc_result = await session.execute(
@@ -178,10 +178,16 @@ async def get_report_with_scenarios(
         return None
 
     scenarios_result = await session.execute(
-        select(TestReportScenario)
+        select(TestReportScenario, Case.script_ref_file, Case.script_ref_func)
+        .outerjoin(Case, TestReportScenario.case_id == Case.id)
         .where(TestReportScenario.report_id == report.id)
         .order_by(TestReportScenario.sort_order)
     )
-    scenarios = scenarios_result.scalars().all()
+    rows = scenarios_result.all()
+    scenarios = []
+    for scenario, script_file, script_func in rows:
+        scenario._script_ref_file = script_file
+        scenario._script_ref_func = script_func
+        scenarios.append(scenario)
 
     return {"report": report, "scenarios": scenarios}

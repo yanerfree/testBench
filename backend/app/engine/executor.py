@@ -53,7 +53,6 @@ def execute_single_case(
         script_ref_file=script_ref_file,
         script_ref_func=script_ref_func,
         junit_xml_path=junit_xml_path,
-        timeout=timeout,
     )
 
     # 3. 构建环境变量

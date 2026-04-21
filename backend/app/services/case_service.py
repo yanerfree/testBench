@@ -105,14 +105,17 @@ async def list_cases(
     automation_status: str | None = None,
     is_flaky: bool | None = None,
     keyword: str | None = None,
+    include_deleted: bool = False,
 ) -> tuple[list[Case], int]:
-    """分页查询用例列表（未删除的），支持多条件筛选。返回 (cases, total)。"""
+    """分页查询用例列表，支持多条件筛选。返回 (cases, total)。"""
     from sqlalchemy import func, or_
 
-    base = select(Case).where(
-        Case.branch_id == branch_id,
-        Case.deleted_at.is_(None),
-    )
+    base = select(Case).where(Case.branch_id == branch_id)
+
+    if include_deleted:
+        base = base.where(Case.deleted_at.is_not(None))
+    else:
+        base = base.where(Case.deleted_at.is_(None))
 
     if case_type:
         base = base.where(Case.type == case_type)
@@ -203,6 +206,38 @@ async def delete_case(session: AsyncSession, case_id: uuid.UUID) -> None:
     case = await get_case(session, case_id)
     case.deleted_at = datetime.now(timezone.utc)
     await session.flush()
+
+
+async def hard_delete_case(session: AsyncSession, case_id: uuid.UUID) -> None:
+    """彻底删除已软删除的用例。"""
+    result = await session.execute(
+        select(Case).where(Case.id == case_id, Case.deleted_at.is_not(None))
+    )
+    case = result.scalar_one_or_none()
+    if case is None:
+        raise NotFoundError(code="CASE_NOT_FOUND", message="用例不存在或未处于已删除状态")
+    await session.delete(case)
+    await session.flush()
+
+
+async def batch_hard_delete(session: AsyncSession, case_ids: list[uuid.UUID]) -> dict:
+    """批量彻底删除已软删除的用例。"""
+    succeeded = 0
+    failed = 0
+    errors = []
+    for cid in case_ids:
+        result = await session.execute(
+            select(Case).where(Case.id == cid, Case.deleted_at.is_not(None))
+        )
+        case = result.scalar_one_or_none()
+        if case is None:
+            failed += 1
+            errors.append(f"{cid}: 用例不存在或未处于已删除状态")
+            continue
+        await session.delete(case)
+        succeeded += 1
+    await session.flush()
+    return {"succeeded": succeeded, "failed": failed, "errors": errors}
 
 
 async def copy_cases_from_branch(

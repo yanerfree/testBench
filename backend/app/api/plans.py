@@ -3,15 +3,15 @@ import uuid
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_201_CREATED
 
 from app.core.exceptions import AppError, ValidationError
 from app.deps.auth import get_current_user, require_project_role
 from app.deps.db import get_db
-from app.deps.worker import get_arq_pool
 from app.engine.task_status import set_task_status
+from app.engine.tasks.execution import run_automated_execution
 from app.models.user import User
 from app.schemas.common import BaseSchema, MessageResponse
 from app.schemas.plan import CreatePlanRequest, UpdatePlanRequest, PlanListItem, PlanResponse
@@ -167,8 +167,11 @@ class ScenarioResponse(BaseSchema):
     status: str
     execution_type: str
     duration_ms: int | None
+    error_summary: str | None = None
     remark: str | None
     sort_order: int
+    script_ref_file: str | None = None
+    script_ref_func: str | None = None
 
 class ReportResponse(BaseSchema):
     id: uuid.UUID
@@ -190,36 +193,24 @@ class ReportResponse(BaseSchema):
 async def execute_plan(
     project_id: uuid.UUID,
     plan_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
     """启动计划执行。
 
     手动计划: 创建报告 + scenarios，直接返回。
-    自动化计划: 创建报告后提交 arq 异步任务执行，返回 taskId 供轮询。
+    自动化计划: 创建报告后通过 BackgroundTasks 异步执行，返回 taskId 供轮询。
     """
     report = await execution_service.start_execution(session, plan_id, current_user.id)
 
-    # 判断是否自动化计划
     plan = await plan_service.get_plan(session, plan_id)
     if plan.plan_type == "automated":
-        # 提交异步执行任务
-        try:
-            pool = await get_arq_pool()
-        except Exception:
-            raise AppError(
-                code="TASK_QUEUE_UNAVAILABLE",
-                message="异步任务队列不可用，请检查 Redis / arq 配置",
-                status_code=503,
-            )
+        await session.commit()
         task_id = uuid.uuid4().hex
         await set_task_status(task_id, "pending", message="自动化执行任务已提交...")
-        await pool.enqueue_job(
-            "run_automated_execution",
-            task_id,
-            str(plan_id),
-            str(report.id),
-            str(current_user.id),
+        background_tasks.add_task(
+            run_automated_execution, task_id, str(plan_id), str(report.id), str(current_user.id),
         )
         return {
             "data": {
@@ -278,7 +269,11 @@ async def get_results(
         "data": {
             "report": ReportResponse.model_validate(data["report"], from_attributes=True).model_dump(by_alias=True),
             "scenarios": [
-                ScenarioResponse.model_validate(s, from_attributes=True).model_dump(by_alias=True)
+                {
+                    **ScenarioResponse.model_validate(s, from_attributes=True).model_dump(by_alias=True),
+                    "scriptRefFile": getattr(s, '_script_ref_file', None),
+                    "scriptRefFunc": getattr(s, '_script_ref_func', None),
+                }
                 for s in data["scenarios"]
             ],
         }

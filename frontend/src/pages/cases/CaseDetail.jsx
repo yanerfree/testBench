@@ -390,7 +390,7 @@ export default function CaseDetail() {
               <Button block icon={<ExperimentOutlined />} danger ghost
                 onClick={async () => {
                   try {
-                    await api.del(`/projects/${projectId}/branches/${branchId}/cases/${caseId}`)
+                    await api.post(`/projects/${projectId}/branches/${branchId}/cases/batch`, { caseIds: [caseId], action: 'archive' })
                     message.success('已归档')
                     navigate(-1)
                   } catch { message.error('归档失败') }

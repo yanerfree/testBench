@@ -152,6 +152,7 @@ async def list_cases(
     automation_status: str | None = Query(default=None, alias="automationStatus"),
     is_flaky: bool | None = Query(default=None, alias="isFlaky"),
     keyword: str | None = Query(default=None),
+    include_deleted: bool = Query(default=False, alias="includeDeleted"),
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
 ):
@@ -160,6 +161,7 @@ async def list_cases(
         session, branch_id, page, page_size,
         case_type=case_type, folder_id=folder_id, priority=priority,
         automation_status=automation_status, is_flaky=is_flaky, keyword=keyword,
+        include_deleted=include_deleted,
     )
     return {
         "data": [
@@ -209,7 +211,10 @@ async def batch_cases(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
-    """批量操作用例（移动/归档/取消归档/修改优先级/标记Flaky）"""
+    """批量操作用例（移动/归档/取消归档/修改优先级/标记Flaky/彻底删除）"""
+    if body.action == "hard_delete":
+        result = await case_service.batch_hard_delete(session, body.case_ids)
+        return {"data": result}
     result = await case_service.batch_cases(
         session, branch_id,
         action=body.action,

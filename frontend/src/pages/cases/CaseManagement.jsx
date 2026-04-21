@@ -174,7 +174,11 @@ export default function CaseManagement() {
     try {
       const params = new URLSearchParams({ page, pageSize })
       if (keyword) params.set('keyword', keyword)
-      if (statusFilter) params.set('automationStatus', statusFilter)
+      if (statusFilter === 'deleted') {
+        params.set('includeDeleted', 'true')
+      } else if (statusFilter) {
+        params.set('automationStatus', statusFilter)
+      }
       if (selectedFolderId) params.set('folderId', selectedFolderId)
       const res = await api.get(`/projects/${projectId}/branches/${currentBranch}/cases?${params}`)
       setCases(res.data || [])
@@ -409,17 +413,29 @@ export default function CaseManagement() {
     { key: 'teaId', title: 'TEA ID', dataIndex: 'teaId', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v || '-'}</span> },
     { key: 'createdAt', title: '创建时间', dataIndex: 'createdAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#8c919e' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
     { key: 'updatedAt', title: '更新时间', dataIndex: 'updatedAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#8c919e' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
-    { key: 'actions', title: '操作', width: 60, align: 'center', defaultVisible: true, render: (_, row) => (
-      <Popconfirm title="确定删除此用例？" onConfirm={async () => {
-        try {
-          await api.del(`/projects/${projectId}/branches/${currentBranch}/cases/${row.id}`)
-          message.success('已删除')
-          fetchCases()
-          fetchFolders()
-        } catch { /* */ }
-      }}>
-        <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#f08a8e' }} />
-      </Popconfirm>
+    { key: 'actions', title: '操作', width: 80, align: 'center', defaultVisible: true, render: (_, row) => (
+      statusFilter === 'deleted' ? (
+        <Popconfirm title="确定彻底删除此用例？此操作不可恢复！" onConfirm={async () => {
+          try {
+            await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: [row.id], action: 'hard_delete' })
+            message.success('已彻底删除')
+            fetchCases()
+          } catch { /* */ }
+        }}>
+          <Button type="text" size="small" icon={<DeleteOutlined />} danger>彻底删除</Button>
+        </Popconfirm>
+      ) : (
+        <Popconfirm title="确定删除此用例？" onConfirm={async () => {
+          try {
+            await api.del(`/projects/${projectId}/branches/${currentBranch}/cases/${row.id}`)
+            message.success('已删除')
+            fetchCases()
+            fetchFolders()
+          } catch { /* */ }
+        }}>
+          <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#f08a8e' }} />
+        </Popconfirm>
+      )
     )},
   ]
 
@@ -533,6 +549,7 @@ export default function CaseManagement() {
                   <Radio.Button value="automated">已自动化</Radio.Button>
                   <Radio.Button value="pending">待自动化</Radio.Button>
                   <Radio.Button value="archived">已归档</Radio.Button>
+                  <Radio.Button value="deleted">已删除</Radio.Button>
                 </Radio.Group>
               </Space>
               <Space>
@@ -549,8 +566,18 @@ export default function CaseManagement() {
               </Space>
             </div>
             {selectedRowKeys.length > 0 && (
-              <div style={{ marginTop: 10, padding: '8px 12px', background: '#e6f4ff', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 13, color: '#7c8cf8' }}>已选 {selectedRowKeys.length} 条</span>
+              <div style={{ marginTop: 10, padding: '8px 12px', background: statusFilter === 'deleted' ? '#fff1f0' : '#e6f4ff', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 13, color: statusFilter === 'deleted' ? '#f08a8e' : '#7c8cf8' }}>已选 {selectedRowKeys.length} 条</span>
+                {statusFilter === 'deleted' ? (
+                  <Popconfirm title={`确定彻底删除 ${selectedRowKeys.length} 条用例？此操作不可恢复！`} onConfirm={async () => {
+                    try {
+                      await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: selectedRowKeys, action: 'hard_delete' })
+                      message.success('批量彻底删除成功'); setSelectedRowKeys([]); fetchCases()
+                    } catch { /* */ }
+                  }}>
+                    <Button size="small" type="link" danger>批量彻底删除</Button>
+                  </Popconfirm>
+                ) : (<>
                 <Popconfirm title={`确定归档 ${selectedRowKeys.length} 条用例？`} onConfirm={async () => {
                   try {
                     await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: selectedRowKeys, action: 'archive' })
@@ -581,6 +608,7 @@ export default function CaseManagement() {
                 }}>
                   <Button size="small" type="link" danger>批量删除</Button>
                 </Popconfirm>
+                </>)}
               </div>
             )}
           </Card>

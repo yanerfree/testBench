@@ -28,6 +28,7 @@ export default function PlanList() {
   const [form] = Form.useForm()
   const [saving, setSaving] = useState(false)
   const planType = Form.useWatch('planType', form)
+  const watchedCaseIds = Form.useWatch('caseIds', form)
 
   // 弹窗数据源
   const [branches, setBranches] = useState([])
@@ -37,6 +38,7 @@ export default function PlanList() {
   const [selectedBranch, setSelectedBranch] = useState(null)
   const [casePickerOpen, setCasePickerOpen] = useState(false)
   const [caseSearch, setCaseSearch] = useState('')
+  const [pickerSelected, setPickerSelected] = useState([])
 
   // 加载计划列表
   const fetchPlans = useCallback(async () => {
@@ -116,9 +118,32 @@ export default function PlanList() {
   const handleQuickExecute = async (e, planId) => {
     e.stopPropagation()
     try {
-      await api.post(`/projects/${projectId}/plans/${planId}/execute`)
+      const res = await api.post(`/projects/${projectId}/plans/${planId}/execute`)
       message.success('计划已启动执行')
       fetchPlans()
+      const taskId = res.data?.taskId
+      if (!taskId) return
+      message.loading({ content: '排队中...', key: `exec-${planId}`, duration: 0 })
+      const poll = setInterval(async () => {
+        try {
+          const status = await api.get(`/tasks/${taskId}/status`)
+          const s = status.data
+          if (s.status === 'running') {
+            message.loading({ content: s.message || '执行中...', key: `exec-${planId}`, duration: 0 })
+          }
+          if (s.status === 'completed') {
+            clearInterval(poll)
+            message.destroy(`exec-${planId}`)
+            message.success('执行完成')
+            fetchPlans()
+          } else if (s.status === 'failed') {
+            clearInterval(poll)
+            message.destroy(`exec-${planId}`)
+            message.error(s.message || '执行失败')
+            fetchPlans()
+          }
+        } catch { /* polling error, ignore */ }
+      }, 3000)
     } catch (err) {
       message.error(err?.response?.data?.error?.message || err?.message || '执行失败')
     }
@@ -199,6 +224,10 @@ export default function PlanList() {
                       <Button type="primary" size="small" icon={<PlayCircleOutlined />}
                         onClick={e => handleQuickExecute(e, plan.id)}>执行</Button>
                     )}
+                    {(plan.status === 'completed' || plan.status === 'paused') && (
+                      <Button size="small" icon={<PlayCircleOutlined />}
+                        onClick={e => handleQuickExecute(e, plan.id)}>重新执行</Button>
+                    )}
                     {plan.status === 'executing' && (
                       <Button size="small" icon={<EditOutlined />}
                         onClick={e => { e.stopPropagation(); navigate(`/projects/${projectId}/plans/${plan.id}/manual-record`) }}>录入</Button>
@@ -237,11 +266,11 @@ export default function PlanList() {
           <Form.Item name="caseIds" label="选择用例" rules={[{ required: true, message: '请至少选择 1 条用例' }]}>
             <div>
               <Space>
-                <Button onClick={() => setCasePickerOpen(true)} disabled={!selectedBranch}>
+                <Button onClick={() => { setPickerSelected(form.getFieldValue('caseIds') || []); setCasePickerOpen(true) }} disabled={!selectedBranch}>
                   {selectedBranch ? '选择用例' : '请先选择分支'}
                 </Button>
                 <span style={{ fontSize: 13, color: '#86909c' }}>
-                  已选 {(form.getFieldValue('caseIds') || []).length} 条
+                  已选 {(watchedCaseIds || []).length} 条
                 </span>
               </Space>
             </div>
@@ -272,14 +301,14 @@ export default function PlanList() {
       </Modal>
 
       <Modal title="选择用例" open={casePickerOpen} width={800}
-        onOk={() => setCasePickerOpen(false)} onCancel={() => setCasePickerOpen(false)}
+        onOk={() => { form.setFieldsValue({ caseIds: pickerSelected }); setCasePickerOpen(false) }} onCancel={() => setCasePickerOpen(false)}
         okText="确定" cancelText="取消">
         <Input placeholder="搜索用例编号或标题" value={caseSearch} onChange={e => setCaseSearch(e.target.value)}
           allowClear style={{ marginBottom: 12 }} prefix={<SearchOutlined style={{ color: '#c2c6cf' }} />} />
         <Table size="small" rowKey="id" pagination={{ pageSize: 10, size: 'small', showTotal: t => `共 ${t} 条` }}
           rowSelection={{
-            selectedRowKeys: form.getFieldValue('caseIds') || [],
-            onChange: keys => form.setFieldsValue({ caseIds: keys }),
+            selectedRowKeys: pickerSelected,
+            onChange: keys => setPickerSelected(keys),
           }}
           dataSource={cases.filter(c =>
             !caseSearch || (c.caseCode + ' ' + c.title).toLowerCase().includes(caseSearch.toLowerCase())

@@ -12,6 +12,7 @@ import CaseManagement from './pages/cases/CaseManagement'
 import CaseDetail from './pages/cases/CaseDetail'
 import PlanList from './pages/plan/PlanList'
 import PlanDetail from './pages/plan/PlanDetail'
+import ReportList from './pages/report/ReportList'
 import ReportDetail from './pages/report/ReportDetail'
 import Login from './pages/auth/Login'
 import ManualRecord from './pages/plan/ManualRecord'
@@ -56,7 +57,7 @@ function AppLayout() {
     { type: 'divider' },
     { key: `/projects/${projectId}/cases`, icon: <FileTextOutlined />, label: '用例管理' },
     { key: `/projects/${projectId}/plans`, icon: <UnorderedListOutlined />, label: '测试计划' },
-    { key: `/projects/${projectId}/reports/rpt-001`, icon: <BarChartOutlined />, label: '测试报告' },
+    { key: `/projects/${projectId}/reports`, icon: <BarChartOutlined />, label: '测试报告' },
     { type: 'divider' },
     { key: `/projects/${projectId}/logs`, icon: <FileSearchOutlined />, label: '操作日志' },
   ] : [
@@ -161,7 +162,8 @@ function AppLayout() {
             <Route path="/projects/:projectId/plans" element={<PlanList />} />
             <Route path="/projects/:projectId/plans/:planId" element={<PlanDetail />} />
             <Route path="/projects/:projectId/plans/:planId/manual-record" element={<ManualRecord />} />
-            <Route path="/projects/:projectId/reports/:reportId" element={<ReportDetail />} />
+            <Route path="/projects/:projectId/reports" element={<ReportList />} />
+            <Route path="/projects/:projectId/reports/:planId" element={<ReportDetail />} />
             <Route path="/projects/:projectId/logs" element={<AuditLogs />} />
             <Route path="/settings/env" element={<EnvConfig />} />
             <Route path="/settings/channels" element={<ChannelConfig />} />
