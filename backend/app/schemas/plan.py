@@ -57,4 +57,5 @@ class PlanListItem(BaseSchema):
     test_type: str
     status: str
     case_count: int
+    environment_name: str | None = None
     created_at: datetime

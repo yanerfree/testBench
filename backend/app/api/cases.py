@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_201_CREATED
 
 from app.core.exceptions import AppError
+from app.core.audit import write_audit_log
 from app.deps.auth import require_project_role
 from app.deps.db import get_db
 from app.models.user import User
@@ -50,6 +51,7 @@ async def import_cases(
         cases_list = _parse_excel_to_cases(content)
 
     summary = await import_service.import_cases(session, branch_id, cases_list)
+    await write_audit_log(session, action="import", target_type="case", changes=summary)
     return {"data": summary}
 
 
@@ -214,6 +216,7 @@ async def batch_cases(
     """批量操作用例（移动/归档/取消归档/修改优先级/标记Flaky/彻底删除）"""
     if body.action == "hard_delete":
         result = await case_service.batch_hard_delete(session, body.case_ids)
+        await write_audit_log(session, action="hard_delete", target_type="case", changes={"count": len(body.case_ids)})
         return {"data": result}
     result = await case_service.batch_cases(
         session, branch_id,
@@ -222,6 +225,7 @@ async def batch_cases(
         folder_id=body.folder_id,
         priority=body.priority,
     )
+    await write_audit_log(session, action=body.action, target_type="case", changes={"count": len(body.case_ids)})
     return {"data": result}
 
 

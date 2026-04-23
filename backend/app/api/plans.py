@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_201_CREATED
 
 from app.core.exceptions import AppError, ValidationError
+from app.core.audit import write_audit_log
 from app.deps.auth import get_current_user, require_project_role
 from app.deps.db import get_db
 from app.engine.task_status import set_task_status
@@ -57,6 +58,7 @@ async def list_plans(
                 id=it["plan"].id, name=it["plan"].name,
                 plan_type=it["plan"].plan_type, test_type=it["plan"].test_type,
                 status=it["plan"].status, case_count=it["case_count"],
+                environment_name=it.get("environment_name"),
                 created_at=it["plan"].created_at,
             ).model_dump(by_alias=True)
             for it in items
@@ -169,6 +171,8 @@ class ScenarioResponse(BaseSchema):
     duration_ms: int | None
     error_summary: str | None = None
     execution_log: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     remark: str | None
     sort_order: int
     script_ref_file: str | None = None
@@ -204,6 +208,7 @@ async def execute_plan(
     自动化计划: 创建报告后通过 BackgroundTasks 异步执行，返回 taskId 供轮询。
     """
     report = await execution_service.start_execution(session, plan_id, current_user.id)
+    await write_audit_log(session, action="execute", target_type="plan", target_id=plan_id, target_name=None)
 
     plan = await plan_service.get_plan(session, plan_id)
     if plan.plan_type == "automated":
@@ -252,7 +257,41 @@ async def complete_plan(
 ):
     """确认完成执行"""
     plan = await execution_service.complete_execution(session, plan_id)
+    await write_audit_log(session, action="complete", target_type="plan", target_id=plan_id, target_name=plan.name)
     return {"data": PlanResponse.model_validate(plan, from_attributes=True).model_dump(by_alias=True)}
+
+
+@router.get("/{plan_id}/executions")
+async def list_plan_executions(
+    project_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """计划的执行历史列表"""
+    from sqlalchemy import select as sa_select
+    from app.models.report import TestReport
+    result = await session.execute(
+        sa_select(TestReport).where(TestReport.plan_id == plan_id).order_by(TestReport.created_at.desc())
+    )
+    reports = result.scalars().all()
+    return {
+        "data": [
+            {
+                "id": str(r.id),
+                "executedAt": r.executed_at.isoformat() if r.executed_at else None,
+                "completedAt": r.completed_at.isoformat() if r.completed_at else None,
+                "totalScenarios": r.total_scenarios,
+                "passed": r.passed,
+                "failed": r.failed,
+                "error": r.error,
+                "skipped": r.skipped,
+                "passRate": float(r.pass_rate) if r.pass_rate is not None else None,
+                "totalDurationMs": r.total_duration_ms,
+            }
+            for r in reports
+        ]
+    }
 
 
 @router.get("/{plan_id}/results")
@@ -274,6 +313,9 @@ async def get_results(
                     **ScenarioResponse.model_validate(s, from_attributes=True).model_dump(by_alias=True),
                     "scriptRefFile": getattr(s, '_script_ref_file', None),
                     "scriptRefFunc": getattr(s, '_script_ref_func', None),
+                    "caseSteps": getattr(s, '_case_steps', None),
+                    "preconditions": getattr(s, '_preconditions', None),
+                    "expectedResult": getattr(s, '_expected_result', None),
                 }
                 for s in data["scenarios"]
             ],
@@ -404,6 +446,7 @@ async def pause_plan(
         raise ValidationError(code="INVALID_STATUS", message=f"当前状态「{plan.status}」不可暂停")
     plan.status = "paused"
     await session.flush()
+    await write_audit_log(session, action="pause", target_type="plan", target_id=plan_id, target_name=plan.name)
     await session.refresh(plan)
     return {"data": PlanResponse.model_validate(plan, from_attributes=True).model_dump(by_alias=True)}
 
@@ -421,6 +464,7 @@ async def resume_plan(
         raise ValidationError(code="INVALID_STATUS", message=f"当前状态「{plan.status}」不可恢复")
     plan.status = "executing"
     await session.flush()
+    await write_audit_log(session, action="resume", target_type="plan", target_id=plan_id, target_name=plan.name)
     await session.refresh(plan)
     return {"data": PlanResponse.model_validate(plan, from_attributes=True).model_dump(by_alias=True)}
 
@@ -457,6 +501,7 @@ async def abort_plan(
     plan.status = "completed"
     plan.completed_at = datetime.now(timezone.utc)
     await session.flush()
+    await write_audit_log(session, action="abort", target_type="plan", target_id=plan_id, target_name=plan.name)
 
     # 汇总报告
     if report:

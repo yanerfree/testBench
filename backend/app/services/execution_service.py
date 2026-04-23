@@ -149,6 +149,12 @@ async def complete_execution(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
     report.skipped = status_counts.get("skipped", 0)
     report.completed_at = datetime.now(timezone.utc)
 
+    duration_result = await session.execute(
+        select(func.sum(TestReportScenario.duration_ms))
+        .where(TestReportScenario.report_id == report.id)
+    )
+    report.total_duration_ms = duration_result.scalar_one() or 0
+
     denominator = report.passed + report.failed + report.error
     if denominator > 0:
         report.pass_rate = Decimal(str(round(report.passed / denominator * 100, 2)))
@@ -178,16 +184,23 @@ async def get_report_with_scenarios(
         return None
 
     scenarios_result = await session.execute(
-        select(TestReportScenario, Case.script_ref_file, Case.script_ref_func)
+        select(
+            TestReportScenario,
+            Case.script_ref_file, Case.script_ref_func,
+            Case.steps, Case.preconditions, Case.expected_result,
+        )
         .outerjoin(Case, TestReportScenario.case_id == Case.id)
         .where(TestReportScenario.report_id == report.id)
         .order_by(TestReportScenario.sort_order)
     )
     rows = scenarios_result.all()
     scenarios = []
-    for scenario, script_file, script_func in rows:
+    for scenario, script_file, script_func, case_steps, preconditions, expected_result in rows:
         scenario._script_ref_file = script_file
         scenario._script_ref_func = script_func
+        scenario._case_steps = case_steps
+        scenario._preconditions = preconditions
+        scenario._expected_result = expected_result
         scenarios.append(scenario)
 
     return {"report": report, "scenarios": scenarios}

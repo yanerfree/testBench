@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Card, Tag, Space, Spin, Empty, Input, Radio, Button } from 'antd'
+import { Card, Tag, Space, Spin, Empty, Input, Radio, Button, Pagination } from 'antd'
 import { SearchOutlined, ReloadOutlined, ClockCircleOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
@@ -18,16 +18,17 @@ export default function ReportList() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [keyword, setKeyword] = useState('')
+  const [page, setPage] = useState(1)
 
   const fetchReports = useCallback(async () => {
     if (!projectId) return
     setLoading(true)
     try {
-      const res = await api.get(`/projects/${projectId}/reports?pageSize=100`)
+      const res = await api.get(`/projects/${projectId}/reports?page=${page}&pageSize=20`)
       setReports(res.data || [])
       setTotal(res.pagination?.total || 0)
     } catch { /* */ } finally { setLoading(false) }
-  }, [projectId])
+  }, [projectId, page])
 
   useEffect(() => { fetchReports() }, [fetchReports])
 
@@ -114,9 +115,17 @@ export default function ReportList() {
           })}
         </div>
       }
-      <div style={{ textAlign: 'right', marginTop: 8, fontSize: 12, color: '#8c919e' }}>
-        共 {filtered.length} 条
-      </div>
+      {total > 20 && (
+        <div style={{ textAlign: 'right', marginTop: 12 }}>
+          <Pagination current={page} total={total} pageSize={20} size="small" showTotal={t => `共 ${t} 条`}
+            onChange={p => setPage(p)} />
+        </div>
+      )}
+      {total <= 20 && (
+        <div style={{ textAlign: 'right', marginTop: 8, fontSize: 12, color: '#8c919e' }}>
+          共 {total} 条
+        </div>
+      )}
     </div>
   )
 }

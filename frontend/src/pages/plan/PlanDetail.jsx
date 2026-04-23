@@ -1,32 +1,32 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
-import { Card, Tag, Button, Radio, Table, Descriptions, Space, Row, Col, Spin, Empty, message, Input, Modal, Select } from 'antd'
-import { DownloadOutlined, UserOutlined, ClockCircleOutlined, EditOutlined, PlayCircleOutlined, CheckOutlined, ArrowLeftOutlined, SaveOutlined, SearchOutlined, SyncOutlined } from '@ant-design/icons'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { Card, Tag, Button, Descriptions, Space, Spin, Empty, message, Input, Modal, Table } from 'antd'
+import { ClockCircleOutlined, EditOutlined, PlayCircleOutlined, CheckOutlined, ArrowLeftOutlined, SaveOutlined, SearchOutlined, SyncOutlined, BarChartOutlined } from '@ant-design/icons'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../../utils/request'
-
-const statusCfg = {
-  passed: { label: '通过', color: '#6ecf96', bg: '#eefbf3' },
-  failed: { label: '失败', color: '#f08a8e', bg: '#fef0f1' },
-  error: { label: '错误', color: '#f5b87a', bg: '#fef5eb' },
-  skipped: { label: '跳过', color: '#bfc4cd', bg: '#f5f5f7' },
-  pending: { label: '待录入', color: '#a78bfa', bg: '#f3f0fe' },
-}
 
 const planStatusMap = {
   draft: { label: '草稿', color: '#bfc4cd', bg: '#f5f5f7' },
   executing: { label: '执行中', color: '#7c8cf8', bg: '#eef0fe' },
   completed: { label: '已完成', color: '#6ecf96', bg: '#eefbf3' },
+  paused: { label: '已暂停', color: '#f5b87a', bg: '#fef5eb' },
+  pending_manual: { label: '待手动录入', color: '#a78bfa', bg: '#f3f0fe' },
   archived: { label: '已归档', color: '#a8adb6', bg: '#f5f5f7' },
+}
+
+function fmt(ms) {
+  if (!ms && ms !== 0) return '-'
+  if (ms < 1000) return ms + 'ms'
+  if (ms < 60000) return (ms / 1000).toFixed(1) + 's'
+  return Math.floor(ms / 60000) + 'm ' + Math.round((ms % 60000) / 1000) + 's'
 }
 
 export default function PlanDetail() {
   const navigate = useNavigate()
   const { projectId, planId } = useParams()
+  const [searchParams] = useSearchParams()
   const [plan, setPlan] = useState(null)
-  const [report, setReport] = useState(null)
-  const [scenarios, setScenarios] = useState([])
+  const [executions, setExecutions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState('all')
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [casePickerOpen, setCasePickerOpen] = useState(false)
@@ -34,34 +34,36 @@ export default function PlanDetail() {
   const [availableCases, setAvailableCases] = useState([])
   const [caseSearch, setCaseSearch] = useState('')
   const [caseSaving, setCaseSaving] = useState(false)
+  const [executing, setExecuting] = useState(false)
+  const [execMessage, setExecMessage] = useState('')
 
   const fetchData = useCallback(async () => {
     if (!projectId || !planId) return
     setLoading(true)
     try {
-      const [planRes, resultsRes] = await Promise.all([
+      const [planRes, execRes] = await Promise.all([
         api.get(`/projects/${projectId}/plans/${planId}`),
-        api.get(`/projects/${projectId}/plans/${planId}/results`),
+        api.get(`/projects/${projectId}/plans/${planId}/executions`),
       ])
       setPlan(planRes.data)
-      if (resultsRes.data) {
-        setReport(resultsRes.data.report)
-        setScenarios(resultsRes.data.scenarios || [])
-      }
+      setExecutions(execRes.data || [])
     } catch { /* */ } finally { setLoading(false) }
   }, [projectId, planId])
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const [executing, setExecuting] = useState(false)
-  const [execMessage, setExecMessage] = useState('')
+  useEffect(() => {
+    if (plan && searchParams.get('edit') === 'cases' && ['draft', 'completed', 'paused'].includes(plan.status)) {
+      openCasePicker()
+    }
+  }, [plan?.id])
 
   const handleExecute = async () => {
     try {
       const res = await api.post(`/projects/${projectId}/plans/${planId}/execute`)
       fetchData()
       const taskId = res.data?.taskId
-      if (!taskId) { message.success('计划已启动执行'); return }
+      if (!taskId) return
       setExecuting(true)
       setExecMessage('排队中...')
       const poll = setInterval(async () => {
@@ -69,9 +71,7 @@ export default function PlanDetail() {
           const status = await api.get(`/tasks/${taskId}/status`)
           const s = status.data
           setExecMessage(s.message || s.status)
-          if (s.status === 'running') {
-            fetchData()
-          }
+          if (s.status === 'running') fetchData()
           if (s.status === 'completed') {
             clearInterval(poll)
             setExecuting(false)
@@ -85,7 +85,7 @@ export default function PlanDetail() {
             message.error(s.message || '执行失败')
             fetchData()
           }
-        } catch { /* polling error, ignore */ }
+        } catch { /* */ }
       }, 3000)
     } catch (err) {
       message.error(err?.response?.data?.error?.message || err?.message || '执行失败')
@@ -114,10 +114,7 @@ export default function PlanDetail() {
     }
   }
 
-  const startEdit = () => {
-    setEditName(plan?.name || '')
-    setEditing(true)
-  }
+  const startEdit = () => { setEditName(plan?.name || ''); setEditing(true) }
 
   const openCasePicker = async () => {
     setPickerSelected(plan?.caseIds || [])
@@ -146,55 +143,14 @@ export default function PlanDetail() {
     } finally { setCaseSaving(false) }
   }
 
-  const filtered = useMemo(() => {
-    if (tab === 'all') return scenarios
-    return scenarios.filter(s => s.status === tab)
-  }, [scenarios, tab])
-
-  const counts = {}
-  scenarios.forEach(s => { counts[s.status] = (counts[s.status] || 0) + 1 })
-
   if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin /></div>
   if (!plan) return <Empty description="计划不存在" />
 
   const ps = planStatusMap[plan.status] || planStatusMap.draft
 
-  const columns = [
-    { title: '用例', dataIndex: 'scenarioName', ellipsis: true, render: (v, r) => (
-      <div>
-        <div>
-          <span style={{ fontWeight: 500 }}>{v}</span>
-          <span style={{ fontSize: 11, color: '#bfc4cd', marginLeft: 8 }}>{r.caseCode}</span>
-        </div>
-        {r.scriptRefFile && (
-          <div style={{ fontSize: 11, color: '#86909c', fontFamily: 'monospace', marginTop: 2 }}>
-            {r.scriptRefFile}{r.scriptRefFunc ? `::${r.scriptRefFunc}` : ''}
-          </div>
-        )}
-        {r.remark && <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>{r.remark}</div>}
-      </div>
-    )},
-    { title: '状态', dataIndex: 'status', width: 90, align: 'center', render: v => {
-      const c = statusCfg[v] || statusCfg.pending
-      return <Tag style={{ background: c.bg, color: c.color, border: 'none' }}>{c.label}</Tag>
-    }},
-    { title: '类型', dataIndex: 'executionType', width: 72, align: 'center', render: v =>
-      <Tag style={{ background: v === 'automated' ? '#e6f4ff' : '#fff7e6', color: v === 'automated' ? '#7c8cf8' : '#f5b87a', border: 'none' }}>
-        {v === 'automated' ? '自动' : '手动'}
-      </Tag>
-    },
-    { title: '耗时', dataIndex: 'durationMs', width: 80, align: 'right', render: v =>
-      <span style={{ fontSize: 13, color: '#86909c', fontFamily: 'monospace' }}>
-        {v ? (v < 1000 ? v + 'ms' : (v / 1000).toFixed(1) + 's') : '-'}
-      </span>
-    },
-    { title: '错误信息', dataIndex: 'errorSummary', width: 300, render: v => v ? (
-      <div style={{ color: '#f08a8e', fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all', maxHeight: 80, overflow: 'auto' }}>{v}</div>
-    ) : null },
-  ]
-
   return (
     <div>
+      {/* Header */}
       <Card styles={{ body: { padding: '16px 24px' } }} style={{ marginBottom: 8 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
@@ -230,41 +186,17 @@ export default function PlanDetail() {
             {(plan.status === 'completed' || plan.status === 'paused') && !executing && (
               <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleExecute} loading={executing}>重新执行</Button>
             )}
-            {plan.status === 'executing' && !executing && (<>
+            {plan.status === 'pending_manual' && !executing && (
               <Button icon={<EditOutlined />} onClick={() => navigate(`/projects/${projectId}/plans/${planId}/manual-record`)}>手动录入</Button>
+            )}
+            {(plan.status === 'pending_manual' || plan.status === 'executing') && !executing && (
               <Button type="primary" icon={<CheckOutlined />} onClick={handleComplete}>确认完成</Button>
-            </>)}
+            )}
           </Space>
         </div>
       </Card>
 
-      {report && (
-        <Row gutter={8} style={{ marginBottom: 8 }}>
-          <Col span={4}>
-            <Card styles={{ body: { padding: '16px', textAlign: 'center' } }}>
-              <div style={{ fontSize: 28, fontWeight: 700 }}>{report.totalScenarios}</div>
-              <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>总用例</div>
-            </Card>
-          </Col>
-          {['passed', 'failed', 'error', 'skipped'].map(k => (
-            <Col span={4} key={k}>
-              <Card styles={{ body: { padding: '16px', textAlign: 'center' } }}>
-                <div style={{ fontSize: 26, fontWeight: 700, color: statusCfg[k].color }}>{report[k] || 0}</div>
-                <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>{statusCfg[k].label}</div>
-              </Card>
-            </Col>
-          ))}
-          {report.passRate != null && (
-            <Col span={4}>
-              <Card styles={{ body: { padding: '16px', textAlign: 'center' } }}>
-                <div style={{ fontSize: 26, fontWeight: 700, color: report.passRate >= 95 ? '#6ecf96' : report.passRate >= 80 ? '#f5b87a' : '#f08a8e' }}>{report.passRate}%</div>
-                <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>通过率</div>
-              </Card>
-            </Col>
-          )}
-        </Row>
-      )}
-
+      {/* Plan Config */}
       <Card style={{ marginBottom: 8 }} title={<span style={{ fontSize: 14, fontWeight: 600 }}>计划配置</span>}
         styles={{ header: { borderBottom: '1px solid #f2f3f5', minHeight: 44 }, body: { padding: '12px 24px' } }}>
         <Descriptions column={4} size="small">
@@ -274,7 +206,7 @@ export default function PlanDetail() {
           <Descriptions.Item label="关联用例">
             <Space size={8}>
               <span>{plan.caseIds?.length || 0} 条</span>
-              {plan.status === 'draft' && <Button type="link" size="small" style={{ padding: 0 }} onClick={openCasePicker}>修改用例</Button>}
+              {['draft', 'completed', 'paused'].includes(plan.status) && <Button type="link" size="small" style={{ padding: 0 }} onClick={openCasePicker}>修改用例</Button>}
             </Space>
           </Descriptions.Item>
           {plan.circuitBreaker && <>
@@ -284,23 +216,83 @@ export default function PlanDetail() {
         </Descriptions>
       </Card>
 
-      <Card title={<span style={{ fontSize: 14, fontWeight: 600 }}>用例执行结果</span>}
-        styles={{ header: { borderBottom: '1px solid #f2f3f5', minHeight: 44 } }}>
-        {scenarios.length > 0 ? (<>
-          <div style={{ marginBottom: 12 }}>
-            <Radio.Group value={tab} onChange={e => setTab(e.target.value)} size="small" buttonStyle="solid">
-              <Radio.Button value="all">全部 ({scenarios.length})</Radio.Button>
-              {Object.entries(statusCfg).map(([k, v]) => counts[k] ? <Radio.Button key={k} value={k}><span style={{ color: v.color }}>{v.label} ({counts[k]})</span></Radio.Button> : null)}
-            </Radio.Group>
-          </div>
-          <Table dataSource={filtered} columns={columns} rowKey="id" size="small" pagination={{ pageSize: 15, size: 'small', showTotal: t => `共 ${t} 条` }} />
-        </>) : (
+      {/* Execution History */}
+      <Card title={
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>执行历史</span>
+          <span style={{ fontSize: 13, color: '#86909c', fontWeight: 400 }}>共 {executions.length} 次执行</span>
+        </div>
+      } styles={{ header: { borderBottom: '1px solid #f2f3f5', minHeight: 44 } }}>
+        {executions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 40, color: '#bfc4cd' }}>
-            {plan.status === 'draft' ? '尚未执行，点击上方"启动执行"开始' : '暂无执行结果'}
+            {plan.status === 'draft' ? '尚未执行，点击上方"启动执行"开始' : '暂无执行记录'}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {/* Table Header */}
+            <div style={{ display: 'flex', padding: '8px 16px', background: '#f7f8fa', borderRadius: '6px 6px 0 0', fontSize: 12, color: '#86909c', fontWeight: 500 }}>
+              <div style={{ width: 50 }}>#</div>
+              <div style={{ flex: 3 }}>执行时间</div>
+              <div style={{ flex: 2, textAlign: 'center' }}>状态</div>
+              <div style={{ flex: 3 }}>结果</div>
+              <div style={{ flex: 2, textAlign: 'center' }}>通过率</div>
+              <div style={{ flex: 2, textAlign: 'right' }}>耗时</div>
+              <div style={{ flex: 2, textAlign: 'center' }}>操作</div>
+            </div>
+            {executions.map((exec, i) => {
+              const num = executions.length - i
+              const isCompleted = !!exec.completedAt
+              const isRunning = !exec.completedAt && exec.passed === 0 && exec.failed === 0
+              return (
+                <div key={exec.id} style={{
+                  display: 'flex', alignItems: 'center', padding: '12px 16px',
+                  borderBottom: '1px solid #f5f5f7', fontSize: 13,
+                }}>
+                  <div style={{ width: 50, color: '#86909c', fontWeight: 600 }}>#{num}</div>
+                  <div style={{ flex: 3, color: '#4a4a4a' }}>
+                    {exec.executedAt ? new Date(exec.executedAt).toLocaleString('zh-CN') : '-'}
+                  </div>
+                  <div style={{ flex: 2, textAlign: 'center' }}>
+                    {isRunning ? (
+                      <Tag icon={<SyncOutlined spin />} color="processing">执行中</Tag>
+                    ) : (
+                      <Tag style={{ background: isCompleted ? '#eefbf3' : '#eef0fe', color: isCompleted ? '#6ecf96' : '#7c8cf8', border: 'none' }}>
+                        {isCompleted ? '已完成' : '进行中'}
+                      </Tag>
+                    )}
+                  </div>
+                  <div style={{ flex: 3 }}>
+                    <span style={{ color: '#6ecf96', fontWeight: 500 }}>{exec.passed}</span>
+                    <span style={{ color: '#86909c' }}> / </span>
+                    <span style={{ color: '#f08a8e', fontWeight: 500 }}>{exec.failed + exec.error}</span>
+                    <span style={{ color: '#86909c' }}> / </span>
+                    <span>{exec.totalScenarios}</span>
+                    <span style={{ color: '#c0c4cc', marginLeft: 4, fontSize: 11 }}>(通过/失败/总计)</span>
+                  </div>
+                  <div style={{ flex: 2, textAlign: 'center' }}>
+                    {exec.passRate != null ? (
+                      <span style={{ fontWeight: 600, color: exec.passRate >= 95 ? '#6ecf96' : exec.passRate >= 80 ? '#f5b87a' : '#f08a8e' }}>
+                        {exec.passRate}%
+                      </span>
+                    ) : '-'}
+                  </div>
+                  <div style={{ flex: 2, textAlign: 'right', fontFamily: 'monospace', color: '#86909c' }}>
+                    {fmt(exec.totalDurationMs)}
+                  </div>
+                  <div style={{ flex: 2, textAlign: 'center' }}>
+                    <Button type="link" size="small" icon={<BarChartOutlined />}
+                      onClick={() => navigate(`/projects/${projectId}/reports/${planId}`)}>
+                      查看报告
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </Card>
 
+      {/* Case Picker Modal */}
       <Modal title="修改关联用例" open={casePickerOpen} width={800}
         onOk={handleCaseSave} onCancel={() => setCasePickerOpen(false)}
         okText="确定" cancelText="取消" confirmLoading={caseSaving}>

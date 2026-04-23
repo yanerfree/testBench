@@ -117,6 +117,8 @@ async def run_git_sync_inline(task_id: str, branch_id: str, project_id: str) -> 
                 msg += f"（未找到 {branch.json_file_path}，跳过用例导入）"
 
             await set_task_status(task_id, "completed", message=msg, result=result_data)
+            from app.core.audit import write_audit_log
+            await write_audit_log(session, action="sync", target_type="branch", target_id=branch.id, target_name=branch.name, changes=result_data)
             logger.info("Git sync + import completed for branch %s", branch_id)
             return result_data
 

@@ -68,6 +68,9 @@ def require_project_role(*roles: str) -> Callable:
         current_user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_db),
     ) -> User:
+        # 设置项目级审计上下文
+        set_audit_context(user_id=current_user.id, project_id=project_id)
+
         # 系统 admin 绕过项目级检查
         if current_user.role == "admin":
             return current_user

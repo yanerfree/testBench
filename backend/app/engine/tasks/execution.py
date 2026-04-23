@@ -137,6 +137,14 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
             if consecutive_failures >= cb_consecutive:
                 plan.status = "paused"
                 await session.flush()
+                from app.services.notification_service import notify_plan_result
+                try:
+                    await notify_plan_result(
+                        session, plan, project_name=project.name, trigger="circuit_break",
+                        total=total, passed=passed, failed=failed, skipped=total - executed,
+                    )
+                except Exception:
+                    logger.exception("Failed to send circuit break notification")
                 await set_task_status(
                     task_id, "completed",
                     message=f"熔断触发：连续失败 {consecutive_failures} 条，计划已暂停",
@@ -149,6 +157,14 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
                 if fail_rate >= cb_rate and executed >= 5:
                     plan.status = "paused"
                     await session.flush()
+                    from app.services.notification_service import notify_plan_result
+                    try:
+                        await notify_plan_result(
+                            session, plan, project_name=project.name, trigger="circuit_break",
+                            total=total, passed=passed, failed=failed, skipped=total - executed,
+                        )
+                    except Exception:
+                        logger.exception("Failed to send circuit break notification")
                     await set_task_status(
                         task_id, "completed",
                         message=f"熔断触发：失败率 {fail_rate:.0f}% 超过阈值 {cb_rate}%，计划已暂停",
@@ -199,7 +215,18 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
             # 在线程中执行 pytest（含重试）
             retry_count = plan.retry_count or 0
             case_result = None
+            actual_attempts = 0
+            retry_logs = []
+            case_started = datetime.now(timezone.utc)
+
+            # 标记开始执行
+            scenario.status = "running"
+            scenario.started_at = case_started
+            await session.commit()
+
             for attempt in range(retry_count + 1):
+                actual_attempts = attempt + 1
+                attempt_start = datetime.now(timezone.utc)
                 case_result = await anyio.to_thread.run_sync(
                     lambda c=case: execute_single_case(
                         sandbox_dir=str(sandbox_dir),
@@ -209,19 +236,44 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
                         timeout=300,
                     )
                 )
+                attempt_end = datetime.now(timezone.utc)
+                attempt_duration = f"{(attempt_end - attempt_start).total_seconds():.1f}s"
+
                 if case_result["status"] == "passed" or attempt == retry_count:
                     break
-                # 重试中
+                retry_logs.append(
+                    f"--- 第 {attempt+1} 次执行: {case_result['status']} | "
+                    f"{attempt_start.strftime('%H:%M:%S')} ~ {attempt_end.strftime('%H:%M:%S')} ({attempt_duration}) ---\n"
+                    f"{case_result.get('stdout', '')}"
+                )
                 await set_task_status(
                     task_id, "running",
                     message=f"重试中 ({attempt+1}/{retry_count}): {case.title[:50]}"
+                )
+
+            case_completed = datetime.now(timezone.utc)
+
+            # 拼接执行日志（包含重试记录）
+            final_log = case_result.get("stdout", "")
+            if retry_logs:
+                retry_section = "\n".join(retry_logs)
+                final_duration = f"{(case_completed - (attempt_start if actual_attempts > 1 else case_started)).total_seconds():.1f}s"
+                final_log = (
+                    f"{retry_section}\n"
+                    f"--- 第 {actual_attempts} 次执行（最终）: {case_result['status']} | "
+                    f"{attempt_start.strftime('%H:%M:%S')} ~ {case_completed.strftime('%H:%M:%S')} ({final_duration}) ---\n"
+                    f"{final_log}"
                 )
 
             # 更新 scenario
             scenario.status = case_result["status"]
             scenario.duration_ms = case_result["duration_ms"]
             scenario.error_summary = case_result.get("error_summary")
-            scenario.execution_log = case_result.get("stdout")
+            scenario.execution_log = final_log[:10000]
+            scenario.completed_at = case_completed
+            if actual_attempts > 1:
+                retry_note = f"重试 {actual_attempts - 1} 次，最终{('通过' if case_result['status'] == 'passed' else '失败')}"
+                scenario.remark = retry_note
             scenario.execution_type = "automated"
             await session.flush()
 
@@ -241,7 +293,7 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
                     assertions=step.get("assertions"),
                     error_summary=step.get("error_summary"),
                 ))
-            await session.flush()
+            await session.commit()
 
             executed += 1
             if case_result["status"] == "passed":
@@ -263,7 +315,22 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
 
     # 6. 汇总报告
     from app.services.execution_service import complete_execution
+    from app.services.notification_service import notify_plan_result
     await complete_execution(session, pid)
+
+    # 7. 发送通知
+    await session.refresh(plan)
+    report = (await session.execute(
+        select(TestReport).where(TestReport.plan_id == pid).order_by(TestReport.created_at.desc())
+    )).scalars().first()
+    try:
+        await notify_plan_result(
+            session, plan, project_name=project.name, trigger="completed",
+            total=total, passed=passed, failed=failed, skipped=total - executed,
+            pass_rate=float(report.pass_rate) if report and report.pass_rate is not None else None,
+        )
+    except Exception:
+        logger.exception("Failed to send notification")
 
     result_data = {
         "executed": executed,

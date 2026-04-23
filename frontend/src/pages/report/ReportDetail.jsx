@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Card, Tag, Button, Radio, Space, Spin, Empty, Drawer, Input, Tooltip, message } from 'antd'
 import {
   DownloadOutlined, ArrowLeftOutlined, SyncOutlined, RightOutlined,
-  SearchOutlined,
+  SearchOutlined, CheckCircleFilled, CloseCircleFilled, ExclamationCircleFilled,
+  ClockCircleOutlined, MinusCircleFilled, LoadingOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
@@ -12,7 +13,8 @@ const statusCfg = {
   failed: { label: '失败', color: '#f08a8e', dot: '#f08a8e' },
   error: { label: '错误', color: '#f5b87a', dot: '#f5b87a' },
   skipped: { label: '跳过', color: '#bfc4cd', dot: '#bfc4cd' },
-  pending: { label: '待录入', color: '#a78bfa', dot: '#a78bfa' },
+  running: { label: '执行中', color: '#7c8cf8', dot: '#7c8cf8' },
+  pending: { label: '待执行', color: '#c0c4cc', dot: '#c0c4cc' },
 }
 
 const methodColor = { GET: '#6ecf96', POST: '#7c8cf8', PUT: '#f5b87a', DELETE: '#f08a8e', PATCH: '#a78bfa' }
@@ -24,12 +26,12 @@ function fmt(ms) {
   return Math.floor(ms / 60000) + 'm ' + Math.round((ms % 60000) / 1000) + 's'
 }
 
-function PassRateRing({ rate, passed, total, size = 160 }) {
+function PassRateRing({ rate, passed, total, size = 160, running = false, done = 0 }) {
   const r = size / 2 - 10
   const c = 2 * Math.PI * r
-  const pct = total > 0 ? (passed / total) * 100 : 0
+  const pct = running ? (total > 0 ? (done / total) * 100 : 0) : (total > 0 ? (passed / total) * 100 : 0)
   const offset = c - (c * pct) / 100
-  const color = pct >= 95 ? '#6ecf96' : pct >= 80 ? '#f5b87a' : '#f08a8e'
+  const color = running ? '#7c8cf8' : pct >= 95 ? '#6ecf96' : pct >= 80 ? '#f5b87a' : '#f08a8e'
   return (
     <svg width={size} height={size} style={{ display: 'block', flexShrink: 0 }}>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#f0f0f3" strokeWidth={10} />
@@ -38,16 +40,199 @@ function PassRateRing({ rate, passed, total, size = 160 }) {
         transform={`rotate(-90 ${size/2} ${size/2})`}
         style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
       <text x={size/2} y={size/2 - 14} textAnchor="middle" dominantBaseline="central"
-        style={{ fontSize: 13, fill: '#86909c' }}>已完成</text>
+        style={{ fontSize: 13, fill: running ? '#7c8cf8' : '#86909c' }}>{running ? '执行中' : '已完成'}</text>
       <text x={size/2} y={size/2 + 10} textAnchor="middle" dominantBaseline="central"
-        style={{ fontSize: 28, fontWeight: 700, fill: '#2e3138' }}>{passed ?? 0}</text>
+        style={{ fontSize: running ? 22 : 28, fontWeight: 700, fill: '#2e3138' }}>
+        {running ? `${done}/${total}` : (passed ?? 0)}
+      </text>
     </svg>
   )
 }
 
+function StatusIcon({ status, size = 16 }) {
+  const s = { fontSize: size, lineHeight: 1 }
+  switch (status) {
+    case 'passed': return <CheckCircleFilled style={{ ...s, color: '#6ecf96' }} />
+    case 'failed': return <CloseCircleFilled style={{ ...s, color: '#f08a8e' }} />
+    case 'error': return <ExclamationCircleFilled style={{ ...s, color: '#f5b87a' }} />
+    case 'skipped': return <MinusCircleFilled style={{ ...s, color: '#bfc4cd' }} />
+    case 'running': return <LoadingOutlined style={{ ...s, color: '#7c8cf8' }} spin />
+    default: return <ClockCircleOutlined style={{ ...s, color: '#c0c4cc' }} />
+  }
+}
+
 function StatusDot({ status }) {
-  const cfg = statusCfg[status] || statusCfg.pending
-  return <span style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.dot, display: 'inline-block', flexShrink: 0 }} />
+  return <StatusIcon status={status} size={14} />
+}
+
+function parseExecutionLog(log) {
+  if (!log) return { testName: null, result: null, duration: null, errorLines: [], outputLines: [] }
+  const lines = log.split('\n')
+  let testName = null, result = null, duration = null
+  const errorLines = []
+  const outputLines = []
+  let inError = false
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+
+    // 提取测试结果行: tests/e2e/test_smoke.py::TestClass::test_func PASSED
+    const resultMatch = trimmed.match(/^(tests\/\S+::\S+)\s+(PASSED|FAILED|ERROR)/i)
+    if (resultMatch) {
+      testName = resultMatch[1]
+      result = resultMatch[2]
+      continue
+    }
+
+    // 提取耗时: 1 passed in 0.71s / 1 failed in 2.3s
+    const durMatch = trimmed.match(/(\d+)\s+(?:passed|failed|error).*?in\s+([\d.]+s)/i)
+    if (durMatch) { duration = durMatch[2]; continue }
+
+    // 跳过 pytest header/footer 噪音
+    if (trimmed.startsWith('===') || trimmed.startsWith('---') || trimmed.startsWith('platform ')
+      || trimmed.startsWith('cachedir:') || trimmed.startsWith('rootdir:')
+      || trimmed.startsWith('configfile:') || trimmed.startsWith('plugins:')
+      || trimmed.startsWith('asyncio:') || trimmed.startsWith('collecting')
+      || trimmed.startsWith('collected') || trimmed.startsWith('generated xml')) continue
+
+    // 错误/断言行
+    if (trimmed.startsWith('E ') || trimmed.startsWith('> ') || trimmed.includes('AssertionError')
+      || trimmed.includes('assert ') || trimmed.startsWith('FAILED')) {
+      inError = true
+      errorLines.push(line)
+      continue
+    }
+    if (inError && (trimmed.startsWith('  ') || trimmed.startsWith('File '))) {
+      errorLines.push(line)
+      continue
+    }
+    inError = false
+
+    // 其余有意义的输出
+    if (trimmed.length > 2) outputLines.push(line)
+  }
+
+  return { testName, result, duration, errorLines, outputLines }
+}
+
+function ScenarioExpanded({ scenario }) {
+  const { caseSteps, preconditions, expectedResult, errorSummary, executionLog, status, scriptRefFile, scriptRefFunc, durationMs, remark, startedAt, completedAt } = scenario
+  const isFailed = status === 'failed' || status === 'error'
+  const isPassed = status === 'passed'
+  const parsed = parseExecutionLog(executionLog)
+  const hasRetry = remark && remark.includes('重试')
+
+  return (
+    <div style={{ padding: '16px 20px 16px 48px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* 执行信息卡片 */}
+      <div style={{ padding: '12px 16px', background: isPassed ? '#f0faf4' : isFailed ? '#fef0f1' : '#f7f8fa', borderRadius: 8, border: `1px solid ${isPassed ? '#d4edda' : isFailed ? '#fde2e4' : '#f0f0f3'}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <StatusIcon status={status} size={18} />
+            <span style={{ fontWeight: 600, fontSize: 14, color: isPassed ? '#6ecf96' : isFailed ? '#f08a8e' : '#86909c' }}>
+              {isPassed ? '执行通过' : isFailed ? '执行失败' : status === 'skipped' ? '已跳过' : status === 'running' ? '执行中' : '待执行'}
+            </span>
+            {hasRetry && (
+              <Tag style={{ background: '#fff7e6', color: '#f5b87a', border: 'none', fontSize: 11 }}>{remark}</Tag>
+            )}
+          </div>
+          <span style={{ fontSize: 13, color: '#86909c', fontFamily: 'monospace' }}>
+            {durationMs ? fmt(durationMs) : parsed.duration || '-'}
+          </span>
+        </div>
+        {(scriptRefFile || parsed.testName) && (
+          <div style={{ fontSize: 12, color: '#86909c', fontFamily: 'monospace' }}>
+            {parsed.testName || `${scriptRefFile}${scriptRefFunc ? `::${scriptRefFunc}` : ''}`}
+          </div>
+        )}
+        {startedAt && (
+          <div style={{ fontSize: 12, color: '#86909c', marginTop: 4 }}>
+            开始: {new Date(startedAt).toLocaleString('zh-CN')}
+            {completedAt && <span style={{ marginLeft: 16 }}>结束: {new Date(completedAt).toLocaleString('zh-CN')}</span>}
+          </div>
+        )}
+      </div>
+
+      {/* 失败原因 */}
+      {isFailed && (errorSummary || parsed.errorLines.length > 0) && (
+        <div>
+          <div style={{ fontSize: 12, color: '#f08a8e', marginBottom: 6, fontWeight: 600 }}>失败原因</div>
+          {errorSummary && (
+            <div style={{ fontSize: 13, color: '#d9534f', padding: '10px 14px', background: '#fef0f1', borderRadius: 6, border: '1px solid #fde2e4', marginBottom: parsed.errorLines.length > 0 ? 8 : 0, lineHeight: 1.6 }}>
+              {errorSummary}
+            </div>
+          )}
+          {parsed.errorLines.length > 0 && (
+            <pre style={{
+              margin: 0, padding: '10px 14px', background: '#fafbfc', color: '#d9534f',
+              borderRadius: 6, fontSize: 12, lineHeight: 1.5, overflow: 'auto', maxHeight: 200,
+              whiteSpace: 'pre-wrap', wordBreak: 'break-all', border: '1px solid #f0f0f3',
+              fontFamily: "'SF Mono', 'Menlo', 'Monaco', monospace",
+            }}>{parsed.errorLines.join('\n')}</pre>
+          )}
+        </div>
+      )}
+
+      {/* 用例步骤（如果有定义） */}
+      {caseSteps && caseSteps.length > 0 && (
+        <div>
+          <div style={{ fontSize: 12, color: '#86909c', marginBottom: 6, fontWeight: 600 }}>测试步骤</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {caseSteps.map((step, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 12px',
+                background: '#fff', borderRadius: 6, border: '1px solid #f0f0f3',
+              }}>
+                <span style={{
+                  width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 600, color: '#fff',
+                  background: isPassed ? '#6ecf96' : '#c0c4cc',
+                }}>{step.seq || i + 1}</span>
+                <span style={{ fontSize: 13, color: '#4a4a4a', lineHeight: 1.5 }}>{step.action}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 执行日志（始终展示） */}
+      {executionLog && (
+        <div>
+          <div style={{ fontSize: 12, color: '#86909c', marginBottom: 6, fontWeight: 600 }}>执行日志</div>
+          <pre style={{
+            margin: 0, padding: '12px 14px', background: '#fafbfc', color: '#4a4a4a',
+            borderRadius: 6, fontSize: 12, lineHeight: 1.6, overflow: 'auto', maxHeight: 300,
+            whiteSpace: 'pre-wrap', wordBreak: 'break-all', border: '1px solid #f0f0f3',
+            fontFamily: "'SF Mono', 'Menlo', 'Monaco', monospace",
+          }}>{executionLog}</pre>
+        </div>
+      )}
+
+      {/* 预期结果 */}
+      {expectedResult && (
+        <div>
+          <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4, fontWeight: 600 }}>预期结果</div>
+          <div style={{ fontSize: 13, color: '#4a4a4a', padding: '8px 14px', background: '#f0faf4', borderRadius: 6, border: '1px solid #d4edda', lineHeight: 1.5 }}>
+            {expectedResult}
+          </div>
+        </div>
+      )}
+
+      {/* 前置条件 */}
+      {preconditions && (
+        <div>
+          <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4, fontWeight: 600 }}>前置条件</div>
+          <div style={{ fontSize: 13, color: '#86909c', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{preconditions}</div>
+        </div>
+      )}
+
+      {!executionLog && !(caseSteps && caseSteps.length > 0) && (
+        <div style={{ color: '#bfc4cd', fontSize: 13 }}>暂无执行详情</div>
+      )}
+    </div>
+  )
 }
 
 export default function ReportDetail() {
@@ -67,7 +252,7 @@ export default function ReportDetail() {
 
   const fetchData = useCallback(async () => {
     if (!projectId || !planId) return
-    setLoading(true)
+    setLoading(prev => prev)
     try {
       const [reportRes, resultsRes] = await Promise.all([
         api.get(`/projects/${projectId}/plans/${planId}/report`),
@@ -82,6 +267,14 @@ export default function ReportDetail() {
   }, [projectId, planId])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  // 执行中自动轮询
+  const isRunning = summary && !summary.completedAt
+  useEffect(() => {
+    if (!isRunning) return
+    const poll = setInterval(() => fetchData(), 3000)
+    return () => clearInterval(poll)
+  }, [isRunning, fetchData])
 
   const loadSteps = async (scenarioId) => {
     if (stepsCache[scenarioId] || loadingSteps[scenarioId]) return
@@ -139,6 +332,7 @@ export default function ReportDetail() {
 
   const counts = {}
   scenarios.forEach(s => { counts[s.status] = (counts[s.status] || 0) + 1 })
+  const doneCount = scenarios.filter(s => s.status !== 'pending').length
 
   // 计算总耗时：如果 summary 没有，从 scenarios 汇总
   const totalDuration = summary?.totalDurationMs || scenarios.reduce((sum, s) => sum + (s.durationMs || 0), 0)
@@ -146,8 +340,14 @@ export default function ReportDetail() {
   if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin /></div>
   if (!summary) return <Empty description="暂无报告数据" />
 
-  const failed = summary.failed + summary.error
-  const failRate = summary.totalScenarios > 0 ? (failed / summary.totalScenarios * 100).toFixed(1) : '0.0'
+  // 执行中时从 scenarios 实时计算统计数据
+  const livePassed = isRunning ? (counts.passed || 0) : summary.passed
+  const liveFailed = isRunning ? ((counts.failed || 0) + (counts.error || 0)) : (summary.failed + summary.error)
+  const liveError = isRunning ? (counts.error || 0) : summary.error
+  const liveSkipped = isRunning ? (counts.skipped || 0) : summary.skipped
+  const liveTotal = summary.totalScenarios
+  const liveRate = doneCount > 0 ? (livePassed / (livePassed + liveFailed) * 100).toFixed(1) : null
+  const failRate = liveTotal > 0 ? (liveFailed / liveTotal * 100).toFixed(1) : '0.0'
 
   const renderScenarioRow = (s) => {
     const cfg = statusCfg[s.status] || statusCfg.pending
@@ -188,7 +388,10 @@ export default function ReportDetail() {
               </span>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+            {s.remark && s.remark.includes('重试') && (
+              <Tag style={{ background: '#fff7e6', color: '#f5b87a', border: 'none', fontSize: 11 }}>{s.remark}</Tag>
+            )}
             {s.errorSummary && (
               <span style={{ fontSize: 12, color: '#f08a8e', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {s.errorSummary}
@@ -197,6 +400,12 @@ export default function ReportDetail() {
             <Tag style={{ background: isAutomatic ? '#e6f4ff' : '#fff7e6', color: isAutomatic ? '#7c8cf8' : '#f5b87a', border: 'none', fontSize: 11 }}>
               {isAutomatic ? '自动' : '手动'}
             </Tag>
+            {s.startedAt && (
+              <span style={{ fontSize: 11, color: '#c0c4cc' }}>
+                {new Date(s.startedAt).toLocaleTimeString('zh-CN')}
+                {s.completedAt ? ` ~ ${new Date(s.completedAt).toLocaleTimeString('zh-CN')}` : ''}
+              </span>
+            )}
             <span style={{ fontSize: 13, color: '#86909c', fontFamily: 'monospace', minWidth: 50, textAlign: 'right' }}>
               {fmt(s.durationMs)}
             </span>
@@ -238,16 +447,8 @@ export default function ReportDetail() {
                   </div>
                 </div>
               ))
-            ) : s.executionLog ? (
-              <div style={{ padding: '12px 20px 12px 48px' }}>
-                <pre style={{
-                  margin: 0, padding: '12px 16px', background: '#f7f8fa', color: '#2e3138',
-                  borderRadius: 6, fontSize: 12, lineHeight: 1.6, overflow: 'auto', maxHeight: 400,
-                  whiteSpace: 'pre-wrap', wordBreak: 'break-all', border: '1px solid #f0f0f3',
-                }}>{s.executionLog}</pre>
-              </div>
             ) : (
-              <div style={{ padding: '12px 48px', color: '#bfc4cd', fontSize: 13 }}>暂无执行详情</div>
+              <ScenarioExpanded scenario={s} />
             )}
           </div>
         )}
@@ -272,7 +473,7 @@ export default function ReportDetail() {
       {/* L1 Summary Card - Centered */}
       <Card style={{ marginBottom: 8 }} styles={{ body: { padding: '32px 40px', display: 'flex', justifyContent: 'center' } }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 48 }}>
-          <PassRateRing rate={summary.passRate} passed={summary.passed} total={summary.totalScenarios} />
+          <PassRateRing rate={liveRate} passed={livePassed} total={liveTotal} running={isRunning} done={doneCount} />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -280,15 +481,15 @@ export default function ReportDetail() {
               <span style={{ color: '#4a4a4a' }}>通过</span>
             </div>
             <div style={{ paddingLeft: 18, marginBottom: 8 }}>
-              <span style={{ fontSize: 16, fontWeight: 600 }}>{summary.passed}</span>
-              <span style={{ color: '#86909c', marginLeft: 6 }}>({summary.passRate != null ? `${summary.passRate}%` : '-'})</span>
+              <span style={{ fontSize: 16, fontWeight: 600 }}>{livePassed}</span>
+              <span style={{ color: '#86909c', marginLeft: 6 }}>({liveRate != null ? `${liveRate}%` : '-'})</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#f08a8e', display: 'inline-block' }} />
               <span style={{ color: '#4a4a4a' }}>失败</span>
             </div>
             <div style={{ paddingLeft: 18 }}>
-              <span style={{ fontSize: 16, fontWeight: 600 }}>{failed}</span>
+              <span style={{ fontSize: 16, fontWeight: 600 }}>{liveFailed}</span>
               <span style={{ color: '#86909c', marginLeft: 6 }}>({failRate}%)</span>
             </div>
           </div>
@@ -299,16 +500,16 @@ export default function ReportDetail() {
               <div style={{ fontSize: 18, fontWeight: 600, color: '#7c8cf8' }}>{fmt(totalDuration) || '-'}</div>
             </div>
             <div>
-              <div style={{ color: '#86909c', fontSize: 13, marginBottom: 4 }}>总用例</div>
-              <div style={{ fontSize: 18, fontWeight: 600 }}>执行: {summary.totalScenarios}</div>
+              <div style={{ color: '#86909c', fontSize: 13, marginBottom: 4 }}>{isRunning ? '进度' : '总用例'}</div>
+              <div style={{ fontSize: 18, fontWeight: 600 }}>{isRunning ? `${doneCount} / ${liveTotal}` : `执行: ${liveTotal}`}</div>
             </div>
             <div>
               <div style={{ color: '#86909c', fontSize: 13, marginBottom: 4 }}>错误</div>
-              <div style={{ fontSize: 18, fontWeight: 600, color: '#f5b87a' }}>{summary.error}</div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: '#f5b87a' }}>{liveError}</div>
             </div>
             <div>
               <div style={{ color: '#86909c', fontSize: 13, marginBottom: 4 }}>跳过</div>
-              <div style={{ fontSize: 18, fontWeight: 600, color: '#bfc4cd' }}>{summary.skipped}</div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: '#bfc4cd' }}>{liveSkipped}</div>
             </div>
           </div>
         </div>

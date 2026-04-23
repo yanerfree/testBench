@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Card, Tag, Button, Radio, Input, Space, Modal, Form, Select, InputNumber, Table, message, Empty, Spin } from 'antd'
+import { Card, Tag, Button, Radio, Input, Space, Modal, Form, Select, InputNumber, Table, message, Empty, Spin, Pagination } from 'antd'
 import { PlusOutlined, SearchOutlined, ClockCircleOutlined, UserOutlined, ReloadOutlined, PlayCircleOutlined, EditOutlined, CheckOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
@@ -118,32 +118,9 @@ export default function PlanList() {
   const handleQuickExecute = async (e, planId) => {
     e.stopPropagation()
     try {
-      const res = await api.post(`/projects/${projectId}/plans/${planId}/execute`)
-      message.success('计划已启动执行')
+      await api.post(`/projects/${projectId}/plans/${planId}/execute`)
+      message.success('已启动执行')
       fetchPlans()
-      const taskId = res.data?.taskId
-      if (!taskId) return
-      message.loading({ content: '排队中...', key: `exec-${planId}`, duration: 0 })
-      const poll = setInterval(async () => {
-        try {
-          const status = await api.get(`/tasks/${taskId}/status`)
-          const s = status.data
-          if (s.status === 'running') {
-            message.loading({ content: s.message || '执行中...', key: `exec-${planId}`, duration: 0 })
-          }
-          if (s.status === 'completed') {
-            clearInterval(poll)
-            message.destroy(`exec-${planId}`)
-            message.success('执行完成')
-            fetchPlans()
-          } else if (s.status === 'failed') {
-            clearInterval(poll)
-            message.destroy(`exec-${planId}`)
-            message.error(s.message || '执行失败')
-            fetchPlans()
-          }
-        } catch { /* polling error, ignore */ }
-      }, 3000)
     } catch (err) {
       message.error(err?.response?.data?.error?.message || err?.message || '执行失败')
     }
@@ -227,6 +204,7 @@ export default function PlanList() {
                     <span><ClockCircleOutlined style={{ marginRight: 3 }} />{new Date(plan.createdAt).toLocaleDateString('zh-CN')}</span>
                     <Tag style={{ background: '#f5f5f7', color: '#8c919e', border: 'none', fontSize: 11 }}>{plan.planType === 'automated' ? '自动化' : '手动'}</Tag>
                     <Tag style={{ background: '#f5f5f7', color: '#8c919e', border: 'none', fontSize: 11 }}>{plan.testType?.toUpperCase()}</Tag>
+                    {plan.environmentName && <Tag style={{ background: '#e6f4ff', color: '#7c8cf8', border: 'none', fontSize: 11 }}>{plan.environmentName}</Tag>}
                     <span>用例: {plan.caseCount} 条</span>
                   </Space>
                 </div>
@@ -238,6 +216,10 @@ export default function PlanList() {
 
                 {/* 操作 */}
                 <div style={{ flex: 3, display: 'flex', justifyContent: 'center', gap: 6 }}>
+                  {['draft', 'completed', 'paused'].includes(plan.status) && (
+                    <Button size="small" icon={<EditOutlined />}
+                      onClick={e => { e.stopPropagation(); navigate(`/projects/${projectId}/plans/${plan.id}?edit=cases`) }}>修改用例</Button>
+                  )}
                   {plan.status === 'draft' && (
                     <Button type="primary" size="small" icon={<PlayCircleOutlined />}
                       onClick={e => handleQuickExecute(e, plan.id)}>执行</Button>
@@ -245,10 +227,6 @@ export default function PlanList() {
                   {(plan.status === 'completed' || plan.status === 'paused') && (
                     <Button size="small" icon={<PlayCircleOutlined />}
                       onClick={e => handleQuickExecute(e, plan.id)}>重新执行</Button>
-                  )}
-                  {plan.status === 'executing' && (
-                    <Button size="small" icon={<EditOutlined />}
-                      onClick={e => { e.stopPropagation(); navigate(`/projects/${projectId}/plans/${plan.id}/manual-record`) }}>录入</Button>
                   )}
                   {(plan.status === 'draft' || plan.status === 'archived') && (
                     <Button size="small" danger icon={<DeleteOutlined />}
@@ -259,6 +237,12 @@ export default function PlanList() {
             )
           })}
         </div>
+        {total > 20 && (
+          <div style={{ textAlign: 'right', marginTop: 12 }}>
+            <Pagination current={page} total={total} pageSize={20} size="small" showTotal={t => `共 ${t} 条`}
+              onChange={p => setPage(p)} />
+          </div>
+        )}
         </>
       }
 

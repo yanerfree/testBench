@@ -75,9 +75,15 @@ async def list_plans(
         case_count_r = await session.execute(
             select(func.count()).where(PlanCase.plan_id == p.id)
         )
+        env_name = None
+        if p.environment_id:
+            from app.models.environment import Environment
+            env_r = await session.execute(select(Environment.name).where(Environment.id == p.environment_id))
+            env_name = env_r.scalar_one_or_none()
         items.append({
             "plan": p,
             "case_count": case_count_r.scalar_one(),
+            "environment_name": env_name,
         })
     return items, total
 
@@ -92,10 +98,10 @@ async def get_plan(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
 
 @audit_log(action="update", target_type="plan")
 async def update_plan(session: AsyncSession, plan_id: uuid.UUID, data) -> Plan:
-    """更新测试计划（仅 draft 状态可修改）。"""
+    """更新测试计划（draft/completed/paused 状态可修改）。"""
     plan = await get_plan(session, plan_id)
-    if plan.status != "draft":
-        raise ValidationError(code="INVALID_STATUS", message=f"当前状态「{plan.status}」不可编辑，仅草稿状态可修改")
+    if plan.status not in ("draft", "completed", "paused"):
+        raise ValidationError(code="INVALID_STATUS", message=f"当前状态「{plan.status}」不可编辑")
 
     if data.name is not None:
         plan.name = data.name
