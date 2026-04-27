@@ -26,12 +26,15 @@ async function request(url, options = {}) {
     localStorage.setItem('token', newToken)
   }
 
-  // 401 → 清除 token 跳转登录
+  // 401 → 登录页面的请求直接返回错误，不跳转
   if (res.status === 401) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    window.location.href = '/login'
-    return Promise.reject(new Error('未登录或登录已过期'))
+    const isLoginRequest = url === '/auth/login'
+    if (!isLoginRequest) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+      return Promise.reject(new Error('未登录或登录已过期'))
+    }
   }
 
   // 403

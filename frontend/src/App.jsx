@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
-import { Layout, Menu, Avatar, Dropdown, Button, Tooltip, message } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, Button, Tooltip, message, Modal, Form, Input } from 'antd'
 import {
   FolderOutlined, FileTextOutlined, UnorderedListOutlined, BarChartOutlined,
   SettingOutlined, UserOutlined, FileSearchOutlined,
@@ -32,6 +32,9 @@ function RequireAuth({ children }) {
 function AppLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const [projectName, setProjectName] = useState('')
+  const [pwdOpen, setPwdOpen] = useState(false)
+  const [pwdLoading, setPwdLoading] = useState(false)
+  const [pwdForm] = Form.useForm()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -80,9 +83,24 @@ function AppLayout() {
     navigate('/login', { replace: true })
   }
 
+  const handleChangePassword = async () => {
+    let values
+    try { values = await pwdForm.validateFields() } catch { return }
+    setPwdLoading(true)
+    try {
+      await api.post('/auth/change-password', { oldPassword: values.oldPassword, newPassword: values.newPassword })
+      message.success('密码修改成功，请重新登录')
+      setPwdOpen(false)
+      pwdForm.resetFields()
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      navigate('/login', { replace: true })
+    } catch { /* request.js 已展示错误 */ } finally { setPwdLoading(false) }
+  }
+
   const userMenu = {
     items: [
-      { key: 'profile', label: '个人设置' },
+      { key: 'changePwd', label: '修改密码', onClick: () => { pwdForm.resetFields(); setPwdOpen(true) } },
       { type: 'divider' },
       { key: 'logout', label: '退出登录', onClick: handleLogout },
     ]
@@ -174,6 +192,29 @@ function AppLayout() {
           </Routes>
         </Content>
       </Layout>
+
+      <Modal title="修改密码" open={pwdOpen} onOk={handleChangePassword} onCancel={() => setPwdOpen(false)}
+        okText="确认修改" cancelText="取消" confirmLoading={pwdLoading} width={400}>
+        <Form form={pwdForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="oldPassword" label="原密码" rules={[{ required: true, message: '请输入原密码' }]}>
+            <Input.Password placeholder="请输入当前密码" />
+          </Form.Item>
+          <Form.Item name="newPassword" label="新密码" rules={[{ required: true, message: '请输入新密码' }, { min: 6, message: '密码至少 6 位' }]}>
+            <Input.Password placeholder="请输入新密码（至少 6 位）" />
+          </Form.Item>
+          <Form.Item name="confirmPassword" label="确认新密码"
+            dependencies={['newPassword']}
+            rules={[
+              { required: true, message: '请确认新密码' },
+              ({ getFieldValue }) => ({ validator(_, value) {
+                if (!value || getFieldValue('newPassword') === value) return Promise.resolve()
+                return Promise.reject(new Error('两次输入的密码不一致'))
+              }}),
+            ]}>
+            <Input.Password placeholder="请再次输入新密码" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </Layout>
   )
 }
