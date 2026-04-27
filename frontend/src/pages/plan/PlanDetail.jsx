@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Card, Tag, Button, Descriptions, Space, Spin, Empty, message, Input, Modal, Table } from 'antd'
-import { ClockCircleOutlined, EditOutlined, PlayCircleOutlined, CheckOutlined, ArrowLeftOutlined, SaveOutlined, SearchOutlined, SyncOutlined, BarChartOutlined } from '@ant-design/icons'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Card, Tag, Button, Descriptions, Space, Spin, Empty, message, Input, Select, InputNumber } from 'antd'
+import { ClockCircleOutlined, EditOutlined, PlayCircleOutlined, CheckOutlined, ArrowLeftOutlined, SaveOutlined, SyncOutlined, BarChartOutlined, CloseOutlined } from '@ant-design/icons'
+import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
+import CasePicker from '../../components/CasePicker'
 
 const planStatusMap = {
-  draft: { label: '草稿', color: '#bfc4cd', bg: '#f5f5f7' },
-  executing: { label: '执行中', color: '#7c8cf8', bg: '#eef0fe' },
-  completed: { label: '已完成', color: '#6ecf96', bg: '#eefbf3' },
-  paused: { label: '已暂停', color: '#f5b87a', bg: '#fef5eb' },
-  pending_manual: { label: '待手动录入', color: '#a78bfa', bg: '#f3f0fe' },
-  archived: { label: '已归档', color: '#a8adb6', bg: '#f5f5f7' },
+  draft: { label: '草稿', color: '#c9cdd4', bg: '#f2f3f5' },
+  executing: { label: '执行中', color: '#1890ff', bg: '#e6f7ff' },
+  completed: { label: '已完成', color: '#00b96b', bg: '#f6ffed' },
+  paused: { label: '已暂停', color: '#faad14', bg: '#fffbe6' },
+  pending_manual: { label: '待手动录入', color: '#722ed1', bg: '#f9f0ff' },
+  archived: { label: '已归档', color: '#8c8c8c', bg: '#f2f3f5' },
 }
 
 function fmt(ms) {
@@ -23,17 +24,19 @@ function fmt(ms) {
 export default function PlanDetail() {
   const navigate = useNavigate()
   const { projectId, planId } = useParams()
-  const [searchParams] = useSearchParams()
   const [plan, setPlan] = useState(null)
   const [executions, setExecutions] = useState([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState('')
+  const [editEnvId, setEditEnvId] = useState(null)
+  const [editChannelId, setEditChannelId] = useState(null)
+  const [editRetry, setEditRetry] = useState(0)
+  const [editCB, setEditCB] = useState(null)
+  const [editCaseIds, setEditCaseIds] = useState([])
+  const [environments, setEnvironments] = useState([])
+  const [channels, setChannels] = useState([])
   const [casePickerOpen, setCasePickerOpen] = useState(false)
-  const [pickerSelected, setPickerSelected] = useState([])
-  const [availableCases, setAvailableCases] = useState([])
-  const [caseSearch, setCaseSearch] = useState('')
-  const [caseSaving, setCaseSaving] = useState(false)
   const [executing, setExecuting] = useState(false)
   const [execMessage, setExecMessage] = useState('')
 
@@ -51,12 +54,6 @@ export default function PlanDetail() {
   }, [projectId, planId])
 
   useEffect(() => { fetchData() }, [fetchData])
-
-  useEffect(() => {
-    if (plan && searchParams.get('edit') === 'cases' && ['draft', 'completed', 'paused'].includes(plan.status)) {
-      openCasePicker()
-    }
-  }, [plan?.id])
 
   const handleExecute = async () => {
     try {
@@ -105,7 +102,15 @@ export default function PlanDetail() {
   const handleSave = async () => {
     if (!editName.trim()) { message.warning('计划名称不能为空'); return }
     try {
-      await api.put(`/projects/${projectId}/plans/${planId}`, { name: editName })
+      const payload = {
+        name: editName,
+        environmentId: editEnvId,
+        channelId: editChannelId,
+        retryCount: editRetry,
+        circuitBreaker: editCB,
+        caseIds: editCaseIds,
+      }
+      await api.put(`/projects/${projectId}/plans/${planId}`, payload)
       message.success('保存成功')
       setEditing(false)
       fetchData()
@@ -114,33 +119,22 @@ export default function PlanDetail() {
     }
   }
 
-  const startEdit = () => { setEditName(plan?.name || ''); setEditing(true) }
-
-  const openCasePicker = async () => {
-    setPickerSelected(plan?.caseIds || [])
-    setCaseSearch('')
+  const startEdit = async () => {
+    setEditName(plan?.name || '')
+    setEditEnvId(plan?.environmentId || null)
+    setEditChannelId(plan?.channelId || null)
+    setEditRetry(plan?.retryCount ?? 0)
+    setEditCB(plan?.circuitBreaker || null)
+    setEditCaseIds(plan?.caseIds || [])
     try {
-      const brRes = await api.get(`/projects/${projectId}/branches`)
-      const active = (brRes.data || []).find(b => b.status === 'active')
-      if (active) {
-        const caseRes = await api.get(`/projects/${projectId}/branches/${active.id}/cases?pageSize=100`)
-        setAvailableCases(caseRes.data || [])
-      }
+      const [envRes, chRes] = await Promise.all([
+        api.get('/environments'),
+        api.get('/channels'),
+      ])
+      setEnvironments(envRes.data || [])
+      setChannels(chRes.data || [])
     } catch { /* */ }
-    setCasePickerOpen(true)
-  }
-
-  const handleCaseSave = async () => {
-    if (pickerSelected.length === 0) { message.warning('请至少选择 1 条用例'); return }
-    setCaseSaving(true)
-    try {
-      await api.put(`/projects/${projectId}/plans/${planId}`, { caseIds: pickerSelected })
-      message.success('用例已更新')
-      setCasePickerOpen(false)
-      fetchData()
-    } catch (err) {
-      message.error(err?.response?.data?.error?.message || err?.message || '保存失败')
-    } finally { setCaseSaving(false) }
+    setEditing(true)
   }
 
   if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin /></div>
@@ -162,7 +156,7 @@ export default function PlanDetail() {
               ) : (
                 <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>{plan.name}</h2>
               )}
-              <Tag style={{ background: ps.bg, color: ps.color, border: 'none' }}>{ps.label}</Tag>
+              <Tag style={{ background: ps.color, color: '#fff', border: 'none' }}>{ps.label}</Tag>
               {executing && <Tag icon={<SyncOutlined spin />} color="processing">{execMessage}</Tag>}
               <Tag style={{ background: '#f7f8fa', color: '#86909c', border: 'none' }}>{plan.planType === 'automated' ? '自动化' : '手动'}</Tag>
               <Tag style={{ background: '#f7f8fa', color: '#86909c', border: 'none' }}>{plan.testType?.toUpperCase()}</Tag>
@@ -173,7 +167,7 @@ export default function PlanDetail() {
             </Space>
           </div>
           <Space>
-            {plan.status === 'draft' && !editing && (
+            {plan.status !== 'executing' && !editing && (
               <Button icon={<EditOutlined />} onClick={startEdit}>编辑</Button>
             )}
             {editing && (<>
@@ -199,22 +193,83 @@ export default function PlanDetail() {
       {/* Plan Config */}
       <Card style={{ marginBottom: 8 }} title={<span style={{ fontSize: 14, fontWeight: 600 }}>计划配置</span>}
         styles={{ header: { borderBottom: '1px solid #f2f3f5', minHeight: 44 }, body: { padding: '12px 24px' } }}>
-        <Descriptions column={4} size="small">
-          <Descriptions.Item label="计划类型">{plan.planType === 'automated' ? '自动化' : '手动'}</Descriptions.Item>
-          <Descriptions.Item label="测试类型">{plan.testType?.toUpperCase()}</Descriptions.Item>
-          <Descriptions.Item label="失败重试">{plan.retryCount} 次</Descriptions.Item>
-          <Descriptions.Item label="关联用例">
-            <Space size={8}>
-              <span>{plan.caseIds?.length || 0} 条</span>
-              {['draft', 'completed', 'paused'].includes(plan.status) && <Button type="link" size="small" style={{ padding: 0 }} onClick={openCasePicker}>修改用例</Button>}
-            </Space>
-          </Descriptions.Item>
-          {plan.circuitBreaker && <>
-            <Descriptions.Item label="熔断-连续失败">{plan.circuitBreaker.consecutive} 条</Descriptions.Item>
-            <Descriptions.Item label="熔断-失败率">{plan.circuitBreaker.rate}%</Descriptions.Item>
-          </>}
-        </Descriptions>
+        {editing ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', gap: 16 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>计划类型</div>
+                <Tag style={{ background: '#f2f3f5', color: '#86909c' }}>{plan.planType === 'automated' ? '自动化' : '手动'}</Tag>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>测试类型</div>
+                <Tag style={{ background: '#f2f3f5', color: '#86909c' }}>{plan.testType?.toUpperCase()}</Tag>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>目标环境</div>
+                <Select value={editEnvId} onChange={setEditEnvId} allowClear placeholder="选择环境"
+                  style={{ width: '100%' }} size="small"
+                  options={environments.map(e => ({ value: e.id, label: e.name }))} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>通知渠道</div>
+                <Select value={editChannelId} onChange={setEditChannelId} allowClear placeholder="选择渠道"
+                  style={{ width: '100%' }} size="small"
+                  options={channels.map(c => ({ value: c.id, label: c.name }))} />
+              </div>
+            </div>
+            {plan.planType === 'automated' && (
+              <div style={{ display: 'flex', gap: 16 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>失败重试</div>
+                  <InputNumber value={editRetry} onChange={v => setEditRetry(v ?? 0)} min={0} max={3}
+                    size="small" style={{ width: '100%' }} addonAfter="次" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>熔断-连续失败</div>
+                  <InputNumber value={editCB?.consecutive ?? 5} min={1} max={100} size="small" style={{ width: '100%' }} addonAfter="条"
+                    onChange={v => setEditCB(prev => ({ ...(prev || { consecutive: 5, rate: 50 }), consecutive: v ?? 5 }))} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>熔断-失败率</div>
+                  <InputNumber value={editCB?.rate ?? 50} min={1} max={100} size="small" style={{ width: '100%' }} addonAfter="%"
+                    onChange={v => setEditCB(prev => ({ ...(prev || { consecutive: 5, rate: 50 }), rate: v ?? 50 }))} />
+                </div>
+                <div style={{ flex: 1 }} />
+              </div>
+            )}
+            <div>
+              <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>关联用例</div>
+              <Space>
+                <Button size="small" onClick={() => setCasePickerOpen(true)}>选择用例</Button>
+                <span style={{ fontSize: 13, color: '#4e5969' }}>已选 {editCaseIds.length} 条</span>
+              </Space>
+            </div>
+          </div>
+        ) : (
+          <Descriptions column={4} size="small">
+            <Descriptions.Item label="计划类型">{plan.planType === 'automated' ? '自动化' : '手动'}</Descriptions.Item>
+            <Descriptions.Item label="测试类型">{plan.testType?.toUpperCase()}</Descriptions.Item>
+            <Descriptions.Item label="目标环境">{plan.environmentName || <span style={{ color: '#c9cdd4' }}>未配置</span>}</Descriptions.Item>
+            <Descriptions.Item label="通知渠道">{plan.channelName || <span style={{ color: '#c9cdd4' }}>未配置</span>}</Descriptions.Item>
+            <Descriptions.Item label="失败重试">{plan.retryCount} 次</Descriptions.Item>
+            <Descriptions.Item label="关联用例">{plan.caseIds?.length || 0} 条</Descriptions.Item>
+            {plan.circuitBreaker && <>
+              <Descriptions.Item label="熔断-连续失败">{plan.circuitBreaker.consecutive} 条</Descriptions.Item>
+              <Descriptions.Item label="熔断-失败率">{plan.circuitBreaker.rate}%</Descriptions.Item>
+            </>}
+          </Descriptions>
+        )}
       </Card>
+
+      {editing && (
+        <CasePicker
+          open={casePickerOpen}
+          projectId={projectId}
+          selectedIds={editCaseIds}
+          onOk={(ids) => { setEditCaseIds(ids); setCasePickerOpen(false) }}
+          onCancel={() => setCasePickerOpen(false)}
+        />
+      )}
 
       {/* Execution History */}
       <Card title={
@@ -224,7 +279,7 @@ export default function PlanDetail() {
         </div>
       } styles={{ header: { borderBottom: '1px solid #f2f3f5', minHeight: 44 } }}>
         {executions.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#bfc4cd' }}>
+          <div style={{ textAlign: 'center', padding: 40, color: '#c9cdd4' }}>
             {plan.status === 'draft' ? '尚未执行，点击上方"启动执行"开始' : '暂无执行记录'}
           </div>
         ) : (
@@ -246,32 +301,32 @@ export default function PlanDetail() {
               return (
                 <div key={exec.id} style={{
                   display: 'flex', alignItems: 'center', padding: '12px 16px',
-                  borderBottom: '1px solid #f5f5f7', fontSize: 13,
+                  borderBottom: '1px solid #f2f3f5', fontSize: 13,
                 }}>
                   <div style={{ width: 50, color: '#86909c', fontWeight: 600 }}>#{num}</div>
-                  <div style={{ flex: 3, color: '#4a4a4a' }}>
+                  <div style={{ flex: 3, color: '#4e5969' }}>
                     {exec.executedAt ? new Date(exec.executedAt).toLocaleString('zh-CN') : '-'}
                   </div>
                   <div style={{ flex: 2, textAlign: 'center' }}>
                     {isRunning ? (
                       <Tag icon={<SyncOutlined spin />} color="processing">执行中</Tag>
                     ) : (
-                      <Tag style={{ background: isCompleted ? '#eefbf3' : '#eef0fe', color: isCompleted ? '#6ecf96' : '#7c8cf8', border: 'none' }}>
+                      <Tag style={{ background: isCompleted ? '#00b96b' : '#1890ff', color: '#fff', border: 'none' }}>
                         {isCompleted ? '已完成' : '进行中'}
                       </Tag>
                     )}
                   </div>
                   <div style={{ flex: 3 }}>
-                    <span style={{ color: '#6ecf96', fontWeight: 500 }}>{exec.passed}</span>
+                    <span style={{ color: '#00b96b', fontWeight: 500 }}>{exec.passed}</span>
                     <span style={{ color: '#86909c' }}> / </span>
-                    <span style={{ color: '#f08a8e', fontWeight: 500 }}>{exec.failed + exec.error}</span>
+                    <span style={{ color: '#ff4d4f', fontWeight: 500 }}>{exec.failed + exec.error}</span>
                     <span style={{ color: '#86909c' }}> / </span>
                     <span>{exec.totalScenarios}</span>
-                    <span style={{ color: '#c0c4cc', marginLeft: 4, fontSize: 11 }}>(通过/失败/总计)</span>
+                    <span style={{ color: '#c9cdd4', marginLeft: 4, fontSize: 11 }}>(通过/失败/总计)</span>
                   </div>
                   <div style={{ flex: 2, textAlign: 'center' }}>
                     {exec.passRate != null ? (
-                      <span style={{ fontWeight: 600, color: exec.passRate >= 95 ? '#6ecf96' : exec.passRate >= 80 ? '#f5b87a' : '#f08a8e' }}>
+                      <span style={{ fontWeight: 600, color: exec.passRate >= 95 ? '#00b96b' : exec.passRate >= 80 ? '#faad14' : '#ff4d4f' }}>
                         {exec.passRate}%
                       </span>
                     ) : '-'}
@@ -281,7 +336,7 @@ export default function PlanDetail() {
                   </div>
                   <div style={{ flex: 2, textAlign: 'center' }}>
                     <Button type="link" size="small" icon={<BarChartOutlined />}
-                      onClick={() => navigate(`/projects/${projectId}/reports/${planId}`)}>
+                      onClick={() => navigate(`/projects/${projectId}/reports/${exec.id}`)}>
                       查看报告
                     </Button>
                   </div>
@@ -291,29 +346,6 @@ export default function PlanDetail() {
           </div>
         )}
       </Card>
-
-      {/* Case Picker Modal */}
-      <Modal title="修改关联用例" open={casePickerOpen} width={800}
-        onOk={handleCaseSave} onCancel={() => setCasePickerOpen(false)}
-        okText="确定" cancelText="取消" confirmLoading={caseSaving}>
-        <Input placeholder="搜索用例编号或标题" value={caseSearch} onChange={e => setCaseSearch(e.target.value)}
-          allowClear style={{ marginBottom: 12 }} prefix={<SearchOutlined style={{ color: '#c2c6cf' }} />} />
-        <Table size="small" rowKey="id" pagination={{ pageSize: 10, size: 'small', showTotal: t => `共 ${t} 条` }}
-          rowSelection={{
-            selectedRowKeys: pickerSelected,
-            onChange: keys => setPickerSelected(keys),
-          }}
-          dataSource={availableCases.filter(c =>
-            !caseSearch || (c.caseCode + ' ' + c.title).toLowerCase().includes(caseSearch.toLowerCase())
-          )}
-          columns={[
-            { title: '编号', dataIndex: 'caseCode', width: 120, render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v}</span> },
-            { title: '标题', dataIndex: 'title', ellipsis: true },
-            { title: '优先级', dataIndex: 'priority', width: 70, align: 'center', render: v => <Tag>{v}</Tag> },
-            { title: '类型', dataIndex: 'type', width: 60, align: 'center', render: v => v?.toUpperCase() },
-          ]}
-        />
-      </Modal>
     </div>
   )
 }

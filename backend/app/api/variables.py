@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_201_CREATED
 
+from app.core.audit import write_audit_log
 from app.deps.auth import get_current_user
 from app.deps.db import get_db
 from app.models.user import User
@@ -37,21 +38,26 @@ async def list_global_variables(session: AsyncSession = Depends(get_db), _: User
 @router.post("/api/global-variables", status_code=HTTP_201_CREATED)
 async def create_global_variable(body: CreateVarRequest, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     var = await variable_service.create_variable(session, body.key, body.value, body.description)
+    await write_audit_log(session, action="create", target_type="global_variable", target_id=var.id, target_name=var.key)
     return {"data": VarResponse.model_validate(var, from_attributes=True).model_dump(by_alias=True)}
 
 @router.put("/api/global-variables")
 async def put_global_variables(body: list[CreateVarRequest], session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     variables = await variable_service.put_variables(session, [v.model_dump() for v in body])
+    await write_audit_log(session, action="batch_update", target_type="global_variable", changes={"count": len(body)})
     return {"data": [VarResponse.model_validate(v, from_attributes=True).model_dump(by_alias=True) for v in variables]}
 
 @router.put("/api/global-variables/{var_id}")
 async def update_global_variable(var_id: uuid.UUID, body: UpdateVarRequest, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     var = await variable_service.update_variable(session, var_id, body.value, body.description)
+    await write_audit_log(session, action="update", target_type="global_variable", target_id=var.id, target_name=var.key)
     return {"data": VarResponse.model_validate(var, from_attributes=True).model_dump(by_alias=True)}
 
 @router.delete("/api/global-variables/{var_id}")
 async def delete_global_variable(var_id: uuid.UUID, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+    var = await variable_service.get_variable(session, var_id)
     await variable_service.delete_variable(session, var_id)
+    await write_audit_log(session, action="delete", target_type="global_variable", target_id=var_id, target_name=var.key)
     return MessageResponse(message="删除成功").model_dump()
 
 
@@ -65,11 +71,14 @@ async def list_environments(session: AsyncSession = Depends(get_db), _: User = D
 @router.post("/api/environments", status_code=HTTP_201_CREATED)
 async def create_environment(body: CreateEnvRequest, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     env = await environment_service.create_environment(session, body.name, body.description)
+    await write_audit_log(session, action="create", target_type="environment", target_id=env.id, target_name=env.name)
     return {"data": EnvResponse.model_validate(env, from_attributes=True).model_dump(by_alias=True)}
 
 @router.delete("/api/environments/{env_id}")
 async def delete_environment(env_id: uuid.UUID, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+    env = await environment_service.get_environment(session, env_id)
     await environment_service.delete_environment(session, env_id)
+    await write_audit_log(session, action="delete", target_type="environment", target_id=env_id, target_name=env.name)
     return MessageResponse(message="删除成功").model_dump()
 
 @router.get("/api/environments/{env_id}/variables")
@@ -80,6 +89,8 @@ async def list_env_variables(env_id: uuid.UUID, session: AsyncSession = Depends(
 @router.put("/api/environments/{env_id}/variables")
 async def put_env_variables(env_id: uuid.UUID, body: list[EnvVarItem], session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     variables = await environment_service.put_env_variables(session, env_id, [v.model_dump() for v in body])
+    env = await environment_service.get_environment(session, env_id)
+    await write_audit_log(session, action="update_variables", target_type="environment", target_id=env_id, target_name=env.name, changes={"count": len(body)})
     return {"data": [EnvVarResponse.model_validate(v, from_attributes=True).model_dump(by_alias=True) for v in variables]}
 
 @router.get("/api/environments/{env_id}/merged-variables")
@@ -90,6 +101,7 @@ async def get_merged_variables(env_id: uuid.UUID, session: AsyncSession = Depend
 @router.post("/api/environments/{env_id}/clone", status_code=HTTP_201_CREATED)
 async def clone_environment(env_id: uuid.UUID, body: CloneEnvRequest, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     env = await environment_service.clone_environment(session, env_id, body.name)
+    await write_audit_log(session, action="clone", target_type="environment", target_id=env.id, target_name=env.name)
     return {"data": EnvResponse.model_validate(env, from_attributes=True).model_dump(by_alias=True)}
 
 
@@ -103,14 +115,18 @@ async def list_channels(session: AsyncSession = Depends(get_db), _: User = Depen
 @router.post("/api/channels", status_code=HTTP_201_CREATED)
 async def create_channel(body: CreateChannelRequest, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     ch = await channel_service.create_channel(session, body.name, body.webhook_url)
+    await write_audit_log(session, action="create", target_type="channel", target_id=ch.id, target_name=ch.name)
     return {"data": ChannelResponse.model_validate(ch, from_attributes=True).model_dump(by_alias=True)}
 
 @router.put("/api/channels/{ch_id}")
 async def update_channel(ch_id: uuid.UUID, body: UpdateChannelRequest, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     ch = await channel_service.update_channel(session, ch_id, body.name, body.webhook_url)
+    await write_audit_log(session, action="update", target_type="channel", target_id=ch.id, target_name=ch.name)
     return {"data": ChannelResponse.model_validate(ch, from_attributes=True).model_dump(by_alias=True)}
 
 @router.delete("/api/channels/{ch_id}")
 async def delete_channel(ch_id: uuid.UUID, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+    ch = await channel_service.get_channel(session, ch_id)
     await channel_service.delete_channel(session, ch_id)
+    await write_audit_log(session, action="delete", target_type="channel", target_id=ch_id, target_name=ch.name)
     return MessageResponse(message="删除成功").model_dump()

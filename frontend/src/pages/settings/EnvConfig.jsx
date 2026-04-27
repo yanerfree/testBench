@@ -13,8 +13,8 @@ export default function EnvConfig() {
   return (
     <div>
       <div style={{ marginBottom: 12 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#2e3138' }}>环境配置</h2>
-        <span style={{ fontSize: 13, color: '#8c919e' }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#1d2129' }}>环境配置</h2>
+        <span style={{ fontSize: 13, color: '#86909c' }}>
           管理全局变量和环境变量，执行时优先级：环境变量 &gt; 全局变量 &gt; 脚本配置
         </span>
       </div>
@@ -109,35 +109,35 @@ function EnvironmentPanel() {
   return (
     <div style={{ display: 'flex', gap: 16, minHeight: 500 }}>
       {/* 左侧环境列表 */}
-      <div style={{ width: 200, background: '#fff', borderRadius: 10, border: '1px solid #f0f0f3', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div style={{ width: 200, background: '#fff', borderRadius: 10, border: '1px solid #f2f3f5', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {loading ? <div style={{ textAlign: 'center', padding: 20 }}><Spin size="small" /></div> :
             envs.map(env => (
               <div key={env.id} onClick={() => setSelectedId(env.id)}
                 style={{
                   padding: '10px 14px', cursor: 'pointer',
-                  background: selectedId === env.id ? '#f0f4ff' : 'transparent',
-                  borderLeft: selectedId === env.id ? '3px solid #6b7ef5' : '3px solid transparent',
-                  borderBottom: '1px solid #f8f8fa',
+                  background: selectedId === env.id ? '#e6f7ff' : 'transparent',
+                  borderLeft: selectedId === env.id ? '3px solid #00b96b' : '3px solid transparent',
+                  borderBottom: '1px solid #f2f3f5',
                 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: '#2e3138' }}>{env.name}</div>
-                {env.description && <div style={{ fontSize: 11, color: '#8c919e', marginTop: 2 }}>{env.description}</div>}
+                <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129' }}>{env.name}</div>
+                {env.description && <div style={{ fontSize: 11, color: '#86909c', marginTop: 2 }}>{env.description}</div>}
               </div>
             ))
           }
         </div>
-        <div style={{ padding: 10, borderTop: '1px solid #f0f0f3' }}>
+        <div style={{ padding: 10, borderTop: '1px solid #f2f3f5' }}>
           <Button type="dashed" icon={<PlusOutlined />} block size="small" onClick={() => setCreateOpen(true)}>新增环境</Button>
         </div>
       </div>
 
       {/* 右侧环境详情 */}
-      <div style={{ flex: 1, background: '#fff', borderRadius: 10, border: '1px solid #f0f0f3', padding: '20px 24px' }}>
+      <div style={{ flex: 1, background: '#fff', borderRadius: 10, border: '1px solid #f2f3f5', padding: '20px 24px' }}>
         {selectedEnv ? (<>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div>
-              <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#2e3138' }}>{selectedEnv.name}</h3>
-              <div style={{ fontSize: 12, color: '#8c919e', marginTop: 2 }}>{selectedEnv.description || '暂无描述'}</div>
+              <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1d2129' }}>{selectedEnv.name}</h3>
+              <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>{selectedEnv.description || '暂无描述'}</div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <Tooltip title="复制环境"><Button size="small" icon={<CopyOutlined />} onClick={handleClone} /></Tooltip>
@@ -146,10 +146,10 @@ function EnvironmentPanel() {
               </Popconfirm>
             </div>
           </div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#8c919e', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>环境变量</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#86909c', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>环境变量</div>
           <VariableTable variables={envVars} onSave={handleSaveVars} />
         </>) : (
-          <div style={{ textAlign: 'center', padding: 80, color: '#bfc4cd' }}>请从左侧选择环境</div>
+          <div style={{ textAlign: 'center', padding: 80, color: '#c9cdd4' }}>请从左侧选择环境</div>
         )}
       </div>
 
@@ -191,10 +191,10 @@ function GlobalVariablePanel() {
   }
 
   return (
-    <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #f0f0f3', padding: '20px 24px', maxWidth: 800 }}>
+    <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #f2f3f5', padding: '20px 24px', maxWidth: 800 }}>
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: '#2e3138' }}>全局变量</div>
-        <div style={{ fontSize: 12, color: '#8c919e', marginTop: 4 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: '#1d2129' }}>全局变量</div>
+        <div style={{ fontSize: 12, color: '#86909c', marginTop: 4 }}>
           全局变量在所有环境中共享，当环境变量存在同名 key 时，环境变量优先
         </div>
       </div>
@@ -260,11 +260,11 @@ function VariableTable({ variables, onSave }) {
   const columns = [
     { title: '变量名', dataIndex: 'key', width: '35%', render: (v, _, i) => <Input value={v} onChange={e => updateVar(i, 'key', e.target.value)} placeholder="KEY" variant="borderless" size="small" style={inputStyle} /> },
     { title: '值', dataIndex: 'value', width: '50%', render: (v, _, i) => <Input value={v} onChange={e => updateVar(i, 'value', e.target.value)} placeholder="VALUE" variant="borderless" size="small" style={inputStyle} /> },
-    { title: '', width: 50, align: 'center', render: (_, __, i) => <Popconfirm title="删除此变量？" onConfirm={() => removeVar(i)}><Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#bfc4cd' }} /></Popconfirm> },
+    { title: '', width: 50, align: 'center', render: (_, __, i) => <Popconfirm title="删除此变量？" onConfirm={() => removeVar(i)}><Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#c9cdd4' }} /></Popconfirm> },
   ]
 
   return (<>
-    <Table dataSource={editVars} columns={columns} rowKey={(_, i) => i} size="small" pagination={false} style={{ marginBottom: 12 }} />
+    <Table dataSource={editVars} columns={columns} rowKey={(r, i) => r.id || r.key || `row-${i}`} size="small" pagination={false} style={{ marginBottom: 12 }} />
     <div style={{ display: 'flex', gap: 8 }}>
       <Button type="dashed" icon={<PlusOutlined />} onClick={addVar} size="small">添加变量</Button>
       <Button icon={<UnorderedListOutlined />} onClick={openBulkEdit} size="small">批量编辑</Button>
@@ -272,7 +272,7 @@ function VariableTable({ variables, onSave }) {
     </div>
 
     <Modal title="批量编辑" open={bulkOpen} onOk={handleBulkConfirm} onCancel={() => setBulkOpen(false)} okText="确定" cancelText="取消" width={560}>
-      <div style={{ fontSize: 13, color: '#8c919e', marginBottom: 10 }}>格式: <span style={{ color: '#555a65', fontFamily: 'monospace' }}>变量名,值</span></div>
+      <div style={{ fontSize: 13, color: '#86909c', marginBottom: 10 }}>格式: <span style={{ color: '#4e5969', fontFamily: 'monospace' }}>变量名,值</span></div>
       <Input.TextArea value={bulkText} onChange={e => setBulkText(e.target.value)} rows={10}
         placeholder={'BASE_URL,https://staging.example.com\nDB_HOST,10.0.1.100'}
         style={{ fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace", fontSize: 13 }} />

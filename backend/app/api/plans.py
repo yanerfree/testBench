@@ -79,6 +79,16 @@ async def get_plan(
     plan_cases = await plan_service.get_plan_cases(session, plan_id)
     data = PlanResponse.model_validate(plan, from_attributes=True).model_dump(by_alias=True)
     data["caseIds"] = [str(pc.case_id) for pc in plan_cases]
+    # 补充环境和渠道名称
+    if plan.environment_id:
+        from app.models.environment import Environment
+        from sqlalchemy import select as sa_select
+        env = (await session.execute(sa_select(Environment).where(Environment.id == plan.environment_id))).scalar_one_or_none()
+        data["environmentName"] = env.name if env else None
+    if plan.channel_id:
+        from app.models.environment import NotificationChannel
+        ch = (await session.execute(sa_select(NotificationChannel).where(NotificationChannel.id == plan.channel_id))).scalar_one_or_none()
+        data["channelName"] = ch.name if ch else None
     return {"data": data}
 
 
@@ -117,7 +127,7 @@ async def delete_plan(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin")),
 ):
-    """删除计划（仅草稿或已归档）"""
+    """删除计划（执行中不可删除）"""
     await plan_service.delete_plan(session, plan_id)
     return MessageResponse(message="删除成功").model_dump()
 
@@ -208,9 +218,9 @@ async def execute_plan(
     自动化计划: 创建报告后通过 BackgroundTasks 异步执行，返回 taskId 供轮询。
     """
     report = await execution_service.start_execution(session, plan_id, current_user.id)
-    await write_audit_log(session, action="execute", target_type="plan", target_id=plan_id, target_name=None)
-
     plan = await plan_service.get_plan(session, plan_id)
+    await write_audit_log(session, action="execute", target_type="plan", target_id=plan_id, target_name=plan.name)
+
     if plan.plan_type == "automated":
         await session.commit()
         task_id = uuid.uuid4().hex
@@ -242,10 +252,13 @@ async def manual_record(
     if data is None:
         from app.core.exceptions import NotFoundError
         raise NotFoundError(code="NO_REPORT", message="计划尚未执行")
-    scenario = await execution_service.record_manual_result(
+    scenario, all_done = await execution_service.record_manual_result(
         session, data["report"].id, body.scenario_id, body.status, body.remark, body.duration_ms
     )
-    return {"data": ScenarioResponse.model_validate(scenario, from_attributes=True).model_dump(by_alias=True)}
+    return {"data": {
+        **ScenarioResponse.model_validate(scenario, from_attributes=True).model_dump(by_alias=True),
+        "allDone": all_done,
+    }}
 
 
 @router.post("/{plan_id}/complete")
@@ -527,11 +540,13 @@ async def list_reports(
     """项目下所有执行报告列表"""
     from app.models.report import TestReport
     from app.models.plan import Plan
+    from app.models.environment import Environment
     from sqlalchemy import func, select
 
     base = (
-        select(TestReport, Plan.name.label("plan_name"), Plan.plan_type, Plan.test_type)
+        select(TestReport, Plan.name.label("plan_name"), Plan.plan_type, Plan.test_type, Environment.name.label("env_name"))
         .join(Plan, Plan.id == TestReport.plan_id)
+        .outerjoin(Environment, Environment.id == TestReport.environment_id)
         .where(Plan.project_id == project_id)
         .order_by(TestReport.created_at.desc())
     )
@@ -543,13 +558,14 @@ async def list_reports(
     rows = result.all()
 
     data = []
-    for report, plan_name, plan_type, test_type in rows:
+    for report, plan_name, plan_type, test_type, env_name in rows:
         data.append({
             "id": str(report.id),
             "planId": str(report.plan_id),
             "planName": plan_name,
             "planType": plan_type,
             "testType": test_type,
+            "environmentName": env_name,
             "executedAt": report.executed_at.isoformat() if report.executed_at else None,
             "completedAt": report.completed_at.isoformat() if report.completed_at else None,
             "totalScenarios": report.total_scenarios,
@@ -562,3 +578,140 @@ async def list_reports(
         })
 
     return {"data": data, "pagination": {"page": page, "pageSize": page_size, "total": total}}
+
+
+@reports_router.delete("/{report_id}")
+async def delete_report(
+    project_id: uuid.UUID,
+    report_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """删除单条测试报告及其关联的场景和步骤"""
+    from sqlalchemy import select as sa_select, delete as sa_delete
+    from app.models.report import TestReport, TestReportScenario, TestReportStep
+
+    report = (await session.execute(
+        sa_select(TestReport).where(TestReport.id == report_id)
+    )).scalar_one_or_none()
+    if report is None:
+        from app.core.exceptions import NotFoundError
+        raise NotFoundError(code="REPORT_NOT_FOUND", message="报告不存在")
+
+    scenario_ids = (await session.execute(
+        sa_select(TestReportScenario.id).where(TestReportScenario.report_id == report_id)
+    )).scalars().all()
+    if scenario_ids:
+        await session.execute(
+            sa_delete(TestReportStep).where(TestReportStep.scenario_id.in_(scenario_ids))
+        )
+    await session.execute(
+        sa_delete(TestReportScenario).where(TestReportScenario.report_id == report_id)
+    )
+    await session.delete(report)
+    await session.flush()
+    from app.models.plan import Plan
+    plan_row = (await session.execute(sa_select(Plan.name).where(Plan.id == report.plan_id))).scalar_one_or_none()
+    await write_audit_log(session, action="delete", target_type="report", target_id=report_id, target_name=plan_row or str(report_id))
+    return MessageResponse(message="删除成功").model_dump()
+
+
+@reports_router.get("/{report_id}/dashboard")
+async def get_report_dashboard_by_id(
+    project_id: uuid.UUID,
+    report_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """按报告 ID 获取仪表盘数据"""
+    data = await report_service.get_report_dashboard(session, report_id=report_id)
+    if data is None:
+        return {"data": None}
+    return {"data": data}
+
+
+@reports_router.get("/{report_id}/results")
+async def get_results_by_report_id(
+    project_id: uuid.UUID,
+    report_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """按报告 ID 获取场景列表"""
+    data = await execution_service.get_report_with_scenarios(session, report_id=report_id)
+    if data is None:
+        return {"data": None}
+    return {
+        "data": {
+            "report": ReportResponse.model_validate(data["report"], from_attributes=True).model_dump(by_alias=True),
+            "scenarios": [
+                {
+                    **ScenarioResponse.model_validate(s, from_attributes=True).model_dump(by_alias=True),
+                    "scriptRefFile": getattr(s, '_script_ref_file', None),
+                    "scriptRefFunc": getattr(s, '_script_ref_func', None),
+                    "caseSteps": getattr(s, '_case_steps', None),
+                    "preconditions": getattr(s, '_preconditions', None),
+                    "expectedResult": getattr(s, '_expected_result', None),
+                }
+                for s in data["scenarios"]
+            ],
+        }
+    }
+
+
+@reports_router.get("/{report_id}/export/excel")
+async def export_excel_by_report_id(
+    project_id: uuid.UUID,
+    report_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """按报告 ID 导出 Excel"""
+    from fastapi.responses import StreamingResponse
+    output = await export_service.export_excel(session, report_id=report_id)
+    if output is None:
+        from app.core.exceptions import NotFoundError
+        raise NotFoundError(code="NO_REPORT", message="报告不存在")
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=report-{report_id}.xlsx"},
+    )
+
+
+@reports_router.get("/{report_id}/scenarios/{scenario_id}/steps")
+async def get_scenario_steps_by_report_id(
+    project_id: uuid.UUID,
+    report_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """按报告 ID 获取场景步骤"""
+    from sqlalchemy import select as sa_select
+    from app.models.report import TestReportStep
+    result = await session.execute(
+        sa_select(TestReportStep)
+        .where(TestReportStep.scenario_id == scenario_id)
+        .order_by(TestReportStep.sort_order)
+    )
+    steps = result.scalars().all()
+    return {
+        "data": [
+            {
+                "id": str(s.id),
+                "stepName": s.step_name,
+                "httpMethod": s.http_method,
+                "url": s.url,
+                "status": s.status,
+                "statusCode": s.status_code,
+                "durationMs": s.duration_ms,
+                "sortOrder": s.sort_order,
+                "errorSummary": s.error_summary,
+                "requestData": s.request_data,
+                "responseData": s.response_data,
+                "assertions": s.assertions,
+            }
+            for s in steps
+        ]
+    }

@@ -12,9 +12,9 @@ const PROJECT_ROLES = [
 ]
 
 const ROLE_TAG = {
-  project_admin: { color: '#f08a8e', bg: '#fef0f1' },
-  developer: { color: '#6b7ef5', bg: '#eef0fe' },
-  tester: { color: '#6ecf96', bg: '#f0faf4' },
+  project_admin: { color: '#ff4d4f', bg: '#fff2f0' },
+  developer: { color: '#00b96b', bg: '#e6f7ff' },
+  tester: { color: '#00b96b', bg: '#f6ffed' },
   guest: { color: '#86909c', bg: '#f7f8fa' },
 }
 
@@ -87,7 +87,7 @@ function MemberModal({ project, open, onClose }) {
       title: '用户', dataIndex: 'username', width: 160,
       render: v => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Avatar size={24} style={{ background: '#a78bfa', fontSize: 11 }}>{v?.[0]?.toUpperCase()}</Avatar>
+          <Avatar size={24} style={{ background: '#722ed1', fontSize: 11 }}>{v?.[0]?.toUpperCase()}</Avatar>
           <span style={{ fontWeight: 500 }}>{v}</span>
         </div>
       ),
@@ -106,13 +106,13 @@ function MemberModal({ project, open, onClose }) {
     },
     {
       title: '加入时间', dataIndex: 'joinedAt', width: 160,
-      render: v => <span style={{ fontSize: 13, color: '#8c919e' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span>,
+      render: v => <span style={{ fontSize: 13, color: '#86909c' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span>,
     },
     {
       title: '操作', width: 80, align: 'center',
       render: (_, record) => (
         <Popconfirm title={`确定移除 ${record.username}？`} onConfirm={() => handleRemove(record)}>
-          <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#f08a8e' }} />
+          <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#ff4d4f' }} />
         </Popconfirm>
       ),
     },
@@ -304,7 +304,7 @@ export default function ProjectList() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 16,
                   }}>
-                    <FolderOpenOutlined style={{ color: '#6b7ef5' }} />
+                    <FolderOpenOutlined style={{ color: '#00b96b' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
@@ -327,7 +327,7 @@ export default function ProjectList() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#c0c4cc' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#c9cdd4' }}>
                   <span>创建于 {new Date(p.createdAt).toLocaleDateString('zh-CN')}</span>
                   <RightOutlined style={{ fontSize: 12 }} />
                 </div>
@@ -341,7 +341,7 @@ export default function ProjectList() {
                     onConfirm={(e) => handleDelete(e, p)}
                     onCancel={(e) => e.stopPropagation()}
                   >
-                    <Button size="small" type="text" icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()} style={{ color: '#f08a8e' }}>删除</Button>
+                    <Button size="small" type="text" icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()} style={{ color: '#ff4d4f' }}>删除</Button>
                   </Popconfirm>
                 </div>
               </Card>
@@ -385,13 +385,13 @@ export default function ProjectList() {
             <Input placeholder="简要描述项目用途" />
           </Form.Item>
           <Form.Item name="gitUrl" label="Git 仓库地址（可选）">
-            <Input prefix={<GitlabOutlined style={{ color: '#bfc4cd' }} />} placeholder="git@code.example.com:team/repo.git（不填则为纯手动用例项目）" />
+            <Input prefix={<GitlabOutlined style={{ color: '#c9cdd4' }} />} placeholder="git@code.example.com:team/repo.git（不填则为纯手动用例项目）" />
           </Form.Item>
           <Form.Item name="scriptBasePath" label="脚本基础路径（可选）">
-            <Input prefix={<FolderOpenOutlined style={{ color: '#bfc4cd' }} />} placeholder="/workspace/repos/project-name（不填则不支持脚本同步）" />
+            <Input prefix={<FolderOpenOutlined style={{ color: '#c9cdd4' }} />} placeholder="/workspace/repos/project-name（不填则不支持脚本同步）" />
           </Form.Item>
           {!editingProject && (
-            <div style={{ padding: '8px 12px', background: '#f0f4ff', borderRadius: 8, fontSize: 12, color: '#6b7ef5' }}>
+            <div style={{ padding: '8px 12px', background: '#f6ffed', borderRadius: 8, fontSize: 12, color: '#00b96b' }}>
               创建后系统将自动生成默认分支配置（名称: default，分支: main）
             </div>
           )}

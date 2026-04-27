@@ -79,7 +79,7 @@ export default function ChannelConfig() {
       title: '渠道名称', dataIndex: 'name', width: 200,
       render: v => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <BellOutlined style={{ color: '#6b7ef5' }} />
+          <BellOutlined style={{ color: '#00b96b' }} />
           <span style={{ fontWeight: 500 }}>{v}</span>
         </div>
       ),
@@ -88,17 +88,17 @@ export default function ChannelConfig() {
       title: 'Webhook URL', dataIndex: 'webhookUrl',
       render: (v, record) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#555a65' }}>
+          <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#4e5969' }}>
             {revealedIds.has(record.id) ? v : maskUrl(v)}
           </span>
           <Button type="text" size="small" icon={revealedIds.has(record.id) ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-            onClick={() => toggleReveal(record.id)} style={{ color: '#bfc4cd' }} />
+            onClick={() => toggleReveal(record.id)} style={{ color: '#c9cdd4' }} />
         </div>
       ),
     },
     {
       title: '创建时间', dataIndex: 'createdAt', width: 160,
-      render: v => <span style={{ fontSize: 13, color: '#8c919e' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span>,
+      render: v => <span style={{ fontSize: 13, color: '#86909c' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span>,
     },
     {
       title: '操作', width: 120, align: 'center',
@@ -109,7 +109,7 @@ export default function ChannelConfig() {
           </Tooltip>
           <Popconfirm title={`确定删除「${record.name}」？`} onConfirm={() => handleDelete(record.id)}>
             <Tooltip title="删除">
-              <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#f08a8e' }} />
+              <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#ff4d4f' }} />
             </Tooltip>
           </Popconfirm>
         </Space>
@@ -121,8 +121,8 @@ export default function ChannelConfig() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#2e3138' }}>通知渠道</h2>
-          <span style={{ fontSize: 13, color: '#8c919e' }}>配置钉钉 Webhook 通知渠道，用于测试完成和熔断时的消息推送</span>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#1d2129' }}>通知渠道</h2>
+          <span style={{ fontSize: 13, color: '#86909c' }}>配置钉钉 Webhook 通知渠道，用于测试完成和熔断时的消息推送</span>
         </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增渠道</Button>
       </div>

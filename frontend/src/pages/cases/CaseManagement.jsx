@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin, TreeSelect } from 'antd'
-import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined } from '@ant-design/icons'
+import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined, CopyOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 
-const priorityColors = { P0: '#f08a8e', P1: '#f5b87a', P2: '#7c8cf8', P3: '#a8adb6' }
-const priorityBg = { P0: '#fef0f1', P1: '#fef5eb', P2: '#f0f1fe', P3: '#f5f5f7' }
+const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
+const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' }
 const statusMap = { automated: '已自动化', pending: '待自动化', script_removed: '脚本已移除', archived: '已归档' }
-const statusColors = { automated: '#6ecf96', pending: '#f5b87a', script_removed: '#f08a8e', archived: '#a8adb6' }
-const statusBg = { automated: '#eefbf3', pending: '#fef5eb', script_removed: '#fef0f1', archived: '#f5f5f7' }
+const statusColors = { automated: '#00b96b', pending: '#faad14', script_removed: '#ff4d4f', archived: '#bfbfbf' }
+const statusBg = { automated: 'transparent', pending: 'transparent', script_removed: 'transparent', archived: 'transparent' }
 
 // ---- 分支管理弹窗（保持不变） ----
 function BranchManageModal({ projectId, open, onClose, onBranchesChanged }) {
@@ -61,17 +61,17 @@ function BranchManageModal({ projectId, open, onClose, onBranchesChanged }) {
   const openEdit = (b) => { setEditBranch(b); editForm.setFieldsValue({ branch: b.branch, description: b.description }) }
 
   const renderBranchItem = (b) => (
-    <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 8, background: '#fafbfc', marginBottom: 6 }}>
+    <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 8, background: '#f7f8fa', marginBottom: 6 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 500, fontSize: 14 }}>{b.name}<span style={{ fontSize: 12, color: '#8c919e', marginLeft: 8 }}>({b.branch})</span></div>
-        {b.description && <div style={{ fontSize: 12, color: '#8c919e', marginTop: 2 }}>{b.description}</div>}
+        <div style={{ fontWeight: 500, fontSize: 14 }}>{b.name}<span style={{ fontSize: 12, color: '#86909c', marginLeft: 8 }}>({b.branch})</span></div>
+        {b.description && <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>{b.description}</div>}
       </div>
       <Space size={4}>
         <Tooltip title="编辑"><Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(b)} /></Tooltip>
         {b.status === 'active' ? (
-          <Popconfirm title={`确定归档「${b.name}」？`} onConfirm={() => handleArchive(b)}><Tooltip title="归档"><Button size="small" type="text" icon={<PauseCircleOutlined />} style={{ color: '#f5b87a' }} /></Tooltip></Popconfirm>
+          <Popconfirm title={`确定归档「${b.name}」？`} onConfirm={() => handleArchive(b)}><Tooltip title="归档"><Button size="small" type="text" icon={<PauseCircleOutlined />} style={{ color: '#faad14' }} /></Tooltip></Popconfirm>
         ) : (
-          <Tooltip title="恢复"><Button size="small" type="text" icon={<PlayCircleOutlined />} style={{ color: '#6ecf96' }} onClick={() => handleActivate(b)} /></Tooltip>
+          <Tooltip title="恢复"><Button size="small" type="text" icon={<PlayCircleOutlined />} style={{ color: '#00b96b' }} onClick={() => handleActivate(b)} /></Tooltip>
         )}
       </Space>
     </div>
@@ -84,8 +84,8 @@ function BranchManageModal({ projectId, open, onClose, onBranchesChanged }) {
           <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => { createForm.resetFields(); setCreateOpen(true) }}>新建分支配置</Button>
         </div>
         {loading ? <div style={{ textAlign: 'center', padding: 24 }}>加载中...</div> : (<>
-          {activeBranches.length > 0 && <div style={{ marginBottom: 16 }}><div style={{ fontSize: 12, color: '#8c919e', marginBottom: 6, fontWeight: 600 }}>活跃（{activeBranches.length}）</div>{activeBranches.map(renderBranchItem)}</div>}
-          {archivedBranches.length > 0 && <div><div style={{ fontSize: 12, color: '#8c919e', marginBottom: 6, fontWeight: 600 }}>已归档（{archivedBranches.length}）</div>{archivedBranches.map(renderBranchItem)}</div>}
+          {activeBranches.length > 0 && <div style={{ marginBottom: 16 }}><div style={{ fontSize: 12, color: '#86909c', marginBottom: 6, fontWeight: 600 }}>活跃（{activeBranches.length}）</div>{activeBranches.map(renderBranchItem)}</div>}
+          {archivedBranches.length > 0 && <div><div style={{ fontSize: 12, color: '#86909c', marginBottom: 6, fontWeight: 600 }}>已归档（{archivedBranches.length}）</div>{archivedBranches.map(renderBranchItem)}</div>}
         </>)}
       </Modal>
       <Modal title="新建分支配置" open={createOpen} onOk={handleCreate} onCancel={() => setCreateOpen(false)} okText="创建" cancelText="取消" confirmLoading={saving} width={420}>
@@ -154,7 +154,10 @@ export default function CaseManagement() {
       const list = res.data || []
       setBranches(list)
       if (list.length > 0 && !list.find(b => b.id === currentBranch)) {
-        const active = list.find(b => b.status === 'active')
+        const storageKey = `branch_${projectId}`
+        const saved = localStorage.getItem(storageKey)
+        const savedBranch = saved && list.find(b => b.id === saved)
+        const active = savedBranch || list.find(b => b.status === 'active') || list[0]
         if (active) setCurrentBranch(active.id)
       }
     } catch { /* */ }
@@ -398,22 +401,22 @@ export default function CaseManagement() {
       <span
         onClick={() => navigate(`/projects/${projectId}/cases/${row.id}?branchId=${currentBranch}`)}
         style={{ color: '#1d2129', cursor: 'pointer', fontWeight: 500 }}
-        onMouseEnter={e => e.target.style.color = '#7c8cf8'}
+        onMouseEnter={e => e.target.style.color = '#1890ff'}
         onMouseLeave={e => e.target.style.color = '#1d2129'}
       >{v}</span>
     )},
-    { key: 'type', title: '类型', dataIndex: 'type', width: 65, defaultVisible: true, render: v => <Tag color={v === 'api' ? '#e6f4ff' : '#f6ffed'} style={{ color: v === 'api' ? '#7c8cf8' : '#6ecf96' }}>{v?.toUpperCase()}</Tag> },
+    { key: 'type', title: '类型', dataIndex: 'type', width: 65, defaultVisible: true, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v?.toUpperCase()}</span> },
     { key: 'priority', title: '优先级', dataIndex: 'priority', width: 68, align: 'center', defaultVisible: true, render: v => <Tag style={{ background: priorityBg[v], color: priorityColors[v], border: 'none' }}>{v}</Tag> },
     { key: 'module', title: '模块', dataIndex: 'module', width: 100, defaultVisible: false, render: v => <span style={{ fontSize: 12 }}>{v || '-'}</span> },
     { key: 'subModule', title: '子模块', dataIndex: 'subModule', width: 100, defaultVisible: false, render: v => <span style={{ fontSize: 12 }}>{v || '-'}</span> },
-    { key: 'automationStatus', title: '状态', dataIndex: 'automationStatus', width: 100, defaultVisible: true, render: v => <Tag style={{ background: statusBg[v] || '#f5f5f7', color: statusColors[v] || '#a8adb6', border: 'none' }}>{statusMap[v] || v}</Tag> },
-    { key: 'source', title: '来源', dataIndex: 'source', width: 60, align: 'center', defaultVisible: true, render: v => <span style={{ fontSize: 12, color: '#c0c4cc' }}>{v === 'imported' ? '导入' : '手动'}</span> },
-    { key: 'isFlaky', title: 'Flaky', dataIndex: 'isFlaky', width: 46, align: 'center', defaultVisible: true, render: v => v ? <Tag color="#fff7e6" style={{ color: '#f5b87a', border: 'none' }}>F</Tag> : null },
+    { key: 'automationStatus', title: '状态', dataIndex: 'automationStatus', width: 100, defaultVisible: true, render: v => <Tag style={{ background: statusBg[v] || '#f2f3f5', color: statusColors[v] || '#8c8c8c', border: 'none' }}>{statusMap[v] || v}</Tag> },
+    { key: 'source', title: '来源', dataIndex: 'source', width: 60, align: 'center', defaultVisible: true, render: v => <span style={{ fontSize: 12, color: '#c9cdd4' }}>{v === 'imported' ? '导入' : '手动'}</span> },
+    { key: 'isFlaky', title: 'Flaky', dataIndex: 'isFlaky', width: 46, align: 'center', defaultVisible: true, render: v => v ? <Tag color="#fff7e6" style={{ color: '#faad14', border: 'none' }}>F</Tag> : null },
     { key: 'scriptRefFile', title: '脚本文件', dataIndex: 'scriptRefFile', width: 200, ellipsis: true, defaultVisible: false, render: v => <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#86909c' }}>{v || '-'}</span> },
     { key: 'teaId', title: 'TEA ID', dataIndex: 'teaId', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v || '-'}</span> },
-    { key: 'createdAt', title: '创建时间', dataIndex: 'createdAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#8c919e' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
-    { key: 'updatedAt', title: '更新时间', dataIndex: 'updatedAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#8c919e' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
-    { key: 'actions', title: '操作', width: 80, align: 'center', defaultVisible: true, render: (_, row) => (
+    { key: 'createdAt', title: '创建时间', dataIndex: 'createdAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
+    { key: 'updatedAt', title: '更新时间', dataIndex: 'updatedAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
+    { key: 'actions', title: '操作', width: 110, align: 'center', defaultVisible: true, render: (_, row) => (
       statusFilter === 'deleted' ? (
         <Popconfirm title="确定彻底删除此用例？此操作不可恢复！" onConfirm={async () => {
           try {
@@ -425,16 +428,29 @@ export default function CaseManagement() {
           <Button type="text" size="small" icon={<DeleteOutlined />} danger>彻底删除</Button>
         </Popconfirm>
       ) : (
-        <Popconfirm title="确定删除此用例？" onConfirm={async () => {
-          try {
-            await api.del(`/projects/${projectId}/branches/${currentBranch}/cases/${row.id}`)
-            message.success('已删除')
-            fetchCases()
-            fetchFolders()
-          } catch { /* */ }
-        }}>
-          <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#f08a8e' }} />
-        </Popconfirm>
+        <Space size={0}>
+          <Tooltip title="复制用例">
+            <Button type="text" size="small" icon={<CopyOutlined />} style={{ color: '#86909c' }}
+              onClick={async (e) => {
+                e.stopPropagation()
+                try {
+                  await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/${row.id}/copy`)
+                  message.success('复制成功')
+                  fetchCases()
+                } catch { message.error('复制失败') }
+              }} />
+          </Tooltip>
+          <Popconfirm title="确定删除此用例？" onConfirm={async () => {
+            try {
+              await api.del(`/projects/${projectId}/branches/${currentBranch}/cases/${row.id}`)
+              message.success('已删除')
+              fetchCases()
+              fetchFolders()
+            } catch { /* */ }
+          }}>
+            <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#ff4d4f' }} />
+          </Popconfirm>
+        </Space>
       )
     )},
   ]
@@ -451,9 +467,9 @@ export default function CaseManagement() {
         <Tooltip title="列设置">
           <SettingOutlined
             onClick={() => setColumnSettingOpen(true)}
-            style={{ color: '#bfc4cd', cursor: 'pointer', fontSize: 14 }}
-            onMouseEnter={e => e.target.style.color = '#6b7ef5'}
-            onMouseLeave={e => e.target.style.color = '#bfc4cd'}
+            style={{ color: '#c9cdd4', cursor: 'pointer', fontSize: 14 }}
+            onMouseEnter={e => e.target.style.color = '#00b96b'}
+            onMouseLeave={e => e.target.style.color = '#c9cdd4'}
           />
         </Tooltip>
       ),
@@ -465,34 +481,34 @@ export default function CaseManagement() {
   ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: 'calc(100vh - 96px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)' }}>
       {/* 分支选择栏 */}
-      <Card styles={{ body: { padding: '8px 16px' } }}>
+      <Card styles={{ body: { padding: '6px 16px' } }} style={{ flexShrink: 0, marginBottom: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <BranchesOutlined style={{ color: '#6b7ef5' }} />
-            <span style={{ fontSize: 13, color: '#8c919e' }}>分支配置</span>
+            <BranchesOutlined style={{ color: '#00b96b' }} />
+            <span style={{ fontSize: 13, color: '#86909c' }}>分支配置</span>
             <Select
               value={currentBranch}
-              onChange={v => { setCurrentBranch(v); setPage(1); setSelectedFolderId(null) }}
+              onChange={v => { setCurrentBranch(v); setPage(1); setSelectedFolderId(null); localStorage.setItem(`branch_${projectId}`, v) }}
               size="small" style={{ width: 180 }}
-              options={activeBranches.map(b => ({ value: b.id, label: <span>{b.name} <span style={{ fontSize: 11, color: '#bfc4cd' }}>({b.branch})</span></span> }))}
+              options={activeBranches.map(b => ({ value: b.id, label: <span>{b.name} <span style={{ fontSize: 11, color: '#c9cdd4' }}>({b.branch})</span></span> }))}
             />
             {branch?.lastSyncAt && (
-              <span style={{ fontSize: 11, color: '#bfc4cd' }}>最近同步: {new Date(branch.lastSyncAt).toLocaleString('zh-CN')} · {branch.lastCommitSha?.substring(0, 7) || '-'}</span>
+              <span style={{ fontSize: 11, color: '#c9cdd4' }}>最近同步: {new Date(branch.lastSyncAt).toLocaleString('zh-CN')} · {branch.lastCommitSha?.substring(0, 7) || '-'}</span>
             )}
-            <Button size="small" type="text" icon={<SettingOutlined />} onClick={() => setBranchManageOpen(true)} style={{ color: '#8c919e' }}>管理</Button>
+            <Button size="small" type="text" icon={<SettingOutlined />} onClick={() => setBranchManageOpen(true)} style={{ color: '#86909c' }}>管理</Button>
           </div>
           <Button size="small" icon={<SyncOutlined spin={syncing} />} onClick={handleSyncBranch} loading={syncing}>同步用例</Button>
         </div>
       </Card>
 
-      <div style={{ flex: 1, display: 'flex', gap: 16, minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'flex', gap: 6, minHeight: 0 }}>
         {/* 左侧树 */}
-        <Card style={{ width: 240, flexShrink: 0, overflow: 'auto' }}
-          styles={{ body: { padding: '12px 8px' }, header: { padding: '0 16px', minHeight: 40, borderBottom: '1px solid #f2f3f5' } }}
+        <Card style={{ width: 220, flexShrink: 0, overflow: 'auto' }}
+          styles={{ body: { padding: '8px 4px' }, header: { padding: '0 12px', minHeight: 36, borderBottom: '1px solid #f2f3f5' } }}
           title={<span style={{ fontSize: 13, fontWeight: 600 }}>用例导航</span>}
-          extra={<Button type="text" size="small" icon={<PlusOutlined />} onClick={() => setFolderModalOpen(true)} style={{ color: '#6b7ef5' }} />}>
+          extra={<Button type="text" size="small" icon={<PlusOutlined />} onClick={() => setFolderModalOpen(true)} style={{ color: '#00b96b' }} />}>
           {treeData.length > 0 ? (
             <Tree
               treeData={treeData}
@@ -519,7 +535,7 @@ export default function CaseManagement() {
                   >
                     <Button type="text" size="small" icon={<DeleteOutlined />}
                       onClick={e => e.stopPropagation()}
-                      style={{ color: '#c0c4cc', opacity: 0.5, fontSize: 11 }}
+                      style={{ color: '#c9cdd4', opacity: 0.5, fontSize: 11 }}
                       onMouseEnter={e => e.currentTarget.style.opacity = 1}
                       onMouseLeave={e => e.currentTarget.style.opacity = 0.5} />
                   </Popconfirm>
@@ -527,7 +543,7 @@ export default function CaseManagement() {
               )}
             />
           ) : (
-            <div style={{ textAlign: 'center', padding: 20, color: '#8c919e', fontSize: 12 }}>
+            <div style={{ textAlign: 'center', padding: 20, color: '#86909c', fontSize: 12 }}>
               暂无目录
               <br />
               <Button type="link" size="small" onClick={() => setFolderModalOpen(true)}>+ 创建模块</Button>
@@ -536,12 +552,12 @@ export default function CaseManagement() {
         </Card>
 
         {/* 右侧列表 */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
           {/* 工具栏 */}
-          <Card styles={{ body: { padding: '12px 16px' } }}>
+          <Card styles={{ body: { padding: '8px 16px' } }} style={{ flexShrink: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Space size={12}>
-                <Input prefix={<SearchOutlined style={{ color: '#c0c4cc' }} />} placeholder="搜索用例ID或标题" value={keyword}
+                <Input prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />} placeholder="搜索用例ID或标题" value={keyword}
                   onChange={e => { setKeyword(e.target.value); setPage(1) }} allowClear style={{ width: 260 }}
                   onPressEnter={fetchCases} />
                 <Radio.Group value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }} size="small" buttonStyle="solid">
@@ -566,8 +582,8 @@ export default function CaseManagement() {
               </Space>
             </div>
             {selectedRowKeys.length > 0 && (
-              <div style={{ marginTop: 10, padding: '8px 12px', background: statusFilter === 'deleted' ? '#fff1f0' : '#e6f4ff', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 13, color: statusFilter === 'deleted' ? '#f08a8e' : '#7c8cf8' }}>已选 {selectedRowKeys.length} 条</span>
+              <div style={{ marginTop: 10, padding: '8px 12px', background: statusFilter === 'deleted' ? '#fff2f0' : '#e6f7ff', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 13, color: statusFilter === 'deleted' ? '#ff4d4f' : '#1890ff' }}>已选 {selectedRowKeys.length} 条</span>
                 {statusFilter === 'deleted' ? (
                   <Popconfirm title={`确定彻底删除 ${selectedRowKeys.length} 条用例？此操作不可恢复！`} onConfirm={async () => {
                     try {
@@ -648,22 +664,22 @@ export default function CaseManagement() {
         {!importResult ? (
           <Upload.Dragger accept=".json,.xlsx" showUploadList={false} beforeUpload={handleImportFile} disabled={importing} style={{ padding: '32px 0' }}>
             {importing ? <Spin tip="正在导入..." /> : (<>
-              <p><InboxOutlined style={{ fontSize: 40, color: '#6b7ef5' }} /></p>
-              <p style={{ fontSize: 14, color: '#2e3138', marginTop: 8 }}>点击或拖拽上传用例文件</p>
-              <p style={{ fontSize: 12, color: '#8c919e' }}>支持 .json（TEA 格式）和 .xlsx（Excel 导出格式）</p>
+              <p><InboxOutlined style={{ fontSize: 40, color: '#00b96b' }} /></p>
+              <p style={{ fontSize: 14, color: '#1d2129', marginTop: 8 }}>点击或拖拽上传用例文件</p>
+              <p style={{ fontSize: 12, color: '#86909c' }}>支持 .json（TEA 格式）和 .xlsx（Excel 导出格式）</p>
             </>)}
           </Upload.Dragger>
         ) : (
           <div style={{ display: 'flex', gap: 12 }}>
             {[
-              { label: '新增', count: importResult.new, color: '#6ecf96', bg: '#eefbf3' },
-              { label: '更新', count: importResult.updated, color: '#6b7ef5', bg: '#eef0fe' },
-              { label: '移除', count: importResult.removed, color: '#f08a8e', bg: '#fef0f1' },
-              { label: '跳过', count: importResult.skipped, color: '#a8adb6', bg: '#f5f5f7' },
+              { label: '新增', count: importResult.new, color: '#00b96b', bg: '#e6f7ff' },
+              { label: '更新', count: importResult.updated, color: '#00b96b', bg: '#e6f7ff' },
+              { label: '移除', count: importResult.removed, color: '#ff4d4f', bg: '#fff2f0' },
+              { label: '跳过', count: importResult.skipped, color: '#8c8c8c', bg: '#f2f3f5' },
             ].map(s => (
               <div key={s.label} style={{ flex: 1, textAlign: 'center', padding: '16px 0', background: s.bg, borderRadius: 8 }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.count}</div>
-                <div style={{ fontSize: 12, color: '#8c919e' }}>{s.label}</div>
+                <div style={{ fontSize: 12, color: '#86909c' }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -705,7 +721,7 @@ export default function CaseManagement() {
                 treeData={folderTreeSelectData}
                 treeDefaultExpandAll
                 style={{ width: '100%' }}
-                notFoundContent={<span style={{ color: '#8c919e', fontSize: 12 }}>无目录，请先在左侧导航创建</span>}
+                notFoundContent={<span style={{ color: '#86909c', fontSize: 12 }}>无目录，请先在左侧导航创建</span>}
               />
             </Form.Item>
           </div>
@@ -752,10 +768,10 @@ export default function CaseManagement() {
         width={400}
       >
         <div style={{ marginTop: 12 }}>
-          <p style={{ fontSize: 12, color: '#8c919e', marginBottom: 12 }}>勾选需要显示的列（标题列始终显示）</p>
+          <p style={{ fontSize: 12, color: '#86909c', marginBottom: 12 }}>勾选需要显示的列（标题列始终显示）</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {allColumns.filter(c => !c.fixed).map(col => (
-              <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 8px', borderRadius: 6, background: visibleColumnKeys.includes(col.key) ? '#f0f7ff' : 'transparent' }}>
+              <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 8px', borderRadius: 6, background: visibleColumnKeys.includes(col.key) ? '#e6f7ff' : 'transparent' }}>
                 <input
                   type="checkbox"
                   checked={visibleColumnKeys.includes(col.key)}
@@ -768,7 +784,7 @@ export default function CaseManagement() {
                   }}
                 />
                 <span style={{ fontSize: 13 }}>{col.title}</span>
-                {col.defaultVisible && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e6f4ff', color: '#7c8cf8' }}>默认</Tag>}
+                {col.defaultVisible && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e6f7ff', color: '#1890ff' }}>默认</Tag>}
               </label>
             ))}
           </div>

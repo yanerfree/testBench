@@ -193,11 +193,8 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
             if scenario is None:
                 continue
 
-            # 跳过非自动化用例
+            # 跳过非自动化用例（保持 pending，等待手动录入）
             if case.automation_status != "automated" or not case.script_ref_file:
-                scenario.status = "skipped"
-                scenario.error_summary = "非自动化用例或脚本引用缺失"
-                await session.flush()
                 continue
 
             # Flaky 用例跳过

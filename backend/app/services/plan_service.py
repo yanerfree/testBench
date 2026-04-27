@@ -98,10 +98,10 @@ async def get_plan(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
 
 @audit_log(action="update", target_type="plan")
 async def update_plan(session: AsyncSession, plan_id: uuid.UUID, data) -> Plan:
-    """更新测试计划（draft/completed/paused 状态可修改）。"""
+    """更新测试计划（执行中不可修改）。"""
     plan = await get_plan(session, plan_id)
-    if plan.status not in ("draft", "completed", "paused"):
-        raise ValidationError(code="INVALID_STATUS", message=f"当前状态「{plan.status}」不可编辑")
+    if plan.status == "executing":
+        raise ValidationError(code="INVALID_STATUS", message="执行中的计划不可编辑")
 
     if data.name is not None:
         plan.name = data.name
@@ -149,8 +149,8 @@ async def archive_plan(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
 @audit_log(action="delete", target_type="plan")
 async def delete_plan(session: AsyncSession, plan_id: uuid.UUID) -> None:
     plan = await get_plan(session, plan_id)
-    if plan.status not in ("archived", "draft"):
-        raise ValidationError(code="INVALID_STATUS", message="仅草稿或已归档的计划可删除")
+    if plan.status == "executing":
+        raise ValidationError(code="INVALID_STATUS", message="执行中的计划不可删除")
     await session.execute(delete(PlanCase).where(PlanCase.plan_id == plan_id))
     await session.delete(plan)
     await session.flush()

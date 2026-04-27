@@ -101,7 +101,7 @@ function AppLayout() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 26, height: 26, borderRadius: 7,
-            background: 'linear-gradient(135deg, #a78bfa 0%, #7c8cf8 100%)',
+            background: '#00b96b',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#fff', fontWeight: 700, fontSize: 13,
           }}>T</div>
@@ -119,7 +119,7 @@ function AppLayout() {
           </Tooltip>
           <Dropdown menu={userMenu} placement="bottomRight">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <Avatar size={24} style={{ background: '#a78bfa', fontSize: 11 }}>{displayName[0]}</Avatar>
+              <Avatar size={24} style={{ background: '#00b96b', fontSize: 11 }}>{displayName[0]}</Avatar>
               <span style={{ color: '#8c919e', fontSize: 13 }}>{displayName}</span>
             </div>
           </Dropdown>
@@ -132,9 +132,18 @@ function AppLayout() {
           collapsedWidth={52}
           collapsed={collapsed}
           theme="light"
-          style={{ background: '#fff', borderRight: '1px solid #f0f0f3', overflow: 'auto' }}
+          style={{ background: '#fff', borderRight: '1px solid #f0f0f3', display: 'flex', flexDirection: 'column' }}
         >
-          <div style={{ padding: '8px 6px 2px' }}>
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <Menu
+              mode="inline"
+              selectedKeys={[location.pathname]}
+              items={menuItems}
+              onClick={({ key }) => navigate(key)}
+              style={{ border: 'none', fontSize: 13, paddingTop: 8 }}
+            />
+          </div>
+          <div style={{ padding: '8px 6px', borderTop: '1px solid #f0f0f3' }}>
             <Button
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
@@ -143,13 +152,6 @@ function AppLayout() {
               size="small"
             />
           </div>
-          <Menu
-            mode="inline"
-            selectedKeys={[location.pathname]}
-            items={menuItems}
-            onClick={({ key }) => navigate(key)}
-            style={{ border: 'none', fontSize: 13 }}
-          />
         </Sider>
 
         {/* 内容区：紧凑间距 */}
@@ -163,7 +165,7 @@ function AppLayout() {
             <Route path="/projects/:projectId/plans/:planId" element={<PlanDetail />} />
             <Route path="/projects/:projectId/plans/:planId/manual-record" element={<ManualRecord />} />
             <Route path="/projects/:projectId/reports" element={<ReportList />} />
-            <Route path="/projects/:projectId/reports/:planId" element={<ReportDetail />} />
+            <Route path="/projects/:projectId/reports/:reportId" element={<ReportDetail />} />
             <Route path="/projects/:projectId/logs" element={<AuditLogs />} />
             <Route path="/settings/env" element={<EnvConfig />} />
             <Route path="/settings/channels" element={<ChannelConfig />} />

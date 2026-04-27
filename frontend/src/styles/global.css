@@ -1,49 +1,45 @@
 /* ========================================
-   马卡龙色系 + Apifox 紧凑布局
-   特征：柔和粉彩、零间距、极淡分隔、浅色顶栏
+   Apifox 风格 — 极简白底 + 绿色主题
    ======================================== */
 
 :root {
-  --bg-body: #fafafa;
+  --bg-body: #ffffff;
   --bg-card: #ffffff;
-  --bg-hover: #fafafa;
-  --bg-active: #f0f4ff;
+  --bg-hover: #f7f8fa;
+  --bg-active: #e8f8f0;
   --bg-sidebar: #ffffff;
 
-  --text-primary: #2e3138;
-  --text-regular: #555a65;
-  --text-secondary: #8c919e;
-  --text-placeholder: #c2c6cf;
+  --text-primary: #1d2129;
+  --text-regular: #4e5969;
+  --text-secondary: #86909c;
+  --text-placeholder: #c9cdd4;
 
-  --border-light: #f0f0f3;
-  --border-regular: #e8e8ec;
+  --border-light: #f2f3f5;
+  --border-regular: #e5e6eb;
 
-  /* 马卡龙色系 */
-  --primary: #6b7ef5;          /* 薰衣草蓝（加深） */
-  --primary-bg: #eef0fe;
-  --green: #6ecf96;            /* 薄荷绿 */
-  --green-bg: #eefbf3;
-  --red: #f08a8e;              /* 草莓粉 */
-  --red-bg: #fef0f1;
-  --orange: #f5b87a;           /* 杏桃橙 */
-  --orange-bg: #fef5eb;
-  --yellow: #f0d86e;           /* 柠檬黄 */
-  --yellow-bg: #fefce8;
-  --purple: #b89aed;           /* 香芋紫 */
-  --purple-bg: #f5f0fe;
-  --blue: #7ec2f7;             /* 天空蓝 */
-  --blue-bg: #eef6fe;
-  --gray: #bfc4cd;
-  --gray-bg: #f5f5f7;
+  --primary: #00b96b;
+  --primary-hover: #009e5a;
+  --primary-bg: #e8f8f0;
+  --green: #00b96b;
+  --green-bg: #e8f8f0;
+  --red: #f53f3f;
+  --red-bg: #fff0f0;
+  --orange: #ff7d00;
+  --orange-bg: #fff7e8;
+  --purple: #722ed1;
+  --purple-bg: #f5f0ff;
+  --blue: #3370ff;
+  --blue-bg: #e8f3ff;
+  --gray: #c9cdd4;
+  --gray-bg: #f2f3f5;
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
 
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
-  --shadow-md: 0 2px 6px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
 
-  --font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', Roboto, sans-serif;
+  --font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', sans-serif;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -54,28 +50,34 @@ body {
   color: var(--text-primary);
   background: var(--bg-body);
   -webkit-font-smoothing: antialiased;
-  line-height: 1.5;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  line-height: 1.5715;
 }
 
 #root { min-height: 100vh; }
 
-/* ============ Ant Design 覆盖 ============ */
+/* 页面内边距 — 非全宽页面使用 */
+.page-padded {
+  padding: 12px 16px;
+}
+*, *::before, *::after {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-/* Card：去掉间距感，用极淡线分隔 */
+/* ============ Ant Design ============ */
+
 .ant-card {
   border-radius: var(--radius-lg) !important;
   border: 1px solid var(--border-light) !important;
   box-shadow: none !important;
 }
-.ant-card:hover {
-  box-shadow: var(--shadow-sm) !important;
-}
 .ant-card .ant-card-head {
   border-bottom: 1px solid var(--border-light) !important;
-  min-height: 42px !important;
+  min-height: 40px !important;
 }
 
-/* Button */
 .ant-btn {
   border-radius: var(--radius-md) !important;
   font-weight: 500;
@@ -84,76 +86,66 @@ body {
 .ant-btn-primary {
   background: var(--primary) !important;
   border-color: var(--primary) !important;
-  color: #fff !important;
 }
 .ant-btn-primary:hover {
-  background: #5a6de8 !important;
-  border-color: #5a6de8 !important;
+  background: var(--primary-hover) !important;
+  border-color: var(--primary-hover) !important;
 }
 .ant-btn-primary:disabled, .ant-btn-primary[disabled] {
-  background: #d0d5f7 !important;
-  border-color: #d0d5f7 !important;
+  background: #b4e6cc !important;
+  border-color: #b4e6cc !important;
   color: #fff !important;
-  opacity: 0.7;
 }
-/* Ghost 按钮加深 */
 .ant-btn-primary.ant-btn-background-ghost {
-  color: #5a6de8 !important;
-  border-color: #5a6de8 !important;
+  color: var(--primary) !important;
+  border-color: var(--primary) !important;
   background: transparent !important;
 }
 .ant-btn-primary.ant-btn-background-ghost:hover {
-  color: #4a5cd6 !important;
-  border-color: #4a5cd6 !important;
-  background: #f0f1fe !important;
+  color: var(--primary-hover) !important;
+  border-color: var(--primary-hover) !important;
+  background: var(--primary-bg) !important;
 }
-/* Dashed 按钮（添加步骤） */
 .ant-btn-dashed {
-  color: #5a6de8 !important;
-  border-color: #b8c0f5 !important;
+  color: var(--primary) !important;
+  border-color: #b4e6cc !important;
 }
 .ant-btn-dashed:hover {
-  color: #4a5cd6 !important;
-  border-color: #5a6de8 !important;
-  background: #f5f6fe !important;
+  color: var(--primary-hover) !important;
+  border-color: var(--primary) !important;
+  background: var(--primary-bg) !important;
 }
 
-/* Tag：胶囊+马卡龙底色 */
 .ant-tag {
-  border-radius: 10px !important;
+  border-radius: 4px !important;
   border: none !important;
   font-weight: 500;
-  padding: 0 10px;
+  font-size: 12px;
+  padding: 0 8px;
   line-height: 22px;
 }
 
-/* Table */
 .ant-table {
   border-radius: var(--radius-lg) !important;
 }
 .ant-table-thead > tr > th {
-  background: #fafafc !important;
+  background: #fafafa !important;
   font-weight: 600 !important;
   color: var(--text-secondary) !important;
   font-size: 13px !important;
-  border-bottom: 1px solid var(--border-light) !important;
+  border-bottom: 1px solid var(--border-regular) !important;
 }
 .ant-table-tbody > tr > td {
   border-bottom: 1px solid var(--border-light) !important;
 }
 .ant-table-tbody > tr:hover > td {
-  background: #fafafc !important;
+  background: #fafafa !important;
 }
 
-/* Drawer */
 .ant-drawer .ant-drawer-header {
   border-bottom: 1px solid var(--border-light);
 }
 
-/* Tabs */
-.ant-tabs-tab {
-  border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
-}
 .ant-tabs-ink-bar {
   background: var(--primary) !important;
 }
@@ -161,7 +153,6 @@ body {
   color: var(--primary) !important;
 }
 
-/* Input */
 .ant-input, .ant-select-selector, .ant-input-affix-wrapper {
   border-radius: var(--radius-md) !important;
 }
@@ -169,10 +160,9 @@ body {
 .ant-input-affix-wrapper:focus, .ant-input-affix-wrapper-focused,
 .ant-select-focused .ant-select-selector {
   border-color: var(--primary) !important;
-  box-shadow: 0 0 0 2px rgba(124, 140, 248, 0.15) !important;
+  box-shadow: 0 0 0 2px rgba(0, 185, 107, 0.1) !important;
 }
 
-/* Pagination */
 .ant-pagination .ant-pagination-item {
   border-radius: var(--radius-sm) !important;
 }
@@ -183,42 +173,31 @@ body {
   color: var(--primary) !important;
 }
 
-/* Menu */
-.ant-menu-item {
+/* 侧边菜单 — 圆角选中块 */
+.ant-menu-inline .ant-menu-item,
+.ant-menu-inline .ant-menu-submenu-title {
   border-radius: var(--radius-md) !important;
   margin: 2px 8px !important;
+  width: calc(100% - 16px) !important;
 }
 .ant-menu-item-selected {
   background: var(--primary-bg) !important;
   color: var(--primary) !important;
 }
+.ant-menu-item:hover:not(.ant-menu-item-selected) {
+  background: #fafafa !important;
+}
 
-/* Radio Button Group - 马卡龙风格 */
 .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
   background: var(--primary) !important;
   border-color: var(--primary) !important;
 }
 
-/* Switch */
 .ant-switch-checked {
   background: var(--primary) !important;
 }
 
-/* 滚动条 */
-::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #e0e0e3; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #ccc; }
-
-/* JSON 代码块 */
-pre.json-view {
-  background: #fafafc;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  padding: 14px;
-  font-size: 13px;
-  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
-  line-height: 1.6;
-  overflow-x: auto;
-  color: var(--text-regular);
-}
+::-webkit-scrollbar-thumb { background: #e5e6eb; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #c9cdd4; }

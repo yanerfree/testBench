@@ -137,6 +137,7 @@ async def create_case(
 ):
     """手动创建用例"""
     case = await case_service.create_case(session, branch_id, body)
+    await write_audit_log(session, action="create", target_type="case", target_id=case.id, target_name=case.title)
     return {
         "data": CaseResponse.model_validate(case, from_attributes=True).model_dump(by_alias=True)
     }
@@ -173,134 +174,6 @@ async def list_cases(
         "pagination": {"page": page, "pageSize": page_size, "total": total},
     }
 
-
-@router.get("/{case_id}")
-async def get_case(
-    project_id: uuid.UUID,
-    branch_id: uuid.UUID,
-    case_id: uuid.UUID,
-    session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
-):
-    """用例详情"""
-    case = await case_service.get_case(session, case_id)
-    return {
-        "data": CaseResponse.model_validate(case, from_attributes=True).model_dump(by_alias=True)
-    }
-
-
-@router.put("/{case_id}")
-async def update_case(
-    project_id: uuid.UUID,
-    branch_id: uuid.UUID,
-    case_id: uuid.UUID,
-    body: UpdateCaseRequest,
-    session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
-):
-    """更新用例"""
-    case = await case_service.update_case(session, case_id, body)
-    return {
-        "data": CaseResponse.model_validate(case, from_attributes=True).model_dump(by_alias=True)
-    }
-
-
-@router.post("/batch")
-async def batch_cases(
-    project_id: uuid.UUID,
-    branch_id: uuid.UUID,
-    body: BatchCaseRequest,
-    session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
-):
-    """批量操作用例（移动/归档/取消归档/修改优先级/标记Flaky/彻底删除）"""
-    if body.action == "hard_delete":
-        result = await case_service.batch_hard_delete(session, body.case_ids)
-        await write_audit_log(session, action="hard_delete", target_type="case", changes={"count": len(body.case_ids)})
-        return {"data": result}
-    result = await case_service.batch_cases(
-        session, branch_id,
-        action=body.action,
-        case_ids=body.case_ids,
-        folder_id=body.folder_id,
-        priority=body.priority,
-    )
-    await write_audit_log(session, action=body.action, target_type="case", changes={"count": len(body.case_ids)})
-    return {"data": result}
-
-
-@router.delete("/{case_id}")
-async def delete_case(
-    project_id: uuid.UUID,
-    branch_id: uuid.UUID,
-    case_id: uuid.UUID,
-    session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
-):
-    """软删除用例（标记 deleted_at）"""
-    await case_service.delete_case(session, case_id)
-    return MessageResponse(message="删除成功").model_dump()
-
-
-@router.post("/copy-from")
-async def copy_from_branch(
-    project_id: uuid.UUID,
-    branch_id: uuid.UUID,
-    body: CopyFromBranchRequest,
-    session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
-):
-    """从其他分支复制用例到当前分支（深拷贝）"""
-    result = await case_service.copy_cases_from_branch(
-        session, branch_id, body.source_branch_id, body.case_ids
-    )
-    return {"data": result}
-
-
-# ---- 用例目录 ----
-
-folders_router = APIRouter(
-    prefix="/api/projects/{project_id}/branches/{branch_id}/folders", tags=["folders"]
-)
-
-
-@folders_router.get("")
-async def list_folders(
-    project_id: uuid.UUID,
-    branch_id: uuid.UUID,
-    session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
-):
-    """目录树（含用例计数）"""
-    tree = await folder_service.list_folder_tree(session, branch_id)
-    return {"data": tree}
-
-
-@folders_router.post("", status_code=HTTP_201_CREATED)
-async def create_folder(
-    project_id: uuid.UUID,
-    branch_id: uuid.UUID,
-    name: str = Query(..., min_length=1, max_length=100),
-    parent_id: uuid.UUID | None = Query(default=None, alias="parentId"),
-    session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
-):
-    """创建模块/子模块目录"""
-    folder = await folder_service.create_folder(session, branch_id, name, parent_id)
-    return {"data": folder}
-
-
-@folders_router.delete("/{folder_id}")
-async def delete_folder(
-    project_id: uuid.UUID,
-    branch_id: uuid.UUID,
-    folder_id: uuid.UUID,
-    session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_project_role("project_admin")),
-):
-    """删除目录（空目录才可删除）"""
-    await folder_service.delete_folder(session, folder_id)
-    return MessageResponse(message="删除成功").model_dump()
 
 
 @router.get("/export/excel")
@@ -404,3 +277,181 @@ async def export_cases_excel(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename=cases-export.xlsx"},
     )
+
+@router.post("/{case_id}/copy", status_code=HTTP_201_CREATED)
+async def copy_case(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """复制用例（同分支内）"""
+    from sqlalchemy import select
+    from app.models.case import Case, CaseFolder
+    from app.services.import_service import _next_case_code
+    source = await case_service.get_case(session, case_id)
+    module = ""
+    if source.folder_id:
+        folder = (await session.execute(
+            select(CaseFolder).where(CaseFolder.id == source.folder_id)
+        )).scalar_one_or_none()
+        if folder:
+            module = folder.path.split("/")[0] if folder.path else folder.name
+    case_code = await _next_case_code(session, branch_id, module or "COPY")
+    copy = Case(
+        branch_id=branch_id,
+        case_code=case_code,
+        title=f"{source.title}（复制）",
+        type=source.type,
+        folder_id=source.folder_id,
+        priority=source.priority,
+        preconditions=source.preconditions,
+        steps=source.steps,
+        expected_result=source.expected_result,
+        source="manual",
+        automation_status=source.automation_status,
+        script_ref_file=source.script_ref_file,
+        script_ref_func=source.script_ref_func,
+        remark=source.remark,
+    )
+    session.add(copy)
+    await session.flush()
+    await session.refresh(copy)
+    await write_audit_log(session, action="copy", target_type="case", target_id=copy.id, target_name=copy.title)
+    return {"data": CaseResponse.model_validate(copy, from_attributes=True).model_dump(by_alias=True)}
+
+
+@router.get("/{case_id}")
+async def get_case(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """用例详情"""
+    case = await case_service.get_case(session, case_id)
+    return {
+        "data": CaseResponse.model_validate(case, from_attributes=True).model_dump(by_alias=True)
+    }
+
+
+@router.put("/{case_id}")
+async def update_case(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    body: UpdateCaseRequest,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """更新用例"""
+    case = await case_service.update_case(session, case_id, body)
+    await write_audit_log(session, action="update", target_type="case", target_id=case.id, target_name=case.title)
+    return {
+        "data": CaseResponse.model_validate(case, from_attributes=True).model_dump(by_alias=True)
+    }
+
+
+@router.post("/batch")
+async def batch_cases(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    body: BatchCaseRequest,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """批量操作用例（移动/归档/取消归档/修改优先级/标记Flaky/彻底删除）"""
+    if body.action == "hard_delete":
+        result = await case_service.batch_hard_delete(session, body.case_ids)
+        await write_audit_log(session, action="hard_delete", target_type="case", changes={"count": len(body.case_ids)})
+        return {"data": result}
+    result = await case_service.batch_cases(
+        session, branch_id,
+        action=body.action,
+        case_ids=body.case_ids,
+        folder_id=body.folder_id,
+        priority=body.priority,
+    )
+    await write_audit_log(session, action=body.action, target_type="case", changes={"count": len(body.case_ids)})
+    return {"data": result}
+
+
+@router.delete("/{case_id}")
+async def delete_case(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """软删除用例（标记 deleted_at）"""
+    case = await case_service.get_case(session, case_id)
+    await case_service.delete_case(session, case_id)
+    await write_audit_log(session, action="delete", target_type="case", target_id=case_id, target_name=case.title)
+    return MessageResponse(message="删除成功").model_dump()
+
+
+@router.post("/copy-from")
+async def copy_from_branch(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    body: CopyFromBranchRequest,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """从其他分支复制用例到当前分支（深拷贝）"""
+    result = await case_service.copy_cases_from_branch(
+        session, branch_id, body.source_branch_id, body.case_ids
+    )
+    await write_audit_log(session, action="copy_from", target_type="case", changes={"count": result.get("copied", 0)})
+    return {"data": result}
+
+
+# ---- 用例目录 ----
+
+folders_router = APIRouter(
+    prefix="/api/projects/{project_id}/branches/{branch_id}/folders", tags=["folders"]
+)
+
+
+@folders_router.get("")
+async def list_folders(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """目录树（含用例计数）"""
+    tree = await folder_service.list_folder_tree(session, branch_id)
+    return {"data": tree}
+
+
+@folders_router.post("", status_code=HTTP_201_CREATED)
+async def create_folder(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    name: str = Query(..., min_length=1, max_length=100),
+    parent_id: uuid.UUID | None = Query(default=None, alias="parentId"),
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """创建模块/子模块目录"""
+    folder = await folder_service.create_folder(session, branch_id, name, parent_id)
+    return {"data": folder}
+
+
+@folders_router.delete("/{folder_id}")
+async def delete_folder(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    folder_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin")),
+):
+    """删除目录（空目录才可删除）"""
+    await folder_service.delete_folder(session, folder_id)
+    return MessageResponse(message="删除成功").model_dump()
+
+

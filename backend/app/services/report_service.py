@@ -8,15 +8,25 @@ from app.models.case import Case, CaseFolder
 from app.models.report import TestReport, TestReportScenario
 
 
-async def get_report_dashboard(session: AsyncSession, plan_id: uuid.UUID) -> dict | None:
+async def get_report_dashboard(
+    session: AsyncSession,
+    plan_id: uuid.UUID | None = None,
+    report_id: uuid.UUID | None = None,
+) -> dict | None:
     """获取报告仪表盘数据（L1 汇总 + L2 模块分组）。
 
     返回: { summary: {...}, modules: [...] } 或 None
     """
-    # 获取最新报告
-    result = await session.execute(
-        select(TestReport).where(TestReport.plan_id == plan_id).order_by(TestReport.created_at.desc())
-    )
+    if report_id:
+        result = await session.execute(
+            select(TestReport).where(TestReport.id == report_id)
+        )
+    elif plan_id:
+        result = await session.execute(
+            select(TestReport).where(TestReport.plan_id == plan_id).order_by(TestReport.created_at.desc())
+        )
+    else:
+        return None
     report = result.scalars().first()
     if report is None:
         return None

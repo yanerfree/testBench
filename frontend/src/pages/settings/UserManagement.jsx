@@ -4,8 +4,8 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ReloadOutline
 import { api } from '../../utils/request'
 
 const ROLE_CONFIG = {
-  admin: { label: '系统管理员', color: '#f08a8e', bg: '#fef0f1' },
-  user: { label: '普通用户', color: '#6b7ef5', bg: '#eef0fe' },
+  admin: { label: '系统管理员', color: '#ff4d4f', bg: '#fff2f0' },
+  user: { label: '普通用户', color: '#00b96b', bg: '#e6f7ff' },
 }
 
 export default function UserManagement() {
@@ -89,7 +89,7 @@ export default function UserManagement() {
       title: '用户', dataIndex: 'username', width: 200,
       render: (v) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Avatar size={28} style={{ background: '#a78bfa', fontSize: 12 }}>{v[0].toUpperCase()}</Avatar>
+          <Avatar size={28} style={{ background: '#722ed1', fontSize: 12 }}>{v[0].toUpperCase()}</Avatar>
           <span style={{ fontWeight: 500 }}>{v}</span>
         </div>
       ),
@@ -115,20 +115,20 @@ export default function UserManagement() {
     },
     {
       title: '创建时间', dataIndex: 'createdAt', width: 180, align: 'center',
-      render: v => <span style={{ fontSize: 13, color: '#8c919e' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span>,
+      render: v => <span style={{ fontSize: 13, color: '#86909c' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span>,
     },
     {
       title: '操作', width: 120, align: 'center',
       render: (_, record) => (
         <Space size={4}>
-          <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} style={{ color: '#6b7ef5' }} />
+          <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} style={{ color: '#00b96b' }} />
           {record.username !== 'admin' && (
             <Popconfirm
               title={`确定删除用户 ${record.username}？`}
               description={record.isActive ? '该用户当前处于启用状态' : undefined}
               onConfirm={() => handleDelete(record)}
             >
-              <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#f08a8e' }} />
+              <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#ff4d4f' }} />
             </Popconfirm>
           )}
         </Space>
@@ -140,8 +140,8 @@ export default function UserManagement() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#2e3138' }}>用户管理</h2>
-          <span style={{ fontSize: 13, color: '#8c919e' }}>管理系统用户账号与角色</span>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#1d2129' }}>用户管理</h2>
+          <span style={{ fontSize: 13, color: '#86909c' }}>管理系统用户账号与角色</span>
         </div>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={fetchUsers} loading={loading}>刷新</Button>
@@ -149,7 +149,7 @@ export default function UserManagement() {
         </Space>
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #f0f0f3', padding: 2 }}>
+      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #f2f3f5', padding: 2 }}>
         <Table
           dataSource={users}
           columns={columns}
@@ -180,7 +180,7 @@ export default function UserManagement() {
             ]}
           >
             <Input
-              prefix={<UserOutlined style={{ color: '#bfc4cd' }} />}
+              prefix={<UserOutlined style={{ color: '#c9cdd4' }} />}
               placeholder="字母、数字、下划线，2-50 位"
               disabled={!!editingUser}
             />

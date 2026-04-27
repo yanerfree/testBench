@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit_log import AuditLog
 from app.models.user import User
+from app.models.project import Project
 
 
 async def list_logs(
@@ -37,8 +38,10 @@ async def list_logs(
         select(
             AuditLog,
             User.username.label("username"),
+            Project.name.label("project_name"),
         )
         .outerjoin(User, AuditLog.user_id == User.id)
+        .outerjoin(Project, AuditLog.project_id == Project.id)
     )
 
     # 筛选条件
@@ -73,13 +76,15 @@ async def list_logs(
 
     items = []
     for row in rows:
-        log = row[0]  # AuditLog object
-        username = row[1]  # username from JOIN
+        log = row[0]
+        username = row[1]
+        project_name = row[2]
         items.append({
             "id": log.id,
             "user_id": log.user_id,
             "username": username,
             "project_id": log.project_id,
+            "project_name": project_name,
             "action": log.action,
             "target_type": log.target_type,
             "target_id": log.target_id,

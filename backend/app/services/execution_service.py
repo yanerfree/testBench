@@ -98,8 +98,8 @@ async def record_manual_result(
     status: str,
     remark: str | None = None,
     duration_ms: int | None = None,
-) -> TestReportScenario:
-    """录入单条手动测试结果。"""
+) -> tuple[TestReportScenario, bool]:
+    """录入单条手动测试结果。每次录入后实时更新报告统计。返回 (scenario, all_done)。"""
     result = await session.execute(
         select(TestReportScenario).where(
             TestReportScenario.id == scenario_id,
@@ -115,7 +115,43 @@ async def record_manual_result(
     scenario.duration_ms = duration_ms
     await session.flush()
     await session.refresh(scenario)
-    return scenario
+
+    # 实时更新报告统计
+    stats = await session.execute(
+        select(TestReportScenario.status, func.count())
+        .where(TestReportScenario.report_id == report_id)
+        .group_by(TestReportScenario.status)
+    )
+    status_counts = {row[0]: row[1] for row in stats.all()}
+
+    report = (await session.execute(
+        select(TestReport).where(TestReport.id == report_id)
+    )).scalar_one()
+    report.passed = status_counts.get("passed", 0)
+    report.failed = status_counts.get("failed", 0)
+    report.error = status_counts.get("error", 0)
+    report.skipped = status_counts.get("skipped", 0)
+
+    duration_result = await session.execute(
+        select(func.sum(TestReportScenario.duration_ms))
+        .where(TestReportScenario.report_id == report_id)
+    )
+    report.total_duration_ms = duration_result.scalar_one() or 0
+
+    denominator = report.passed + report.failed + report.error
+    if denominator > 0:
+        report.pass_rate = Decimal(str(round(report.passed / denominator * 100, 2)))
+
+    # 检查是否全部录入完成
+    remaining = status_counts.get("pending", 0)
+    all_done = remaining == 0
+
+    if all_done:
+        await complete_execution(session, report.plan_id)
+    else:
+        await session.flush()
+
+    return scenario, all_done
 
 
 async def complete_execution(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
@@ -147,7 +183,6 @@ async def complete_execution(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
     report.failed = status_counts.get("failed", 0)
     report.error = status_counts.get("error", 0)
     report.skipped = status_counts.get("skipped", 0)
-    report.completed_at = datetime.now(timezone.utc)
 
     duration_result = await session.execute(
         select(func.sum(TestReportScenario.duration_ms))
@@ -165,7 +200,8 @@ async def complete_execution(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
         plan.status = "pending_manual"
     else:
         plan.status = "completed"
-        plan.completed_at = report.completed_at
+        plan.completed_at = datetime.now(timezone.utc)
+        report.completed_at = plan.completed_at
 
     await session.flush()
     await session.refresh(plan)
@@ -173,12 +209,21 @@ async def complete_execution(session: AsyncSession, plan_id: uuid.UUID) -> Plan:
 
 
 async def get_report_with_scenarios(
-    session: AsyncSession, plan_id: uuid.UUID
+    session: AsyncSession,
+    plan_id: uuid.UUID | None = None,
+    report_id: uuid.UUID | None = None,
 ) -> dict | None:
-    """获取计划的执行报告 + 场景列表。"""
-    report_result = await session.execute(
-        select(TestReport).where(TestReport.plan_id == plan_id).order_by(TestReport.created_at.desc())
-    )
+    """获取执行报告 + 场景列表。指定 report_id 精确查，否则按 plan_id 取最新。"""
+    if report_id:
+        report_result = await session.execute(
+            select(TestReport).where(TestReport.id == report_id)
+        )
+    elif plan_id:
+        report_result = await session.execute(
+            select(TestReport).where(TestReport.plan_id == plan_id).order_by(TestReport.created_at.desc())
+        )
+    else:
+        return None
     report = report_result.scalars().first()
     if report is None:
         return None

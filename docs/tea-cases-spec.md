@@ -102,6 +102,90 @@
 - **修改测试逻辑**时，更新对应条目的 `steps`、`expected_result`、`preconditions`
 - `tea_id` 一旦确定**不要修改**（修改等同于删旧建新）
 
+## 脚本编写规范（环境变量）
+
+测试脚本必须使用平台注入的环境变量，**禁止硬编码**地址、账号等配置。
+
+### 核心规则
+
+```
+平台下发的环境变量 > 脚本默认值
+```
+
+平台根据计划配置的"目标环境"自动注入环境变量（全局变量 + 环境变量合并）到 pytest 进程。脚本通过 `os.environ.get("KEY", "默认值")` 读取，无平台变量时回退到默认值。
+
+### conftest.py 双模式
+
+`tests/conftest.py` 中的 `client` fixture 自动切换：
+
+- **`BASE_URL` 有值**（平台执行）→ `httpx.AsyncClient(base_url=BASE_URL)` 走真实 HTTP 到目标环境
+- **`BASE_URL` 为空**（本地开发）→ `httpx ASGITransport` 进程内测试
+
+脚本中**不要**自己创建 httpx client，统一使用 `client` fixture。
+
+### 认证方式（重要）
+
+conftest.py 提供两套认证 helper，脚本必须根据场景选择：
+
+| Helper | 适用模式 | 原理 | 推荐程度 |
+|--------|---------|------|---------|
+| `login_as(client, username, password)` | 两种都可 | 调用 POST /api/auth/login 获取真实 token | **推荐** |
+| `create_user_via_api(client, admin_headers, username)` | 两种都可 | 调用 POST /api/users 创建用户 | **推荐** |
+| `create_test_user(db_session, ...)` | 仅本地 | 直接写数据库 | 仅本地调试 |
+| `make_auth_headers(user)` | 仅本地 | 本地签 JWT | 仅本地调试 |
+
+**规则：新脚本一律使用 `login_as` + `create_user_via_api`**，确保本地和平台模式都能正常运行。
+
+### 变量使用示例
+
+```python
+from tests.conftest import login_as, create_user_via_api, ADMIN_USERNAME, ADMIN_PASSWORD
+
+class TestProjectCRUD:
+    async def test_create_project(self, client, db_session):
+        # ✅ 通过 API 登录获取 token（两种模式都能用）
+        admin_headers = await login_as(client)
+
+        response = await client.post("/api/projects", headers=admin_headers, json={
+            "name": "test-project",
+            "description": "测试项目",
+        })
+        assert response.status_code == 201
+
+    async def test_member_can_view(self, client, db_session):
+        # ✅ 通过 API 创建用户 + 登录
+        admin_headers = await login_as(client)
+        await create_user_via_api(client, admin_headers, "viewer", role="user")
+        viewer_headers = await login_as(client, "viewer", "Test@123456")
+
+        response = await client.get("/api/projects", headers=viewer_headers)
+        assert response.status_code == 200
+```
+
+```python
+# ❌ 错误示例：直接操作数据库 + 本地签 token（平台模式下会失败）
+from tests.conftest import create_test_user, make_auth_headers
+
+class TestBad:
+    async def test_bad_example(self, client, db_session):
+        user = await create_test_user(db_session, "testuser", role="admin")
+        headers, _ = make_auth_headers(user)  # 本地签的 token，远程环境不认
+        response = await client.get("/api/users", headers=headers)
+```
+
+### 常用平台变量
+
+| 变量名 | 说明 | 建议默认值 |
+|--------|------|-----------|
+| `BASE_URL` | 目标服务地址（conftest 自动处理） | 空 |
+| `DATABASE_URL` | 数据库连接串（conftest 自动处理） | 本地 test 库 |
+| `ADMIN_USERNAME` | 管理员账号 | `admin` |
+| `ADMIN_PASSWORD` | 管理员密码 | `admin123` |
+| `TEST_PASSWORD` | 测试用户默认密码 | `Test@123456` |
+| `API_TIMEOUT` | 请求超时秒数 | `30` |
+
+> 在平台"环境配置"页面维护这些变量，执行时自动注入。
+
 ## 示例：一条完整用例
 
 ```json

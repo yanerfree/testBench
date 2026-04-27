@@ -5,6 +5,7 @@
 """
 import logging
 import os
+import shutil
 import subprocess
 import tempfile
 import time
@@ -48,17 +49,38 @@ def execute_single_case(
     with tempfile.NamedTemporaryFile(suffix=".xml", delete=False, prefix="junit_") as f:
         junit_xml_path = f.name
 
+    # 注入 HTTP 捕获插件
+    plugin_src = Path(__file__).parent / "plugins" / "tea_capture.py"
+    tea_plugins_dir = Path(sandbox_dir) / ".tea_plugins"
+    tea_results_dir = Path(sandbox_dir) / ".tea_results"
+    has_capture_plugin = plugin_src.exists()
+    if has_capture_plugin:
+        tea_plugins_dir.mkdir(parents=True, exist_ok=True)
+        tea_results_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(str(plugin_src), str(tea_plugins_dir / "tea_capture.py"))
+
+    # 注入平台 conftest.py（仅当沙箱中不存在时）
+    conftest_src = Path(__file__).parent / "plugins" / "conftest_platform.py"
+    sandbox_conftest = Path(sandbox_dir) / "tests" / "conftest.py"
+    if conftest_src.exists() and not sandbox_conftest.exists():
+        sandbox_conftest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(str(conftest_src), str(sandbox_conftest))
+
     cmd = build_pytest_command(
         sandbox_dir=sandbox_dir,
         script_ref_file=script_ref_file,
         script_ref_func=script_ref_func,
         junit_xml_path=junit_xml_path,
+        capture_plugin=has_capture_plugin,
     )
 
     # 3. 构建环境变量
     run_env = os.environ.copy()
     if env_vars:
         run_env.update(env_vars)
+    if has_capture_plugin:
+        run_env["PYTHONPATH"] = str(tea_plugins_dir) + ":" + run_env.get("PYTHONPATH", "")
+        run_env["TEA_CAPTURE_DIR"] = str(tea_results_dir)
 
     # 4. 执行
     start_time = time.time()
@@ -116,8 +138,11 @@ def execute_single_case(
     # 7. 解析步骤级 JSON（可选）
     steps = []
     if script_ref_func:
-        step_json_path = str(Path(sandbox_dir) / f"{script_ref_func}.json")
+        step_json_path = str(Path(sandbox_dir) / ".tea_results" / f"{script_ref_func}.json")
         steps = parse_step_json(step_json_path)
+        if not steps:
+            step_json_path = str(Path(sandbox_dir) / f"{script_ref_func}.json")
+            steps = parse_step_json(step_json_path)
 
     return {
         "status": status,

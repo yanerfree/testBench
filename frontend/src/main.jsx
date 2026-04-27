@@ -1,4 +1,3 @@
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
@@ -8,28 +7,26 @@ import './styles/global.css'
 
 const theme = {
   token: {
-    colorPrimary: '#6b7ef5',
-    borderRadius: 8,
+    colorPrimary: '#00b96b',
+    borderRadius: 6,
     colorBgContainer: '#ffffff',
     fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
-    colorText: '#2e3138',
-    colorTextSecondary: '#8c919e',
-    colorBorder: '#e8e8ec',
-    colorBorderSecondary: '#f0f0f3',
-    controlHeight: 34,
-    colorSuccess: '#6ecf96',
-    colorError: '#f08a8e',
-    colorWarning: '#f5b87a',
-    colorInfo: '#7ec2f7',
+    colorText: '#1d2129',
+    colorTextSecondary: '#86909c',
+    colorBorder: '#e5e6eb',
+    colorBorderSecondary: '#f2f3f5',
+    controlHeight: 32,
+    colorSuccess: '#00b96b',
+    colorError: '#f53f3f',
+    colorWarning: '#ff7d00',
+    colorInfo: '#3370ff',
   },
 }
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <BrowserRouter>
-      <ConfigProvider locale={zhCN} theme={theme}>
-        <App />
-      </ConfigProvider>
-    </BrowserRouter>
-  </StrictMode>,
+  <BrowserRouter>
+    <ConfigProvider locale={zhCN} theme={theme}>
+      <App />
+    </ConfigProvider>
+  </BrowserRouter>,
 )

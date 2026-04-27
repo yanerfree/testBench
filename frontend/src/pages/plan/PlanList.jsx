@@ -1,17 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Card, Tag, Button, Radio, Input, Space, Modal, Form, Select, InputNumber, Table, message, Empty, Spin, Pagination } from 'antd'
-import { PlusOutlined, SearchOutlined, ClockCircleOutlined, UserOutlined, ReloadOutlined, PlayCircleOutlined, EditOutlined, CheckOutlined, DeleteOutlined } from '@ant-design/icons'
+import { Tag, Button, Radio, Input, Space, Modal, Form, Select, InputNumber, message, Empty, Spin, Pagination, Tooltip } from 'antd'
+import { PlusOutlined, SearchOutlined, ReloadOutlined, PlayCircleOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
+import CasePicker from '../../components/CasePicker'
 
-const statusStyle = {
-  draft: { label: '草稿', color: '#bfc4cd', bg: '#f5f5f7' },
-  executing: { label: '执行中', color: '#7c8cf8', bg: '#eef0fe' },
-  paused: { label: '已暂停', color: '#f5b87a', bg: '#fef5eb' },
-  pending_manual: { label: '待手动录入', color: '#a78bfa', bg: '#f3f0fe' },
-  completed: { label: '已完成', color: '#6ecf96', bg: '#eefbf3' },
-  archived: { label: '已归档', color: '#a8adb6', bg: '#f5f5f7' },
+const statusMap = {
+  draft:          { label: '草稿',     color: '#86909c', bg: '#f2f3f5', dot: '#c9cdd4' },
+  executing:      { label: '执行中',   color: '#1890ff', bg: '#e6f7ff', dot: '#1890ff' },
+  paused:         { label: '已暂停',   color: '#faad14', bg: '#fffbe6', dot: '#faad14' },
+  pending_manual: { label: '待录入',   color: '#722ed1', bg: '#f9f0ff', dot: '#722ed1' },
+  completed:      { label: '已完成',   color: '#00b96b', bg: '#f6ffed', dot: '#00b96b' },
+  archived:       { label: '已归档',   color: '#86909c', bg: '#f2f3f5', dot: '#c9cdd4' },
 }
+
+const th = { fontSize: 12, color: '#86909c', fontWeight: 500, whiteSpace: 'nowrap' }
 
 export default function PlanList() {
   const navigate = useNavigate()
@@ -22,40 +25,35 @@ export default function PlanList() {
   const [tab, setTab] = useState('')
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
 
-  // 创建弹窗
   const [createOpen, setCreateOpen] = useState(false)
   const [form] = Form.useForm()
   const [saving, setSaving] = useState(false)
   const planType = Form.useWatch('planType', form)
   const watchedCaseIds = Form.useWatch('caseIds', form)
 
-  // 弹窗数据源
   const [branches, setBranches] = useState([])
-  const [cases, setCases] = useState([])
   const [environments, setEnvironments] = useState([])
   const [channels, setChannels] = useState([])
   const [selectedBranch, setSelectedBranch] = useState(null)
   const [casePickerOpen, setCasePickerOpen] = useState(false)
-  const [caseSearch, setCaseSearch] = useState('')
-  const [pickerSelected, setPickerSelected] = useState([])
+  const [editingPlan, setEditingPlan] = useState(null)
 
-  // 加载计划列表
   const fetchPlans = useCallback(async () => {
     if (!projectId) return
     setLoading(true)
     try {
-      const params = new URLSearchParams({ page, pageSize: 20 })
+      const params = new URLSearchParams({ page, pageSize })
       if (tab) params.set('status', tab)
       const res = await api.get(`/projects/${projectId}/plans?${params}`)
       setPlans(res.data || [])
       setTotal(res.pagination?.total || 0)
     } catch { /* */ } finally { setLoading(false) }
-  }, [projectId, tab, page])
+  }, [projectId, tab, page, pageSize])
 
   useEffect(() => { fetchPlans() }, [fetchPlans])
 
-  // 打开创建弹窗时加载数据源
   const openCreate = async () => {
     form.resetFields()
     setCreateOpen(true)
@@ -68,27 +66,16 @@ export default function PlanList() {
       setBranches(brRes.data || [])
       setEnvironments(envRes.data || [])
       setChannels(chRes.data || [])
-      // 默认选第一个活跃分支
       const active = (brRes.data || []).find(b => b.status === 'active')
       if (active) {
         setSelectedBranch(active.id)
-        loadCases(active.id)
       }
-    } catch { /* */ }
-  }
-
-  const loadCases = async (branchId) => {
-    if (!branchId) return
-    try {
-      const res = await api.get(`/projects/${projectId}/branches/${branchId}/cases?pageSize=100`)
-      setCases(res.data || [])
     } catch { /* */ }
   }
 
   const handleBranchChange = (branchId) => {
     setSelectedBranch(branchId)
     form.setFieldValue('caseIds', [])
-    loadCases(branchId)
   }
 
   const handleCreate = async () => {
@@ -136,7 +123,7 @@ export default function PlanList() {
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
-          await api.delete(`/projects/${projectId}/plans/${planId}`)
+          await api.del(`/projects/${projectId}/plans/${planId}`)
           message.success('删除成功')
           fetchPlans()
         } catch (err) {
@@ -151,98 +138,151 @@ export default function PlanList() {
     : plans
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>测试计划</h2>
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchPlans} loading={loading}>刷新</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>创建计划</Button>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)' }}>
+      {/* Toolbar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0, color: '#1d2129' }}>测试计划</h2>
+        <Space size={8}>
+          <Input
+            prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />}
+            placeholder="搜索计划名称"
+            value={keyword} onChange={e => setKeyword(e.target.value)}
+            allowClear style={{ width: 200 }} size="small"
+          />
+          <Button size="small" icon={<ReloadOutlined />} onClick={fetchPlans} loading={loading}>刷新</Button>
+          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={openCreate}>创建计划</Button>
         </Space>
       </div>
 
-      <Card styles={{ body: { padding: '10px 16px' } }} style={{ marginBottom: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Radio.Group value={tab} onChange={e => { setTab(e.target.value); setPage(1) }} size="small" buttonStyle="solid">
-            <Radio.Button value="">全部 ({total})</Radio.Button>
-            {Object.entries(statusStyle).map(([k, v]) => (
-              <Radio.Button key={k} value={k}>{v.label}</Radio.Button>
-            ))}
-          </Radio.Group>
-          <Input prefix={<SearchOutlined style={{ color: '#c2c6cf' }} />} placeholder="搜索计划名称"
-            value={keyword} onChange={e => setKeyword(e.target.value)} allowClear style={{ width: 240 }} size="small" />
-        </div>
-      </Card>
+      {/* Tabs */}
+      <div style={{ marginBottom: 6, flexShrink: 0 }}>
+        <Radio.Group value={tab} onChange={e => { setTab(e.target.value); setPage(1) }} size="small" buttonStyle="solid">
+          <Radio.Button value="">全部 ({total})</Radio.Button>
+          {Object.entries(statusMap).map(([k, v]) => (
+            <Radio.Button key={k} value={k}>{v.label}</Radio.Button>
+          ))}
+        </Radio.Group>
+      </div>
 
-      {loading ? <div style={{ textAlign: 'center', padding: 60 }}><Spin /></div> :
-        filteredPlans.length === 0 ? <Empty description="暂无计划" style={{ marginTop: 60 }} /> : <>
-        {/* Table Header */}
-        <div style={{ display: 'flex', padding: '10px 20px', background: '#f7f8fa', borderRadius: '8px 8px 0 0', border: '1px solid #f0f0f3', borderBottom: 'none', fontSize: 13, color: '#86909c', fontWeight: 500 }}>
-          <div style={{ flex: 5 }}>计划信息</div>
-          <div style={{ flex: 2, textAlign: 'center' }}>状态</div>
-          <div style={{ flex: 3, textAlign: 'center' }}>操作</div>
-        </div>
-        <div style={{ border: '1px solid #f0f0f3', borderRadius: '0 0 8px 8px', background: '#fff' }}>
-          {filteredPlans.map((plan, i) => {
-            const s = statusStyle[plan.status] || statusStyle.draft
-            return (
-              <div key={plan.id}
-                onClick={() => navigate(`/projects/${projectId}/plans/${plan.id}`)}
-                style={{
-                  display: 'flex', alignItems: 'center', padding: '14px 20px',
-                  borderBottom: i < filteredPlans.length - 1 ? '1px solid #f5f5f7' : 'none',
-                  cursor: 'pointer', transition: 'background 0.15s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = '#fafbfc'}
-                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-              >
-                {/* 计划信息 */}
-                <div style={{ flex: 5 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: '#2e3138', marginBottom: 4 }}>
-                    {plan.name}
-                  </div>
-                  <Space size={12} style={{ fontSize: 12, color: '#8c919e' }}>
-                    <span><ClockCircleOutlined style={{ marginRight: 3 }} />{new Date(plan.createdAt).toLocaleDateString('zh-CN')}</span>
-                    <Tag style={{ background: '#f5f5f7', color: '#8c919e', border: 'none', fontSize: 11 }}>{plan.planType === 'automated' ? '自动化' : '手动'}</Tag>
-                    <Tag style={{ background: '#f5f5f7', color: '#8c919e', border: 'none', fontSize: 11 }}>{plan.testType?.toUpperCase()}</Tag>
-                    {plan.environmentName && <Tag style={{ background: '#e6f4ff', color: '#7c8cf8', border: 'none', fontSize: 11 }}>{plan.environmentName}</Tag>}
-                    <span>用例: {plan.caseCount} 条</span>
-                  </Space>
-                </div>
-
-                {/* 状态 */}
-                <div style={{ flex: 2, textAlign: 'center' }}>
-                  <Tag style={{ background: s.bg, color: s.color, border: 'none' }}>{s.label}</Tag>
-                </div>
-
-                {/* 操作 */}
-                <div style={{ flex: 3, display: 'flex', justifyContent: 'center', gap: 6 }}>
-                  {['draft', 'completed', 'paused'].includes(plan.status) && (
-                    <Button size="small" icon={<EditOutlined />}
-                      onClick={e => { e.stopPropagation(); navigate(`/projects/${projectId}/plans/${plan.id}?edit=cases`) }}>修改用例</Button>
-                  )}
-                  {plan.status === 'draft' && (
-                    <Button type="primary" size="small" icon={<PlayCircleOutlined />}
-                      onClick={e => handleQuickExecute(e, plan.id)}>执行</Button>
-                  )}
-                  {(plan.status === 'completed' || plan.status === 'paused') && (
-                    <Button size="small" icon={<PlayCircleOutlined />}
-                      onClick={e => handleQuickExecute(e, plan.id)}>重新执行</Button>
-                  )}
-                  {(plan.status === 'draft' || plan.status === 'archived') && (
-                    <Button size="small" danger icon={<DeleteOutlined />}
-                      onClick={e => handleQuickDelete(e, plan.id, plan.name)} />
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        {total > 20 && (
-          <div style={{ textAlign: 'right', marginTop: 12 }}>
-            <Pagination current={page} total={total} pageSize={20} size="small" showTotal={t => `共 ${t} 条`}
-              onChange={p => setPage(p)} />
+      {loading ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spin /></div> :
+        filteredPlans.length === 0 ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Empty description="暂无计划" /></div> : <>
+        {/* Table */}
+        <div style={{ background: '#fff', border: '1px solid #e5e6eb', borderRadius: 8, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', height: 36, background: '#f7f8fa', borderBottom: '1px solid #e5e6eb', flexShrink: 0 }}>
+            <div style={{ flex: 4, ...th }}>计划名称</div>
+            <div style={{ width: 70, textAlign: 'center', ...th }}>类型</div>
+            <div style={{ width: 90, textAlign: 'center', ...th }}>环境</div>
+            <div style={{ width: 60, textAlign: 'center', ...th }}>用例</div>
+            <div style={{ width: 80, textAlign: 'center', ...th }}>状态</div>
+            <div style={{ width: 200, textAlign: 'center', ...th }}>操作</div>
           </div>
-        )}
+          {/* Body */}
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            {filteredPlans.map((plan, i) => {
+              const s = statusMap[plan.status] || statusMap.draft
+              return (
+                <div key={plan.id}
+                  onClick={() => navigate(`/projects/${projectId}/plans/${plan.id}`)}
+                  style={{
+                    display: 'flex', alignItems: 'center', padding: '0 16px', height: 44,
+                    borderBottom: '1px solid #f2f3f5', cursor: 'pointer', transition: 'background .12s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  {/* Name + meta */}
+                  <div style={{ flex: 4, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 500, fontSize: 13, color: '#1d2129', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {plan.name}
+                    </span>
+                    <span style={{ fontSize: 11, color: '#c9cdd4', flexShrink: 0 }}>
+                      {new Date(plan.createdAt).toLocaleDateString('zh-CN')}
+                    </span>
+                  </div>
+
+                  {/* Type */}
+                  <div style={{ width: 70, textAlign: 'center' }}>
+                    <span style={{ fontSize: 12, color: '#86909c' }}>
+                      {plan.planType === 'automated' ? '自动化' : '手动'}
+                    </span>
+                  </div>
+
+                  {/* Environment */}
+                  <div style={{ width: 90, textAlign: 'center' }}>
+                    {plan.environmentName ? (
+                      <span style={{ fontSize: 12, color: '#86909c' }}>
+                        {plan.environmentName}
+                      </span>
+                    ) : <span style={{ fontSize: 11, color: '#c9cdd4' }}>-</span>}
+                  </div>
+
+                  {/* Case count */}
+                  <div style={{ width: 60, textAlign: 'center', fontSize: 13, color: '#4e5969', fontFamily: 'monospace' }}>
+                    {plan.caseCount}
+                  </div>
+
+                  {/* Status */}
+                  <div style={{ width: 80, textAlign: 'center' }}>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      fontSize: 11, padding: '2px 8px', borderRadius: 10,
+                      background: s.dot, color: '#fff',
+                    }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
+                      {s.label}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ width: 200, display: 'flex', justifyContent: 'center', gap: 4 }}>
+                    {['draft', 'completed', 'paused'].includes(plan.status) && (
+                      <Button type="text" size="small" style={{ fontSize: 12, color: '#86909c' }}
+                        onClick={async e => {
+                          e.stopPropagation()
+                          try {
+                            const res = await api.get(`/projects/${projectId}/plans/${plan.id}`)
+                            setEditingPlan(res.data)
+                            setCasePickerOpen(true)
+                          } catch { message.error('加载计划详情失败') }
+                        }}>修改用例</Button>
+                    )}
+                    {plan.status === 'draft' && (
+                      <Button type="text" size="small" style={{ fontSize: 12, color: '#1890ff' }}
+                        onClick={e => handleQuickExecute(e, plan.id)}>执行</Button>
+                    )}
+                    {(plan.status === 'completed' || plan.status === 'paused') && (
+                      <Button type="text" size="small" style={{ fontSize: 12, color: '#1890ff' }}
+                        onClick={e => {
+                          e.stopPropagation()
+                          Modal.confirm({
+                            title: '确认重新执行',
+                            content: `确定重新执行计划「${plan.name}」？将产生一条新的执行记录。`,
+                            okText: '确认执行',
+                            cancelText: '取消',
+                            onOk: () => handleQuickExecute({ stopPropagation: () => {} }, plan.id),
+                          })
+                        }}>重新执行</Button>
+                    )}
+                    {plan.status !== 'executing' && (
+                      <Button type="text" size="small" danger style={{ fontSize: 12 }}
+                        onClick={e => handleQuickDelete(e, plan.id, plan.name)}>删除</Button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Pagination */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 2px', flexShrink: 0 }}>
+          <span style={{ fontSize: 12, color: '#86909c' }}>共 {total} 条</span>
+          <Pagination current={page} total={total} pageSize={pageSize} size="small"
+            showSizeChanger showQuickJumper
+            pageSizeOptions={[10, 20, 50, 100]}
+            onChange={(p, ps) => { if (ps !== pageSize) { setPageSize(ps); setPage(1) } else { setPage(p) } }} />
+        </div>
         </>
       }
 
@@ -268,7 +308,7 @@ export default function PlanList() {
           <Form.Item name="caseIds" label="选择用例" rules={[{ required: true, message: '请至少选择 1 条用例' }]}>
             <div>
               <Space>
-                <Button onClick={() => { setPickerSelected(form.getFieldValue('caseIds') || []); setCasePickerOpen(true) }} disabled={!selectedBranch}>
+                <Button onClick={() => setCasePickerOpen(true)} disabled={!selectedBranch}>
                   {selectedBranch ? '选择用例' : '请先选择分支'}
                 </Button>
                 <span style={{ fontSize: 13, color: '#86909c' }}>
@@ -302,27 +342,27 @@ export default function PlanList() {
         </Form>
       </Modal>
 
-      <Modal title="选择用例" open={casePickerOpen} width={800}
-        onOk={() => { form.setFieldsValue({ caseIds: pickerSelected }); setCasePickerOpen(false) }} onCancel={() => setCasePickerOpen(false)}
-        okText="确定" cancelText="取消">
-        <Input placeholder="搜索用例编号或标题" value={caseSearch} onChange={e => setCaseSearch(e.target.value)}
-          allowClear style={{ marginBottom: 12 }} prefix={<SearchOutlined style={{ color: '#c2c6cf' }} />} />
-        <Table size="small" rowKey="id" pagination={{ pageSize: 10, size: 'small', showTotal: t => `共 ${t} 条` }}
-          rowSelection={{
-            selectedRowKeys: pickerSelected,
-            onChange: keys => setPickerSelected(keys),
-          }}
-          dataSource={cases.filter(c =>
-            !caseSearch || (c.caseCode + ' ' + c.title).toLowerCase().includes(caseSearch.toLowerCase())
-          )}
-          columns={[
-            { title: '编号', dataIndex: 'caseCode', width: 120, render: v => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v}</span> },
-            { title: '标题', dataIndex: 'title', ellipsis: true },
-            { title: '优先级', dataIndex: 'priority', width: 70, align: 'center', render: v => <Tag>{v}</Tag> },
-            { title: '类型', dataIndex: 'type', width: 60, align: 'center', render: v => v?.toUpperCase() },
-          ]}
-        />
-      </Modal>
+      <CasePicker
+        open={casePickerOpen}
+        projectId={projectId}
+        selectedIds={editingPlan ? (editingPlan.caseIds || []) : (form.getFieldValue('caseIds') || [])}
+        onOk={async (ids) => {
+          if (editingPlan) {
+            try {
+              await api.put(`/projects/${projectId}/plans/${editingPlan.id}`, { caseIds: ids })
+              message.success('用例已更新')
+              fetchPlans()
+            } catch (err) {
+              message.error(err?.response?.data?.error?.message || err?.message || '保存失败')
+            }
+          } else {
+            form.setFieldsValue({ caseIds: ids })
+          }
+          setCasePickerOpen(false)
+          setEditingPlan(null)
+        }}
+        onCancel={() => { setCasePickerOpen(false); setEditingPlan(null) }}
+      />
     </div>
   )
 }

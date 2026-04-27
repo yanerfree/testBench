@@ -57,7 +57,7 @@ async def update_branch(
     _: User = Depends(require_project_role("project_admin")),
 ):
     """更新分支配置（name 不可改）"""
-    branch = await branch_service.update_branch(session, branch_id, body)
+    branch = await branch_service.update_branch(session, branch_id, body, project_id)
     return {
         "data": BranchResponse.model_validate(branch, from_attributes=True).model_dump(by_alias=True)
     }
@@ -71,7 +71,7 @@ async def archive_branch(
     _: User = Depends(require_project_role("project_admin")),
 ):
     """归档分支配置"""
-    branch = await branch_service.archive_branch(session, branch_id)
+    branch = await branch_service.archive_branch(session, branch_id, project_id)
     return {
         "data": BranchResponse.model_validate(branch, from_attributes=True).model_dump(by_alias=True)
     }
@@ -85,7 +85,7 @@ async def activate_branch(
     _: User = Depends(require_project_role("project_admin")),
 ):
     """恢复已归档的分支配置"""
-    branch = await branch_service.activate_branch(session, branch_id)
+    branch = await branch_service.activate_branch(session, branch_id, project_id)
     return {
         "data": BranchResponse.model_validate(branch, from_attributes=True).model_dump(by_alias=True)
     }

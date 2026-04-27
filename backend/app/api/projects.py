@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_201_CREATED
 
+from app.core.audit import write_audit_log
 from app.deps.auth import get_current_user, require_project_role, require_role
 from app.deps.db import get_db
 from app.models.user import User
@@ -27,8 +28,8 @@ async def create_project(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """创建项目（所有登录用户）"""
     project = await project_service.create_project(session, body, current_user)
+    await write_audit_log(session, action="create", target_type="project", target_id=project.id, target_name=project.name)
     return {
         "data": ProjectResponse.model_validate(project, from_attributes=True).model_dump(by_alias=True)
     }
@@ -39,7 +40,6 @@ async def list_projects(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """项目列表（admin 全部，普通用户仅看绑定的）"""
     projects = await project_service.list_projects(session, current_user)
     return {
         "data": [
@@ -56,8 +56,8 @@ async def update_project(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_role("admin")),
 ):
-    """更新项目（仅 admin）"""
     project = await project_service.update_project(session, project_id, body)
+    await write_audit_log(session, action="update", target_type="project", target_id=project.id, target_name=project.name)
     return {
         "data": ProjectResponse.model_validate(project, from_attributes=True).model_dump(by_alias=True)
     }
@@ -69,8 +69,9 @@ async def delete_project(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_role("admin")),
 ):
-    """删除项目（仅 admin）"""
+    project = await project_service.get_project(session, project_id)
     await project_service.delete_project(session, project_id)
+    await write_audit_log(session, action="delete", target_type="project", target_id=project_id, target_name=project.name)
     return MessageResponse(message="删除成功").model_dump()
 
 
@@ -83,7 +84,6 @@ async def list_members(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
 ):
-    """查看项目成员列表（项目成员均可查看）"""
     members = await member_service.list_members(session, project_id)
     return {
         "data": [
@@ -99,8 +99,9 @@ async def add_member(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin")),
 ):
-    """添加项目成员（project_admin 或系统 admin）"""
     member = await member_service.add_member(session, project_id, body)
+    await write_audit_log(session, action="add_member", target_type="project", target_id=project_id,
+                          target_name=member.get("username"), changes={"role": body.role})
     return {"data": MemberResponse(**member).model_dump(by_alias=True)}
 
 
@@ -112,8 +113,9 @@ async def update_member_role(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin")),
 ):
-    """修改成员角色（project_admin 或系统 admin）"""
     member = await member_service.update_member_role(session, project_id, user_id, body)
+    await write_audit_log(session, action="update_member", target_type="project", target_id=project_id,
+                          target_name=member.get("username"), changes={"role": body.role})
     return {"data": MemberResponse(**member).model_dump(by_alias=True)}
 
 
@@ -124,6 +126,7 @@ async def remove_member(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin")),
 ):
-    """移除项目成员（project_admin 或系统 admin）"""
     await member_service.remove_member(session, project_id, user_id)
+    await write_audit_log(session, action="remove_member", target_type="project", target_id=project_id,
+                          target_name=str(user_id))
     return MessageResponse(message="移除成功").model_dump()

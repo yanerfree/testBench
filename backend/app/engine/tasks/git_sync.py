@@ -80,18 +80,22 @@ async def run_git_sync_inline(task_id: str, branch_id: str, project_id: str) -> 
             branch.last_commit_sha = sync_result["commit_sha"]
             branch.last_sync_at = datetime.now(timezone.utc)
 
-            # 4. 读取 tea-cases.json 并导入用例
+            # 4. 读取 tea-cases.json 并导入用例；无 JSON 时扫描脚本目录
             import_summary = None
-            json_file = Path(project.script_base_path) / branch.name / branch.json_file_path
+            import_source = None
+            repo_dir = Path(project.script_base_path) / branch.name
+            json_file = repo_dir / branch.json_file_path
             if json_file.exists():
-                await set_task_status(task_id, "running", message="正在导入用例...")
+                import_source = "json"
+                await set_task_status(task_id, "running", message="正在从 tea-cases.json 导入用例...")
                 try:
                     raw = await anyio.to_thread.run_sync(lambda: json_file.read_text(encoding="utf-8"))
                     data = json.loads(raw)
                     cases_list = data.get("cases", [])
+                    cases_list = [c for c in cases_list if c.get("type") in ("api", "e2e")]
                     if cases_list:
                         import_summary = await import_service.import_cases(session, branch.id, cases_list)
-                        logger.info("Import completed: %s", import_summary)
+                        logger.info("Import from JSON completed: %s", import_summary)
                 except json.JSONDecodeError as e:
                     logger.warning("Failed to parse %s: %s", json_file, e)
                     import_summary = {"error": f"JSON 解析失败: {e}"}
@@ -99,7 +103,19 @@ async def run_git_sync_inline(task_id: str, branch_id: str, project_id: str) -> 
                     logger.warning("Failed to import cases from %s: %s", json_file, e)
                     import_summary = {"error": str(e)}
             else:
-                logger.info("No %s found at %s, skipping import", branch.json_file_path, json_file)
+                import_source = "scan"
+                await set_task_status(task_id, "running", message="未找到 tea-cases.json，正在扫描测试脚本...")
+                try:
+                    from app.services.script_scanner import scan_test_scripts
+                    cases_list = await anyio.to_thread.run_sync(lambda: scan_test_scripts(repo_dir))
+                    if cases_list:
+                        import_summary = await import_service.import_cases(session, branch.id, cases_list)
+                        logger.info("Import from scan completed: %s", import_summary)
+                    else:
+                        logger.info("No test scripts found in %s", repo_dir)
+                except Exception as e:
+                    logger.warning("Failed to scan test scripts in %s: %s", repo_dir, e)
+                    import_summary = {"error": str(e)}
 
             await session.commit()
 
@@ -109,12 +125,14 @@ async def run_git_sync_inline(task_id: str, branch_id: str, project_id: str) -> 
                 "firstTime": sync_result["first_time"],
                 "diff": sync_result["diff"],
                 "import": import_summary,
+                "importSource": import_source,
             }
             msg = "同步完成"
             if import_summary and not import_summary.get("error"):
-                msg += f"，导入 {import_summary.get('new', 0)} 新增 / {import_summary.get('updated', 0)} 更新"
-            elif not json_file.exists():
-                msg += f"（未找到 {branch.json_file_path}，跳过用例导入）"
+                source_label = "JSON" if import_source == "json" else "脚本扫描"
+                msg += f"（{source_label}），导入 {import_summary.get('new', 0)} 新增 / {import_summary.get('updated', 0)} 更新"
+            elif import_source == "scan" and not import_summary:
+                msg += "（未扫描到测试用例）"
 
             await set_task_status(task_id, "completed", message=msg, result=result_data)
             from app.core.audit import write_audit_log

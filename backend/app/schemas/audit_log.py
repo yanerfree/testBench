@@ -13,6 +13,7 @@ class AuditLogResponse(BaseSchema):
     user_id: uuid.UUID | None
     username: str | None
     project_id: uuid.UUID | None
+    project_name: str | None = None
     action: str
     target_type: str
     target_id: uuid.UUID | None

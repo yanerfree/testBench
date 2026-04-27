@@ -14,12 +14,22 @@ STATUS_LABELS = {"passed": "通过", "failed": "失败", "error": "错误", "ski
 STATUS_COLORS = {"passed": "6ECF96", "failed": "F08A8E", "error": "F5B87A", "skipped": "BFC4CD", "pending": "A78BFA"}
 
 
-async def export_excel(session: AsyncSession, plan_id: uuid.UUID) -> io.BytesIO | None:
+async def export_excel(
+    session: AsyncSession,
+    plan_id: uuid.UUID | None = None,
+    report_id: uuid.UUID | None = None,
+) -> io.BytesIO | None:
     """生成 Excel 报告，返回 BytesIO 文件流。"""
-    # 获取报告
-    result = await session.execute(
-        select(TestReport).where(TestReport.plan_id == plan_id).order_by(TestReport.created_at.desc())
-    )
+    if report_id:
+        result = await session.execute(
+            select(TestReport).where(TestReport.id == report_id)
+        )
+    elif plan_id:
+        result = await session.execute(
+            select(TestReport).where(TestReport.plan_id == plan_id).order_by(TestReport.created_at.desc())
+        )
+    else:
+        return None
     report = result.scalars().first()
     if report is None:
         return None

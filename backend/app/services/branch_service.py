@@ -42,20 +42,22 @@ async def create_branch(
     return branch
 
 
-async def _get_branch(session: AsyncSession, branch_id: uuid.UUID) -> Branch:
-    """根据 ID 获取分支，不存在抛 404。"""
+async def _get_branch(session: AsyncSession, branch_id: uuid.UUID, project_id: uuid.UUID = None) -> Branch:
+    """根据 ID 获取分支，不存在抛 404。可选校验 project_id 归属。"""
     result = await session.execute(select(Branch).where(Branch.id == branch_id))
     branch = result.scalar_one_or_none()
     if branch is None:
         raise NotFoundError(code="BRANCH_NOT_FOUND", message="分支配置不存在")
+    if project_id and branch.project_id != project_id:
+        raise NotFoundError(code="BRANCH_NOT_FOUND", message="分支不属于该项目")
     return branch
 
 
 async def update_branch(
-    session: AsyncSession, branch_id: uuid.UUID, data: UpdateBranchRequest
+    session: AsyncSession, branch_id: uuid.UUID, data: UpdateBranchRequest, project_id: uuid.UUID = None
 ) -> Branch:
     """更新分支配置（name 不可改）。"""
-    branch = await _get_branch(session, branch_id)
+    branch = await _get_branch(session, branch_id, project_id)
     if data.description is not None:
         branch.description = data.description
     if data.branch is not None:
@@ -77,9 +79,9 @@ async def _count_active_branches(session: AsyncSession, project_id: uuid.UUID) -
 
 
 @audit_log(action="archive", target_type="branch")
-async def archive_branch(session: AsyncSession, branch_id: uuid.UUID) -> Branch:
+async def archive_branch(session: AsyncSession, branch_id: uuid.UUID, project_id: uuid.UUID = None) -> Branch:
     """归档分支配置。最后一个活跃分支不可归档。"""
-    branch = await _get_branch(session, branch_id)
+    branch = await _get_branch(session, branch_id, project_id)
     if branch.status == "archived":
         raise ValidationError(code="ALREADY_ARCHIVED", message="分支已处于归档状态")
     count = await _count_active_branches(session, branch.project_id)
@@ -92,9 +94,9 @@ async def archive_branch(session: AsyncSession, branch_id: uuid.UUID) -> Branch:
 
 
 @audit_log(action="activate", target_type="branch")
-async def activate_branch(session: AsyncSession, branch_id: uuid.UUID) -> Branch:
+async def activate_branch(session: AsyncSession, branch_id: uuid.UUID, project_id: uuid.UUID = None) -> Branch:
     """恢复已归档的分支配置。"""
-    branch = await _get_branch(session, branch_id)
+    branch = await _get_branch(session, branch_id, project_id)
     if branch.status == "active":
         raise ValidationError(code="ALREADY_ACTIVE", message="分支已处于活跃状态")
     branch.status = "active"

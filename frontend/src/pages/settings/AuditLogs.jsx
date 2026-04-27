@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Table, Tag, Input, Select, DatePicker, Space, message } from 'antd'
+import { Table, Tag, Input, Select, DatePicker, Space, message, Drawer } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 import { useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
@@ -7,14 +7,14 @@ import { api } from '../../utils/request'
 const { RangePicker } = DatePicker
 
 const ACTION_CONFIG = {
-  create: { label: '创建', color: '#6ecf96', bg: '#eefbf3' },
-  update: { label: '修改', color: '#6b7ef5', bg: '#eef0fe' },
-  delete: { label: '删除', color: '#f08a8e', bg: '#fef0f1' },
-  execute: { label: '执行', color: '#f5b87a', bg: '#fef5eb' },
-  import: { label: '导入', color: '#7ec2f7', bg: '#eef6fe' },
-  archive: { label: '归档', color: '#bfc4cd', bg: '#f5f5f7' },
-  login: { label: '登录', color: '#b89aed', bg: '#f5f0fe' },
-  sync: { label: '同步', color: '#7ec2f7', bg: '#eef6fe' },
+  create: { label: '创建', color: '#00b96b', bg: '#e6f7ff' },
+  update: { label: '修改', color: '#00b96b', bg: '#e6f7ff' },
+  delete: { label: '删除', color: '#ff4d4f', bg: '#fff2f0' },
+  execute: { label: '执行', color: '#faad14', bg: '#fffbe6' },
+  import: { label: '导入', color: '#1890ff', bg: '#e6f7ff' },
+  archive: { label: '归档', color: '#c9cdd4', bg: '#f2f3f5' },
+  login: { label: '登录', color: '#722ed1', bg: '#f9f0ff' },
+  sync: { label: '同步', color: '#1890ff', bg: '#e6f7ff' },
 }
 
 const TARGET_TYPES = ['user', 'project', 'branch', 'case', 'plan', 'environment', 'channel']
@@ -34,6 +34,7 @@ export default function AuditLogs() {
   const [actionFilter, setActionFilter] = useState(null)
   const [targetFilter, setTargetFilter] = useState(null)
   const [dateRange, setDateRange] = useState(null)
+  const [detailLog, setDetailLog] = useState(null)
 
   const fetchLogs = useCallback(async () => {
     setLoading(true)
@@ -69,7 +70,7 @@ export default function AuditLogs() {
   const columns = [
     {
       title: '时间', dataIndex: 'createdAt', width: 170,
-      render: v => <span style={{ fontSize: 13, color: '#8c919e', fontFamily: 'monospace' }}>
+      render: v => <span style={{ fontSize: 13, color: '#86909c', fontFamily: 'monospace' }}>
         {v ? new Date(v).toLocaleString('zh-CN', { hour12: false }) : '-'}
       </span>,
     },
@@ -80,41 +81,54 @@ export default function AuditLogs() {
     {
       title: '操作', dataIndex: 'action', width: 80, align: 'center',
       render: v => {
-        const cfg = ACTION_CONFIG[v] || { label: v, color: '#86909c', bg: '#f5f5f7' }
+        const cfg = ACTION_CONFIG[v] || { label: v, color: '#86909c', bg: '#f2f3f5' }
         return <Tag style={{ color: cfg.color, background: cfg.bg, border: 'none' }}>{cfg.label}</Tag>
       },
     },
+    ...(!projectId ? [{
+      title: '所属项目', dataIndex: 'projectName', width: 120,
+      render: v => v ? <span style={{ fontSize: 13, color: '#4e5969' }}>{v}</span> : <span style={{ color: '#c9cdd4' }}>-</span>,
+    }] : []),
     {
       title: '对象类型', dataIndex: 'targetType', width: 90, align: 'center',
-      render: v => <Tag style={{ color: '#555a65', background: '#f5f5f7', border: 'none' }}>
+      render: v => <Tag style={{ color: '#4e5969', background: '#f2f3f5', border: 'none' }}>
         {TARGET_TYPE_LABELS[v] || v}
       </Tag>,
     },
     {
       title: '对象名称', dataIndex: 'targetName', width: 200,
-      render: v => <span style={{ fontSize: 13, color: '#555a65' }}>{v || '-'}</span>,
+      render: v => <span style={{ fontSize: 13, color: '#4e5969' }}>{v || '-'}</span>,
     },
     {
       title: '变更摘要', dataIndex: 'changes',
-      render: v => <span style={{ fontSize: 13, color: '#86909c' }}>
-        {v ? JSON.stringify(v).substring(0, 60) : '-'}
-      </span>,
+      render: v => {
+        if (!v) return <span style={{ color: '#c9cdd4' }}>-</span>
+        const text = typeof v === 'string' ? v : JSON.stringify(v)
+        return <span style={{ fontSize: 12, color: '#86909c', cursor: 'default' }}
+          title={text}>{text.length > 80 ? text.substring(0, 80) + '...' : text}</span>
+      },
+    },
+    {
+      title: '操作', width: 60, align: 'center',
+      render: (_, record) => (
+        <a style={{ fontSize: 12, color: '#1890ff' }} onClick={() => setDetailLog(record)}>详情</a>
+      ),
     },
   ]
 
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#2e3138' }}>{projectId ? '项目操作日志' : '操作日志'}</h2>
-        <span style={{ fontSize: 13, color: '#8c919e' }}>{projectId ? '记录本项目内的操作行为' : '记录所有用户操作行为，默认展示最近 7 天'}</span>
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#1d2129' }}>{projectId ? '项目操作日志' : '操作日志'}</h2>
+        <span style={{ fontSize: 13, color: '#86909c' }}>{projectId ? '记录本项目内的操作行为' : '记录所有用户操作行为，默认展示最近 7 天'}</span>
       </div>
 
       <div style={{
         display: 'flex', gap: 10, marginBottom: 12, padding: '12px 16px',
-        background: '#fff', borderRadius: 10, border: '1px solid #f0f0f3',
+        background: '#fff', borderRadius: 10, border: '1px solid #f2f3f5',
       }}>
         <Input
-          prefix={<SearchOutlined style={{ color: '#bfc4cd' }} />}
+          prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />}
           placeholder="搜索对象名称..."
           value={keyword}
           onChange={e => setKeyword(e.target.value)}
@@ -145,7 +159,7 @@ export default function AuditLogs() {
         />
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #f0f0f3', padding: 2 }}>
+      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #f2f3f5', padding: 2 }}>
         <Table
           dataSource={logs}
           columns={columns}
@@ -164,6 +178,70 @@ export default function AuditLogs() {
           }}
         />
       </div>
+
+      <Drawer
+        title="操作日志详情"
+        open={!!detailLog}
+        onClose={() => setDetailLog(null)}
+        width={520}
+      >
+        {detailLog && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', gap: 24 }}>
+              <div>
+                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4 }}>操作时间</div>
+                <div style={{ fontSize: 13 }}>{detailLog.createdAt ? new Date(detailLog.createdAt).toLocaleString('zh-CN', { hour12: false }) : '-'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4 }}>操作人</div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{detailLog.username || '-'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4 }}>操作类型</div>
+                <Tag style={{ color: (ACTION_CONFIG[detailLog.action] || {}).color || '#86909c', background: (ACTION_CONFIG[detailLog.action] || {}).bg || '#f2f3f5', border: 'none' }}>
+                  {(ACTION_CONFIG[detailLog.action] || {}).label || detailLog.action}
+                </Tag>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 24 }}>
+              <div>
+                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4 }}>对象类型</div>
+                <div style={{ fontSize: 13 }}>{TARGET_TYPE_LABELS[detailLog.targetType] || detailLog.targetType || '-'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4 }}>对象名称</div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{detailLog.targetName || '-'}</div>
+              </div>
+              {detailLog.projectName && (
+                <div>
+                  <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4 }}>所属项目</div>
+                  <div style={{ fontSize: 13 }}>{detailLog.projectName}</div>
+                </div>
+              )}
+            </div>
+            {detailLog.changes && (
+              <div>
+                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 6 }}>变更摘要</div>
+                <pre style={{
+                  margin: 0, padding: '12px 14px', background: '#fafafa', borderRadius: 6,
+                  fontSize: 12, lineHeight: 1.8, overflow: 'auto', maxHeight: 400,
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                  fontFamily: "Menlo, Monaco, 'Courier New', monospace",
+                  border: '1px solid #f2f3f5',
+                }}>
+                  {typeof detailLog.changes === 'string' ? detailLog.changes : JSON.stringify(detailLog.changes, null, 2)}
+                </pre>
+              </div>
+            )}
+            {detailLog.traceId && (
+              <div>
+                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4 }}>Trace ID</div>
+                <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#86909c' }}>{detailLog.traceId}</div>
+              </div>
+            )}
+          </div>
+        )}
+      </Drawer>
     </div>
   )
 }

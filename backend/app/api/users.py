@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_201_CREATED
 
+from app.core.audit import write_audit_log
 from app.deps.auth import require_role
 from app.deps.db import get_db
 from app.models.user import User
@@ -19,7 +20,6 @@ async def list_users(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_role("admin")),
 ):
-    """获取所有用户列表（仅 admin）"""
     users = await user_service.list_users(session)
     return {
         "data": [
@@ -35,8 +35,8 @@ async def create_user(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_role("admin")),
 ):
-    """创建用户（仅 admin）"""
     user = await user_service.create_user(session, body)
+    await write_audit_log(session, action="create", target_type="user", target_id=user.id, target_name=user.username)
     return {
         "data": UserResponse.model_validate(user, from_attributes=True).model_dump(by_alias=True)
     }
@@ -49,8 +49,8 @@ async def update_user(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_role("admin")),
 ):
-    """更新用户角色或激活状态（仅 admin）"""
     user = await user_service.update_user(session, user_id, body)
+    await write_audit_log(session, action="update", target_type="user", target_id=user.id, target_name=user.username)
     return {
         "data": UserResponse.model_validate(user, from_attributes=True).model_dump(by_alias=True)
     }
@@ -62,6 +62,7 @@ async def delete_user(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_role("admin")),
 ):
-    """删除用户（仅 admin）"""
+    user = await user_service.get_user(session, user_id)
     await user_service.delete_user(session, user_id)
+    await write_audit_log(session, action="delete", target_type="user", target_id=user_id, target_name=user.username)
     return MessageResponse(message="删除成功").model_dump()

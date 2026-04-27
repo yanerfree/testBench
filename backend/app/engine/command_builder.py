@@ -7,6 +7,7 @@ def build_pytest_command(
     script_ref_file: str,
     script_ref_func: str | None = None,
     junit_xml_path: str | None = None,
+    capture_plugin: bool = False,
 ) -> list[str]:
     """
     构建 pytest 命令。
@@ -21,6 +22,9 @@ def build_pytest_command(
 
     if junit_xml_path:
         cmd.append(f"--junit-xml={junit_xml_path}")
+
+    if capture_plugin:
+        cmd.extend(["-p", "tea_capture"])
 
     return cmd
 

@@ -10,11 +10,12 @@ import {
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 
-const priorityColors = { P0: '#f08a8e', P1: '#f5b87a', P2: '#7c8cf8', P3: '#a8adb6' }
-const priorityBg = { P0: '#fef0f1', P1: '#fef5eb', P2: '#f0f1fe', P3: '#f5f5f7' }
-const statusColors = { automated: '#6ecf96', pending: '#f5b87a', removed: '#f08a8e' }
-const statusBg = { automated: '#eefbf3', pending: '#fef5eb', removed: '#fef0f1' }
+const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
+const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' }
+const statusColors = { automated: '#00b96b', pending: '#faad14', removed: '#ff4d4f' }
+const statusBg = { automated: '#f6ffed', pending: '#fffbe6', removed: '#fff2f0' }
 const statusLabels = { automated: '已自动化', pending: '待自动化', removed: '脚本已移除' }
+const dotColors = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9', automated: '#00b96b', pending: '#faad14', removed: '#ff4d4f' }
 
 function InlineProp({ icon, value, color, bg, children }) {
   const [open, setOpen] = useState(false)
@@ -59,11 +60,11 @@ function DropdownList({ items, activeKey, onSelect }) {
         <div key={item.key} onClick={() => onSelect(item.key)} style={{
           padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 13,
           display: 'flex', alignItems: 'center', gap: 8,
-          background: activeKey === item.key ? '#f0f7ff' : 'transparent',
+          background: activeKey === item.key ? '#e6f7ff' : 'transparent',
           fontWeight: activeKey === item.key ? 600 : 400,
         }}
           onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
-          onMouseLeave={e => e.currentTarget.style.background = activeKey === item.key ? '#f0f7ff' : 'transparent'}>
+          onMouseLeave={e => e.currentTarget.style.background = activeKey === item.key ? '#e6f7ff' : 'transparent'}>
           {item.dot && <span style={{ width: 8, height: 8, borderRadius: item.dot === 'circle' ? '50%' : 2, background: item.color, flexShrink: 0 }} />}
           {item.icon && <span>{item.icon}</span>}
           {item.label}
@@ -116,6 +117,8 @@ export default function CaseDetail() {
   const [remark, setRemark] = useState('')
   const [steps, setSteps] = useState([{ seq: 1, action: '' }])
 
+  const savedRef = useRef('')
+
   useEffect(() => {
     if (branchId) loadData()
   }, [projectId, branchId, caseId])
@@ -136,29 +139,44 @@ export default function CaseDetail() {
 
       const c = caseRes.data
       setCaseData(c)
-      setTitle(c.title || '')
-      setType(c.type || 'api')
-      setPriority(c.priority || 'P1')
 
+      const newTitle = c.title || ''
+      const newType = c.type || 'api'
+      const newPriority = c.priority || 'P1'
       const allFolders = folderRes.data || []
       setFolders(allFolders)
       const folderPath = c.folderId ? findFolderPath(allFolders, c.folderId) : ''
+      let newModule = c.module || ''
+      let newSubModule = c.subModule || ''
       if (folderPath) {
         const parts = folderPath.split('/')
-        setModule(parts.slice(0, -1).join('/') || parts[0] || '')
-        setSubModule(parts.length > 1 ? parts[parts.length - 1] : '')
-      } else {
-        setModule(c.module || '')
-        setSubModule(c.subModule || '')
+        newModule = parts.slice(0, -1).join('/') || parts[0] || ''
+        newSubModule = parts.length > 1 ? parts[parts.length - 1] : ''
       }
-      setAutomationStatus(c.automationStatus || 'pending')
-      setFlaky(c.isFlaky || false)
-      setPreconditions(c.preconditions || '')
-      setExpectedResult(c.expectedResult || '')
-      setScriptRefFile(c.scriptRefFile || '')
-      setScriptRefFunc(c.scriptRefFunc || '')
-      setRemark(c.remark || '')
-      setSteps(c.steps?.length ? c.steps.map((s, i) => ({ ...s, seq: s.seq || i + 1 })) : [{ seq: 1, action: '' }])
+      const newAutomationStatus = c.automationStatus || 'pending'
+      const newFlaky = c.isFlaky || false
+      const newPreconditions = c.preconditions || ''
+      const newExpectedResult = c.expectedResult || ''
+      const newScriptRefFile = c.scriptRefFile || ''
+      const newScriptRefFunc = c.scriptRefFunc || ''
+      const newRemark = c.remark || ''
+      const newSteps = c.steps?.length ? c.steps.map((s, i) => ({ ...s, seq: s.seq || i + 1 })) : [{ seq: 1, action: '' }]
+
+      setTitle(newTitle)
+      setType(newType)
+      setPriority(newPriority)
+      setModule(newModule)
+      setSubModule(newSubModule)
+      setAutomationStatus(newAutomationStatus)
+      setFlaky(newFlaky)
+      setPreconditions(newPreconditions)
+      setExpectedResult(newExpectedResult)
+      setScriptRefFile(newScriptRefFile)
+      setScriptRefFunc(newScriptRefFunc)
+      setRemark(newRemark)
+      setSteps(newSteps)
+
+      savedRef.current = JSON.stringify({ title: newTitle, type: newType, priority: newPriority, module: newModule, subModule: newSubModule, automationStatus: newAutomationStatus, flaky: newFlaky, preconditions: newPreconditions, expectedResult: newExpectedResult, scriptRefFile: newScriptRefFile, scriptRefFunc: newScriptRefFunc, remark: newRemark, steps: newSteps })
 
       setEnvironments(envRes.data || [])
       if (envRes.data?.length) setRunEnv(envRes.data[0].id)
@@ -168,11 +186,6 @@ export default function CaseDetail() {
       setLoading(false)
     }
   }
-
-  const savedRef = useRef('')
-  useEffect(() => {
-    if (caseData) savedRef.current = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps })
-  }, [caseData])
 
   const currentSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps })
   const isDirty = caseData && currentSnap !== savedRef.current
@@ -230,7 +243,7 @@ export default function CaseDetail() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
         <Button type="text" icon={<ArrowLeftOutlined />} size="small"
           onClick={handleBack} style={{ color: '#86909c' }} />
-        <span style={{ fontSize: 12, color: '#c0c4cc' }}>用例管理</span>
+        <span style={{ fontSize: 12, color: '#c9cdd4' }}>用例管理</span>
         <span style={{ color: '#e5e6eb', fontSize: 12 }}>/</span>
         <span style={{ fontSize: 12, color: '#86909c', fontFamily: 'monospace' }}>{caseCode}</span>
       </div>
@@ -253,10 +266,10 @@ export default function CaseDetail() {
 
           <InlineProp icon={<FlagOutlined />} value={priority} color={priorityColors[priority]} bg={priorityBg[priority]}>
             <DropdownList activeKey={priority} onSelect={setPriority}
-              items={['P0','P1','P2','P3'].map(p => ({ key: p, label: p, dot: 'square', color: priorityColors[p] }))} />
+              items={['P0','P1','P2','P3'].map(p => ({ key: p, label: p, dot: 'square', color: dotColors[p] }))} />
           </InlineProp>
 
-          <InlineProp icon={<ApiOutlined />} value={type?.toUpperCase()} color={type==='api'?'#7c8cf8':'#6ecf96'} bg={type==='api'?'#e6f4ff':'#f6ffed'}>
+          <InlineProp icon={<ApiOutlined />} value={type?.toUpperCase()} color={type==='api'?'#1890ff':'#00b96b'} bg={type==='api'?'#e6f7ff':'#f6ffed'}>
             <DropdownList activeKey={type} onSelect={setType}
               items={['api','e2e'].map(t => ({ key: t, label: t.toUpperCase() }))} />
           </InlineProp>
@@ -266,10 +279,10 @@ export default function CaseDetail() {
           <InlineProp icon={<ThunderboltOutlined />} value={statusLabels[automationStatus] || automationStatus}
             color={statusColors[automationStatus]} bg={statusBg[automationStatus]}>
             <DropdownList activeKey={automationStatus} onSelect={setAutomationStatus}
-              items={['automated','pending','removed'].map(s => ({ key: s, label: statusLabels[s], dot: 'circle', color: statusColors[s] }))} />
+              items={['automated','pending','removed'].map(s => ({ key: s, label: statusLabels[s], dot: 'circle', color: dotColors[s] }))} />
           </InlineProp>
 
-          <InlineProp icon={<WarningOutlined />} value={flaky ? 'Flaky' : '正常'} color={flaky ? '#f5b87a' : '#86909c'} bg={flaky ? '#fff7e6' : '#f7f8fa'}>
+          <InlineProp icon={<WarningOutlined />} value={flaky ? 'Flaky' : '正常'} color={flaky ? '#faad14' : '#86909c'} bg={flaky ? '#fffbe6' : '#f7f8fa'}>
             <div style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ fontSize: 13 }}>Flaky 标记</span>
               <Switch size="small" checked={flaky} onChange={v => setFlaky(v)} />
@@ -288,7 +301,7 @@ export default function CaseDetail() {
                 <div style={{ marginBottom: 20 }}>
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>前置条件</h4>
                   <Input.TextArea rows={2} value={preconditions} onChange={e => setPreconditions(e.target.value)}
-                    style={{ background: '#fafbfc', borderColor: '#f2f3f5' }}
+                    style={{ background: '#f7f8fa', borderColor: '#f2f3f5' }}
                     autoSize={{ minRows: 2, maxRows: 6 }} />
                 </div>
 
@@ -301,13 +314,13 @@ export default function CaseDetail() {
                     {steps.map((s, i) => (
                       <div key={i} style={{
                         display: 'flex', gap: 10, padding: '8px 14px', fontSize: 13,
-                        background: i % 2 === 0 ? '#fff' : '#fafbfc',
+                        background: i % 2 === 0 ? '#fff' : '#f7f8fa',
                         borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none',
                         alignItems: 'center',
                       }}>
                         <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', flexShrink: 0 }} />
                         <span style={{
-                          width: 24, height: 24, borderRadius: 6, background: '#e6f4ff', color: '#7c8cf8',
+                          width: 24, height: 24, borderRadius: 6, background: '#e6f7ff', color: '#1890ff',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
                         }}>{s.seq}</span>
                         <Input value={s.action} onChange={e => updateStep(i, e.target.value)}
@@ -337,7 +350,7 @@ export default function CaseDetail() {
                 <div style={{ marginBottom: 20 }}>
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>预期结果</h4>
                   <Input.TextArea value={expectedResult} onChange={e => setExpectedResult(e.target.value)}
-                    style={{ background: '#fafbfc', borderColor: '#f2f3f5' }}
+                    style={{ background: '#f7f8fa', borderColor: '#f2f3f5' }}
                     autoSize={{ minRows: 2, maxRows: 6 }} />
                 </div>
 
@@ -345,9 +358,9 @@ export default function CaseDetail() {
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>脚本引用</h4>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <Input value={scriptRefFile} onChange={e => setScriptRefFile(e.target.value)} size="small"
-                      placeholder="脚本文件路径，如 tests/api/test_user.py" style={{ flex: 2, fontFamily: 'monospace', fontSize: 12, background: '#fafbfc', borderColor: '#f2f3f5' }} />
+                      placeholder="脚本文件路径，如 tests/api/test_user.py" style={{ flex: 2, fontFamily: 'monospace', fontSize: 12, background: '#f7f8fa', borderColor: '#f2f3f5' }} />
                     <Input value={scriptRefFunc} onChange={e => setScriptRefFunc(e.target.value)} size="small"
-                      placeholder="函数名，如 test_create_user" style={{ flex: 1, fontFamily: 'monospace', fontSize: 12, background: '#fafbfc', borderColor: '#f2f3f5' }} />
+                      placeholder="函数名，如 test_create_user" style={{ flex: 1, fontFamily: 'monospace', fontSize: 12, background: '#f7f8fa', borderColor: '#f2f3f5' }} />
                   </div>
                 </div>
 
@@ -355,7 +368,7 @@ export default function CaseDetail() {
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>备注</h4>
                   <Input.TextArea value={remark} onChange={e => setRemark(e.target.value)}
                     placeholder="可选备注信息"
-                    style={{ background: '#fafbfc', borderColor: '#f2f3f5' }}
+                    style={{ background: '#f7f8fa', borderColor: '#f2f3f5' }}
                     autoSize={{ minRows: 2, maxRows: 4 }} />
                 </div>
               </Card>
@@ -363,7 +376,7 @@ export default function CaseDetail() {
             { key: 'history', label: '执行历史', children: (
               <Card styles={{ body: { padding: '16px 24px' } }}>
                 <div style={{ color: '#86909c', textAlign: 'center', padding: 24 }}>
-                  执行历史将在执行引擎实现后显示
+                  暂无执行记录
                 </div>
               </Card>
             )},
@@ -402,7 +415,7 @@ export default function CaseDetail() {
 
       <Modal open={runModalOpen} onCancel={() => setRunModalOpen(false)} footer={null} title="执行用例" width={480}>
         <div style={{ padding: '12px 0' }}>
-          <div style={{ padding: '12px 16px', background: '#fafbfc', borderRadius: 10, marginBottom: 20 }}>
+          <div style={{ padding: '12px 16px', background: '#f7f8fa', borderRadius: 10, marginBottom: 20 }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>{title}</div>
             <div style={{ fontSize: 12, color: '#86909c', fontFamily: 'monospace' }}>{caseCode}</div>
           </div>
@@ -412,7 +425,7 @@ export default function CaseDetail() {
               options={environments.map(e => ({ value: e.id, label: e.name }))} />
           </div>
           <div style={{ textAlign: 'center', padding: '16px 0', color: '#86909c' }}>
-            执行功能将在执行引擎（Epic 4）实现后启用
+            单条用例执行请通过测试计划
           </div>
         </div>
       </Modal>
