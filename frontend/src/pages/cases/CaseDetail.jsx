@@ -6,7 +6,7 @@ import {
   CheckCircleFilled, CloseCircleFilled, LoadingOutlined,
   ExperimentOutlined, BugOutlined, PlusOutlined, DeleteOutlined, HolderOutlined,
   ThunderboltOutlined, TagOutlined, AppstoreOutlined, BranchesOutlined, ApiOutlined,
-  FlagOutlined, WarningOutlined,
+  FlagOutlined, WarningOutlined, CodeOutlined, CopyOutlined, FileTextOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 
@@ -119,6 +119,11 @@ export default function CaseDetail() {
   const [variablesUsed, setVariablesUsed] = useState([])
   const [newVarInput, setNewVarInput] = useState('')
 
+  // 脚本查看
+  const [scriptContent, setScriptContent] = useState(null)
+  const [scriptLoading, setScriptLoading] = useState(false)
+  const [scriptError, setScriptError] = useState(null)
+
   const savedRef = useRef('')
 
   useEffect(() => {
@@ -194,6 +199,22 @@ export default function CaseDetail() {
   const currentSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps, variablesUsed })
   const isDirty = caseData && currentSnap !== savedRef.current
 
+  async function loadScript() {
+    if (!branchId || !scriptRefFile) return
+    setScriptLoading(true)
+    setScriptError(null)
+    try {
+      const res = await api.get(`/projects/${projectId}/branches/${branchId}/cases/${caseId}/script`)
+      setScriptContent(res.data)
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.response?.data?.detail || '加载脚本失败'
+      setScriptError(msg)
+      setScriptContent(null)
+    } finally {
+      setScriptLoading(false)
+    }
+  }
+
   // 离开未保存确认
   useEffect(() => {
     const handler = (e) => {
@@ -228,7 +249,7 @@ export default function CaseDetail() {
         isFlaky: flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps, variablesUsed,
       })
       // 重新计算快照确保 isDirty 变为 false
-      const newSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps })
+      const newSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps, variablesUsed })
       savedRef.current = newSnap
       setCaseData(prev => ({ ...prev }))  // 触发重渲染
       message.success('保存成功')
@@ -299,7 +320,7 @@ export default function CaseDetail() {
 
       <div style={{ display: 'flex', gap: 16 }}>
         <div style={{ flex: 1 }}>
-          <Tabs defaultActiveKey="info" items={[
+          <Tabs defaultActiveKey="info" onChange={key => { if (key === 'script' && !scriptContent && !scriptLoading) loadScript() }} items={[
             { key: 'info', label: '用例信息', children: (
               <Card styles={{ body: { padding: '16px 20px' } }}>
                 <div style={{ marginBottom: 20 }}>
@@ -326,6 +347,7 @@ export default function CaseDetail() {
                       <span style={{ width: 64, flexShrink: 0 }}>阶段</span>
                       <span style={{ flex: 2 }}>操作步骤</span>
                       {type === 'api' && <span style={{ flex: 1 }}>接口</span>}
+                      {type === 'e2e' && <span style={{ flex: 1 }}>页面/元素</span>}
                       <span style={{ flex: 1 }}>预期结果</span>
                       <span style={{ width: 32, flexShrink: 0 }}></span>
                     </div>
@@ -366,6 +388,11 @@ export default function CaseDetail() {
                           <Input value={s.apiEndpoint || ''} onChange={e => updateStep(i, 'apiEndpoint', e.target.value)}
                             placeholder="POST /api/users → 201" variant="borderless"
                             style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: '#1890ff' }} />
+                        )}
+                        {type === 'e2e' && (
+                          <Input value={s.uiTarget || ''} onChange={e => updateStep(i, 'uiTarget', e.target.value)}
+                            placeholder="页面URL 或 元素定位" variant="borderless"
+                            style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: '#00b96b' }} />
                         )}
                         <Input value={s.expected || ''} onChange={e => updateStep(i, 'expected', e.target.value)}
                           placeholder="预期结果..." variant="borderless"
@@ -441,6 +468,87 @@ export default function CaseDetail() {
                 <div style={{ color: '#86909c', textAlign: 'center', padding: 24 }}>
                   暂无执行记录
                 </div>
+              </Card>
+            )},
+            { key: 'script', label: <span><CodeOutlined style={{ marginRight: 4 }} />脚本</span>,
+              disabled: !scriptRefFile,
+              children: (
+              <Card styles={{ body: { padding: 0 } }}>
+                {scriptLoading && (
+                  <div style={{ textAlign: 'center', padding: 48 }}>
+                    <Spin tip="加载脚本中..." />
+                  </div>
+                )}
+                {scriptError && (
+                  <div style={{ padding: 24, textAlign: 'center' }}>
+                    <div style={{ color: '#ff4d4f', marginBottom: 12 }}>{scriptError}</div>
+                    <Button size="small" onClick={loadScript}>重试</Button>
+                  </div>
+                )}
+                {scriptContent && !scriptLoading && (
+                  <div>
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '8px 16px', background: '#f7f8fa', borderBottom: '1px solid #f2f3f5',
+                      fontSize: 12,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <FileTextOutlined style={{ color: '#86909c' }} />
+                        <span style={{ fontFamily: 'monospace', color: '#4e5969' }}>{scriptContent.filePath}</span>
+                        {scriptContent.funcName && (
+                          <Tag color="blue" style={{ fontSize: 11, margin: 0 }}>{scriptContent.funcName}</Tag>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Tag style={{ fontSize: 11, margin: 0, fontFamily: 'monospace' }}>
+                          {scriptContent.commitSha?.substring(0, 8)}
+                        </Tag>
+                        <Tooltip title="复制脚本内容">
+                          <Button type="text" size="small" icon={<CopyOutlined />}
+                            onClick={() => {
+                              navigator.clipboard.writeText(scriptContent.content)
+                              message.success('已复制到剪贴板')
+                            }} />
+                        </Tooltip>
+                      </div>
+                    </div>
+                    <div style={{
+                      maxHeight: 600, overflow: 'auto',
+                      background: '#1e1e1e', padding: 0,
+                    }}>
+                      <pre style={{
+                        margin: 0, padding: '12px 0', fontSize: 13, lineHeight: 1.6,
+                        fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+                        color: '#d4d4d4', counterReset: 'line-number',
+                      }}>
+                        {scriptContent.content.split('\n').map((line, i) => {
+                          const funcName = scriptContent.funcName
+                          const isTarget = funcName && (
+                            line.includes(`def ${funcName}`) || line.includes(`async def ${funcName}`)
+                          )
+                          return (
+                            <div key={i} style={{
+                              display: 'flex',
+                              background: isTarget ? 'rgba(255,213,79,0.15)' : 'transparent',
+                              borderLeft: isTarget ? '3px solid #ffd54f' : '3px solid transparent',
+                            }}>
+                              <span style={{
+                                display: 'inline-block', width: 48, textAlign: 'right',
+                                paddingRight: 12, color: '#858585', userSelect: 'none', flexShrink: 0,
+                              }}>{i + 1}</span>
+                              <code style={{ whiteSpace: 'pre', flex: 1, paddingRight: 16 }}>{line}</code>
+                            </div>
+                          )
+                        })}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+                {!scriptContent && !scriptLoading && !scriptError && (
+                  <div style={{ padding: 24, textAlign: 'center', color: '#86909c' }}>
+                    点击此标签页加载脚本内容
+                  </div>
+                )}
               </Card>
             )},
           ]} />

@@ -148,6 +148,7 @@ function EnvironmentPanel() {
           </div>
           <div style={{ fontSize: 12, fontWeight: 600, color: '#86909c', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>环境变量</div>
           <VariableTable variables={envVars} onSave={handleSaveVars} />
+          <CommonVarHint />
         </>) : (
           <div style={{ textAlign: 'center', padding: 80, color: '#c9cdd4' }}>请从左侧选择环境</div>
         )}
@@ -278,4 +279,34 @@ function VariableTable({ variables, onSave }) {
         style={{ fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace", fontSize: 13 }} />
     </Modal>
   </>)
+}
+
+// ============ 常用变量提示 ============
+const COMMON_VARS = [
+  { key: 'BASE_URL', desc: '测试目标地址', example: 'http://localhost:8000', required: true },
+  { key: 'ADMIN_USERNAME', desc: '管理员用户名', example: 'admin' },
+  { key: 'ADMIN_PASSWORD', desc: '管理员密码', example: 'admin123' },
+  { key: 'TEST_PASSWORD', desc: '测试用户默认密码', example: 'Test@123456' },
+  { key: 'DATABASE_URL', desc: '测试数据库连接', example: 'postgresql+asyncpg://...' },
+]
+
+function CommonVarHint() {
+  return (
+    <div style={{ marginTop: 16, padding: '12px 16px', background: '#fafafa', borderRadius: 8, border: '1px solid #f2f3f5' }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: '#86909c', marginBottom: 8 }}>常用变量参考</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {COMMON_VARS.map(v => (
+          <div key={v.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+            <code style={{ background: '#e6f7ff', padding: '1px 6px', borderRadius: 3, color: '#1d2129', fontWeight: 500 }}>{v.key}</code>
+            <span style={{ color: '#86909c' }}>{v.desc}</span>
+            <span style={{ color: '#c9cdd4' }}>如 {v.example}</span>
+            {v.required && <Tag color="orange" style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none' }}>必填</Tag>}
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 11, color: '#c9cdd4', marginTop: 8 }}>
+        设置 BASE_URL 后，脚本通过 HTTP 请求测试目标服务；未设置则走进程内测试模式
+      </div>
+    </div>
+  )
 }

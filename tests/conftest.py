@@ -2,8 +2,8 @@
 Root conftest.py — 共享 fixtures for all test levels.
 
 双模式运行:
-  - 平台模式: 环境变量由平台下发 (BASE_URL, DATABASE_URL 等)，走真实 HTTP 请求到目标环境
-  - 本地模式: 无平台变量，走 ASGI 进程内测试 (httpx ASGITransport)
+  - 平台模式: 环境变量 BASE_URL 存在时，走真实 HTTP 请求到目标环境，不依赖 app 包和本地数据库
+  - 本地模式: 无 BASE_URL，走 ASGI 进程内测试 (httpx ASGITransport)
 
 规则: 平台下发的环境变量优先，没有则用脚本自己的默认值。
 """
@@ -11,26 +11,11 @@ import os
 from collections.abc import AsyncGenerator
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-
-from app.config import settings
-from app.core.security import hash_password, create_access_token
-from app.main import app
-from app.deps.db import get_db
-from app.models.user import User, Base
-from app.models.project import Project, Branch, ProjectMember  # noqa: F401
-from app.models.case import CaseFolder, Case  # noqa: F401
-from app.models.environment import GlobalVariable, Environment, EnvironmentVariable, NotificationChannel  # noqa: F401
-from app.models.plan import Plan, PlanCase  # noqa: F401
-from app.models.report import TestReport, TestReportScenario, TestReportStep  # noqa: F401
+from httpx import AsyncClient
 
 # ── 环境变量: 平台下发 > 脚本默认 ──
 
 PLATFORM_BASE_URL = os.environ.get("BASE_URL", "").strip() or None
-
-_default_test_db = settings.database_url.replace("/testbench", "/testbench_test")
-TEST_DATABASE_URL = os.environ.get("DATABASE_URL", "").strip() or _default_test_db
 
 TEST_PASSWORD = os.environ.get("TEST_PASSWORD", "Test@123456")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
@@ -40,8 +25,16 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 # ── Fixtures ──
 
 @pytest.fixture
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+async def db_session():
+    if PLATFORM_BASE_URL:
+        yield None
+        return
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+    from app.config import settings
+    from app.models.user import Base
+
+    db_url = os.environ.get("DATABASE_URL", "").strip() or settings.database_url.replace("/testbench", "/testbench_test")
+    engine = create_async_engine(db_url, echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -51,9 +44,8 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     finally:
         await session.rollback()
         await session.close()
-    if not PLATFORM_BASE_URL:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
 
 
@@ -63,6 +55,10 @@ async def client(db_session) -> AsyncGenerator[AsyncClient, None]:
         async with AsyncClient(base_url=PLATFORM_BASE_URL, timeout=30) as ac:
             yield ac
     else:
+        from httpx import ASGITransport
+        from app.main import app
+        from app.deps.db import get_db
+
         async def _override_session():
             yield db_session
         app.dependency_overrides[get_db] = _override_session
@@ -103,13 +99,17 @@ async def create_user_via_api(client: AsyncClient, admin_headers: dict,
 # ── 本地模式 Helpers（仅 ASGI 模式下使用，直接操作 DB）──
 
 async def create_test_user(
-    db_session: AsyncSession,
+    db_session,
     username: str = "testuser",
     password: str = None,
     role: str = "user",
     is_active: bool = True,
-) -> User:
-    """直接写 DB 创建用户。仅本地模式使用，平台模式请用 create_user_via_api。"""
+):
+    """直接写 DB 创建用户。仅本地模式使用，平台模式自动跳过。"""
+    if db_session is None:
+        pytest.skip("此用例依赖本地数据库，平台模式下跳过（请用 login_as 替代）")
+    from app.core.security import hash_password
+    from app.models.user import User
     password = password or TEST_PASSWORD
     user = User(
         username=username,
@@ -122,7 +122,10 @@ async def create_test_user(
     return user
 
 
-def make_auth_headers(user: User) -> tuple[dict, str]:
+def make_auth_headers(user) -> tuple[dict, str]:
     """本地签 JWT token。仅本地模式使用，平台模式请用 login_as。"""
+    if user is None:
+        pytest.skip("此用例依赖本地 JWT 签发，平台模式下跳过（请用 login_as 替代）")
+    from app.core.security import create_access_token
     token = create_access_token(user.id, user.role)
     return {"Authorization": f"Bearer {token}"}, token

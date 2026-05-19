@@ -161,6 +161,16 @@ def get_diff_summary(branch_dir: Path, old_sha: str | None, new_sha: str) -> dic
     return {"added": added, "modified": modified, "deleted": deleted}
 
 
+def read_file_content(bare_repo: Path, commit_sha: str, file_path: str) -> str | None:
+    """从 bare repo 读取指定 commit 下的文件内容。文件不存在返回 None。"""
+    try:
+        return _run_git(
+            ["--git-dir", str(bare_repo), "show", f"{commit_sha}:{file_path}"],
+        )
+    except GitError:
+        return None
+
+
 def sync_branch(
     git_url: str,
     script_base_path: str,

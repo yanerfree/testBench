@@ -14,7 +14,9 @@ const ACTION_CONFIG = {
   import: { label: '导入', color: '#1890ff', bg: '#e6f7ff' },
   archive: { label: '归档', color: '#c9cdd4', bg: '#f2f3f5' },
   login: { label: '登录', color: '#722ed1', bg: '#f9f0ff' },
+  logout: { label: '登出', color: '#722ed1', bg: '#f9f0ff' },
   sync: { label: '同步', color: '#1890ff', bg: '#e6f7ff' },
+  change_password: { label: '改密', color: '#fa8c16', bg: '#fff7e6' },
 }
 
 const TARGET_TYPES = ['user', 'project', 'branch', 'case', 'plan', 'environment', 'channel']

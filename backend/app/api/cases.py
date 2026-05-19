@@ -2,17 +2,20 @@ import json
 import uuid
 
 from fastapi import APIRouter, Depends, Query, UploadFile, File
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_201_CREATED
 
-from app.core.exceptions import AppError
+from app.core.exceptions import AppError, NotFoundError
 from app.core.audit import write_audit_log
 from app.deps.auth import require_project_role
 from app.deps.db import get_db
+from app.models.project import Branch, Project
 from app.models.user import User
 from app.schemas.case import BatchCaseRequest, CaseResponse, CopyFromBranchRequest, CreateCaseRequest, UpdateCaseRequest
 from app.schemas.common import MessageResponse
 from app.services import case_service, folder_service, import_service
+from app.services.git_service import get_paths, read_file_content
 
 router = APIRouter(prefix="/api/projects/{project_id}/branches/{branch_id}/cases", tags=["cases"])
 
@@ -407,6 +410,52 @@ async def copy_from_branch(
     )
     await write_audit_log(session, action="copy_from", target_type="case", changes={"count": result.get("copied", 0)})
     return {"data": result}
+
+
+@router.get("/{case_id}/script")
+async def get_case_script(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """获取用例关联的脚本源码（从 git bare repo 读取）"""
+    case = await case_service.get_case(session, case_id)
+    if not case.script_ref_file:
+        raise AppError(code="NO_SCRIPT", message="该用例未关联脚本文件", status_code=404)
+
+    project = (await session.execute(
+        select(Project).where(Project.id == project_id)
+    )).scalar_one_or_none()
+    if not project or not project.script_base_path:
+        raise AppError(code="NO_GIT_CONFIG", message="项目未配置脚本路径", status_code=400)
+
+    branch = (await session.execute(
+        select(Branch).where(Branch.id == branch_id)
+    )).scalar_one_or_none()
+    if not branch or not branch.last_commit_sha:
+        raise AppError(code="NO_SYNC", message="分支尚未同步，请先执行 Git 同步", status_code=400)
+
+    paths = get_paths(project.script_base_path, branch.name)
+    content = read_file_content(
+        paths["bare_repo"], branch.last_commit_sha, case.script_ref_file
+    )
+    if content is None:
+        raise NotFoundError(
+            code="SCRIPT_NOT_FOUND",
+            message=f"脚本文件不存在: {case.script_ref_file}（commit: {branch.last_commit_sha[:8]}）",
+        )
+
+    return {
+        "data": {
+            "filePath": case.script_ref_file,
+            "funcName": case.script_ref_func,
+            "commitSha": branch.last_commit_sha,
+            "content": content,
+            "language": "python",
+        }
+    }
 
 
 # ---- 用例目录 ----
