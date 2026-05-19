@@ -56,12 +56,63 @@ def parse_junit_xml(xml_path: str) -> list[dict]:
     return results
 
 
+def _parse_tea_step_format(data: list[dict]) -> list[dict]:
+    """解析 tea_step 输出的双层格式（业务步骤 + 子请求）。"""
+    steps = []
+    for i, step in enumerate(data):
+        requests = step.get("requests", [])
+        first_req = requests[0] if requests else {}
+
+        steps.append({
+            "step_name": step.get("action", step.get("step", f"Step {i+1}")),
+            "step_label": step.get("action"),
+            "step_phase": step.get("phase"),
+            "status": step.get("status", "passed"),
+            "duration_ms": step.get("duration_ms"),
+            "http_method": first_req.get("method"),
+            "url": first_req.get("url"),
+            "status_code": first_req.get("status_code"),
+            "request_data": first_req.get("request"),
+            "response_data": first_req.get("response"),
+            "assertions": step.get("assertions"),
+            "error_summary": step.get("error"),
+            "requests": requests if len(requests) > 1 else None,
+        })
+    return steps
+
+
+def _parse_http_capture_format(data: list[dict]) -> list[dict]:
+    """解析 tea_capture 原有的 HTTP 级平铺格式。"""
+    steps = []
+    for i, step in enumerate(data):
+        steps.append({
+            "step_name": step.get("step", step.get("name", f"Step {i+1}")),
+            "step_label": None,
+            "step_phase": None,
+            "status": step.get("status", "passed"),
+            "duration_ms": step.get("duration_ms", step.get("durationMs")),
+            "http_method": step.get("method", step.get("http_method")),
+            "url": step.get("url"),
+            "status_code": step.get("status_code", step.get("statusCode")),
+            "request_data": step.get("request"),
+            "response_data": step.get("response"),
+            "assertions": step.get("assertions"),
+            "error_summary": step.get("error", step.get("error_summary")),
+        })
+    return steps
+
+
 def parse_step_json(json_path: str) -> list[dict]:
     """
-    解析步骤级 JSON 文件（TEA 格式）。
+    解析步骤级 JSON 文件。
 
-    返回: [{"step_name", "status", "duration_ms", "http_method", "url",
-            "status_code", "request_data", "response_data", "assertions", "error_summary"}]
+    自动检测格式：
+    - tea_step 格式：包含 action + phase + requests 嵌套
+    - tea_capture 格式：HTTP 级平铺（向后兼容）
+
+    返回: [{"step_name", "step_label", "step_phase", "status", "duration_ms",
+            "http_method", "url", "status_code", "request_data", "response_data",
+            "assertions", "error_summary"}]
     """
     path = Path(json_path)
     if not path.exists():
@@ -74,21 +125,17 @@ def parse_step_json(json_path: str) -> list[dict]:
         if not isinstance(data, list):
             data = [data]
 
-        steps = []
-        for i, step in enumerate(data):
-            steps.append({
-                "step_name": step.get("step", step.get("name", f"Step {i+1}")),
-                "status": step.get("status", "passed"),
-                "duration_ms": step.get("duration_ms", step.get("durationMs")),
-                "http_method": step.get("method", step.get("http_method")),
-                "url": step.get("url"),
-                "status_code": step.get("status_code", step.get("statusCode")),
-                "request_data": step.get("request"),
-                "response_data": step.get("response"),
-                "assertions": step.get("assertions"),
-                "error_summary": step.get("error", step.get("error_summary")),
-            })
-        return steps
+        if not data:
+            return []
+
+        first = data[0]
+        is_tea_step_format = "action" in first and "phase" in first
+
+        if is_tea_step_format:
+            return _parse_tea_step_format(data)
+        else:
+            return _parse_http_capture_format(data)
+
     except (json.JSONDecodeError, KeyError):
         logger.exception("Failed to parse step JSON: %s", json_path)
         return []

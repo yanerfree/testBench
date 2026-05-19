@@ -59,6 +59,8 @@ class TestReportStep(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=func.gen_random_uuid())
     scenario_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("test_report_scenarios.id", ondelete="CASCADE"), nullable=False)
     step_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    step_label: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    step_phase: Mapped[str | None] = mapped_column(String(20), nullable=True)
     http_method: Mapped[str | None] = mapped_column(String(10), nullable=True)
     url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False)

@@ -199,6 +199,7 @@ Priority: {P0/P1/P2}
 import pytest
 import re
 from playwright.async_api import Page, expect
+from tea_step import tea_step
 
 
 # 页面常量
@@ -211,29 +212,37 @@ class Test{PascalCaseSlug}:
 
     async def _login(self, page: Page):
         """登录并导航到目标页面"""
-        await page.goto(LOGIN_URL)
-        await page.get_by_placeholder("{用户名placeholder}").fill("{USERNAME}")
-        await page.get_by_placeholder("{密码placeholder}").fill("{PASSWORD}")
-        await page.get_by_role("button", name="{登录按钮文本}").click()
-        await page.wait_for_url("**/dashboard**")
+        with tea_step("用户登录", phase="setup"):
+            await page.goto(LOGIN_URL)
+            await page.get_by_placeholder("{用户名placeholder}").fill("{USERNAME}")
+            await page.get_by_placeholder("{密码placeholder}").fill("{PASSWORD}")
+            await page.get_by_role("button", name="{登录按钮文本}").click()
+            await page.wait_for_url("**/dashboard**")
 
     async def _navigate(self, page: Page):
         """导航到目标页面"""
         await self._login(page)
-        await page.goto(PAGE_URL)
-        await page.wait_for_load_state("networkidle")
+        with tea_step("导航到目标页面", phase="setup"):
+            await page.goto(PAGE_URL)
+            await page.wait_for_load_state("networkidle")
 
     @pytest.mark.asyncio
     async def test_{slug}(self, page: Page):
-        # Given: 用户已登录并进入{页面名}
         await self._navigate(page)
 
-        # When: {操作描述}
-        {生成的操作代码}
+        with tea_step("{操作描述}", phase="action"):
+            {生成的操作代码}
 
-        # Then: {预期结果描述}
-        {生成的断言代码}
+        with tea_step("{预期结果描述}", phase="verify"):
+            {生成的断言代码}
 ```
+
+**tea_step 在 UI 测试中的使用规则**：
+- 每个独立的用户操作用一个 `tea_step` 包裹
+- 登录、导航等前置操作用 `phase="setup"`
+- 核心交互（填表单、点击按钮）用 `phase="action"`
+- 断言和验证用 `phase="verify"`
+- UI 测试不会产生 HTTP 捕获（因为不走 httpx），步骤日志仅记录业务步骤名、phase、status、duration_ms
 
 ### 5.2 定位器优先级
 
@@ -297,8 +306,9 @@ tests/e2e/{module}/test_{slug}.py
 1. 生成 `tea_id` = `{module}_{slug}`
 2. `level` 设为 `"e2e"`
 3. `type` 设为 `"e2e"`
-4. 添加 `"auto-generated"` 和 `"e2e"` tags
-5. 更新 `summary` 统计
+4. **填写 `steps` 数组**：将脚本中每个 `tea_step` 转化为 `{action, expected, phase}` 记录
+5. 添加 `"auto-generated"` 和 `"e2e"` tags
+6. 更新 `summary` 统计
 
 ---
 

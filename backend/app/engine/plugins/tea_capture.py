@@ -1,8 +1,9 @@
 """
 TEA Capture — pytest plugin that auto-captures HTTP request/response data.
 
-Patches httpx.AsyncClient.send and httpx.Client.send to record every HTTP call,
-then writes a step JSON file after each test function completes.
+Patches httpx.AsyncClient.send and httpx.Client.send to record every HTTP call.
+When tea_step is active, HTTP captures are attached to the current business step.
+Otherwise, captures are recorded as flat HTTP-level steps (backward compatible).
 
 Activated via: pytest -p tea_capture
 Output dir controlled by env var TEA_CAPTURE_DIR (default: .tea_results)
@@ -25,6 +26,15 @@ _original_sync_send = None
 _output_dir: Path = Path(".tea_results")
 
 MAX_BODY_SIZE = 10 * 1024
+
+
+def _get_tea_step_module():
+    """Lazy import tea_step to avoid hard dependency."""
+    try:
+        import tea_step as mod
+        return mod
+    except ImportError:
+        return None
 
 
 def _safe_body(content, content_type: str = "") -> dict | str | None:
@@ -91,6 +101,27 @@ def _build_capture(request, response, duration_ms: int) -> dict:
     }
 
 
+def _record_capture(capture: dict):
+    """Record an HTTP capture, attaching to tea_step if active."""
+    tea_mod = _get_tea_step_module()
+    if tea_mod:
+        active_step = tea_mod.current_step()
+        if active_step is not None:
+            active_step["requests"].append({
+                "method": capture["method"],
+                "url": capture["url"],
+                "status_code": capture["status_code"],
+                "status": capture["status"],
+                "duration_ms": capture["duration_ms"],
+                "request": capture["request"],
+                "response": capture["response"],
+            })
+            return
+
+    if _current_test is not None:
+        _captures.setdefault(_current_test, []).append(capture)
+
+
 async def _patched_async_send(self, request, **kwargs):
     start = time.monotonic()
     response = await _original_async_send(self, request, **kwargs)
@@ -99,7 +130,7 @@ async def _patched_async_send(self, request, **kwargs):
     if _current_test is not None:
         try:
             capture = _build_capture(request, response, duration_ms)
-            _captures.setdefault(_current_test, []).append(capture)
+            _record_capture(capture)
         except Exception:
             pass
     return response
@@ -113,7 +144,7 @@ def _patched_sync_send(self, request, **kwargs):
     if _current_test is not None:
         try:
             capture = _build_capture(request, response, duration_ms)
-            _captures.setdefault(_current_test, []).append(capture)
+            _record_capture(capture)
         except Exception:
             pass
     return response
@@ -148,15 +179,21 @@ def pytest_configure(config):
     _output_dir = Path(os.environ.get("TEA_CAPTURE_DIR", ".tea_results"))
     _output_dir.mkdir(parents=True, exist_ok=True)
 
+    tea_mod = _get_tea_step_module()
+    if tea_mod:
+        tea_mod.configure_output(str(_output_dir))
+
 
 def pytest_runtest_setup(item):
     global _current_test
-    # 使用 nodeid 中的 Class::method 格式作为 key，匹配 script_ref_func
-    # nodeid 例: tests/e2e/test_smoke.py::TestClass::test_func
     parts = item.nodeid.split("::")
     _current_test = "::".join(parts[1:]) if len(parts) > 1 else item.name
     _captures[_current_test] = []
     _install_patches()
+
+    tea_mod = _get_tea_step_module()
+    if tea_mod:
+        tea_mod.reset()
 
 
 def _test_key(item):
@@ -167,7 +204,22 @@ def _test_key(item):
 def pytest_runtest_makereport(item, call):
     if call.when != "call":
         return
+
     key = _test_key(item)
+
+    tea_mod = _get_tea_step_module()
+    if tea_mod and tea_mod.get_steps():
+        if call.excinfo is not None:
+            steps = tea_mod.get_steps()
+            for step in reversed(steps):
+                if step["status"] == "failed":
+                    break
+            else:
+                if steps:
+                    steps[-1]["status"] = "failed"
+                    steps[-1]["error"] = str(call.excinfo.value)[:2000]
+        return
+
     steps = _captures.get(key, [])
     if not steps:
         return
@@ -192,19 +244,28 @@ def pytest_runtest_makereport(item, call):
 def pytest_runtest_teardown(item):
     global _current_test
     key = _test_key(item)
-    steps = _captures.pop(key, [])
-    _current_test = None
 
-    if not steps:
+    tea_mod = _get_tea_step_module()
+    tea_steps = tea_mod.get_steps() if tea_mod else []
+
+    if tea_steps:
+        tea_mod.flush_steps(key)
+    else:
+        http_steps = _captures.pop(key, [])
+        _current_test = None
+        if not http_steps:
+            return
+        out_path = _output_dir / f"{key}.json"
+        try:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(out_path, "w", encoding="utf-8") as f:
+                json.dump(http_steps, f, ensure_ascii=False, default=str)
+        except Exception:
+            pass
         return
 
-    out_path = _output_dir / f"{key}.json"
-    try:
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(steps, f, ensure_ascii=False, default=str)
-    except Exception:
-        pass
+    _captures.pop(key, None)
+    _current_test = None
 
 
 def pytest_unconfigure(config):

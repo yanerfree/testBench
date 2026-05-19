@@ -164,18 +164,24 @@ func:    test_{slug} (正向) 或 test_{error_type} (异常)
 ### 6.1 脚本生成规则
 
 1. **文件头**：包含 docstring（场景描述 + Test ID + Priority）
-2. **导入**：只导入实际使用的 fixtures（从 conftest.py 中选取）
+2. **导入**：只导入实际使用的 fixtures + `from tea_step import tea_step`
 3. **class 结构**：一个文件一个 class，class 名 = `Test` + PascalCase(slug)
-4. **_setup 方法**：如果需要前置数据（创建用户/项目/用例），抽取为 `_setup`
+4. **_setup 方法**：如果需要前置数据（创建用户/项目/用例），抽取为 `_setup`，用 `tea_step("前置数据准备", phase="setup")` 包裹
 5. **测试方法**：
    - 用 `@pytest.mark.asyncio` 装饰
    - 参数固定为 `self, client, db_session`
-   - Given/When/Then 注释
+   - **使用 `tea_step` 上下文管理器替代 Given/When/Then 注释**
    - 请求体用 camelCase（与 API 保持一致）
-6. **断言**：
+6. **tea_step 使用规则**（核心 — 必须遵守）：
+   - 每个逻辑步骤用 `with tea_step("步骤描述", phase="xxx"):` 包裹
+   - phase 值: `setup`（前置准备）、`action`（核心操作）、`verify`（验证断言）
+   - 步骤描述用中文，简洁明了（如"管理员登录"、"创建项目"、"验证返回 201"）
+   - HTTP 请求在 tea_step 内部执行，tea_capture 插件会自动捕获请求/响应
+7. **断言**：
    - 状态码断言 `assert response.status_code == xxx`
    - 响应结构断言 `assert "data" in response.json()`
    - 关键字段断言（至少验证 1-2 个业务字段）
+   - 断言放在 `phase="verify"` 的 tea_step 内
 
 ### 6.2 前置数据处理
 
@@ -191,7 +197,73 @@ func:    test_{slug} (正向) 或 test_{error_type} (异常)
 
 **参考现有测试中的 `_setup` 模式**，保持一致性。
 
-### 6.3 输出路径
+### 6.3 脚本模板（使用 tea_step）
+
+```python
+"""
+test_create_plan_success — 创建测试计划成功
+Test ID: plans_create_plan_success
+Priority: P0
+"""
+import pytest
+from tea_step import tea_step
+
+
+class TestCreatePlanSuccess:
+    """计划管理: 创建测试计划 — 正向流程"""
+
+    async def _setup(self, client, db_session):
+        with tea_step("管理员登录", phase="setup"):
+            from tests.conftest import create_test_user, make_auth_headers
+            user = await create_test_user(db_session, role="admin")
+            headers = make_auth_headers(user)
+
+        with tea_step("创建前置项目", phase="setup"):
+            resp = await client.post("/api/projects", headers=headers, json={
+                "name": "测试项目", "code": "PLAN-TEST"
+            })
+            project_id = resp.json()["data"]["id"]
+
+        return headers, project_id
+
+    @pytest.mark.asyncio
+    async def test_create_plan_success(self, client, db_session):
+        headers, project_id = await self._setup(client, db_session)
+
+        with tea_step("创建测试计划", phase="action"):
+            resp = await client.post(
+                f"/api/projects/{project_id}/plans",
+                headers=headers,
+                json={"name": "冒烟测试", "type": "smoke"},
+            )
+
+        with tea_step("验证返回 201 且包含计划 ID", phase="verify"):
+            assert resp.status_code == 201
+            data = resp.json()["data"]
+            assert data["name"] == "冒烟测试"
+            assert "id" in data
+```
+
+### 6.4 tea-cases.json 步骤字段
+
+每条 tea-cases.json 记录中，添加 `steps` 数组记录用例步骤（与脚本中的 tea_step 保持一致）：
+
+```json
+{
+  "tea_id": "plans_create_plan_success",
+  "title": "创建测试计划成功",
+  "script_ref_file": "tests/api/plans/test_create_plan_success.py",
+  "script_ref_func": "test_create_plan_success",
+  "steps": [
+    {"action": "管理员登录", "expected": "获取认证 token", "phase": "setup"},
+    {"action": "创建前置项目", "expected": "项目创建成功", "phase": "setup"},
+    {"action": "创建测试计划", "expected": "POST 请求成功", "phase": "action"},
+    {"action": "验证返回 201 且包含计划 ID", "expected": "状态码 201 + 返回正确字段", "phase": "verify"}
+  ]
+}
+```
+
+### 6.5 输出路径
 
 ```
 tests/api/{module}/test_{slug}.py
@@ -209,9 +281,10 @@ tests/api/{module}/test_{slug}.py
 2. 检查是否已存在相同 `tea_id`
    - 不存在 → 追加新记录
    - 已存在 → 更新 `script_ref` 字段
-3. 更新 `summary` 统计数据
-4. 设置 `generatedAt` 为当前时间
-5. 每条记录添加 `"auto-generated"` tag
+3. **填写 `steps` 数组**：将脚本中每个 `tea_step` 转化为 `{action, expected, phase}` 记录
+4. 更新 `summary` 统计数据
+5. 设置 `generatedAt` 为当前时间
+6. 每条记录添加 `"auto-generated"` tag
 
 ---
 

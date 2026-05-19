@@ -49,8 +49,9 @@ def execute_single_case(
     with tempfile.NamedTemporaryFile(suffix=".xml", delete=False, prefix="junit_") as f:
         junit_xml_path = f.name
 
-    # 注入 HTTP 捕获插件
+    # 注入 HTTP 捕获插件 + 步骤标记器
     plugin_src = Path(__file__).parent / "plugins" / "tea_capture.py"
+    step_src = Path(__file__).parent / "plugins" / "tea_step.py"
     tea_plugins_dir = Path(sandbox_dir) / ".tea_plugins"
     tea_results_dir = Path(sandbox_dir) / ".tea_results"
     has_capture_plugin = plugin_src.exists()
@@ -58,11 +59,13 @@ def execute_single_case(
         tea_plugins_dir.mkdir(parents=True, exist_ok=True)
         tea_results_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(str(plugin_src), str(tea_plugins_dir / "tea_capture.py"))
+        if step_src.exists():
+            shutil.copy2(str(step_src), str(tea_plugins_dir / "tea_step.py"))
 
-    # 注入平台 conftest.py（仅当沙箱中不存在时）
+    # 注入平台 conftest.py（始终覆盖，确保环境变量注入逻辑可用）
     conftest_src = Path(__file__).parent / "plugins" / "conftest_platform.py"
     sandbox_conftest = Path(sandbox_dir) / "tests" / "conftest.py"
-    if conftest_src.exists() and not sandbox_conftest.exists():
+    if conftest_src.exists():
         sandbox_conftest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(str(conftest_src), str(sandbox_conftest))
 

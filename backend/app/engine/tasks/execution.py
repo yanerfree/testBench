@@ -279,6 +279,8 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
                 session.add(TestReportStep(
                     scenario_id=scenario.id,
                     step_name=step.get("step_name"),
+                    step_label=step.get("step_label"),
+                    step_phase=step.get("step_phase"),
                     status=step.get("status", "passed"),
                     http_method=step.get("http_method"),
                     url=step.get("url"),
