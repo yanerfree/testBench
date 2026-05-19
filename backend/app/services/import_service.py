@@ -165,6 +165,7 @@ async def import_cases(
         preconditions = item.get("preconditions")
         steps = item.get("steps")
         expected_result = item.get("expected_result")
+        variables_used = item.get("variables_used")
 
         if existing is None:
             # 新增
@@ -180,6 +181,7 @@ async def import_cases(
                 preconditions=preconditions,
                 steps=steps or [],
                 expected_result=expected_result,
+                variables_used=variables_used,
                 source="imported",
                 automation_status="automated" if script_ref.get("file") else "pending",
                 script_ref_file=script_ref.get("file"),
@@ -202,6 +204,8 @@ async def import_cases(
                 existing.steps = steps
             if expected_result is not None:
                 existing.expected_result = expected_result
+            if variables_used is not None:
+                existing.variables_used = variables_used
             if script_ref.get("file"):
                 existing.automation_status = "automated"
             updated_count += 1

@@ -31,6 +31,7 @@ async def create_case(
         preconditions=data.preconditions,
         steps=data.steps,
         expected_result=data.expected_result,
+        variables_used=data.variables_used,
         source="manual",
         automation_status="pending",
         script_ref_file=data.script_ref_file,
@@ -73,6 +74,8 @@ async def update_case(
         case.steps = data.steps
     if data.expected_result is not None:
         case.expected_result = data.expected_result
+    if data.variables_used is not None:
+        case.variables_used = data.variables_used
     if data.script_ref_file is not None:
         case.script_ref_file = data.script_ref_file
     if data.script_ref_func is not None:

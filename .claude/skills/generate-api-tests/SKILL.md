@@ -246,18 +246,28 @@ class TestCreatePlanSuccess:
 
 ### 6.4 tea-cases.json 步骤字段
 
-每条 tea-cases.json 记录中，添加 `steps` 数组记录用例步骤（与脚本中的 tea_step 保持一致）：
+每条 tea-cases.json 记录中，添加 `steps` 数组和 `variables_used` 列表：
+
+- `steps` 中的每个步骤：`action`（操作描述）、`expected`（预期结果）、`phase`（阶段）、`apiEndpoint`（API 端点，格式 `METHOD /path → status`）
+- `variables_used` 列出该用例依赖的环境变量名
 
 ```json
 {
   "tea_id": "plans_create_plan_success",
   "title": "创建测试计划成功",
-  "script_ref_file": "tests/api/plans/test_create_plan_success.py",
-  "script_ref_func": "test_create_plan_success",
+  "module": "plans",
+  "type": "api",
+  "priority": "P0",
+  "script_ref": {
+    "file": "tests/api/plans/test_create_plan_success.py",
+    "class": "TestCreatePlanSuccess",
+    "func": "test_create_plan_success"
+  },
+  "variables_used": ["base_url", "admin_username", "admin_password"],
   "steps": [
-    {"action": "管理员登录", "expected": "获取认证 token", "phase": "setup"},
-    {"action": "创建前置项目", "expected": "项目创建成功", "phase": "setup"},
-    {"action": "创建测试计划", "expected": "POST 请求成功", "phase": "action"},
+    {"action": "管理员登录", "expected": "获取认证 token", "phase": "setup", "apiEndpoint": "POST /api/auth/login → 200"},
+    {"action": "创建前置项目", "expected": "项目创建成功", "phase": "setup", "apiEndpoint": "POST /api/projects → 201"},
+    {"action": "创建测试计划", "expected": "POST 请求成功", "phase": "action", "apiEndpoint": "POST /api/projects/{id}/plans → 201"},
     {"action": "验证返回 201 且包含计划 ID", "expected": "状态码 201 + 返回正确字段", "phase": "verify"}
   ]
 }
@@ -281,8 +291,9 @@ tests/api/{module}/test_{slug}.py
 2. 检查是否已存在相同 `tea_id`
    - 不存在 → 追加新记录
    - 已存在 → 更新 `script_ref` 字段
-3. **填写 `steps` 数组**：将脚本中每个 `tea_step` 转化为 `{action, expected, phase}` 记录
-4. 更新 `summary` 统计数据
+3. **填写 `steps` 数组**：将脚本中每个 `tea_step` 转化为 `{action, expected, phase, apiEndpoint}` 记录
+4. **填写 `variables_used`**：分析脚本中使用的环境变量（如 `env_vars["base_url"]`、conftest fixtures 注入的变量），列出变量名
+5. 更新 `summary` 统计数据
 5. 设置 `generatedAt` 为当前时间
 6. 每条记录添加 `"auto-generated"` tag
 

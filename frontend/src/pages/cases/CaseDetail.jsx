@@ -116,6 +116,8 @@ export default function CaseDetail() {
   const [scriptRefFunc, setScriptRefFunc] = useState('')
   const [remark, setRemark] = useState('')
   const [steps, setSteps] = useState([{ seq: 1, action: '', expected: '', phase: 'action' }])
+  const [variablesUsed, setVariablesUsed] = useState([])
+  const [newVarInput, setNewVarInput] = useState('')
 
   const savedRef = useRef('')
 
@@ -161,6 +163,7 @@ export default function CaseDetail() {
       const newScriptRefFunc = c.scriptRefFunc || ''
       const newRemark = c.remark || ''
       const newSteps = c.steps?.length ? c.steps.map((s, i) => ({ ...s, seq: s.seq || i + 1, phase: s.phase || 'action' })) : [{ seq: 1, action: '', expected: '', phase: 'action' }]
+      const newVariablesUsed = c.variablesUsed || []
 
       setTitle(newTitle)
       setType(newType)
@@ -175,8 +178,9 @@ export default function CaseDetail() {
       setScriptRefFunc(newScriptRefFunc)
       setRemark(newRemark)
       setSteps(newSteps)
+      setVariablesUsed(newVariablesUsed)
 
-      savedRef.current = JSON.stringify({ title: newTitle, type: newType, priority: newPriority, module: newModule, subModule: newSubModule, automationStatus: newAutomationStatus, flaky: newFlaky, preconditions: newPreconditions, expectedResult: newExpectedResult, scriptRefFile: newScriptRefFile, scriptRefFunc: newScriptRefFunc, remark: newRemark, steps: newSteps })
+      savedRef.current = JSON.stringify({ title: newTitle, type: newType, priority: newPriority, module: newModule, subModule: newSubModule, automationStatus: newAutomationStatus, flaky: newFlaky, preconditions: newPreconditions, expectedResult: newExpectedResult, scriptRefFile: newScriptRefFile, scriptRefFunc: newScriptRefFunc, remark: newRemark, steps: newSteps, variablesUsed: newVariablesUsed })
 
       setEnvironments(envRes.data || [])
       if (envRes.data?.length) setRunEnv(envRes.data[0].id)
@@ -187,7 +191,7 @@ export default function CaseDetail() {
     }
   }
 
-  const currentSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps })
+  const currentSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps, variablesUsed })
   const isDirty = caseData && currentSnap !== savedRef.current
 
   // 离开未保存确认
@@ -221,7 +225,7 @@ export default function CaseDetail() {
     try {
       await api.put(`/projects/${projectId}/branches/${branchId}/cases/${caseId}`, {
         title, type, priority, module, subModule, automationStatus,
-        isFlaky: flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps,
+        isFlaky: flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps, variablesUsed,
       })
       // 重新计算快照确保 isDirty 变为 false
       const newSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps })
@@ -320,7 +324,8 @@ export default function CaseDetail() {
                       <span style={{ width: 24, flexShrink: 0 }}></span>
                       <span style={{ width: 24, flexShrink: 0 }}>#</span>
                       <span style={{ width: 64, flexShrink: 0 }}>阶段</span>
-                      <span style={{ flex: 1 }}>操作步骤</span>
+                      <span style={{ flex: 2 }}>操作步骤</span>
+                      {type === 'api' && <span style={{ flex: 1 }}>接口</span>}
                       <span style={{ flex: 1 }}>预期结果</span>
                       <span style={{ width: 32, flexShrink: 0 }}></span>
                     </div>
@@ -346,7 +351,7 @@ export default function CaseDetail() {
                           ]} />
                         <Input value={s.action} onChange={e => updateStep(i, 'action', e.target.value)}
                           placeholder="描述操作步骤..." variant="borderless"
-                          style={{ flex: 1, fontSize: 13 }}
+                          style={{ flex: 2, fontSize: 13 }}
                           onKeyDown={e => {
                             if (e.key === 'Enter' && i === steps.length - 1 && s.action.trim()) {
                               e.preventDefault()
@@ -357,6 +362,11 @@ export default function CaseDetail() {
                               }, 50)
                             }
                           }} />
+                        {type === 'api' && (
+                          <Input value={s.apiEndpoint || ''} onChange={e => updateStep(i, 'apiEndpoint', e.target.value)}
+                            placeholder="POST /api/users → 201" variant="borderless"
+                            style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: '#1890ff' }} />
+                        )}
                         <Input value={s.expected || ''} onChange={e => updateStep(i, 'expected', e.target.value)}
                           placeholder="预期结果..." variant="borderless"
                           style={{ flex: 1, fontSize: 13, color: '#86909c' }} />
@@ -385,6 +395,35 @@ export default function CaseDetail() {
                       placeholder="脚本文件路径，如 tests/api/test_user.py" style={{ flex: 2, fontFamily: 'monospace', fontSize: 12, background: '#f7f8fa', borderColor: '#f2f3f5' }} />
                     <Input value={scriptRefFunc} onChange={e => setScriptRefFunc(e.target.value)} size="small"
                       placeholder="函数名，如 test_create_user" style={{ flex: 1, fontFamily: 'monospace', fontSize: 12, background: '#f7f8fa', borderColor: '#f2f3f5' }} />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>依赖参数</h4>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                    {variablesUsed.map((v, i) => (
+                      <Tag key={i} closable onClose={() => setVariablesUsed(prev => prev.filter((_, j) => j !== i))}
+                        style={{ fontFamily: 'monospace', fontSize: 12, background: '#f0f5ff', border: '1px solid #adc6ff', color: '#1d39c4', borderRadius: 4, padding: '2px 8px' }}>
+                        {v}
+                      </Tag>
+                    ))}
+                    {variablesUsed.length === 0 && <span style={{ fontSize: 12, color: '#c9cdd4' }}>暂无参数</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Input value={newVarInput} onChange={e => setNewVarInput(e.target.value)} size="small"
+                      placeholder="输入参数名，如 base_url、username"
+                      style={{ flex: 1, fontFamily: 'monospace', fontSize: 12, background: '#f7f8fa', borderColor: '#f2f3f5' }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && newVarInput.trim()) {
+                          setVariablesUsed(prev => [...prev, newVarInput.trim()])
+                          setNewVarInput('')
+                        }
+                      }} />
+                    <Button size="small" icon={<PlusOutlined />}
+                      disabled={!newVarInput.trim()}
+                      onClick={() => { setVariablesUsed(prev => [...prev, newVarInput.trim()]); setNewVarInput('') }}>
+                      添加
+                    </Button>
                   </div>
                 </div>
 

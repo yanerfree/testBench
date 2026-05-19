@@ -306,9 +306,10 @@ tests/e2e/{module}/test_{slug}.py
 1. 生成 `tea_id` = `{module}_{slug}`
 2. `level` 设为 `"e2e"`
 3. `type` 设为 `"e2e"`
-4. **填写 `steps` 数组**：将脚本中每个 `tea_step` 转化为 `{action, expected, phase}` 记录
-5. 添加 `"auto-generated"` 和 `"e2e"` tags
-6. 更新 `summary` 统计
+4. **填写 `steps` 数组**：将脚本中每个 `tea_step` 转化为 `{action, expected, phase}` 记录，UI 步骤不带 `apiEndpoint`
+5. **填写 `variables_used`**：列出脚本用到的环境变量（如 `APP_URL`、`USERNAME`、`PASSWORD`）
+6. 添加 `"auto-generated"` 和 `"e2e"` tags
+7. 更新 `summary` 统计
 
 ---
 

@@ -67,6 +67,7 @@ class Case(Base):
     preconditions: Mapped[str | None] = mapped_column(Text, nullable=True)
     steps: Mapped[dict] = mapped_column(JSONB, nullable=False, default=list, server_default="[]")
     expected_result: Mapped[str | None] = mapped_column(Text, nullable=True)
+    variables_used: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     automation_status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pending", server_default="pending"
     )  # automated / pending / script_removed / archived
