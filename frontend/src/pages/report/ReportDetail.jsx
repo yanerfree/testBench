@@ -18,6 +18,8 @@ const statusCfg = {
 }
 
 const methodColor = { GET: '#00b96b', POST: '#1890ff', PUT: '#faad14', DELETE: '#ff4d4f', PATCH: '#722ed1' }
+const phaseColor = { setup: '#722ed1', action: '#1890ff', verify: '#00b96b' }
+const phaseLabel = { setup: '准备', action: '操作', verify: '验证' }
 
 function fmt(ms) {
   if (!ms && ms !== 0) return '-'
@@ -165,13 +167,28 @@ function StepDetailDrawer({ step, open, onClose }) {
     >
       {/* Step name */}
       <div style={{ padding: '16px 24px 0', borderBottom: '1px solid #f0f0f0' }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: '#1d2129', marginBottom: 12 }}>{step.stepName}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          {step.stepPhase && (
+            <span style={{
+              fontSize: 11, fontWeight: 600, padding: '1px 8px', borderRadius: 3,
+              background: `${phaseColor[step.stepPhase] || '#86909c'}15`,
+              color: phaseColor[step.stepPhase] || '#86909c',
+            }}>{phaseLabel[step.stepPhase] || step.stepPhase}</span>
+          )}
+          <span style={{ fontSize: 15, fontWeight: 600, color: '#1d2129' }}>
+            {step.stepLabel || step.stepName}
+          </span>
+        </div>
 
         {/* Status line */}
         <div style={{ fontSize: 13, color: '#4e5969', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: '#86909c' }}>HTTP 状态码:</span>
-          <span style={{ color: step.statusCode >= 400 ? '#ff4d4f' : '#00b96b', fontWeight: 600 }}>{step.statusCode}</span>
-          <span style={{ color: '#e5e6eb', margin: '0 4px' }}>|</span>
+          {step.statusCode && (
+            <>
+              <span style={{ color: '#86909c' }}>HTTP 状态码:</span>
+              <span style={{ color: step.statusCode >= 400 ? '#ff4d4f' : '#00b96b', fontWeight: 600 }}>{step.statusCode}</span>
+              <span style={{ color: '#e5e6eb', margin: '0 4px' }}>|</span>
+            </>
+          )}
           <span style={{ color: '#86909c' }}>耗时:</span>
           <span style={{ fontWeight: 500 }}>{fmt(step.durationMs)}</span>
         </div>
@@ -204,15 +221,17 @@ function StepDetailDrawer({ step, open, onClose }) {
         )}
       </div>
 
-      {/* Request URL (like 实际请求) */}
-      <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0' }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#1d2129', marginBottom: 8 }}>请求 URL:</div>
-        <div style={{ fontSize: 13, fontFamily: "Menlo, Monaco, monospace", lineHeight: 1.6 }}>
-          <span style={{ color: mc, fontWeight: 700 }}>{step.httpMethod}</span>
-          {'  '}
-          <span style={{ color: '#4e5969' }}>{step.url}</span>
+      {/* Request URL (only when HTTP data exists) */}
+      {step.httpMethod && step.url && (
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#1d2129', marginBottom: 8 }}>请求 URL:</div>
+          <div style={{ fontSize: 13, fontFamily: "Menlo, Monaco, monospace", lineHeight: 1.6 }}>
+            <span style={{ color: mc, fontWeight: 700 }}>{step.httpMethod}</span>
+            {'  '}
+            <span style={{ color: '#4e5969' }}>{step.url}</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Tabs: Body / Header / Response */}
       {tabItems.length > 0 && (
@@ -353,7 +372,19 @@ function ScenarioExpanded({ scenario }) {
                   fontSize: 11, fontWeight: 600, color: '#fff',
                   background: isPassed ? '#00b96b' : '#c9cdd4',
                 }}>{step.seq || i + 1}</span>
-                <span style={{ fontSize: 13, color: '#4e5969', lineHeight: 1.5 }}>{step.action}</span>
+                {step.phase && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 3, flexShrink: 0, marginTop: 2,
+                    background: `${phaseColor[step.phase] || '#86909c'}15`,
+                    color: phaseColor[step.phase] || '#86909c',
+                  }}>{phaseLabel[step.phase] || step.phase}</span>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, color: '#4e5969', lineHeight: 1.5 }}>{step.action}</span>
+                  {step.expected && (
+                    <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>预期: {step.expected}</div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -593,20 +624,50 @@ export default function ReportDetail() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
                     <StatusDot status={step.status} />
-                    {step.httpMethod && (
+                    {step.stepPhase && (
                       <span style={{
-                        fontSize: 11, fontWeight: 700, fontFamily: 'monospace', flexShrink: 0,
-                        padding: '1px 6px', borderRadius: 3,
-                        background: `${methodColor[step.httpMethod] || '#86909c'}18`,
-                        color: methodColor[step.httpMethod] || '#86909c',
-                      }}>{step.httpMethod}</span>
+                        fontSize: 10, fontWeight: 600, padding: '0px 6px', borderRadius: 3, flexShrink: 0,
+                        background: `${phaseColor[step.stepPhase] || '#86909c'}15`,
+                        color: phaseColor[step.stepPhase] || '#86909c',
+                      }}>{phaseLabel[step.stepPhase] || step.stepPhase}</span>
                     )}
-                    {step.url && (
-                      <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#4e5969', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {step.url.replace(/^https?:\/\/[^/]+/, '')}
-                      </span>
+                    {step.stepLabel ? (
+                      <>
+                        <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {step.stepLabel}
+                        </span>
+                        {step.httpMethod && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, fontFamily: 'monospace', flexShrink: 0,
+                            padding: '0px 5px', borderRadius: 3,
+                            background: `${methodColor[step.httpMethod] || '#86909c'}18`,
+                            color: methodColor[step.httpMethod] || '#86909c',
+                          }}>{step.httpMethod}</span>
+                        )}
+                        {step.url && (
+                          <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#c9cdd4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {step.url.replace(/^https?:\/\/[^/]+/, '')}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {step.httpMethod && (
+                          <span style={{
+                            fontSize: 11, fontWeight: 700, fontFamily: 'monospace', flexShrink: 0,
+                            padding: '1px 6px', borderRadius: 3,
+                            background: `${methodColor[step.httpMethod] || '#86909c'}18`,
+                            color: methodColor[step.httpMethod] || '#86909c',
+                          }}>{step.httpMethod}</span>
+                        )}
+                        {step.url && (
+                          <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#4e5969', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {step.url.replace(/^https?:\/\/[^/]+/, '')}
+                          </span>
+                        )}
+                        {!step.url && <span style={{ fontWeight: 500 }}>{step.stepName}</span>}
+                      </>
                     )}
-                    {!step.url && <span style={{ fontWeight: 500 }}>{step.stepName}</span>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                     {step.statusCode && (

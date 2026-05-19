@@ -392,6 +392,8 @@ async def get_scenario_steps(
             {
                 "id": str(s.id),
                 "stepName": s.step_name,
+                "stepLabel": s.step_label,
+                "stepPhase": s.step_phase,
                 "httpMethod": s.http_method,
                 "url": s.url,
                 "status": s.status,
@@ -701,6 +703,8 @@ async def get_scenario_steps_by_report_id(
             {
                 "id": str(s.id),
                 "stepName": s.step_name,
+                "stepLabel": s.step_label,
+                "stepPhase": s.step_phase,
                 "httpMethod": s.http_method,
                 "url": s.url,
                 "status": s.status,

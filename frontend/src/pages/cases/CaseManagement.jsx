@@ -261,7 +261,7 @@ export default function CaseManagement() {
         type: values.type,
         module: values.module,
         priority: values.priority || 'P2',
-        steps: [{ action: '待补充' }],
+        steps: [{ seq: 1, action: '待补充', expected: '', phase: 'action' }],
       })
       message.success('用例创建成功')
       setCreateCaseOpen(false)

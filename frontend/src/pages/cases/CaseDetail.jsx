@@ -115,7 +115,7 @@ export default function CaseDetail() {
   const [scriptRefFile, setScriptRefFile] = useState('')
   const [scriptRefFunc, setScriptRefFunc] = useState('')
   const [remark, setRemark] = useState('')
-  const [steps, setSteps] = useState([{ seq: 1, action: '' }])
+  const [steps, setSteps] = useState([{ seq: 1, action: '', expected: '', phase: 'action' }])
 
   const savedRef = useRef('')
 
@@ -160,7 +160,7 @@ export default function CaseDetail() {
       const newScriptRefFile = c.scriptRefFile || ''
       const newScriptRefFunc = c.scriptRefFunc || ''
       const newRemark = c.remark || ''
-      const newSteps = c.steps?.length ? c.steps.map((s, i) => ({ ...s, seq: s.seq || i + 1 })) : [{ seq: 1, action: '' }]
+      const newSteps = c.steps?.length ? c.steps.map((s, i) => ({ ...s, seq: s.seq || i + 1, phase: s.phase || 'action' })) : [{ seq: 1, action: '', expected: '', phase: 'action' }]
 
       setTitle(newTitle)
       setType(newType)
@@ -213,9 +213,9 @@ export default function CaseDetail() {
     }
   }
 
-  const addStep = () => setSteps(prev => [...prev, { seq: prev.length + 1, action: '' }])
+  const addStep = () => setSteps(prev => [...prev, { seq: prev.length + 1, action: '', expected: '', phase: 'action' }])
   const removeStep = (idx) => setSteps(prev => prev.filter((_, i) => i !== idx).map((s, i) => ({ ...s, seq: i + 1 })))
-  const updateStep = (idx, value) => setSteps(prev => prev.map((s, i) => i === idx ? { ...s, action: value } : s))
+  const updateStep = (idx, field, value) => setSteps(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s))
 
   const handleSave = async () => {
     try {
@@ -311,10 +311,23 @@ export default function CaseDetail() {
                     <Button type="primary" ghost size="small" icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
                   </div>
                   <div style={{ borderRadius: 10, border: '1px solid #f2f3f5', overflow: 'hidden' }}>
+                    {/* 表头 */}
+                    <div style={{
+                      display: 'flex', gap: 10, padding: '6px 14px', fontSize: 12, fontWeight: 600,
+                      background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid #f2f3f5',
+                      alignItems: 'center',
+                    }}>
+                      <span style={{ width: 24, flexShrink: 0 }}></span>
+                      <span style={{ width: 24, flexShrink: 0 }}>#</span>
+                      <span style={{ width: 64, flexShrink: 0 }}>阶段</span>
+                      <span style={{ flex: 1 }}>操作步骤</span>
+                      <span style={{ flex: 1 }}>预期结果</span>
+                      <span style={{ width: 32, flexShrink: 0 }}></span>
+                    </div>
                     {steps.map((s, i) => (
                       <div key={i} style={{
                         display: 'flex', gap: 10, padding: '8px 14px', fontSize: 13,
-                        background: i % 2 === 0 ? '#fff' : '#f7f8fa',
+                        background: i % 2 === 0 ? '#fff' : '#fafbfc',
                         borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none',
                         alignItems: 'center',
                       }}>
@@ -323,7 +336,15 @@ export default function CaseDetail() {
                           width: 24, height: 24, borderRadius: 6, background: '#e6f7ff', color: '#1890ff',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
                         }}>{s.seq}</span>
-                        <Input value={s.action} onChange={e => updateStep(i, e.target.value)}
+                        <Select value={s.phase || 'action'} onChange={v => updateStep(i, 'phase', v)}
+                          size="small" variant="borderless"
+                          style={{ width: 64, flexShrink: 0, fontSize: 12 }}
+                          options={[
+                            { value: 'setup', label: <span style={{ color: '#722ed1', fontSize: 12 }}>准备</span> },
+                            { value: 'action', label: <span style={{ color: '#1890ff', fontSize: 12 }}>操作</span> },
+                            { value: 'verify', label: <span style={{ color: '#00b96b', fontSize: 12 }}>验证</span> },
+                          ]} />
+                        <Input value={s.action} onChange={e => updateStep(i, 'action', e.target.value)}
                           placeholder="描述操作步骤..." variant="borderless"
                           style={{ flex: 1, fontSize: 13 }}
                           onKeyDown={e => {
@@ -336,6 +357,9 @@ export default function CaseDetail() {
                               }, 50)
                             }
                           }} />
+                        <Input value={s.expected || ''} onChange={e => updateStep(i, 'expected', e.target.value)}
+                          placeholder="预期结果..." variant="borderless"
+                          style={{ flex: 1, fontSize: 13, color: '#86909c' }} />
                         <Button type="text" danger size="small" icon={<DeleteOutlined />}
                           onClick={() => removeStep(i)} disabled={steps.length <= 1}
                           style={{ flexShrink: 0, opacity: steps.length <= 1 ? 0.3 : 1 }} />
