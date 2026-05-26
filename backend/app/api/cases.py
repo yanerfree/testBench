@@ -47,9 +47,9 @@ async def import_cases(
                 status_code=400,
                 detail=str(e),
             )
-        cases_list = data.get("cases", [])
+        cases_list = data if isinstance(data, list) else data.get("cases", [])
         if not isinstance(cases_list, list):
-            raise AppError(code="INVALID_FORMAT", message="JSON 中缺少 cases 数组", status_code=400)
+            raise AppError(code="INVALID_FORMAT", message="JSON 格式不正确，需要数组或 {cases: [...]}", status_code=400)
     else:
         cases_list = _parse_excel_to_cases(content)
 

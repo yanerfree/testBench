@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin, TreeSelect } from 'antd'
+import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin, TreeSelect, Checkbox } from 'antd'
 import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined, CopyOutlined, StarFilled } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
@@ -261,7 +261,9 @@ export default function CaseManagement() {
         type: values.type,
         module: values.module,
         priority: values.priority || 'P2',
-        steps: [{ seq: 1, action: '待补充', expected: '', phase: 'action' }],
+        steps: [{ seq: 1, action: '待补充', expected: '' }],
+        apiScenario: values.initApi ? { steps: [{ seq: 1, phase: 'action', action: '待补充', expected: '', apiEndpoint: '' }], scriptRefFile: '', scriptRefFunc: '', variablesUsed: [] } : undefined,
+        uiScenario: values.initUi ? { steps: [{ seq: 1, phase: 'action', action: '待补充', expected: '', uiTarget: '' }], scriptRefFile: '', scriptRefFunc: '', variablesUsed: [] } : undefined,
       })
       message.success('用例创建成功')
       setCreateCaseOpen(false)
@@ -741,6 +743,17 @@ export default function CaseManagement() {
                 notFoundContent={<span style={{ color: '#86909c', fontSize: 12 }}>无目录，请先在左侧导航创建</span>}
               />
             </Form.Item>
+          </div>
+          <div style={{ padding: '8px 12px', background: '#f7f8fa', borderRadius: 8 }}>
+            <div style={{ fontSize: 12, color: '#86909c', marginBottom: 8 }}>同时初始化场景（可选）</div>
+            <Space>
+              <Form.Item name="initApi" valuePropName="checked" noStyle>
+                <Checkbox>接口测试场景</Checkbox>
+              </Form.Item>
+              <Form.Item name="initUi" valuePropName="checked" noStyle>
+                <Checkbox>UI 测试场景</Checkbox>
+              </Form.Item>
+            </Space>
           </div>
         </Form>
       </Modal>

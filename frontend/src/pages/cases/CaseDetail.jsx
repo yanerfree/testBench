@@ -254,20 +254,39 @@ function ScenarioEditor({
   scenario, setScenario, scenarioStatus, setScenarioStatus,
   isTemplate, setIsTemplate, type, accentColor,
   scriptContent, scriptLoading, scriptError, onLoadScript,
-  onImportTemplate,
+  onImportTemplate, manualSteps,
 }) {
   const extraCol = type === 'api' ? 'apiEndpoint' : 'uiTarget'
   const extraLabel = type === 'api' ? '接口端点' : '页面/元素'
 
-  const initScenario = () => setScenario({ steps: [{ seq: 1, phase: 'action', action: '', expected: '', [extraCol]: '' }], scriptRefFile: '', scriptRefFunc: '', variablesUsed: [] })
+  const initScenario = (fromManual) => {
+    let newSteps
+    if (fromManual && manualSteps?.length) {
+      newSteps = manualSteps.map((s, i) => ({
+        seq: i + 1,
+        phase: i === 0 ? 'setup' : i < manualSteps.length - 1 ? 'action' : 'verify',
+        action: s.action || '',
+        expected: s.expected || '',
+        [extraCol]: '',
+      }))
+    } else {
+      newSteps = [{ seq: 1, phase: 'action', action: '', expected: '', [extraCol]: '' }]
+    }
+    setScenario({ steps: newSteps, scriptRefFile: '', scriptRefFunc: '', variablesUsed: [] })
+  }
 
   if (!scenario) return (
     <Card styles={{ body: { padding: '16px 20px' } }}>
       <Empty description={`暂无${type === 'api' ? '接口' : 'UI'}测试场景`} image={Empty.PRESENTED_IMAGE_SIMPLE}>
-        <Space>
-          <Button type="primary" icon={<PlusOutlined />} onClick={initScenario}>创建场景</Button>
-          <Button icon={<ImportOutlined />} onClick={onImportTemplate}>从模板导入</Button>
-        </Space>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <Space>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => initScenario(false)}>创建空白场景</Button>
+            {manualSteps?.length > 0 && (
+              <Button icon={<CopyOutlined />} onClick={() => initScenario(true)}>从手动步骤生成</Button>
+            )}
+          </Space>
+          <Button type="link" size="small" icon={<ImportOutlined />} onClick={onImportTemplate}>从模板导入</Button>
+        </div>
       </Empty>
     </Card>
   )
@@ -698,32 +717,40 @@ export default function CaseDetail() {
           </InlineProp>
           <ReadonlyProp label="来源" value={caseData.source || 'manual'} />
 
-          {/* 场景覆盖指示器 */}
+          {/* 场景覆盖指示器 — 显示状态 + 模板 */}
           <div style={{ display: 'inline-flex', gap: 4, marginLeft: 8 }}>
             <Tooltip title="手动测试步骤">
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
                 borderRadius: 4, fontSize: 11, fontWeight: 500,
                 background: '#f6ffed', color: '#00b96b', border: '1px solid #b7eb8f',
-              }}><CheckCircleOutlined style={{ fontSize: 10 }} /> 手动</span>
+              }}><CheckCircleOutlined style={{ fontSize: 10 }} /> 手动 ({steps.length}步)</span>
             </Tooltip>
-            <Tooltip title={hasApi ? '已有接口测试场景' : '暂无接口测试场景'}>
+            <Tooltip title={hasApi ? `接口场景 · ${(scenarioStatusMap[apiScenarioStatus] || {}).label || '草稿'}${isApiTemplate ? ' · 模板' : ''}` : '暂无接口测试场景，点击接口测试 Tab 创建'}>
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
                 borderRadius: 4, fontSize: 11, fontWeight: 500,
                 background: hasApi ? '#e6f7ff' : '#f7f8fa',
-                color: hasApi ? '#1890ff' : '#c9cdd4',
+                color: hasApi ? (scenarioStatusMap[apiScenarioStatus] || {}).color || '#1890ff' : '#c9cdd4',
                 border: `1px solid ${hasApi ? '#91d5ff' : '#e5e6eb'}`,
-              }}><ApiOutlined style={{ fontSize: 10 }} /> API</span>
+              }}>
+                {isApiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14' }} />}
+                <ApiOutlined style={{ fontSize: 10 }} /> API
+                {hasApi && <span>({apiScenario?.steps?.length || 0}步 · {(scenarioStatusMap[apiScenarioStatus] || {}).label || '草稿'})</span>}
+              </span>
             </Tooltip>
-            <Tooltip title={hasUi ? '已有 UI 测试场景' : '暂无 UI 测试场景'}>
+            <Tooltip title={hasUi ? `UI 场景 · ${(scenarioStatusMap[uiScenarioStatus] || {}).label || '草稿'}${isUiTemplate ? ' · 模板' : ''}` : '暂无 UI 测试场景，点击 UI 测试 Tab 创建'}>
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
                 borderRadius: 4, fontSize: 11, fontWeight: 500,
                 background: hasUi ? '#f0f5ff' : '#f7f8fa',
-                color: hasUi ? '#722ed1' : '#c9cdd4',
+                color: hasUi ? (scenarioStatusMap[uiScenarioStatus] || {}).color || '#722ed1' : '#c9cdd4',
                 border: `1px solid ${hasUi ? '#d3adf7' : '#e5e6eb'}`,
-              }}><DesktopOutlined style={{ fontSize: 10 }} /> UI</span>
+              }}>
+                {isUiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14' }} />}
+                <DesktopOutlined style={{ fontSize: 10 }} /> UI
+                {hasUi && <span>({uiScenario?.steps?.length || 0}步 · {(scenarioStatusMap[uiScenarioStatus] || {}).label || '草稿'})</span>}
+              </span>
             </Tooltip>
           </div>
         </div>
@@ -810,6 +837,7 @@ export default function CaseDetail() {
                 scriptContent={scriptContent} scriptLoading={scriptLoading} scriptError={scriptError}
                 onLoadScript={loadScript}
                 onImportTemplate={() => { setTemplateModalType('api'); setTemplateModalOpen(true) }}
+                manualSteps={steps}
               />
             )},
 
@@ -822,6 +850,7 @@ export default function CaseDetail() {
                 scriptContent={null} scriptLoading={false} scriptError={null}
                 onLoadScript={() => {}}
                 onImportTemplate={() => { setTemplateModalType('ui'); setTemplateModalOpen(true) }}
+                manualSteps={steps}
               />
             )},
 
