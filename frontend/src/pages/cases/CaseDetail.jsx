@@ -1,12 +1,12 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, Tag, Button, Input, Select, Space, Modal, message, Tabs, Switch, Popover, Tooltip, Spin, Empty } from 'antd'
+import { Card, Tag, Button, Input, Select, Space, Modal, message, Tabs, Switch, Popover, Tooltip, Spin, Empty, Table } from 'antd'
 import {
   ArrowLeftOutlined, PlayCircleOutlined, SaveOutlined,
   ExperimentOutlined, BugOutlined, PlusOutlined, DeleteOutlined, HolderOutlined,
   ThunderboltOutlined, TagOutlined, AppstoreOutlined, ApiOutlined,
   FlagOutlined, WarningOutlined, CodeOutlined, CopyOutlined, FileTextOutlined,
-  DesktopOutlined, CheckCircleOutlined,
+  DesktopOutlined, CheckCircleOutlined, StarOutlined, StarFilled, ImportOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 
@@ -18,6 +18,11 @@ const statusLabels = { automated: '已自动化', pending: '待自动化', remov
 const dotColors = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9', automated: '#00b96b', pending: '#faad14', removed: '#ff4d4f' }
 const phaseColor = { setup: '#722ed1', action: '#1890ff', verify: '#00b96b' }
 const phaseLabel = { setup: '准备', action: '操作', verify: '验证' }
+const scenarioStatusMap = {
+  draft: { label: '草稿', color: '#86909c', bg: '#f7f8fa' },
+  debugging: { label: '调试中', color: '#faad14', bg: '#fffbe6' },
+  completed: { label: '已完成', color: '#00b96b', bg: '#f6ffed' },
+}
 
 function InlineProp({ icon, value, color, bg, children }) {
   const [open, setOpen] = useState(false)
@@ -245,6 +250,241 @@ function ScenarioCard({ scenario, type, accentColor, icon, scriptContent, script
   )
 }
 
+function ScenarioEditor({
+  scenario, setScenario, scenarioStatus, setScenarioStatus,
+  isTemplate, setIsTemplate, type, accentColor,
+  scriptContent, scriptLoading, scriptError, onLoadScript,
+  onImportTemplate,
+}) {
+  const extraCol = type === 'api' ? 'apiEndpoint' : 'uiTarget'
+  const extraLabel = type === 'api' ? '接口端点' : '页面/元素'
+
+  const initScenario = () => setScenario({ steps: [{ seq: 1, phase: 'action', action: '', expected: '', [extraCol]: '' }], scriptRefFile: '', scriptRefFunc: '', variablesUsed: [] })
+
+  if (!scenario) return (
+    <Card styles={{ body: { padding: '16px 20px' } }}>
+      <Empty description={`暂无${type === 'api' ? '接口' : 'UI'}测试场景`} image={Empty.PRESENTED_IMAGE_SIMPLE}>
+        <Space>
+          <Button type="primary" icon={<PlusOutlined />} onClick={initScenario}>创建场景</Button>
+          <Button icon={<ImportOutlined />} onClick={onImportTemplate}>从模板导入</Button>
+        </Space>
+      </Empty>
+    </Card>
+  )
+
+  const steps = scenario.steps || []
+  const updateScenario = (patch) => setScenario(prev => ({ ...prev, ...patch }))
+  const updateStepField = (idx, field, value) => {
+    const newSteps = steps.map((s, i) => i === idx ? { ...s, [field]: value } : s)
+    updateScenario({ steps: newSteps })
+  }
+  const addStep = () => updateScenario({
+    steps: [...steps, { seq: steps.length + 1, phase: 'action', action: '', expected: '', [extraCol]: '' }]
+  })
+  const removeStep = (idx) => updateScenario({
+    steps: steps.filter((_, i) => i !== idx).map((s, i) => ({ ...s, seq: i + 1 }))
+  })
+
+  const scVars = scenario.variablesUsed || []
+  const [newVarInput, setNewVarInput] = useState('')
+
+  const stInfo = scenarioStatusMap[scenarioStatus] || scenarioStatusMap.draft
+
+  return (
+    <Card styles={{ body: { padding: '16px 20px' } }}>
+      {/* 顶部工具栏：状态 + 模板标记 + 从模板导入 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Space size={12}>
+          <span style={{ fontSize: 12, color: '#86909c' }}>场景状态</span>
+          <Select size="small" value={scenarioStatus} onChange={setScenarioStatus} style={{ width: 110 }}
+            options={Object.entries(scenarioStatusMap).map(([k, v]) => ({
+              value: k, label: <span style={{ color: v.color }}>{v.label}</span>
+            }))} />
+          <Tooltip title={scenarioStatus === 'completed' ? (isTemplate ? '取消模板标记' : '标记为模板') : '仅已完成的场景可标记为模板'}>
+            <Button size="small" type={isTemplate ? 'primary' : 'default'}
+              disabled={scenarioStatus !== 'completed'}
+              icon={isTemplate ? <StarFilled /> : <StarOutlined />}
+              onClick={() => setIsTemplate(!isTemplate)}
+              style={isTemplate ? { background: '#fff7e6', borderColor: '#ffc069', color: '#fa8c16' } : {}}>
+              {isTemplate ? '已标记模板' : '标记为模板'}
+            </Button>
+          </Tooltip>
+        </Space>
+        <Space>
+          <Button size="small" icon={<ImportOutlined />} onClick={onImportTemplate}>从模板导入</Button>
+          <Button size="small" danger type="text" onClick={() => {
+            Modal.confirm({
+              title: '确认删除场景', content: '删除后场景数据将清空，确定继续？',
+              onOk: () => { setScenario(null); setScenarioStatus('draft'); setIsTemplate(false) },
+            })
+          }}><DeleteOutlined /> 删除场景</Button>
+        </Space>
+      </div>
+
+      {/* 脚本引用 */}
+      <div style={{ marginBottom: 16 }}>
+        <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>脚本引用</h4>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Input size="small" value={scenario.scriptRefFile || ''} placeholder="脚本文件路径"
+            onChange={e => updateScenario({ scriptRefFile: e.target.value })}
+            prefix={<CodeOutlined style={{ color: '#86909c' }} />}
+            style={{ flex: 2, fontFamily: 'monospace', fontSize: 12 }} />
+          <Input size="small" value={scenario.scriptRefFunc || ''} placeholder="函数名"
+            onChange={e => updateScenario({ scriptRefFunc: e.target.value })}
+            style={{ flex: 1, fontFamily: 'monospace', fontSize: 12 }} />
+        </div>
+      </div>
+
+      {/* 可编辑步骤表 */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <h4 style={{ fontSize: 13, color: '#86909c', margin: 0 }}>测试步骤</h4>
+          <Button type="primary" ghost size="small" icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
+        </div>
+        <div style={{ borderRadius: 10, border: '1px solid #f2f3f5', overflow: 'hidden' }}>
+          <div style={{
+            display: 'flex', gap: 6, padding: '6px 14px', fontSize: 12, fontWeight: 600,
+            background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid #f2f3f5', alignItems: 'center',
+          }}>
+            <span style={{ width: 24, flexShrink: 0 }}></span>
+            <span style={{ width: 28, flexShrink: 0 }}>#</span>
+            <span style={{ width: 72, flexShrink: 0 }}>阶段</span>
+            <span style={{ flex: 2 }}>操作步骤</span>
+            <span style={{ flex: 1 }}>{extraLabel}</span>
+            <span style={{ flex: 1 }}>预期结果</span>
+            <span style={{ width: 32, flexShrink: 0 }}></span>
+          </div>
+          {steps.map((s, i) => (
+            <div key={i} style={{
+              display: 'flex', gap: 6, padding: '6px 14px', fontSize: 13,
+              background: i % 2 === 0 ? '#fff' : '#fafbfc',
+              borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none', alignItems: 'center',
+            }}>
+              <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', flexShrink: 0 }} />
+              <span style={{
+                width: 28, height: 24, borderRadius: 6, background: '#e6f7ff', color: '#1890ff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
+              }}>{s.seq}</span>
+              <Select size="small" value={s.phase || 'action'} onChange={v => updateStepField(i, 'phase', v)}
+                style={{ width: 72, flexShrink: 0 }}
+                options={Object.entries(phaseLabel).map(([k, v]) => ({ value: k, label: v }))} />
+              <Input value={s.action || ''} onChange={e => updateStepField(i, 'action', e.target.value)}
+                placeholder="描述操作步骤..." variant="borderless" style={{ flex: 2, fontSize: 13 }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && i === steps.length - 1 && s.action?.trim()) {
+                    e.preventDefault(); addStep()
+                  }
+                }} />
+              <Input value={s[extraCol] || ''} onChange={e => updateStepField(i, extraCol, e.target.value)}
+                placeholder={type === 'api' ? 'POST /api/...' : '页面/元素选择器'}
+                variant="borderless" style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: accentColor }} />
+              <Input value={s.expected || ''} onChange={e => updateStepField(i, 'expected', e.target.value)}
+                placeholder="预期结果..." variant="borderless" style={{ flex: 1, fontSize: 13, color: '#86909c' }} />
+              <Button type="text" danger size="small" icon={<DeleteOutlined />}
+                onClick={() => removeStep(i)} disabled={steps.length <= 1}
+                style={{ flexShrink: 0, opacity: steps.length <= 1 ? 0.3 : 1 }} />
+            </div>
+          ))}
+        </div>
+        <Button type="dashed" block style={{ marginTop: 8, borderRadius: 8 }} icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
+      </div>
+
+      {/* 依赖参数 */}
+      <div style={{ marginBottom: 16 }}>
+        <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>依赖参数</h4>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+          {scVars.map((v, i) => (
+            <Tag key={i} closable onClose={() => updateScenario({ variablesUsed: scVars.filter((_, j) => j !== i) })}
+              style={{ fontFamily: 'monospace', fontSize: 11, background: '#f0f5ff', border: '1px solid #adc6ff', color: '#1d39c4', borderRadius: 4, padding: '1px 6px' }}>
+              {v}
+            </Tag>
+          ))}
+          {scVars.length === 0 && <span style={{ fontSize: 12, color: '#c9cdd4' }}>暂无</span>}
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <Input value={newVarInput} onChange={e => setNewVarInput(e.target.value)} size="small"
+            placeholder="参数名" style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }}
+            onKeyDown={e => { if (e.key === 'Enter' && newVarInput.trim()) { updateScenario({ variablesUsed: [...scVars, newVarInput.trim()] }); setNewVarInput('') } }} />
+          <Button size="small" icon={<PlusOutlined />} disabled={!newVarInput.trim()}
+            onClick={() => { updateScenario({ variablesUsed: [...scVars, newVarInput.trim()] }); setNewVarInput('') }} />
+        </div>
+      </div>
+
+      {/* 脚本源码 */}
+      {scenario.scriptRefFile && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <h4 style={{ fontSize: 13, color: '#86909c', margin: 0 }}>脚本源码</h4>
+            {!scriptContent && !scriptLoading && (
+              <Button size="small" type="link" icon={<CodeOutlined />} onClick={onLoadScript}>加载脚本</Button>
+            )}
+          </div>
+          <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #f2f3f5' }}>
+            <ScriptViewer scriptData={scriptContent} loading={scriptLoading} error={scriptError} onRetry={onLoadScript} />
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function TemplateModal({ open, onClose, projectId, branchId, scenarioType, onSelect }) {
+  const [templates, setTemplates] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (open && projectId && branchId) {
+      setLoading(true)
+      api.get(`/projects/${projectId}/branches/${branchId}/cases/templates?type=${scenarioType}`)
+        .then(res => setTemplates(res.data || []))
+        .catch(() => message.error('加载模板失败'))
+        .finally(() => setLoading(false))
+    }
+  }, [open, projectId, branchId, scenarioType])
+
+  const scenario = scenarioType === 'api' ? 'apiScenario' : 'uiScenario'
+
+  return (
+    <Modal title={`从模板导入 — ${scenarioType === 'api' ? '接口' : 'UI'}测试场景`}
+      open={open} onCancel={onClose} footer={null} width={640}>
+      {loading ? <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div> : (
+        templates.length === 0 ? (
+          <Empty description="暂无模板" image={Empty.PRESENTED_IMAGE_SIMPLE}>
+            <div style={{ fontSize: 12, color: '#86909c' }}>将已完成的场景标记为模板后即可在此引用</div>
+          </Empty>
+        ) : (
+          <div style={{ maxHeight: 400, overflow: 'auto' }}>
+            {templates.map(t => {
+              const sc = t[scenario]
+              return (
+                <div key={t.id} style={{
+                  padding: '12px 16px', borderRadius: 8, border: '1px solid #f2f3f5',
+                  marginBottom: 8, cursor: 'pointer', transition: 'all 0.15s',
+                }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = '#91d5ff'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = '#f2f3f5'}
+                  onClick={() => { onSelect(sc); onClose() }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <span style={{ fontWeight: 500, fontSize: 14 }}>
+                      <StarFilled style={{ color: '#faad14', marginRight: 6 }} />
+                      {t.title}
+                    </span>
+                    <Tag color="blue" style={{ fontSize: 11 }}>{sc?.steps?.length || 0} 步</Tag>
+                  </div>
+                  <div style={{ fontSize: 12, color: '#86909c' }}>
+                    <span style={{ fontFamily: 'monospace' }}>{t.caseCode}</span>
+                    {sc?.scriptRefFile && <span style={{ marginLeft: 8, fontFamily: 'monospace' }}>{sc.scriptRefFile}</span>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
+      )}
+    </Modal>
+  )
+}
+
 export default function CaseDetail() {
   const { projectId, caseId } = useParams()
   const navigate = useNavigate()
@@ -279,6 +519,14 @@ export default function CaseDetail() {
   const [newVarInput, setNewVarInput] = useState('')
   const [apiScenario, setApiScenario] = useState(null)
   const [uiScenario, setUiScenario] = useState(null)
+  const [apiScenarioStatus, setApiScenarioStatus] = useState('draft')
+  const [uiScenarioStatus, setUiScenarioStatus] = useState('draft')
+  const [isApiTemplate, setIsApiTemplate] = useState(false)
+  const [isUiTemplate, setIsUiTemplate] = useState(false)
+
+  // 模板弹窗
+  const [templateModalOpen, setTemplateModalOpen] = useState(false)
+  const [templateModalType, setTemplateModalType] = useState('api')
 
   // 脚本查看
   const [scriptContent, setScriptContent] = useState(null)
@@ -324,6 +572,10 @@ export default function CaseDetail() {
         variablesUsed: c.variablesUsed || [],
         apiScenario: c.apiScenario || null,
         uiScenario: c.uiScenario || null,
+        apiScenarioStatus: c.apiScenarioStatus || 'draft',
+        uiScenarioStatus: c.uiScenarioStatus || 'draft',
+        isApiTemplate: c.isApiTemplate || false,
+        isUiTemplate: c.isUiTemplate || false,
       }
 
       setTitle(vals.title); setType(vals.type); setPriority(vals.priority)
@@ -333,6 +585,8 @@ export default function CaseDetail() {
       setScriptRefFile(vals.scriptRefFile); setScriptRefFunc(vals.scriptRefFunc)
       setRemark(vals.remark); setSteps(vals.steps); setVariablesUsed(vals.variablesUsed)
       setApiScenario(vals.apiScenario); setUiScenario(vals.uiScenario)
+      setApiScenarioStatus(vals.apiScenarioStatus); setUiScenarioStatus(vals.uiScenarioStatus)
+      setIsApiTemplate(vals.isApiTemplate); setIsUiTemplate(vals.isUiTemplate)
 
       savedRef.current = JSON.stringify(vals)
       setEnvironments(envRes.data || [])
@@ -345,6 +599,7 @@ export default function CaseDetail() {
     title, type, priority, module, subModule, automationStatus, flaky,
     preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark,
     steps, variablesUsed, apiScenario, uiScenario,
+    apiScenarioStatus, uiScenarioStatus, isApiTemplate, isUiTemplate,
   })
   const isDirty = caseData && currentSnap !== savedRef.current
 
@@ -385,6 +640,7 @@ export default function CaseDetail() {
         title, type, priority, module, subModule, automationStatus,
         isFlaky: flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc,
         remark, steps, variablesUsed, apiScenario, uiScenario,
+        apiScenarioStatus, uiScenarioStatus, isApiTemplate, isUiTemplate,
       })
       savedRef.current = currentSnap
       setCaseData(prev => ({ ...prev }))
@@ -546,18 +802,26 @@ export default function CaseDetail() {
             )},
 
             { key: 'api', label: <span><ApiOutlined style={{ marginRight: 4, color: hasApi ? '#1890ff' : undefined }} />接口测试{hasApi && <span style={{ fontSize: 11, color: '#1890ff', marginLeft: 4 }}>({apiScenario?.steps?.length || 0}步)</span>}</span>, children: (
-              <ScenarioCard
-                scenario={apiScenario} type="api" accentColor="#1890ff" icon={<ApiOutlined />}
+              <ScenarioEditor
+                scenario={apiScenario} setScenario={setApiScenario}
+                scenarioStatus={apiScenarioStatus} setScenarioStatus={setApiScenarioStatus}
+                isTemplate={isApiTemplate} setIsTemplate={setIsApiTemplate}
+                type="api" accentColor="#1890ff"
                 scriptContent={scriptContent} scriptLoading={scriptLoading} scriptError={scriptError}
                 onLoadScript={loadScript}
+                onImportTemplate={() => { setTemplateModalType('api'); setTemplateModalOpen(true) }}
               />
             )},
 
             { key: 'ui', label: <span><DesktopOutlined style={{ marginRight: 4, color: hasUi ? '#722ed1' : undefined }} />UI 测试{hasUi && <span style={{ fontSize: 11, color: '#722ed1', marginLeft: 4 }}>({uiScenario?.steps?.length || 0}步)</span>}</span>, children: (
-              <ScenarioCard
-                scenario={uiScenario} type="e2e" accentColor="#722ed1" icon={<DesktopOutlined />}
+              <ScenarioEditor
+                scenario={uiScenario} setScenario={setUiScenario}
+                scenarioStatus={uiScenarioStatus} setScenarioStatus={setUiScenarioStatus}
+                isTemplate={isUiTemplate} setIsTemplate={setIsUiTemplate}
+                type="e2e" accentColor="#722ed1"
                 scriptContent={null} scriptLoading={false} scriptError={null}
                 onLoadScript={() => {}}
+                onImportTemplate={() => { setTemplateModalType('ui'); setTemplateModalOpen(true) }}
               />
             )},
 
@@ -617,6 +881,24 @@ export default function CaseDetail() {
           </Card>
         </div>
       </div>
+
+      <TemplateModal
+        open={templateModalOpen}
+        onClose={() => setTemplateModalOpen(false)}
+        projectId={projectId}
+        branchId={branchId}
+        scenarioType={templateModalType}
+        onSelect={(sc) => {
+          if (templateModalType === 'api') {
+            setApiScenario(sc)
+            setApiScenarioStatus('draft')
+          } else {
+            setUiScenario(sc)
+            setUiScenarioStatus('draft')
+          }
+          message.success('模板已导入，记得保存')
+        }}
+      />
 
       <Modal open={runModalOpen} onCancel={() => setRunModalOpen(false)} footer={null} title="执行用例" width={480}>
         <div style={{ padding: '12px 0' }}>

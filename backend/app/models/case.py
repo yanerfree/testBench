@@ -70,6 +70,14 @@ class Case(Base):
     variables_used: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     api_scenario: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     ui_scenario: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    api_scenario_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="draft", server_default="draft"
+    )  # draft / debugging / completed
+    ui_scenario_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="draft", server_default="draft"
+    )
+    is_api_template: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    is_ui_template: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     automation_status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pending", server_default="pending"
     )  # automated / pending / script_removed / archived

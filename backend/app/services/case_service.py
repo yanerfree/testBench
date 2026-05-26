@@ -34,6 +34,10 @@ async def create_case(
         variables_used=data.variables_used,
         api_scenario=data.api_scenario,
         ui_scenario=data.ui_scenario,
+        api_scenario_status=data.api_scenario_status,
+        ui_scenario_status=data.ui_scenario_status,
+        is_api_template=data.is_api_template,
+        is_ui_template=data.is_ui_template,
         source="manual",
         automation_status="pending",
         script_ref_file=data.script_ref_file,
@@ -82,6 +86,14 @@ async def update_case(
         case.api_scenario = data.api_scenario
     if data.ui_scenario is not None:
         case.ui_scenario = data.ui_scenario
+    if data.api_scenario_status is not None:
+        case.api_scenario_status = data.api_scenario_status
+    if data.ui_scenario_status is not None:
+        case.ui_scenario_status = data.ui_scenario_status
+    if data.is_api_template is not None:
+        case.is_api_template = data.is_api_template
+    if data.is_ui_template is not None:
+        case.is_ui_template = data.is_ui_template
     if data.script_ref_file is not None:
         case.script_ref_file = data.script_ref_file
     if data.script_ref_func is not None:
@@ -156,6 +168,30 @@ async def list_cases(
     cases = list(result.scalars().all())
 
     return cases, total
+
+
+async def list_templates(
+    session: AsyncSession,
+    branch_id: uuid.UUID,
+    scenario_type: str = "api",
+) -> list[Case]:
+    """查询标记为模板的用例。scenario_type: api | ui。"""
+    from sqlalchemy import or_
+
+    base = select(Case).where(
+        Case.branch_id == branch_id,
+        Case.deleted_at.is_(None),
+    )
+
+    if scenario_type == "api":
+        base = base.where(Case.is_api_template.is_(True))
+    elif scenario_type == "ui":
+        base = base.where(Case.is_ui_template.is_(True))
+    else:
+        base = base.where(or_(Case.is_api_template.is_(True), Case.is_ui_template.is_(True)))
+
+    result = await session.execute(base.order_by(Case.created_at.desc()))
+    return list(result.scalars().all())
 
 
 async def batch_cases(

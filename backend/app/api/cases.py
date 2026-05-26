@@ -146,6 +146,24 @@ async def create_case(
     }
 
 
+@router.get("/templates")
+async def list_templates(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    scenario_type: str = Query(default="api", alias="type"),
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """查询标记为模板的用例场景"""
+    cases = await case_service.list_templates(session, branch_id, scenario_type)
+    return {
+        "data": [
+            CaseResponse.model_validate(c, from_attributes=True).model_dump(by_alias=True)
+            for c in cases
+        ],
+    }
+
+
 @router.get("")
 async def list_cases(
     project_id: uuid.UUID,

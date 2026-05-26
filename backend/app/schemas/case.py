@@ -20,6 +20,10 @@ class CreateCaseRequest(BaseSchema):
     variables_used: list[str] | None = None
     api_scenario: dict | None = None
     ui_scenario: dict | None = None
+    api_scenario_status: Literal["draft", "debugging", "completed"] = "draft"
+    ui_scenario_status: Literal["draft", "debugging", "completed"] = "draft"
+    is_api_template: bool = False
+    is_ui_template: bool = False
     script_ref_file: str | None = None
     script_ref_func: str | None = None
     remark: str | None = None
@@ -38,10 +42,18 @@ class UpdateCaseRequest(BaseSchema):
     variables_used: list[str] | None = None
     api_scenario: dict | None = None
     ui_scenario: dict | None = None
+    api_scenario_status: Literal["draft", "debugging", "completed"] | None = None
+    ui_scenario_status: Literal["draft", "debugging", "completed"] | None = None
+    is_api_template: bool | None = None
+    is_ui_template: bool | None = None
     script_ref_file: str | None = None
     script_ref_func: str | None = None
     is_flaky: bool | None = None
     remark: str | None = None
+    api_scenario_status: Literal["draft", "debugging", "completed"] | None = None
+    ui_scenario_status: Literal["draft", "debugging", "completed"] | None = None
+    is_api_template: bool | None = None
+    is_ui_template: bool | None = None
 
 
 class BatchCaseRequest(BaseSchema):
@@ -74,6 +86,10 @@ class CaseResponse(BaseSchema):
     variables_used: list[str] | None
     api_scenario: dict | None
     ui_scenario: dict | None
+    api_scenario_status: str
+    ui_scenario_status: str
+    is_api_template: bool
+    is_ui_template: bool
     automation_status: str
     source: str
     script_ref_file: str | None
