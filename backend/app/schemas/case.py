@@ -18,6 +18,8 @@ class CreateCaseRequest(BaseSchema):
     steps: list[dict] = Field(default_factory=list, min_length=1)
     expected_result: str | None = None
     variables_used: list[str] | None = None
+    api_scenario: dict | None = None
+    ui_scenario: dict | None = None
     script_ref_file: str | None = None
     script_ref_func: str | None = None
     remark: str | None = None
@@ -34,6 +36,8 @@ class UpdateCaseRequest(BaseSchema):
     steps: list[dict] | None = None
     expected_result: str | None = None
     variables_used: list[str] | None = None
+    api_scenario: dict | None = None
+    ui_scenario: dict | None = None
     script_ref_file: str | None = None
     script_ref_func: str | None = None
     is_flaky: bool | None = None
@@ -68,6 +72,8 @@ class CaseResponse(BaseSchema):
     steps: list[dict]
     expected_result: str | None
     variables_used: list[str] | None
+    api_scenario: dict | None
+    ui_scenario: dict | None
     automation_status: str
     source: str
     script_ref_file: str | None

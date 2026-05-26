@@ -32,6 +32,8 @@ async def create_case(
         steps=data.steps,
         expected_result=data.expected_result,
         variables_used=data.variables_used,
+        api_scenario=data.api_scenario,
+        ui_scenario=data.ui_scenario,
         source="manual",
         automation_status="pending",
         script_ref_file=data.script_ref_file,
@@ -76,6 +78,10 @@ async def update_case(
         case.expected_result = data.expected_result
     if data.variables_used is not None:
         case.variables_used = data.variables_used
+    if data.api_scenario is not None:
+        case.api_scenario = data.api_scenario
+    if data.ui_scenario is not None:
+        case.ui_scenario = data.ui_scenario
     if data.script_ref_file is not None:
         case.script_ref_file = data.script_ref_file
     if data.script_ref_func is not None:

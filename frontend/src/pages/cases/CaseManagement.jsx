@@ -406,6 +406,13 @@ export default function CaseManagement() {
       >{v}</span>
     )},
     { key: 'type', title: '类型', dataIndex: 'type', width: 65, defaultVisible: true, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v?.toUpperCase()}</span> },
+    { key: 'scenarios', title: '场景覆盖', width: 150, defaultVisible: true, render: (_, row) => (
+      <Space size={4}>
+        <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#f6ffed', color: '#52c41a' }}>手动</Tag>
+        {row.apiScenario && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e6f7ff', color: '#1890ff' }}>API</Tag>}
+        {row.uiScenario && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#f9f0ff', color: '#722ed1' }}>UI</Tag>}
+      </Space>
+    )},
     { key: 'priority', title: '优先级', dataIndex: 'priority', width: 68, align: 'center', defaultVisible: true, render: v => <Tag style={{ background: priorityBg[v], color: priorityColors[v], border: 'none' }}>{v}</Tag> },
     { key: 'module', title: '模块', dataIndex: 'module', width: 100, defaultVisible: false, render: v => <span style={{ fontSize: 12 }}>{v || '-'}</span> },
     { key: 'subModule', title: '子模块', dataIndex: 'subModule', width: 100, defaultVisible: false, render: v => <span style={{ fontSize: 12 }}>{v || '-'}</span> },

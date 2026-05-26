@@ -1,12 +1,12 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, Tag, Button, Input, Select, Space, Divider, Modal, message, Tabs, Timeline, Switch, Popover, Tooltip, Spin } from 'antd'
+import { Card, Tag, Button, Input, Select, Space, Modal, message, Tabs, Switch, Popover, Tooltip, Spin, Empty } from 'antd'
 import {
   ArrowLeftOutlined, PlayCircleOutlined, SaveOutlined,
-  CheckCircleFilled, CloseCircleFilled, LoadingOutlined,
   ExperimentOutlined, BugOutlined, PlusOutlined, DeleteOutlined, HolderOutlined,
-  ThunderboltOutlined, TagOutlined, AppstoreOutlined, BranchesOutlined, ApiOutlined,
+  ThunderboltOutlined, TagOutlined, AppstoreOutlined, ApiOutlined,
   FlagOutlined, WarningOutlined, CodeOutlined, CopyOutlined, FileTextOutlined,
+  DesktopOutlined, CheckCircleOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 
@@ -16,6 +16,8 @@ const statusColors = { automated: '#00b96b', pending: '#faad14', removed: '#ff4d
 const statusBg = { automated: '#f6ffed', pending: '#fffbe6', removed: '#fff2f0' }
 const statusLabels = { automated: '已自动化', pending: '待自动化', removed: '脚本已移除' }
 const dotColors = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9', automated: '#00b96b', pending: '#faad14', removed: '#ff4d4f' }
+const phaseColor = { setup: '#722ed1', action: '#1890ff', verify: '#00b96b' }
+const phaseLabel = { setup: '准备', action: '操作', verify: '验证' }
 
 function InlineProp({ icon, value, color, bg, children }) {
   const [open, setOpen] = useState(false)
@@ -85,11 +87,168 @@ function findFolderPath(tree, targetId) {
   return null
 }
 
+function ScenarioStepsView({ steps, extraCol, extraColLabel, extraPlaceholder, extraColor }) {
+  if (!steps?.length) return <Empty description="暂无步骤" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: 24 }} />
+  return (
+    <div style={{ borderRadius: 10, border: '1px solid #f2f3f5', overflow: 'hidden' }}>
+      <div style={{
+        display: 'flex', gap: 10, padding: '6px 14px', fontSize: 12, fontWeight: 600,
+        background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid #f2f3f5', alignItems: 'center',
+      }}>
+        <span style={{ width: 28, flexShrink: 0 }}>#</span>
+        <span style={{ width: 52, flexShrink: 0 }}>阶段</span>
+        <span style={{ flex: 2 }}>操作步骤</span>
+        {extraCol && <span style={{ flex: 1 }}>{extraColLabel}</span>}
+        <span style={{ flex: 1 }}>预期结果</span>
+      </div>
+      {steps.map((s, i) => (
+        <div key={i} style={{
+          display: 'flex', gap: 10, padding: '8px 14px', fontSize: 13,
+          background: i % 2 === 0 ? '#fff' : '#fafbfc',
+          borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none', alignItems: 'center',
+        }}>
+          <span style={{
+            width: 28, height: 24, borderRadius: 6, background: '#e6f7ff', color: '#1890ff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
+          }}>{s.seq || i + 1}</span>
+          {s.phase ? (
+            <span style={{
+              width: 52, flexShrink: 0, fontSize: 11, fontWeight: 500, textAlign: 'center',
+              padding: '2px 0', borderRadius: 4,
+              background: `${phaseColor[s.phase] || '#86909c'}15`, color: phaseColor[s.phase] || '#86909c',
+            }}>{phaseLabel[s.phase] || s.phase}</span>
+          ) : <span style={{ width: 52, flexShrink: 0 }} />}
+          <span style={{ flex: 2 }}>{s.action || '-'}</span>
+          {extraCol && (
+            <span style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: extraColor || '#1890ff' }}>
+              {s[extraCol] || ''}
+            </span>
+          )}
+          <span style={{ flex: 1, color: '#86909c' }}>{s.expected || '-'}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ScriptViewer({ scriptData, loading, error, onRetry }) {
+  if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><Spin tip="加载脚本中..." /></div>
+  if (error) return (
+    <div style={{ padding: 24, textAlign: 'center' }}>
+      <div style={{ color: '#ff4d4f', marginBottom: 12 }}>{error}</div>
+      <Button size="small" onClick={onRetry}>重试</Button>
+    </div>
+  )
+  if (!scriptData) return null
+  return (
+    <div>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '8px 16px', background: '#f7f8fa', borderBottom: '1px solid #f2f3f5', fontSize: 12,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FileTextOutlined style={{ color: '#86909c' }} />
+          <span style={{ fontFamily: 'monospace', color: '#4e5969' }}>{scriptData.filePath}</span>
+          {scriptData.funcName && <Tag color="blue" style={{ fontSize: 11, margin: 0 }}>{scriptData.funcName}</Tag>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Tag style={{ fontSize: 11, margin: 0, fontFamily: 'monospace' }}>{scriptData.commitSha?.substring(0, 8)}</Tag>
+          <Tooltip title="复制脚本内容">
+            <Button type="text" size="small" icon={<CopyOutlined />} onClick={() => {
+              navigator.clipboard.writeText(scriptData.content)
+              message.success('已复制到剪贴板')
+            }} />
+          </Tooltip>
+        </div>
+      </div>
+      <div style={{ maxHeight: 500, overflow: 'auto', background: '#1e1e1e' }}>
+        <pre style={{
+          margin: 0, padding: '12px 0', fontSize: 13, lineHeight: 1.6,
+          fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", color: '#d4d4d4',
+        }}>
+          {scriptData.content.split('\n').map((line, i) => {
+            const fn = scriptData.funcName
+            const isTarget = fn && (line.includes(`def ${fn}`) || line.includes(`async def ${fn}`))
+            return (
+              <div key={i} style={{
+                display: 'flex',
+                background: isTarget ? 'rgba(255,213,79,0.15)' : 'transparent',
+                borderLeft: isTarget ? '3px solid #ffd54f' : '3px solid transparent',
+              }}>
+                <span style={{ display: 'inline-block', width: 48, textAlign: 'right', paddingRight: 12, color: '#858585', userSelect: 'none', flexShrink: 0 }}>{i + 1}</span>
+                <code style={{ whiteSpace: 'pre', flex: 1, paddingRight: 16 }}>{line}</code>
+              </div>
+            )
+          })}
+        </pre>
+      </div>
+    </div>
+  )
+}
+
+function ScenarioCard({ scenario, type, accentColor, icon, scriptContent, scriptLoading, scriptError, onLoadScript }) {
+  if (!scenario) return (
+    <Card styles={{ body: { padding: '16px 20px' } }}>
+      <Empty description={`暂无${type === 'api' ? '接口' : 'UI'}测试场景`} image={Empty.PRESENTED_IMAGE_SIMPLE}>
+        <div style={{ color: '#86909c', fontSize: 12 }}>
+          通过 generate-test-suite 生成或手动导入 tea-cases.json 添加
+        </div>
+      </Empty>
+    </Card>
+  )
+  const extraCol = type === 'api' ? 'apiEndpoint' : 'uiTarget'
+  const extraLabel = type === 'api' ? '接口' : '页面/元素'
+  return (
+    <Card styles={{ body: { padding: '16px 20px' } }}>
+      {/* 脚本引用 */}
+      {scenario.scriptRefFile && (
+        <div style={{ marginBottom: 16, padding: '8px 12px', background: '#f7f8fa', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <CodeOutlined style={{ color: '#86909c' }} />
+          <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#4e5969' }}>{scenario.scriptRefFile}</span>
+          {scenario.scriptRefFunc && <Tag color={accentColor} style={{ fontSize: 11, margin: 0 }}>{scenario.scriptRefFunc}</Tag>}
+        </div>
+      )}
+
+      {/* 步骤表 */}
+      <div style={{ marginBottom: 16 }}>
+        <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>测试步骤</h4>
+        <ScenarioStepsView steps={scenario.steps} extraCol={extraCol} extraColLabel={extraLabel} extraColor={accentColor} />
+      </div>
+
+      {/* 依赖参数 */}
+      {scenario.variablesUsed?.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>依赖参数</h4>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {scenario.variablesUsed.map((v, i) => (
+              <Tag key={i} style={{ fontFamily: 'monospace', fontSize: 12, background: '#f0f5ff', border: '1px solid #adc6ff', color: '#1d39c4', borderRadius: 4, padding: '2px 8px' }}>{v}</Tag>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 脚本源码 */}
+      {scenario.scriptRefFile && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <h4 style={{ fontSize: 13, color: '#86909c', margin: 0 }}>脚本源码</h4>
+            {!scriptContent && !scriptLoading && (
+              <Button size="small" type="link" icon={<CodeOutlined />} onClick={onLoadScript}>加载脚本</Button>
+            )}
+          </div>
+          <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #f2f3f5' }}>
+            <ScriptViewer scriptData={scriptContent} loading={scriptLoading} error={scriptError} onRetry={onLoadScript} />
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export default function CaseDetail() {
   const { projectId, caseId } = useParams()
   const navigate = useNavigate()
 
-  // branchId 从 URL query string 获取
   const searchParams = new URLSearchParams(window.location.search)
   const branchId = searchParams.get('branchId')
 
@@ -115,9 +274,11 @@ export default function CaseDetail() {
   const [scriptRefFile, setScriptRefFile] = useState('')
   const [scriptRefFunc, setScriptRefFunc] = useState('')
   const [remark, setRemark] = useState('')
-  const [steps, setSteps] = useState([{ seq: 1, action: '', expected: '', phase: 'action' }])
+  const [steps, setSteps] = useState([{ seq: 1, action: '', expected: '' }])
   const [variablesUsed, setVariablesUsed] = useState([])
   const [newVarInput, setNewVarInput] = useState('')
+  const [apiScenario, setApiScenario] = useState(null)
+  const [uiScenario, setUiScenario] = useState(null)
 
   // 脚本查看
   const [scriptContent, setScriptContent] = useState(null)
@@ -131,11 +292,7 @@ export default function CaseDetail() {
   }, [projectId, branchId, caseId])
 
   async function loadData() {
-    if (!branchId) {
-      message.error('缺少分支信息')
-      setLoading(false)
-      return
-    }
+    if (!branchId) { message.error('缺少分支信息'); setLoading(false); return }
     setLoading(true)
     try {
       const [caseRes, envRes, folderRes] = await Promise.all([
@@ -143,83 +300,68 @@ export default function CaseDetail() {
         api.get('/environments'),
         api.get(`/projects/${projectId}/branches/${branchId}/folders`),
       ])
-
       const c = caseRes.data
       setCaseData(c)
 
-      const newTitle = c.title || ''
-      const newType = c.type || 'api'
-      const newPriority = c.priority || 'P1'
       const allFolders = folderRes.data || []
       setFolders(allFolders)
       const folderPath = c.folderId ? findFolderPath(allFolders, c.folderId) : ''
-      let newModule = c.module || ''
-      let newSubModule = c.subModule || ''
+      let newModule = '', newSubModule = ''
       if (folderPath) {
         const parts = folderPath.split('/')
         newModule = parts.slice(0, -1).join('/') || parts[0] || ''
         newSubModule = parts.length > 1 ? parts[parts.length - 1] : ''
       }
-      const newAutomationStatus = c.automationStatus || 'pending'
-      const newFlaky = c.isFlaky || false
-      const newPreconditions = c.preconditions || ''
-      const newExpectedResult = c.expectedResult || ''
-      const newScriptRefFile = c.scriptRefFile || ''
-      const newScriptRefFunc = c.scriptRefFunc || ''
-      const newRemark = c.remark || ''
-      const newSteps = c.steps?.length ? c.steps.map((s, i) => ({ ...s, seq: s.seq || i + 1, phase: s.phase || 'action' })) : [{ seq: 1, action: '', expected: '', phase: 'action' }]
-      const newVariablesUsed = c.variablesUsed || []
 
-      setTitle(newTitle)
-      setType(newType)
-      setPriority(newPriority)
-      setModule(newModule)
-      setSubModule(newSubModule)
-      setAutomationStatus(newAutomationStatus)
-      setFlaky(newFlaky)
-      setPreconditions(newPreconditions)
-      setExpectedResult(newExpectedResult)
-      setScriptRefFile(newScriptRefFile)
-      setScriptRefFunc(newScriptRefFunc)
-      setRemark(newRemark)
-      setSteps(newSteps)
-      setVariablesUsed(newVariablesUsed)
+      const vals = {
+        title: c.title || '', type: c.type || 'api', priority: c.priority || 'P1',
+        module: newModule, subModule: newSubModule,
+        automationStatus: c.automationStatus || 'pending', flaky: c.isFlaky || false,
+        preconditions: c.preconditions || '', expectedResult: c.expectedResult || '',
+        scriptRefFile: c.scriptRefFile || '', scriptRefFunc: c.scriptRefFunc || '',
+        remark: c.remark || '',
+        steps: c.steps?.length ? c.steps.map((s, i) => ({ ...s, seq: s.seq || i + 1 })) : [{ seq: 1, action: '', expected: '' }],
+        variablesUsed: c.variablesUsed || [],
+        apiScenario: c.apiScenario || null,
+        uiScenario: c.uiScenario || null,
+      }
 
-      savedRef.current = JSON.stringify({ title: newTitle, type: newType, priority: newPriority, module: newModule, subModule: newSubModule, automationStatus: newAutomationStatus, flaky: newFlaky, preconditions: newPreconditions, expectedResult: newExpectedResult, scriptRefFile: newScriptRefFile, scriptRefFunc: newScriptRefFunc, remark: newRemark, steps: newSteps, variablesUsed: newVariablesUsed })
+      setTitle(vals.title); setType(vals.type); setPriority(vals.priority)
+      setModule(vals.module); setSubModule(vals.subModule)
+      setAutomationStatus(vals.automationStatus); setFlaky(vals.flaky)
+      setPreconditions(vals.preconditions); setExpectedResult(vals.expectedResult)
+      setScriptRefFile(vals.scriptRefFile); setScriptRefFunc(vals.scriptRefFunc)
+      setRemark(vals.remark); setSteps(vals.steps); setVariablesUsed(vals.variablesUsed)
+      setApiScenario(vals.apiScenario); setUiScenario(vals.uiScenario)
 
+      savedRef.current = JSON.stringify(vals)
       setEnvironments(envRes.data || [])
       if (envRes.data?.length) setRunEnv(envRes.data[0].id)
-    } catch (err) {
-      message.error('加载用例详情失败')
-    } finally {
-      setLoading(false)
-    }
+    } catch { message.error('加载用例详情失败') }
+    finally { setLoading(false) }
   }
 
-  const currentSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps, variablesUsed })
+  const currentSnap = JSON.stringify({
+    title, type, priority, module, subModule, automationStatus, flaky,
+    preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark,
+    steps, variablesUsed, apiScenario, uiScenario,
+  })
   const isDirty = caseData && currentSnap !== savedRef.current
 
   async function loadScript() {
     if (!branchId || !scriptRefFile) return
-    setScriptLoading(true)
-    setScriptError(null)
+    setScriptLoading(true); setScriptError(null)
     try {
       const res = await api.get(`/projects/${projectId}/branches/${branchId}/cases/${caseId}/script`)
       setScriptContent(res.data)
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.response?.data?.detail || '加载脚本失败'
-      setScriptError(msg)
+      setScriptError(err?.response?.data?.message || '加载脚本失败')
       setScriptContent(null)
-    } finally {
-      setScriptLoading(false)
-    }
+    } finally { setScriptLoading(false) }
   }
 
-  // 离开未保存确认
   useEffect(() => {
-    const handler = (e) => {
-      if (isDirty) { e.preventDefault(); e.returnValue = '' }
-    }
+    const handler = (e) => { if (isDirty) { e.preventDefault(); e.returnValue = '' } }
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
   }, [isDirty])
@@ -227,18 +369,13 @@ export default function CaseDetail() {
   const handleBack = () => {
     if (isDirty) {
       Modal.confirm({
-        title: '未保存的修改',
-        content: '当前有未保存的修改，确定离开吗？',
-        okText: '离开',
-        cancelText: '继续编辑',
-        onOk: () => navigate(-1),
+        title: '未保存的修改', content: '当前有未保存的修改，确定离开吗？',
+        okText: '离开', cancelText: '继续编辑', onOk: () => navigate(-1),
       })
-    } else {
-      navigate(-1)
-    }
+    } else navigate(-1)
   }
 
-  const addStep = () => setSteps(prev => [...prev, { seq: prev.length + 1, action: '', expected: '', phase: 'action' }])
+  const addStep = () => setSteps(prev => [...prev, { seq: prev.length + 1, action: '', expected: '' }])
   const removeStep = (idx) => setSteps(prev => prev.filter((_, i) => i !== idx).map((s, i) => ({ ...s, seq: i + 1 })))
   const updateStep = (idx, field, value) => setSteps(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s))
 
@@ -246,28 +383,26 @@ export default function CaseDetail() {
     try {
       await api.put(`/projects/${projectId}/branches/${branchId}/cases/${caseId}`, {
         title, type, priority, module, subModule, automationStatus,
-        isFlaky: flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps, variablesUsed,
+        isFlaky: flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc,
+        remark, steps, variablesUsed, apiScenario, uiScenario,
       })
-      // 重新计算快照确保 isDirty 变为 false
-      const newSnap = JSON.stringify({ title, type, priority, module, subModule, automationStatus, flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark, steps, variablesUsed })
-      savedRef.current = newSnap
-      setCaseData(prev => ({ ...prev }))  // 触发重渲染
+      savedRef.current = currentSnap
+      setCaseData(prev => ({ ...prev }))
       message.success('保存成功')
-    } catch {
-      message.error('保存失败')
-    }
+    } catch { message.error('保存失败') }
   }
 
   if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
   if (!caseData) return <div style={{ textAlign: 'center', padding: 80, color: '#86909c' }}>用例不存在</div>
 
   const caseCode = caseData.caseCode || caseData.id?.substring(0, 8)
+  const hasApi = !!apiScenario
+  const hasUi = !!uiScenario
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <Button type="text" icon={<ArrowLeftOutlined />} size="small"
-          onClick={handleBack} style={{ color: '#86909c' }} />
+        <Button type="text" icon={<ArrowLeftOutlined />} size="small" onClick={handleBack} style={{ color: '#86909c' }} />
         <span style={{ fontSize: 12, color: '#c9cdd4' }}>用例管理</span>
         <span style={{ color: '#e5e6eb', fontSize: 12 }}>/</span>
         <span style={{ fontSize: 12, color: '#86909c', fontFamily: 'monospace' }}>{caseCode}</span>
@@ -275,59 +410,78 @@ export default function CaseDetail() {
 
       <Card styles={{ body: { padding: '16px 20px' } }} style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <Button type="primary" size="small" icon={<SaveOutlined />}
-            disabled={!isDirty} onClick={handleSave}>保存</Button>
+          <Button type="primary" size="small" icon={<SaveOutlined />} disabled={!isDirty} onClick={handleSave}>保存</Button>
           <Input value={title} onChange={e => setTitle(e.target.value)} variant="borderless"
             style={{ fontSize: 16, fontWeight: 600, flex: 1, padding: '2px 4px' }} />
           <Select value={runEnv} onChange={setRunEnv} size="small" style={{ width: 170, flexShrink: 0 }}
-            placeholder="选择环境"
-            options={environments.map(e => ({ value: e.id, label: e.name }))} />
+            placeholder="选择环境" options={environments.map(e => ({ value: e.id, label: e.name }))} />
           <Button type="primary" size="small" icon={<PlayCircleOutlined />}
             onClick={() => { setRunModalOpen(true); setRunStatus('idle') }}>执行</Button>
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
           <ReadonlyProp icon={<TagOutlined />} value={caseCode} />
-
           <InlineProp icon={<FlagOutlined />} value={priority} color={priorityColors[priority]} bg={priorityBg[priority]}>
             <DropdownList activeKey={priority} onSelect={setPriority}
               items={['P0','P1','P2','P3'].map(p => ({ key: p, label: p, dot: 'square', color: dotColors[p] }))} />
           </InlineProp>
-
           <InlineProp icon={<ApiOutlined />} value={type?.toUpperCase()} color={type==='api'?'#1890ff':'#00b96b'} bg={type==='api'?'#e6f7ff':'#f6ffed'}>
-            <DropdownList activeKey={type} onSelect={setType}
-              items={['api','e2e'].map(t => ({ key: t, label: t.toUpperCase() }))} />
+            <DropdownList activeKey={type} onSelect={setType} items={['api','e2e'].map(t => ({ key: t, label: t.toUpperCase() }))} />
           </InlineProp>
-
           <ReadonlyProp icon={<AppstoreOutlined />} label="模块" value={[module, subModule].filter(Boolean).join(' / ') || '未分类'} />
-
           <InlineProp icon={<ThunderboltOutlined />} value={statusLabels[automationStatus] || automationStatus}
             color={statusColors[automationStatus]} bg={statusBg[automationStatus]}>
             <DropdownList activeKey={automationStatus} onSelect={setAutomationStatus}
               items={['automated','pending','removed'].map(s => ({ key: s, label: statusLabels[s], dot: 'circle', color: dotColors[s] }))} />
           </InlineProp>
-
           <InlineProp icon={<WarningOutlined />} value={flaky ? 'Flaky' : '正常'} color={flaky ? '#faad14' : '#86909c'} bg={flaky ? '#fffbe6' : '#f7f8fa'}>
             <div style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ fontSize: 13 }}>Flaky 标记</span>
               <Switch size="small" checked={flaky} onChange={v => setFlaky(v)} />
             </div>
           </InlineProp>
-
           <ReadonlyProp label="来源" value={caseData.source || 'manual'} />
+
+          {/* 场景覆盖指示器 */}
+          <div style={{ display: 'inline-flex', gap: 4, marginLeft: 8 }}>
+            <Tooltip title="手动测试步骤">
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
+                borderRadius: 4, fontSize: 11, fontWeight: 500,
+                background: '#f6ffed', color: '#00b96b', border: '1px solid #b7eb8f',
+              }}><CheckCircleOutlined style={{ fontSize: 10 }} /> 手动</span>
+            </Tooltip>
+            <Tooltip title={hasApi ? '已有接口测试场景' : '暂无接口测试场景'}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
+                borderRadius: 4, fontSize: 11, fontWeight: 500,
+                background: hasApi ? '#e6f7ff' : '#f7f8fa',
+                color: hasApi ? '#1890ff' : '#c9cdd4',
+                border: `1px solid ${hasApi ? '#91d5ff' : '#e5e6eb'}`,
+              }}><ApiOutlined style={{ fontSize: 10 }} /> API</span>
+            </Tooltip>
+            <Tooltip title={hasUi ? '已有 UI 测试场景' : '暂无 UI 测试场景'}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
+                borderRadius: 4, fontSize: 11, fontWeight: 500,
+                background: hasUi ? '#f0f5ff' : '#f7f8fa',
+                color: hasUi ? '#722ed1' : '#c9cdd4',
+                border: `1px solid ${hasUi ? '#d3adf7' : '#e5e6eb'}`,
+              }}><DesktopOutlined style={{ fontSize: 10 }} /> UI</span>
+            </Tooltip>
+          </div>
         </div>
       </Card>
 
       <div style={{ display: 'flex', gap: 16 }}>
         <div style={{ flex: 1 }}>
-          <Tabs defaultActiveKey="info" onChange={key => { if (key === 'script' && !scriptContent && !scriptLoading) loadScript() }} items={[
-            { key: 'info', label: '用例信息', children: (
+          <Tabs defaultActiveKey="manual" items={[
+            { key: 'manual', label: '手动测试步骤', children: (
               <Card styles={{ body: { padding: '16px 20px' } }}>
                 <div style={{ marginBottom: 20 }}>
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>前置条件</h4>
                   <Input.TextArea rows={2} value={preconditions} onChange={e => setPreconditions(e.target.value)}
-                    style={{ background: '#f7f8fa', borderColor: '#f2f3f5' }}
-                    autoSize={{ minRows: 2, maxRows: 6 }} />
+                    style={{ background: '#f7f8fa', borderColor: '#f2f3f5' }} autoSize={{ minRows: 2, maxRows: 6 }} />
                 </div>
 
                 <div style={{ marginBottom: 20 }}>
@@ -336,18 +490,13 @@ export default function CaseDetail() {
                     <Button type="primary" ghost size="small" icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
                   </div>
                   <div style={{ borderRadius: 10, border: '1px solid #f2f3f5', overflow: 'hidden' }}>
-                    {/* 表头 */}
                     <div style={{
                       display: 'flex', gap: 10, padding: '6px 14px', fontSize: 12, fontWeight: 600,
-                      background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid #f2f3f5',
-                      alignItems: 'center',
+                      background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid #f2f3f5', alignItems: 'center',
                     }}>
                       <span style={{ width: 24, flexShrink: 0 }}></span>
-                      <span style={{ width: 24, flexShrink: 0 }}>#</span>
-                      <span style={{ width: 64, flexShrink: 0 }}>阶段</span>
+                      <span style={{ width: 28, flexShrink: 0 }}>#</span>
                       <span style={{ flex: 2 }}>操作步骤</span>
-                      {type === 'api' && <span style={{ flex: 1 }}>接口</span>}
-                      {type === 'e2e' && <span style={{ flex: 1 }}>页面/元素</span>}
                       <span style={{ flex: 1 }}>预期结果</span>
                       <span style={{ width: 32, flexShrink: 0 }}></span>
                     </div>
@@ -355,200 +504,66 @@ export default function CaseDetail() {
                       <div key={i} style={{
                         display: 'flex', gap: 10, padding: '8px 14px', fontSize: 13,
                         background: i % 2 === 0 ? '#fff' : '#fafbfc',
-                        borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none',
-                        alignItems: 'center',
+                        borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none', alignItems: 'center',
                       }}>
                         <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', flexShrink: 0 }} />
                         <span style={{
-                          width: 24, height: 24, borderRadius: 6, background: '#e6f7ff', color: '#1890ff',
+                          width: 28, height: 24, borderRadius: 6, background: '#e6f7ff', color: '#1890ff',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
                         }}>{s.seq}</span>
-                        <Select value={s.phase || 'action'} onChange={v => updateStep(i, 'phase', v)}
-                          size="small" variant="borderless"
-                          style={{ width: 64, flexShrink: 0, fontSize: 12 }}
-                          options={[
-                            { value: 'setup', label: <span style={{ color: '#722ed1', fontSize: 12 }}>准备</span> },
-                            { value: 'action', label: <span style={{ color: '#1890ff', fontSize: 12 }}>操作</span> },
-                            { value: 'verify', label: <span style={{ color: '#00b96b', fontSize: 12 }}>验证</span> },
-                          ]} />
                         <Input value={s.action} onChange={e => updateStep(i, 'action', e.target.value)}
-                          placeholder="描述操作步骤..." variant="borderless"
-                          style={{ flex: 2, fontSize: 13 }}
+                          placeholder="描述操作步骤..." variant="borderless" style={{ flex: 2, fontSize: 13 }}
                           onKeyDown={e => {
                             if (e.key === 'Enter' && i === steps.length - 1 && s.action.trim()) {
-                              e.preventDefault()
-                              addStep()
-                              setTimeout(() => {
-                                const inputs = document.querySelectorAll('[placeholder="描述操作步骤..."]')
-                                inputs[inputs.length - 1]?.focus()
-                              }, 50)
+                              e.preventDefault(); addStep()
+                              setTimeout(() => { const inputs = document.querySelectorAll('[placeholder="描述操作步骤..."]'); inputs[inputs.length - 1]?.focus() }, 50)
                             }
                           }} />
-                        {type === 'api' && (
-                          <Input value={s.apiEndpoint || ''} onChange={e => updateStep(i, 'apiEndpoint', e.target.value)}
-                            placeholder="POST /api/users → 201" variant="borderless"
-                            style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: '#1890ff' }} />
-                        )}
-                        {type === 'e2e' && (
-                          <Input value={s.uiTarget || ''} onChange={e => updateStep(i, 'uiTarget', e.target.value)}
-                            placeholder="页面URL 或 元素定位" variant="borderless"
-                            style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: '#00b96b' }} />
-                        )}
                         <Input value={s.expected || ''} onChange={e => updateStep(i, 'expected', e.target.value)}
-                          placeholder="预期结果..." variant="borderless"
-                          style={{ flex: 1, fontSize: 13, color: '#86909c' }} />
+                          placeholder="预期结果..." variant="borderless" style={{ flex: 1, fontSize: 13, color: '#86909c' }} />
                         <Button type="text" danger size="small" icon={<DeleteOutlined />}
                           onClick={() => removeStep(i)} disabled={steps.length <= 1}
                           style={{ flexShrink: 0, opacity: steps.length <= 1 ? 0.3 : 1 }} />
                       </div>
                     ))}
                   </div>
-                  <Button type="dashed" block style={{ marginTop: 8, borderRadius: 8 }} icon={<PlusOutlined />} onClick={addStep}>
-                    添加步骤
-                  </Button>
+                  <Button type="dashed" block style={{ marginTop: 8, borderRadius: 8 }} icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
                 </div>
 
                 <div style={{ marginBottom: 20 }}>
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>预期结果</h4>
                   <Input.TextArea value={expectedResult} onChange={e => setExpectedResult(e.target.value)}
-                    style={{ background: '#f7f8fa', borderColor: '#f2f3f5' }}
-                    autoSize={{ minRows: 2, maxRows: 6 }} />
-                </div>
-
-                <div style={{ marginBottom: 20 }}>
-                  <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>脚本引用</h4>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Input value={scriptRefFile} onChange={e => setScriptRefFile(e.target.value)} size="small"
-                      placeholder="脚本文件路径，如 tests/api/test_user.py" style={{ flex: 2, fontFamily: 'monospace', fontSize: 12, background: '#f7f8fa', borderColor: '#f2f3f5' }} />
-                    <Input value={scriptRefFunc} onChange={e => setScriptRefFunc(e.target.value)} size="small"
-                      placeholder="函数名，如 test_create_user" style={{ flex: 1, fontFamily: 'monospace', fontSize: 12, background: '#f7f8fa', borderColor: '#f2f3f5' }} />
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 20 }}>
-                  <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>依赖参数</h4>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                    {variablesUsed.map((v, i) => (
-                      <Tag key={i} closable onClose={() => setVariablesUsed(prev => prev.filter((_, j) => j !== i))}
-                        style={{ fontFamily: 'monospace', fontSize: 12, background: '#f0f5ff', border: '1px solid #adc6ff', color: '#1d39c4', borderRadius: 4, padding: '2px 8px' }}>
-                        {v}
-                      </Tag>
-                    ))}
-                    {variablesUsed.length === 0 && <span style={{ fontSize: 12, color: '#c9cdd4' }}>暂无参数</span>}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Input value={newVarInput} onChange={e => setNewVarInput(e.target.value)} size="small"
-                      placeholder="输入参数名，如 base_url、username"
-                      style={{ flex: 1, fontFamily: 'monospace', fontSize: 12, background: '#f7f8fa', borderColor: '#f2f3f5' }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && newVarInput.trim()) {
-                          setVariablesUsed(prev => [...prev, newVarInput.trim()])
-                          setNewVarInput('')
-                        }
-                      }} />
-                    <Button size="small" icon={<PlusOutlined />}
-                      disabled={!newVarInput.trim()}
-                      onClick={() => { setVariablesUsed(prev => [...prev, newVarInput.trim()]); setNewVarInput('') }}>
-                      添加
-                    </Button>
-                  </div>
+                    style={{ background: '#f7f8fa', borderColor: '#f2f3f5' }} autoSize={{ minRows: 2, maxRows: 6 }} />
                 </div>
 
                 <div>
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>备注</h4>
                   <Input.TextArea value={remark} onChange={e => setRemark(e.target.value)}
-                    placeholder="可选备注信息"
-                    style={{ background: '#f7f8fa', borderColor: '#f2f3f5' }}
+                    placeholder="可选备注信息" style={{ background: '#f7f8fa', borderColor: '#f2f3f5' }}
                     autoSize={{ minRows: 2, maxRows: 4 }} />
                 </div>
               </Card>
             )},
+
+            { key: 'api', label: <span><ApiOutlined style={{ marginRight: 4, color: hasApi ? '#1890ff' : undefined }} />接口测试{hasApi && <span style={{ fontSize: 11, color: '#1890ff', marginLeft: 4 }}>({apiScenario?.steps?.length || 0}步)</span>}</span>, children: (
+              <ScenarioCard
+                scenario={apiScenario} type="api" accentColor="#1890ff" icon={<ApiOutlined />}
+                scriptContent={scriptContent} scriptLoading={scriptLoading} scriptError={scriptError}
+                onLoadScript={loadScript}
+              />
+            )},
+
+            { key: 'ui', label: <span><DesktopOutlined style={{ marginRight: 4, color: hasUi ? '#722ed1' : undefined }} />UI 测试{hasUi && <span style={{ fontSize: 11, color: '#722ed1', marginLeft: 4 }}>({uiScenario?.steps?.length || 0}步)</span>}</span>, children: (
+              <ScenarioCard
+                scenario={uiScenario} type="e2e" accentColor="#722ed1" icon={<DesktopOutlined />}
+                scriptContent={null} scriptLoading={false} scriptError={null}
+                onLoadScript={() => {}}
+              />
+            )},
+
             { key: 'history', label: '执行历史', children: (
               <Card styles={{ body: { padding: '16px 24px' } }}>
-                <div style={{ color: '#86909c', textAlign: 'center', padding: 24 }}>
-                  暂无执行记录
-                </div>
-              </Card>
-            )},
-            { key: 'script', label: <span><CodeOutlined style={{ marginRight: 4 }} />脚本</span>,
-              disabled: !scriptRefFile,
-              children: (
-              <Card styles={{ body: { padding: 0 } }}>
-                {scriptLoading && (
-                  <div style={{ textAlign: 'center', padding: 48 }}>
-                    <Spin tip="加载脚本中..." />
-                  </div>
-                )}
-                {scriptError && (
-                  <div style={{ padding: 24, textAlign: 'center' }}>
-                    <div style={{ color: '#ff4d4f', marginBottom: 12 }}>{scriptError}</div>
-                    <Button size="small" onClick={loadScript}>重试</Button>
-                  </div>
-                )}
-                {scriptContent && !scriptLoading && (
-                  <div>
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '8px 16px', background: '#f7f8fa', borderBottom: '1px solid #f2f3f5',
-                      fontSize: 12,
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <FileTextOutlined style={{ color: '#86909c' }} />
-                        <span style={{ fontFamily: 'monospace', color: '#4e5969' }}>{scriptContent.filePath}</span>
-                        {scriptContent.funcName && (
-                          <Tag color="blue" style={{ fontSize: 11, margin: 0 }}>{scriptContent.funcName}</Tag>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Tag style={{ fontSize: 11, margin: 0, fontFamily: 'monospace' }}>
-                          {scriptContent.commitSha?.substring(0, 8)}
-                        </Tag>
-                        <Tooltip title="复制脚本内容">
-                          <Button type="text" size="small" icon={<CopyOutlined />}
-                            onClick={() => {
-                              navigator.clipboard.writeText(scriptContent.content)
-                              message.success('已复制到剪贴板')
-                            }} />
-                        </Tooltip>
-                      </div>
-                    </div>
-                    <div style={{
-                      maxHeight: 600, overflow: 'auto',
-                      background: '#1e1e1e', padding: 0,
-                    }}>
-                      <pre style={{
-                        margin: 0, padding: '12px 0', fontSize: 13, lineHeight: 1.6,
-                        fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-                        color: '#d4d4d4', counterReset: 'line-number',
-                      }}>
-                        {scriptContent.content.split('\n').map((line, i) => {
-                          const funcName = scriptContent.funcName
-                          const isTarget = funcName && (
-                            line.includes(`def ${funcName}`) || line.includes(`async def ${funcName}`)
-                          )
-                          return (
-                            <div key={i} style={{
-                              display: 'flex',
-                              background: isTarget ? 'rgba(255,213,79,0.15)' : 'transparent',
-                              borderLeft: isTarget ? '3px solid #ffd54f' : '3px solid transparent',
-                            }}>
-                              <span style={{
-                                display: 'inline-block', width: 48, textAlign: 'right',
-                                paddingRight: 12, color: '#858585', userSelect: 'none', flexShrink: 0,
-                              }}>{i + 1}</span>
-                              <code style={{ whiteSpace: 'pre', flex: 1, paddingRight: 16 }}>{line}</code>
-                            </div>
-                          )
-                        })}
-                      </pre>
-                    </div>
-                  </div>
-                )}
-                {!scriptContent && !scriptLoading && !scriptError && (
-                  <div style={{ padding: 24, textAlign: 'center', color: '#86909c' }}>
-                    点击此标签页加载脚本内容
-                  </div>
-                )}
+                <div style={{ color: '#86909c', textAlign: 'center', padding: 24 }}>暂无执行记录</div>
               </Card>
             )},
           ]} />
@@ -562,8 +577,7 @@ export default function CaseDetail() {
                 onClick={() => { setRunModalOpen(true); setRunStatus('idle') }}>执行此用例</Button>
               <Button block icon={<BugOutlined />}
                 onClick={async () => {
-                  const newFlaky = !flaky
-                  setFlaky(newFlaky)
+                  const newFlaky = !flaky; setFlaky(newFlaky)
                   try {
                     await api.put(`/projects/${projectId}/branches/${branchId}/cases/${caseId}`, { isFlaky: newFlaky })
                     message.success(newFlaky ? '已标记为 Flaky' : '已取消 Flaky')
@@ -575,11 +589,31 @@ export default function CaseDetail() {
                 onClick={async () => {
                   try {
                     await api.post(`/projects/${projectId}/branches/${branchId}/cases/batch`, { caseIds: [caseId], action: 'archive' })
-                    message.success('已归档')
-                    navigate(-1)
+                    message.success('已归档'); navigate(-1)
                   } catch { message.error('归档失败') }
                 }}>归档</Button>
             </Space>
+          </Card>
+
+          {/* 依赖参数 */}
+          <Card styles={{ body: { padding: 16 } }}>
+            <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>依赖参数</h4>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {variablesUsed.map((v, i) => (
+                <Tag key={i} closable onClose={() => setVariablesUsed(prev => prev.filter((_, j) => j !== i))}
+                  style={{ fontFamily: 'monospace', fontSize: 11, background: '#f0f5ff', border: '1px solid #adc6ff', color: '#1d39c4', borderRadius: 4, padding: '1px 6px' }}>
+                  {v}
+                </Tag>
+              ))}
+              {variablesUsed.length === 0 && <span style={{ fontSize: 12, color: '#c9cdd4' }}>暂无</span>}
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <Input value={newVarInput} onChange={e => setNewVarInput(e.target.value)} size="small"
+                placeholder="参数名" style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }}
+                onKeyDown={e => { if (e.key === 'Enter' && newVarInput.trim()) { setVariablesUsed(prev => [...prev, newVarInput.trim()]); setNewVarInput('') } }} />
+              <Button size="small" icon={<PlusOutlined />} disabled={!newVarInput.trim()}
+                onClick={() => { setVariablesUsed(prev => [...prev, newVarInput.trim()]); setNewVarInput('') }} />
+            </div>
           </Card>
         </div>
       </div>
@@ -595,9 +629,7 @@ export default function CaseDetail() {
             <Select value={runEnv} onChange={setRunEnv} style={{ width: '100%' }}
               options={environments.map(e => ({ value: e.id, label: e.name }))} />
           </div>
-          <div style={{ textAlign: 'center', padding: '16px 0', color: '#86909c' }}>
-            单条用例执行请通过测试计划
-          </div>
+          <div style={{ textAlign: 'center', padding: '16px 0', color: '#86909c' }}>单条用例执行请通过测试计划</div>
         </div>
       </Modal>
     </div>
