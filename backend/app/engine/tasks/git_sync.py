@@ -20,7 +20,8 @@ from app.config import settings
 from app.engine.task_status import set_task_status
 from app.models.project import Branch, Project
 from app.services.git_service import GitError, sync_branch
-from app.services import import_service
+from app.services import import_service, script_service
+from app.models.case import Case
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +118,45 @@ async def run_git_sync_inline(task_id: str, branch_id: str, project_id: str) -> 
                     logger.warning("Failed to scan test scripts in %s: %s", repo_dir, e)
                     import_summary = {"error": str(e)}
 
+            # 4.5 同步脚本内容到 scripts 表
+            scripts_synced = 0
+            try:
+                await set_task_status(task_id, "running", message="正在同步脚本内容...")
+                case_result = await session.execute(
+                    select(Case).where(
+                        Case.branch_id == branch.id,
+                        Case.deleted_at.is_(None),
+                        Case.script_ref_file.is_not(None),
+                    )
+                )
+                cases_with_scripts = case_result.scalars().all()
+                for case in cases_with_scripts:
+                    script_path = repo_dir / case.script_ref_file
+                    if not script_path.exists():
+                        continue
+                    try:
+                        content = script_path.read_text(encoding="utf-8")
+                    except Exception:
+                        continue
+                    script_type = "ui" if case.type == "e2e" else "api"
+                    lang = "typescript" if case.script_ref_file.endswith(".ts") else "python"
+                    await script_service.create_script(
+                        session,
+                        case_id=case.id,
+                        script_type=script_type,
+                        content=content,
+                        file_name=case.script_ref_file,
+                        func_name=case.script_ref_func,
+                        language=lang,
+                        source="git_sync",
+                        commit_sha=sync_result["commit_sha"],
+                    )
+                    scripts_synced += 1
+                if scripts_synced > 0:
+                    logger.info("Synced %d scripts to DB", scripts_synced)
+            except Exception as e:
+                logger.warning("Failed to sync scripts: %s", e)
+
             await session.commit()
 
             # 5. 报告成功
@@ -126,6 +166,7 @@ async def run_git_sync_inline(task_id: str, branch_id: str, project_id: str) -> 
                 "diff": sync_result["diff"],
                 "import": import_summary,
                 "importSource": import_source,
+                "scriptsSynced": scripts_synced,
             }
             msg = "同步完成"
             if import_summary and not import_summary.get("error"):

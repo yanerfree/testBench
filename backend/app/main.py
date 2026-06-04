@@ -14,6 +14,7 @@ from app.api.variables import router as variables_router
 from app.api.plans import router as plans_router, reports_router
 from app.api.tasks import router as tasks_router
 from app.api.logs import router as logs_router
+from app.api.scripts import router as scripts_router
 from app.core.middleware import CamelCaseResponse, TokenRefreshMiddleware, TraceIdMiddleware
 
 app = FastAPI(
@@ -50,3 +51,4 @@ app.include_router(plans_router)
 app.include_router(reports_router)
 app.include_router(tasks_router)
 app.include_router(logs_router)
+app.include_router(scripts_router)

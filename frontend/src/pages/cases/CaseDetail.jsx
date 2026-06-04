@@ -9,6 +9,7 @@ import {
   DesktopOutlined, CheckCircleOutlined, StarOutlined, StarFilled, ImportOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
+import ScriptEditor from '../../components/ScriptEditor'
 
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
 const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' }
@@ -829,29 +830,41 @@ export default function CaseDetail() {
             )},
 
             { key: 'api', label: <span><ApiOutlined style={{ marginRight: 4, color: hasApi ? '#1890ff' : undefined }} />接口测试{hasApi && <span style={{ fontSize: 11, color: '#1890ff', marginLeft: 4 }}>({apiScenario?.steps?.length || 0}步)</span>}</span>, children: (
-              <ScenarioEditor
-                scenario={apiScenario} setScenario={setApiScenario}
-                scenarioStatus={apiScenarioStatus} setScenarioStatus={setApiScenarioStatus}
-                isTemplate={isApiTemplate} setIsTemplate={setIsApiTemplate}
-                type="api" accentColor="#1890ff"
-                scriptContent={scriptContent} scriptLoading={scriptLoading} scriptError={scriptError}
-                onLoadScript={loadScript}
-                onImportTemplate={() => { setTemplateModalType('api'); setTemplateModalOpen(true) }}
-                manualSteps={steps}
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <ScenarioEditor
+                  scenario={apiScenario} setScenario={setApiScenario}
+                  scenarioStatus={apiScenarioStatus} setScenarioStatus={setApiScenarioStatus}
+                  isTemplate={isApiTemplate} setIsTemplate={setIsApiTemplate}
+                  type="api" accentColor="#1890ff"
+                  scriptContent={scriptContent} scriptLoading={scriptLoading} scriptError={scriptError}
+                  onLoadScript={loadScript}
+                  onImportTemplate={() => { setTemplateModalType('api'); setTemplateModalOpen(true) }}
+                  manualSteps={steps}
+                />
+                <Card styles={{ body: { padding: '12px 16px' } }}>
+                  <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>测试脚本</h4>
+                  <ScriptEditor projectId={projectId} branchId={branchId} caseId={caseId} scriptType="api" accentColor="#1890ff" />
+                </Card>
+              </div>
             )},
 
             { key: 'ui', label: <span><DesktopOutlined style={{ marginRight: 4, color: hasUi ? '#722ed1' : undefined }} />UI 测试{hasUi && <span style={{ fontSize: 11, color: '#722ed1', marginLeft: 4 }}>({uiScenario?.steps?.length || 0}步)</span>}</span>, children: (
-              <ScenarioEditor
-                scenario={uiScenario} setScenario={setUiScenario}
-                scenarioStatus={uiScenarioStatus} setScenarioStatus={setUiScenarioStatus}
-                isTemplate={isUiTemplate} setIsTemplate={setIsUiTemplate}
-                type="e2e" accentColor="#722ed1"
-                scriptContent={null} scriptLoading={false} scriptError={null}
-                onLoadScript={() => {}}
-                onImportTemplate={() => { setTemplateModalType('ui'); setTemplateModalOpen(true) }}
-                manualSteps={steps}
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <ScenarioEditor
+                  scenario={uiScenario} setScenario={setUiScenario}
+                  scenarioStatus={uiScenarioStatus} setScenarioStatus={setUiScenarioStatus}
+                  isTemplate={isUiTemplate} setIsTemplate={setIsUiTemplate}
+                  type="e2e" accentColor="#722ed1"
+                  scriptContent={null} scriptLoading={false} scriptError={null}
+                  onLoadScript={() => {}}
+                  onImportTemplate={() => { setTemplateModalType('ui'); setTemplateModalOpen(true) }}
+                  manualSteps={steps}
+                />
+                <Card styles={{ body: { padding: '12px 16px' } }}>
+                  <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>测试脚本</h4>
+                  <ScriptEditor projectId={projectId} branchId={branchId} caseId={caseId} scriptType="ui" accentColor="#722ed1" />
+                </Card>
+              </div>
             )},
 
             { key: 'history', label: '执行历史', children: (
