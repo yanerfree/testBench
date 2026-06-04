@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import ScriptEditor from '../../components/ScriptEditor'
+import ApiStepList, { generateApiCodeFromSteps } from '../../components/ApiStepList'
 
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
 const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' }
@@ -251,38 +252,6 @@ function ScenarioCard({ scenario, type, accentColor, icon, scriptContent, script
   )
 }
 
-function generateApiCode(steps, title) {
-  const lines = ['import httpx', 'import pytest', '', '', `BASE_URL = "http://localhost:8000"`, '', '']
-  const fnName = 'test_' + (title || 'scenario').replace(/[^a-zA-Z0-9一-龥]/g, '_').replace(/_+/g, '_').substring(0, 40).toLowerCase()
-  lines.push(`def ${fnName}():`)
-  lines.push(`    """${title || '接口测试'}"""`)
-  lines.push(`    client = httpx.Client(base_url=BASE_URL)`)
-  lines.push('')
-
-  for (const s of steps) {
-    const endpoint = s.apiEndpoint || ''
-    lines.push(`    # Step ${s.seq}: ${s.action || ''}`)
-    if (endpoint) {
-      const parts = endpoint.trim().split(/\s+/)
-      const method = (parts.length > 1 ? parts[0] : 'GET').toLowerCase()
-      const path = parts.length > 1 ? parts[1] : parts[0]
-      lines.push(`    response = client.${method}("${path}")`)
-      if (s.expected) {
-        if (/\d{3}/.test(s.expected)) {
-          const code = s.expected.match(/\d{3}/)[0]
-          lines.push(`    assert response.status_code == ${code}  # ${s.expected}`)
-        } else {
-          lines.push(`    # 预期: ${s.expected}`)
-        }
-      }
-    } else if (s.expected) {
-      lines.push(`    # 预期: ${s.expected}`)
-    }
-    lines.push('')
-  }
-  return lines.join('\n')
-}
-
 function generateUiCode(steps, title) {
   const lines = ['from playwright.sync_api import Page, expect', '', '']
   const fnName = 'test_' + (title || 'ui_scenario').replace(/[^a-zA-Z0-9一-龥]/g, '_').replace(/_+/g, '_').substring(0, 40).toLowerCase()
@@ -409,75 +378,53 @@ function ScenarioEditor({
       {/* 步骤视图 */}
       {viewMode === 'steps' && (
         <>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <h4 style={{ fontSize: 13, color: '#86909c', margin: 0 }}>测试步骤 <span style={{ fontSize: 11, fontWeight: 400 }}>（每行对应一个接口调用或操作）</span></h4>
-              <Button type="primary" ghost size="small" icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
-            </div>
-            <div style={{ borderRadius: 10, border: '1px solid #f2f3f5', overflow: 'hidden' }}>
-              <div style={{
-                display: 'flex', gap: 6, padding: '6px 14px', fontSize: 12, fontWeight: 600,
-                background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid #f2f3f5', alignItems: 'center',
-              }}>
-                <span style={{ width: 24, flexShrink: 0 }}></span>
-                <span style={{ width: 28, flexShrink: 0 }}>#</span>
-                <span style={{ width: 72, flexShrink: 0 }}>阶段</span>
-                <span style={{ flex: 2 }}>操作步骤</span>
-                <span style={{ flex: 1 }}>{extraLabel}</span>
-                <span style={{ flex: 1 }}>预期结果</span>
-                <span style={{ width: 32, flexShrink: 0 }}></span>
+          {type === 'api' ? (
+            <ApiStepList steps={steps} onChange={newSteps => updateScenario({ steps: newSteps })} accentColor={accentColor} />
+          ) : (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <h4 style={{ fontSize: 13, color: '#86909c', margin: 0 }}>UI 测试步骤</h4>
+                <Button type="primary" ghost size="small" icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
               </div>
-              {steps.map((s, i) => (
-                <div key={i} style={{
-                  display: 'flex', gap: 6, padding: '6px 14px', fontSize: 13,
-                  background: i % 2 === 0 ? '#fff' : '#fafbfc',
-                  borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none', alignItems: 'center',
+              <div style={{ borderRadius: 10, border: '1px solid #f2f3f5', overflow: 'hidden' }}>
+                <div style={{
+                  display: 'flex', gap: 6, padding: '6px 14px', fontSize: 12, fontWeight: 600,
+                  background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid #f2f3f5', alignItems: 'center',
                 }}>
-                  <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', flexShrink: 0 }} />
-                  <span style={{
-                    width: 28, height: 24, borderRadius: 6, background: '#e6f7ff', color: '#1890ff',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
-                  }}>{s.seq}</span>
-                  <Select size="small" value={s.phase || 'action'} onChange={v => updateStepField(i, 'phase', v)}
-                    style={{ width: 72, flexShrink: 0 }}
-                    options={Object.entries(phaseLabel).map(([k, v]) => ({ value: k, label: v }))} />
-                  <Input value={s.action || ''} onChange={e => updateStepField(i, 'action', e.target.value)}
-                    placeholder="描述操作步骤..." variant="borderless" style={{ flex: 2, fontSize: 13 }}
-                    onKeyDown={e => { if (e.key === 'Enter' && i === steps.length - 1 && s.action?.trim()) { e.preventDefault(); addStep() } }} />
-                  <Input value={s[extraCol] || ''} onChange={e => updateStepField(i, extraCol, e.target.value)}
-                    placeholder={type === 'api' ? 'POST /api/...' : '页面/元素选择器'}
-                    variant="borderless" style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: accentColor }} />
-                  <Input value={s.expected || ''} onChange={e => updateStepField(i, 'expected', e.target.value)}
-                    placeholder="预期结果..." variant="borderless" style={{ flex: 1, fontSize: 13, color: '#86909c' }} />
-                  <Button type="text" danger size="small" icon={<DeleteOutlined />}
-                    onClick={() => removeStep(i)} disabled={steps.length <= 1}
-                    style={{ flexShrink: 0, opacity: steps.length <= 1 ? 0.3 : 1 }} />
+                  <span style={{ width: 24, flexShrink: 0 }}></span>
+                  <span style={{ width: 28, flexShrink: 0 }}>#</span>
+                  <span style={{ flex: 2 }}>操作步骤</span>
+                  <span style={{ flex: 1 }}>页面/元素</span>
+                  <span style={{ flex: 1 }}>预期结果</span>
+                  <span style={{ width: 32, flexShrink: 0 }}></span>
                 </div>
-              ))}
+                {steps.map((s, i) => (
+                  <div key={i} style={{
+                    display: 'flex', gap: 6, padding: '6px 14px', fontSize: 13,
+                    background: i % 2 === 0 ? '#fff' : '#fafbfc',
+                    borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none', alignItems: 'center',
+                  }}>
+                    <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', flexShrink: 0 }} />
+                    <span style={{
+                      width: 28, height: 24, borderRadius: 6, background: '#e6f7ff', color: '#1890ff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
+                    }}>{s.seq}</span>
+                    <Input value={s.action || ''} onChange={e => updateStepField(i, 'action', e.target.value)}
+                      placeholder="描述操作步骤..." variant="borderless" style={{ flex: 2, fontSize: 13 }} />
+                    <Input value={s.uiTarget || ''} onChange={e => updateStepField(i, 'uiTarget', e.target.value)}
+                      placeholder="页面URL或元素选择器" variant="borderless"
+                      style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: accentColor }} />
+                    <Input value={s.expected || ''} onChange={e => updateStepField(i, 'expected', e.target.value)}
+                      placeholder="预期结果..." variant="borderless" style={{ flex: 1, fontSize: 13, color: '#86909c' }} />
+                    <Button type="text" danger size="small" icon={<DeleteOutlined />}
+                      onClick={() => removeStep(i)} disabled={steps.length <= 1}
+                      style={{ flexShrink: 0, opacity: steps.length <= 1 ? 0.3 : 1 }} />
+                  </div>
+                ))}
+              </div>
+              <Button type="dashed" block style={{ marginTop: 8, borderRadius: 8 }} icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
             </div>
-            <Button type="dashed" block style={{ marginTop: 8, borderRadius: 8 }} icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
-          </div>
-
-          {/* 依赖参数 */}
-          <div>
-            <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>依赖参数</h4>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-              {scVars.map((v, i) => (
-                <Tag key={i} closable onClose={() => updateScenario({ variablesUsed: scVars.filter((_, j) => j !== i) })}
-                  style={{ fontFamily: 'monospace', fontSize: 11, background: '#f0f5ff', border: '1px solid #adc6ff', color: '#1d39c4', borderRadius: 4, padding: '1px 6px' }}>
-                  {v}
-                </Tag>
-              ))}
-              {scVars.length === 0 && <span style={{ fontSize: 12, color: '#c9cdd4' }}>暂无</span>}
-            </div>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <Input value={newVarInput} onChange={e => setNewVarInput(e.target.value)} size="small"
-                placeholder="参数名" style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }}
-                onKeyDown={e => { if (e.key === 'Enter' && newVarInput.trim()) { updateScenario({ variablesUsed: [...scVars, newVarInput.trim()] }); setNewVarInput('') } }} />
-              <Button size="small" icon={<PlusOutlined />} disabled={!newVarInput.trim()}
-                onClick={() => { updateScenario({ variablesUsed: [...scVars, newVarInput.trim()] }); setNewVarInput('') }} />
-            </div>
-          </div>
+          )}
         </>
       )}
 
@@ -490,7 +437,7 @@ function ScenarioEditor({
           <ScriptEditor
             projectId={projectId} branchId={branchId} caseId={caseId}
             scriptType={type === 'api' ? 'api' : 'ui'} accentColor={accentColor}
-            autoGenerateCode={type === 'api' ? generateApiCode(steps, caseTitle) : generateUiCode(steps, caseTitle)}
+            autoGenerateCode={type === 'api' ? generateApiCodeFromSteps(steps, caseTitle) : generateUiCode(steps, caseTitle)}
           />
         </div>
       )}
