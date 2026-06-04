@@ -254,7 +254,6 @@ function ScenarioCard({ scenario, type, accentColor, icon, scriptContent, script
 function ScenarioEditor({
   scenario, setScenario, scenarioStatus, setScenarioStatus,
   isTemplate, setIsTemplate, type, accentColor,
-  scriptContent, scriptLoading, scriptError, onLoadScript,
   onImportTemplate, manualSteps,
 }) {
   const extraCol = type === 'api' ? 'apiEndpoint' : 'uiTarget'
@@ -341,20 +340,6 @@ function ScenarioEditor({
         </Space>
       </div>
 
-      {/* 脚本引用 */}
-      <div style={{ marginBottom: 16 }}>
-        <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>脚本引用</h4>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Input size="small" value={scenario.scriptRefFile || ''} placeholder="脚本文件路径"
-            onChange={e => updateScenario({ scriptRefFile: e.target.value })}
-            prefix={<CodeOutlined style={{ color: '#86909c' }} />}
-            style={{ flex: 2, fontFamily: 'monospace', fontSize: 12 }} />
-          <Input size="small" value={scenario.scriptRefFunc || ''} placeholder="函数名"
-            onChange={e => updateScenario({ scriptRefFunc: e.target.value })}
-            style={{ flex: 1, fontFamily: 'monospace', fontSize: 12 }} />
-        </div>
-      </div>
-
       {/* 可编辑步骤表 */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -429,21 +414,6 @@ function ScenarioEditor({
             onClick={() => { updateScenario({ variablesUsed: [...scVars, newVarInput.trim()] }); setNewVarInput('') }} />
         </div>
       </div>
-
-      {/* 脚本源码 */}
-      {scenario.scriptRefFile && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <h4 style={{ fontSize: 13, color: '#86909c', margin: 0 }}>脚本源码</h4>
-            {!scriptContent && !scriptLoading && (
-              <Button size="small" type="link" icon={<CodeOutlined />} onClick={onLoadScript}>加载脚本</Button>
-            )}
-          </div>
-          <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #f2f3f5' }}>
-            <ScriptViewer scriptData={scriptContent} loading={scriptLoading} error={scriptError} onRetry={onLoadScript} />
-          </div>
-        </div>
-      )}
     </Card>
   )
 }
@@ -836,8 +806,6 @@ export default function CaseDetail() {
                   scenarioStatus={apiScenarioStatus} setScenarioStatus={setApiScenarioStatus}
                   isTemplate={isApiTemplate} setIsTemplate={setIsApiTemplate}
                   type="api" accentColor="#1890ff"
-                  scriptContent={scriptContent} scriptLoading={scriptLoading} scriptError={scriptError}
-                  onLoadScript={loadScript}
                   onImportTemplate={() => { setTemplateModalType('api'); setTemplateModalOpen(true) }}
                   manualSteps={steps}
                 />
@@ -855,8 +823,6 @@ export default function CaseDetail() {
                   scenarioStatus={uiScenarioStatus} setScenarioStatus={setUiScenarioStatus}
                   isTemplate={isUiTemplate} setIsTemplate={setIsUiTemplate}
                   type="e2e" accentColor="#722ed1"
-                  scriptContent={null} scriptLoading={false} scriptError={null}
-                  onLoadScript={() => {}}
                   onImportTemplate={() => { setTemplateModalType('ui'); setTemplateModalOpen(true) }}
                   manualSteps={steps}
                 />

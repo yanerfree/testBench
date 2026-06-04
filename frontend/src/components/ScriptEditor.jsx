@@ -11,7 +11,6 @@ const langMap = { python: 'python', typescript: 'typescript' }
 export default function ScriptEditor({
   projectId, branchId, caseId, scriptType,
   accentColor = '#1890ff',
-  onRunScript,
 }) {
   const [script, setScript] = useState(null)
   const [versions, setVersions] = useState([])
@@ -21,6 +20,8 @@ export default function ScriptEditor({
   const [dirty, setDirty] = useState(false)
   const [showPaste, setShowPaste] = useState(false)
   const [pasteContent, setPasteContent] = useState('')
+  const [running, setRunning] = useState(false)
+  const [runResult, setRunResult] = useState(null)
   const editorRef = useRef(null)
 
   const apiBase = `/api/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts`
@@ -96,6 +97,24 @@ export default function ScriptEditor({
         fetchVersions()
       }
     } catch { message.error('版本切换失败') }
+  }
+
+  const handleRun = async () => {
+    if (dirty) { message.warning('请先保存脚本'); return }
+    if (!script?.id) { message.warning('请先保存脚本'); return }
+    setRunning(true)
+    setRunResult(null)
+    try {
+      const res = await fetch(`${apiBase}/run?type=${scriptType}`, { method: 'POST', headers })
+      const data = await res.json()
+      if (data.data) {
+        setRunResult(data.data)
+        message.info(data.data.status === 'passed' ? '执行通过 ✓' : `执行结果: ${data.data.status}`)
+      } else {
+        message.error(data?.error?.message || '执行失败')
+      }
+    } catch { message.error('执行请求失败') }
+    finally { setRunning(false) }
   }
 
   const handleCreate = (initialContent = '') => {
@@ -175,13 +194,12 @@ export default function ScriptEditor({
             <Button size="small" type="text" icon={<CopyOutlined />} style={{ color: '#aaa' }}
               onClick={() => { navigator.clipboard.writeText(content); message.success('已复制') }} />
           </Tooltip>
-          {onRunScript && (
-            <Tooltip title="运行脚本">
-              <Button size="small" icon={<PlayCircleOutlined />}
-                style={{ color: '#52c41a', borderColor: '#52c41a' }}
-                onClick={() => onRunScript(script)}>运行</Button>
-            </Tooltip>
-          )}
+          <Tooltip title={dirty ? '请先保存' : '运行脚本'}>
+            <Button size="small" icon={<PlayCircleOutlined />} loading={running}
+              disabled={dirty || !script?.id}
+              style={{ color: '#52c41a', borderColor: '#52c41a' }}
+              onClick={handleRun}>运行</Button>
+          </Tooltip>
         </Space>
       </div>
 
@@ -207,6 +225,42 @@ export default function ScriptEditor({
           padding: { top: 8 },
         }}
       />
+
+      {/* 执行结果面板 */}
+      {(running || runResult) && (
+        <div style={{ borderTop: '1px solid #333', background: '#1a1a1a', padding: '12px 16px' }}>
+          {running ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#aaa' }}>
+              <Spin size="small" /> <span>正在执行...</span>
+            </div>
+          ) : runResult && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                <Tag color={runResult.status === 'passed' ? 'success' : runResult.status === 'failed' ? 'error' : 'warning'}
+                  style={{ fontSize: 13, padding: '2px 12px' }}>
+                  {runResult.status === 'passed' ? '✓ PASSED' : runResult.status === 'failed' ? '✗ FAILED' : runResult.status?.toUpperCase()}
+                </Tag>
+                <span style={{ fontSize: 12, color: '#86909c' }}>{runResult.durationMs}ms</span>
+                <Button size="small" type="text" style={{ color: '#aaa', marginLeft: 'auto' }}
+                  onClick={() => setRunResult(null)}>关闭</Button>
+              </div>
+              {runResult.errorSummary && (
+                <div style={{ padding: '8px 12px', background: '#2d1215', borderRadius: 6, marginBottom: 8, fontSize: 12, color: '#ff7875', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 120, overflow: 'auto' }}>
+                  {runResult.errorSummary}
+                </div>
+              )}
+              {runResult.stdout && (
+                <details style={{ fontSize: 12 }}>
+                  <summary style={{ color: '#86909c', cursor: 'pointer', marginBottom: 4 }}>执行日志</summary>
+                  <pre style={{ margin: 0, padding: '8px 12px', background: '#111', borderRadius: 6, color: '#d4d4d4', fontSize: 11, maxHeight: 250, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
+                    {runResult.stdout}
+                  </pre>
+                </details>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 粘贴弹窗 */}
       <Modal title="粘贴脚本代码" open={showPaste} onCancel={() => setShowPaste(false)}
