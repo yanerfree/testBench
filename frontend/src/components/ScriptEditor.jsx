@@ -11,6 +11,7 @@ const langMap = { python: 'python', typescript: 'typescript' }
 export default function ScriptEditor({
   projectId, branchId, caseId, scriptType,
   accentColor = '#1890ff',
+  autoGenerateCode = null,
 }) {
   const [script, setScript] = useState(null)
   const [versions, setVersions] = useState([])
@@ -146,11 +147,13 @@ export default function ScriptEditor({
       <Empty description={`暂无${scriptType === 'api' ? '接口' : 'UI'}测试脚本`} image={Empty.PRESENTED_IMAGE_SIMPLE}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
           <Space>
-            <Button type="primary" icon={<CodeOutlined />} onClick={() => handleCreate()}>创建脚本</Button>
+            {autoGenerateCode && (
+              <Button type="primary" icon={<CodeOutlined />} onClick={() => handleCreate(autoGenerateCode)}>从步骤生成代码</Button>
+            )}
+            <Button icon={<CodeOutlined />} onClick={() => handleCreate()}>创建空白脚本</Button>
             <Upload accept=".py,.ts" showUploadList={false} beforeUpload={handleUpload}>
               <Button icon={<UploadOutlined />}>上传文件</Button>
             </Upload>
-            <Button icon={<ImportOutlined />} onClick={() => setShowPaste(true)}>粘贴代码</Button>
           </Space>
         </div>
       </Empty>
