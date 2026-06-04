@@ -1,8 +1,9 @@
-import { useState } from 'react'
-import { Input, Select, Button, Tag, Space, Tooltip, Dropdown } from 'antd'
+import { useState, useRef } from 'react'
+import { Input, Select, Button, Tag, Space, Tooltip, Dropdown, Popover } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, HolderOutlined, CaretRightOutlined, CaretDownOutlined,
   SendOutlined, FolderOutlined, RetweetOutlined, BranchesOutlined, ApiOutlined,
+  ClockCircleOutlined, UnorderedListOutlined, ThunderboltOutlined, CopyOutlined,
 } from '@ant-design/icons'
 
 const methodColors = {
@@ -11,6 +12,47 @@ const methodColors = {
   PUT: { color: '#faad14', bg: '#fffbe6', border: '#ffe58f' },
   PATCH: { color: '#722ed1', bg: '#f9f0ff', border: '#d3adf7' },
   DELETE: { color: '#ff4d4f', bg: '#fff2f0', border: '#ffa39e' },
+}
+
+// ---- 动态变量 ----
+const dynamicVars = [
+  { key: '$uuid', label: 'UUID', desc: '随机 UUID v4', example: 'a1b2c3d4-...' },
+  { key: '$timestamp', label: '时间戳', desc: '当前 Unix 时间戳（秒）', example: '1717488000' },
+  { key: '$timestampMs', label: '毫秒时间戳', desc: '当前 Unix 时间戳（毫秒）', example: '1717488000123' },
+  { key: '$isoDate', label: 'ISO 日期', desc: 'ISO 8601 格式', example: '2026-06-04T12:00:00Z' },
+  { key: '$randomInt', label: '随机整数', desc: '0-99999 随机数', example: '42731' },
+  { key: '$randomFloat', label: '随机浮点', desc: '0-1 随机浮点数', example: '0.7823' },
+  { key: '$randomEmail', label: '随机邮箱', desc: '随机邮箱地址', example: 'user_38271@test.com' },
+  { key: '$randomPhone', label: '随机手机号', desc: '随机 11 位手机号', example: '138xxxx1234' },
+  { key: '$randomString', label: '随机字符串', desc: '8 位随机字符', example: 'aB3kP9mZ' },
+  { key: '$randomName', label: '随机姓名', desc: '随机中文姓名', example: '张三' },
+]
+
+function VarPicker({ onInsert }) {
+  return (
+    <Popover trigger="click" placement="bottomRight" arrow={false}
+      content={
+        <div style={{ width: 260, maxHeight: 300, overflow: 'auto' }}>
+          <div style={{ fontSize: 11, color: '#86909c', padding: '4px 8px', fontWeight: 600 }}>点击插入动态变量</div>
+          {dynamicVars.map(v => (
+            <div key={v.key} onClick={() => onInsert(`{{${v.key}}}`)}
+              style={{ padding: '6px 8px', cursor: 'pointer', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f0f5ff'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <div>
+                <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#1890ff' }}>{`{{${v.key}}}`}</div>
+                <div style={{ fontSize: 10, color: '#86909c' }}>{v.desc}</div>
+              </div>
+              <span style={{ fontSize: 10, color: '#c9cdd4', fontFamily: 'monospace' }}>{v.example}</span>
+            </div>
+          ))}
+        </div>
+      }>
+      <Tooltip title="插入动态变量">
+        <Button type="text" size="small" icon={<ThunderboltOutlined />} style={{ color: '#faad14', fontSize: 12 }} />
+      </Tooltip>
+    </Popover>
+  )
 }
 
 // ---- 子编辑器 ----
@@ -87,7 +129,9 @@ function ApiStepCard({ step, index, onChange, onRemove, canRemove }) {
 
   const tabs = [
     { key: 'params', label: 'Params' }, { key: 'headers', label: 'Headers' },
-    { key: 'body', label: 'Body' }, { key: 'assertions', label: '断言' }, { key: 'extractors', label: '变量' },
+    { key: 'body', label: 'Body' }, { key: 'assertions', label: '断言' },
+    { key: 'extractors', label: '变量' }, { key: 'preScript', label: '前置脚本' },
+    { key: 'postScript', label: '后置脚本' },
   ]
 
   return (
@@ -128,9 +172,12 @@ function ApiStepCard({ step, index, onChange, onRemove, canRemove }) {
                 }))} />
             </div>
             <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>请求路径</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 11, color: '#86909c' }}>请求路径</span>
+                <VarPicker onInsert={v => up('url', (step.url || '') + v)} />
+              </div>
               <Input size="small" value={step.url || ''} onChange={e => up('url', e.target.value)}
-                placeholder="/api/auth/login" style={{ fontFamily: 'monospace', fontSize: 12 }} />
+                placeholder="/api/auth/login  支持 {{$uuid}} 等变量" style={{ fontFamily: 'monospace', fontSize: 12 }} />
             </div>
             <div>
               <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>步骤描述</div>
@@ -167,6 +214,22 @@ function ApiStepCard({ step, index, onChange, onRemove, canRemove }) {
               )}
               {activeTab === 'assertions' && <AssertEditor items={step.assertions || []} onChange={v => up('assertions', v)} />}
               {activeTab === 'extractors' && <ExtractEditor items={step.extractors || []} onChange={v => up('extractors', v)} />}
+              {activeTab === 'preScript' && (
+                <div>
+                  <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>请求前执行的 Python 代码（可用于签名、动态参数等）</div>
+                  <Input.TextArea value={step.preScript || ''} onChange={e => up('preScript', e.target.value)}
+                    placeholder={'# 前置脚本示例\nimport hashlib\nsign = hashlib.md5(f"{timestamp}{secret}".encode()).hexdigest()'}
+                    autoSize={{ minRows: 4, maxRows: 12 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+                </div>
+              )}
+              {activeTab === 'postScript' && (
+                <div>
+                  <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>请求后执行的 Python 代码（可用于数据清理、日志等）</div>
+                  <Input.TextArea value={step.postScript || ''} onChange={e => up('postScript', e.target.value)}
+                    placeholder={'# 后置脚本示例\nprint(f"响应状态: {response.status_code}")\nprint(f"耗时: {response.elapsed.total_seconds()}s")'}
+                    autoSize={{ minRows: 4, maxRows: 12 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -263,7 +326,54 @@ function ConditionNode({ node, index, onChange, onRemove }) {
   )
 }
 
-// ---- 内部递归列表（支持嵌套） ----
+// ---- 编排节点：等待 ----
+function WaitNode({ node, onChange, onRemove }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+      border: '1px solid #d9d9d9', borderRadius: 8, marginBottom: 6, background: '#fafafa',
+    }}>
+      <ClockCircleOutlined style={{ color: '#86909c', fontSize: 12 }} />
+      <span style={{ fontSize: 12, color: '#86909c', fontWeight: 500 }}>等待</span>
+      <Input size="small" value={node.delay ?? 1000} type="number" style={{ width: 80, textAlign: 'center', fontSize: 11 }}
+        onChange={e => onChange({ ...node, delay: parseInt(e.target.value) || 0 })} />
+      <span style={{ fontSize: 11, color: '#86909c' }}>毫秒</span>
+      <Input size="small" value={node.label || ''} placeholder="等待描述（可选）" variant="borderless"
+        onChange={e => onChange({ ...node, label: e.target.value })} style={{ flex: 1, fontSize: 12, color: '#86909c' }} />
+      <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={onRemove} />
+    </div>
+  )
+}
+
+// ---- 编排节点：ForEach 循环 ----
+function ForEachNode({ node, onChange, onRemove }) {
+  const [collapsed, setCollapsed] = useState(false)
+  return (
+    <div style={{ border: '1px solid #87e8de', borderRadius: 8, marginBottom: 6, background: '#f6fffb' }}>
+      <div onClick={() => setCollapsed(!collapsed)} style={{
+        display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', cursor: 'pointer',
+        background: '#e6fffb', borderRadius: collapsed ? 8 : '8px 8px 0 0', userSelect: 'none',
+      }}>
+        <UnorderedListOutlined style={{ color: '#13c2c2', fontSize: 12 }} />
+        <span style={{ fontSize: 12, color: '#13c2c2', fontWeight: 500 }}>ForEach</span>
+        <Input size="small" value={node.iterVar || 'item'} onClick={e => e.stopPropagation()}
+          onChange={e => { e.stopPropagation(); onChange({ ...node, iterVar: e.target.value }) }}
+          placeholder="item" style={{ width: 60, textAlign: 'center', fontFamily: 'monospace', fontSize: 11 }} />
+        <span style={{ fontSize: 11, color: '#86909c' }}>in</span>
+        <Input size="small" value={node.dataSource || ''} onClick={e => e.stopPropagation()}
+          onChange={e => { e.stopPropagation(); onChange({ ...node, dataSource: e.target.value }) }}
+          placeholder='{{users}} 或 ["a","b","c"]' style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} />
+        <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={e => { e.stopPropagation(); onRemove() }} />
+        {collapsed ? <CaretRightOutlined style={{ fontSize: 10 }} /> : <CaretDownOutlined style={{ fontSize: 10 }} />}
+      </div>
+      {!collapsed && (
+        <div style={{ padding: '8px 8px 8px 20px', borderTop: '1px solid #b5f5ec' }}>
+          <StepListInner steps={node.children || []} onChange={ch => onChange({ ...node, children: ch })} />
+        </div>
+      )}
+    </div>
+  )
+}
 function StepListInner({ steps, onChange }) {
   const update = (i, ns) => onChange(steps.map((s, j) => j === i ? { ...ns, seq: j + 1 } : s))
   const remove = (i) => onChange(steps.filter((_, j) => j !== i).map((s, j) => ({ ...s, seq: j + 1 })))
@@ -276,15 +386,20 @@ function StepListInner({ steps, onChange }) {
   const addMenu = {
     items: [
       { key: 'api', icon: <ApiOutlined />, label: 'API 请求' },
+      { type: 'divider' },
       { key: 'group', icon: <FolderOutlined />, label: '分组' },
-      { key: 'loop', icon: <RetweetOutlined />, label: '循环' },
-      { key: 'condition', icon: <BranchesOutlined />, label: '条件判断' },
+      { key: 'loop', icon: <RetweetOutlined />, label: '循环 (N 次)' },
+      { key: 'forEach', icon: <UnorderedListOutlined />, label: 'ForEach 遍历' },
+      { key: 'condition', icon: <BranchesOutlined />, label: '条件判断 (IF)' },
+      { key: 'wait', icon: <ClockCircleOutlined />, label: '等待' },
     ],
     onClick: ({ key }) => {
       if (key === 'api') addApi()
       else if (key === 'group') onChange([...steps, { nodeType: 'group', seq: steps.length + 1, label: '', children: [] }])
       else if (key === 'loop') onChange([...steps, { nodeType: 'loop', seq: steps.length + 1, label: '', times: 3, children: [] }])
+      else if (key === 'forEach') onChange([...steps, { nodeType: 'forEach', seq: steps.length + 1, iterVar: 'item', dataSource: '', children: [] }])
       else if (key === 'condition') onChange([...steps, { nodeType: 'condition', seq: steps.length + 1, condition: '', thenSteps: [], elseSteps: [] }])
+      else if (key === 'wait') onChange([...steps, { nodeType: 'wait', seq: steps.length + 1, delay: 1000, label: '' }])
     },
   }
 
@@ -294,7 +409,9 @@ function StepListInner({ steps, onChange }) {
         const nt = s.nodeType || 'api'
         if (nt === 'group') return <GroupNode key={i} node={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} />
         if (nt === 'loop') return <LoopNode key={i} node={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} />
+        if (nt === 'forEach') return <ForEachNode key={i} node={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} />
         if (nt === 'condition') return <ConditionNode key={i} node={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} />
+        if (nt === 'wait') return <WaitNode key={i} node={s} onChange={ns => update(i, ns)} onRemove={() => remove(i)} />
         return <ApiStepCard key={i} step={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} canRemove={steps.length > 1} />
       })}
       <Dropdown menu={addMenu} trigger={['click']}>
@@ -309,7 +426,21 @@ export default function ApiStepList({ steps, onChange }) {
   return <StepListInner steps={steps} onChange={onChange} />
 }
 
-// ---- 代码生成（支持分组/循环/条件） ----
+// ---- 代码生成（支持全部编排节点） ----
+function resolveVars(s) {
+  return s.replace(/\{\{\$uuid\}\}/g, 'str(uuid.uuid4())')
+    .replace(/\{\{\$timestamp\}\}/g, 'str(int(time.time()))')
+    .replace(/\{\{\$timestampMs\}\}/g, 'str(int(time.time() * 1000))')
+    .replace(/\{\{\$isoDate\}\}/g, 'datetime.now(timezone.utc).isoformat()')
+    .replace(/\{\{\$randomInt\}\}/g, 'str(random.randint(0, 99999))')
+    .replace(/\{\{\$randomFloat\}\}/g, 'str(round(random.random(), 4))')
+    .replace(/\{\{\$randomEmail\}\}/g, 'f"user_{random.randint(1000,9999)}@test.com"')
+    .replace(/\{\{\$randomPhone\}\}/g, 'f"138{random.randint(10000000,99999999)}"')
+    .replace(/\{\{\$randomString\}\}/g, '"".join(random.choices(string.ascii_letters + string.digits, k=8))')
+    .replace(/\{\{\$randomName\}\}/g, 'random.choice(["张三","李四","王五","赵六"])')
+    .replace(/\{\{(\w+)\}\}/g, '{$1}')
+}
+
 function genStepsCode(steps, indent = '    ') {
   const lines = []
   for (const s of steps) {
@@ -330,6 +461,14 @@ function genStepsCode(steps, indent = '    ') {
       continue
     }
 
+    if (nt === 'forEach') {
+      const src = s.dataSource || '[]'
+      lines.push(`${indent}for ${s.iterVar || 'item'} in ${src}:`)
+      lines.push(...genStepsCode(s.children || [], indent + '    '))
+      lines.push('')
+      continue
+    }
+
     if (nt === 'condition') {
       lines.push(`${indent}if ${s.condition || 'True'}:`)
       if ((s.thenSteps || []).length) lines.push(...genStepsCode(s.thenSteps, indent + '    '))
@@ -342,10 +481,21 @@ function genStepsCode(steps, indent = '    ') {
       continue
     }
 
+    if (nt === 'wait') {
+      lines.push(`${indent}time.sleep(${(s.delay || 1000) / 1000})  # ${s.label || '等待'}`)
+      lines.push('')
+      continue
+    }
+
     // api node
     lines.push(`${indent}# Step ${s.seq}: ${s.action || s.method + ' ' + s.url}`)
+    if (s.preScript?.trim()) {
+      lines.push(`${indent}# 前置脚本`)
+      for (const line of s.preScript.trim().split('\n')) lines.push(`${indent}${line}`)
+    }
+
     const method = (s.method || 'GET').toLowerCase()
-    const url = s.url || '/'
+    const url = resolveVars(s.url || '/')
     let kwargs = []
     if (s.params?.filter(p => p.key).length) {
       const obj = s.params.filter(p => p.key).map(p => `"${p.key}": "${p.value || ''}"`).join(', ')
@@ -359,7 +509,7 @@ function genStepsCode(steps, indent = '    ') {
       kwargs.push(s.bodyType === 'form' ? `data="${s.body}"` : `json=${s.body}`)
     }
     const argStr = kwargs.length ? `, ${kwargs.join(', ')}` : ''
-    lines.push(`${indent}response = client.${method}("${url}"${argStr})`)
+    lines.push(`${indent}response = client.${method}(f"${url}"${argStr})`)
 
     for (const a of (s.assertions || [])) {
       if (a.type === 'status') lines.push(`${indent}assert response.status_code == ${a.expected || 200}`)
@@ -377,6 +527,11 @@ function genStepsCode(steps, indent = '    ') {
         lines.push(`${indent}${e.variable} = ${expr}`)
       }
     }
+
+    if (s.postScript?.trim()) {
+      lines.push(`${indent}# 后置脚本`)
+      for (const line of s.postScript.trim().split('\n')) lines.push(`${indent}${line}`)
+    }
     lines.push('')
   }
   return lines
@@ -384,8 +539,11 @@ function genStepsCode(steps, indent = '    ') {
 
 export function generateApiCodeFromSteps(steps, title) {
   const fnName = 'test_' + (title || 'scenario').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').substring(0, 40).toLowerCase()
+  const needsExtras = JSON.stringify(steps).includes('{{$')
   const header = [
-    'import httpx', 'import pytest', '', '',
+    'import httpx', 'import pytest', 'import time',
+    ...(needsExtras ? ['import uuid', 'import random', 'import string', 'from datetime import datetime, timezone'] : []),
+    '', '',
     'BASE_URL = "http://localhost:8000"', '', '',
     `def ${fnName}():`,
     `    """${title || '接口测试'}"""`,
