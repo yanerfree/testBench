@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin, TreeSelect, Checkbox } from 'antd'
-import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined, CopyOutlined, StarFilled } from '@ant-design/icons'
+import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
+import TestForgeModal from './TestForgeModal'
 
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
 const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' }
@@ -132,6 +133,7 @@ export default function CaseManagement() {
 
   // 导入
   const [importOpen, setImportOpen] = useState(false)
+  const [testforgeOpen, setTestforgeOpen] = useState(false)
   const [importResult, setImportResult] = useState(null)
   const [importing, setImporting] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -588,6 +590,7 @@ export default function CaseManagement() {
                 </Radio.Group>
               </Space>
               <Space>
+                <Button icon={<RobotOutlined />} size="small" onClick={() => setTestforgeOpen(true)}>AI 生成</Button>
                 <Button icon={<UploadOutlined />} size="small" onClick={() => setImportOpen(true)}>导入</Button>
                 <Button icon={<DownloadOutlined />} size="small" onClick={handleExport} loading={exporting}>导出</Button>
                 <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => {
@@ -820,6 +823,14 @@ export default function CaseManagement() {
           </div>
         </div>
       </Modal>
+
+      <TestForgeModal
+        projectId={projectId}
+        branchId={currentBranch}
+        folders={folderTree}
+        open={testforgeOpen}
+        onClose={() => setTestforgeOpen(false)}
+      />
     </div>
   )
 }

@@ -281,7 +281,8 @@ function ScenarioEditor({
 }) {
   const extraCol = type === 'api' ? 'apiEndpoint' : 'uiTarget'
   const extraLabel = type === 'api' ? '接口端点' : '页面/元素'
-  const [viewMode, setViewMode] = useState('steps') // 'steps' | 'code'
+  const [viewMode, setViewMode] = useState('steps')
+  const [newVarInput, setNewVarInput] = useState('')
 
   const initScenario = (fromManual) => {
     let newSteps
@@ -329,7 +330,6 @@ function ScenarioEditor({
   })
 
   const scVars = scenario.variablesUsed || []
-  const [newVarInput, setNewVarInput] = useState('')
 
   return (
     <Card styles={{ body: { padding: '16px 20px' } }}>
