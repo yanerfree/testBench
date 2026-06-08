@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { Input, Select, Button, Tag, Space, Tooltip, Dropdown, Popover } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, HolderOutlined, CaretRightOutlined, CaretDownOutlined,
   FolderOutlined, RetweetOutlined, BranchesOutlined, ApiOutlined,
   ClockCircleOutlined, UnorderedListOutlined, ThunderboltOutlined, CopyOutlined,
-  CodeOutlined, EditOutlined, CheckCircleOutlined, FieldStringOutlined,
+  CodeOutlined, EditOutlined, CheckCircleOutlined, FieldStringOutlined, GlobalOutlined,
 } from '@ant-design/icons'
 
 const methodColors = {
@@ -133,6 +133,11 @@ function KvEditor({ items = [], onChange, keyPh = 'Key', valPh = 'Value' }) {
   const up = (i, f, v) => onChange(items.map((r, j) => j === i ? { ...r, [f]: v } : r))
   return (
     <div>
+      {items.length === 0 && (
+        <div style={{ padding: '16px 0', textAlign: 'center', color: '#c9cdd4', fontSize: 12 }}>
+          暂无{keyPh === 'Header' ? '请求头' : '参数'}，点击下方按钮添加
+        </div>
+      )}
       {items.map((r, i) => (
         <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 3, alignItems: 'center' }}>
           <Input size="small" value={r.key} placeholder={keyPh} onChange={e => up(i, 'key', e.target.value)} style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} />
@@ -192,6 +197,8 @@ function ExtractEditor({ items = [], onChange }) {
 function CompactApiRow({ step, index, isSelected, onClick }) {
   const method = step.method || 'GET'
   const mc = methodColors[method] || methodColors.GET
+  const label = step.action || step.url || '未命名请求'
+  const subLabel = step.action && step.url ? step.url : null
   return (
     <div onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', cursor: 'pointer',
@@ -202,9 +209,16 @@ function CompactApiRow({ step, index, isSelected, onClick }) {
       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
     >
       <Tag style={{ margin: 0, fontWeight: 700, fontSize: 9, background: mc.bg, color: mc.color, border: 'none', padding: '0 5px', lineHeight: '16px', minWidth: 38, textAlign: 'center' }}>{method}</Tag>
-      <span style={{ fontSize: 12, color: '#1d2129', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {step.action || step.url || '未命名请求'}
-      </span>
+      <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
+        <div style={{ fontSize: 12, color: '#1d2129', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {label}
+        </div>
+        {subLabel && (
+          <div style={{ fontSize: 10, color: '#c9cdd4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
+            {subLabel}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -562,7 +576,7 @@ const postAddItems = [
 // 右侧面板：步骤详情编辑器
 // ===========================================================================
 
-function StepDetailPanel({ step, onChange }) {
+function StepDetailPanel({ step, onChange, baseUrl }) {
   const [activeTab, setActiveTab] = useState('params')
   const method = step.method || 'GET'
   const mc = methodColors[method] || methodColors.GET
@@ -589,7 +603,9 @@ function StepDetailPanel({ step, onChange }) {
       {/* 步骤信息 + 描述 */}
       <div style={{ padding: '10px 16px', borderBottom: '1px solid #f2f3f5', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-          <span style={{ fontSize: 12, color: '#86909c' }}>{step.action || '未命名请求'}</span>
+          <Input size="small" variant="borderless" value={step.action || ''} onChange={e => up('action', e.target.value)}
+            placeholder="步骤名称（如：登录、获取用户信息）"
+            style={{ fontSize: 12, color: '#1d2129', padding: '0 4px', flex: 1 }} />
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <Select size="small" value={method} onChange={v => up('method', v)} style={{ width: 90 }}
@@ -597,8 +613,17 @@ function StepDetailPanel({ step, onChange }) {
               value: m, label: <span style={{ color: methodColors[m]?.color, fontWeight: 700 }}>{m}</span>
             }))} />
           <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+            {baseUrl && (
+              <Tooltip title={baseUrl}>
+                <span style={{ fontSize: 11, color: '#86909c', background: '#f7f8fa', border: '1px solid #e5e6eb', borderRight: 'none',
+                  borderRadius: '4px 0 0 4px', padding: '3px 8px', whiteSpace: 'nowrap', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis',
+                  display: 'inline-block', lineHeight: '16px', fontFamily: 'monospace', flexShrink: 0 }}>
+                  <GlobalOutlined style={{ marginRight: 4, fontSize: 10 }} />{baseUrl}
+                </span>
+              </Tooltip>
+            )}
             <Input size="small" value={step.url || ''} onChange={e => up('url', e.target.value)}
-              placeholder="/api/auth/login" style={{ fontFamily: 'monospace', fontSize: 12 }} />
+              placeholder="/api/auth/login" style={{ fontFamily: 'monospace', fontSize: 12, borderRadius: baseUrl ? '0 4px 4px 0' : undefined }} />
             <VarPicker onInsert={v => up('url', (step.url || '') + v)} />
           </div>
         </div>
@@ -683,8 +708,16 @@ function makeNewStep(key, seq) {
   if (key === 'wait') return { nodeType: 'wait', seq, delay: 1000, label: '' }
 }
 
-export default function ApiStepList({ steps, onChange }) {
+export default function ApiStepList({ steps, onChange, environments, runEnv }) {
   const [selected, setSelected] = useState(null) // { step, onStepChange }
+
+  const baseUrl = useMemo(() => {
+    if (!runEnv || !environments?.length) return ''
+    const env = environments.find(e => e.id === runEnv)
+    if (!env?.variables) return ''
+    const v = env.variables.find(v => v.key === 'BASE_URL')
+    return v?.value || ''
+  }, [runEnv, environments])
 
   const handleSelect = useCallback((step, onStepChange) => {
     setSelected({ step, onStepChange })
@@ -738,7 +771,7 @@ export default function ApiStepList({ steps, onChange }) {
       {/* 右侧：步骤详情 */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {selected ? (
-          <StepDetailPanel step={selected.step} onChange={handleDetailChange} />
+          <StepDetailPanel step={selected.step} onChange={handleDetailChange} baseUrl={baseUrl} />
         ) : (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c9cdd4' }}>
             <div style={{ textAlign: 'center' }}>

@@ -278,6 +278,7 @@ function ScenarioEditor({
   isTemplate, setIsTemplate, type, accentColor,
   onImportTemplate, manualSteps, caseTitle,
   projectId, branchId, caseId,
+  environments, runEnv,
 }) {
   const extraCol = type === 'api' ? 'apiEndpoint' : 'uiTarget'
   const extraLabel = type === 'api' ? '接口端点' : '页面/元素'
@@ -379,7 +380,8 @@ function ScenarioEditor({
       {viewMode === 'steps' && (
         <>
           {type === 'api' ? (
-            <ApiStepList steps={steps} onChange={newSteps => updateScenario({ steps: newSteps })} accentColor={accentColor} />
+            <ApiStepList steps={steps} onChange={newSteps => updateScenario({ steps: newSteps })} accentColor={accentColor}
+                environments={environments} runEnv={runEnv} />
           ) : (
             <div style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -556,6 +558,17 @@ export default function CaseDetail() {
     if (branchId) loadData()
   }, [projectId, branchId, caseId])
 
+  useEffect(() => {
+    if (!runEnv) return
+    const env = environments.find(e => e.id === runEnv)
+    if (env && !env.variables) {
+      api.get(`/environments/${runEnv}/variables`).then(res => {
+        env.variables = res.data || []
+        setEnvironments([...environments])
+      }).catch(() => {})
+    }
+  }, [runEnv])
+
   async function loadData() {
     if (!branchId) { message.error('缺少分支信息'); setLoading(false); return }
     setLoading(true)
@@ -606,8 +619,16 @@ export default function CaseDetail() {
       setIsApiTemplate(vals.isApiTemplate); setIsUiTemplate(vals.isUiTemplate)
 
       savedRef.current = JSON.stringify(vals)
-      setEnvironments(envRes.data || [])
-      if (envRes.data?.length) setRunEnv(envRes.data[0].id)
+      const envs = envRes.data || []
+      setEnvironments(envs)
+      if (envs.length) {
+        setRunEnv(envs[0].id)
+        try {
+          const varRes = await api.get(`/environments/${envs[0].id}/variables`)
+          envs[0].variables = varRes.data || []
+          setEnvironments([...envs])
+        } catch {}
+      }
     } catch { message.error('加载用例详情失败') }
     finally { setLoading(false) }
   }
@@ -835,6 +856,7 @@ export default function CaseDetail() {
                 onImportTemplate={() => { setTemplateModalType('api'); setTemplateModalOpen(true) }}
                 manualSteps={steps} caseTitle={title}
                 projectId={projectId} branchId={branchId} caseId={caseId}
+                environments={environments} runEnv={runEnv}
               />
             )},
 
@@ -933,10 +955,44 @@ export default function CaseDetail() {
           </div>
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>选择执行环境</div>
-            <Select value={runEnv} onChange={setRunEnv} style={{ width: '100%' }}
+            <Select value={runEnv} onChange={setRunEnv} style={{ width: '100%' }} placeholder="请选择环境"
               options={environments.map(e => ({ value: e.id, label: e.name }))} />
           </div>
-          <div style={{ textAlign: 'center', padding: '16px 0', color: '#86909c' }}>单条用例执行请通过测试计划</div>
+          {scriptRefFile ? (
+            <div style={{ textAlign: 'center', padding: '8px 0' }}>
+              <div style={{ fontSize: 12, color: '#86909c', marginBottom: 12 }}>
+                脚本: <span style={{ fontFamily: 'monospace', color: '#4e5969' }}>{scriptRefFile}</span>
+              </div>
+              <Button type="primary" loading={runStatus === 'running'} disabled={!runEnv}
+                onClick={async () => {
+                  if (!runEnv) { message.warning('请先选择执行环境'); return }
+                  setRunStatus('running')
+                  try {
+                    const res = await api.post(`/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/run?type=${type}`)
+                    setRunStatus('done')
+                    if (res.data?.status === 'passed') message.success('执行通过 ✓')
+                    else message.warning(`执行完成: ${res.data?.status || 'unknown'}`)
+                  } catch (e) {
+                    setRunStatus('error')
+                    message.error(`执行失败: ${e?.response?.data?.error?.message || e.message}`)
+                  }
+                }}
+                icon={<PlayCircleOutlined />} style={{ minWidth: 160 }}>
+                快速执行
+              </Button>
+              {runStatus === 'done' && <div style={{ marginTop: 8, fontSize: 12, color: '#52c41a' }}>执行完成</div>}
+              {runStatus === 'error' && <div style={{ marginTop: 8, fontSize: 12, color: '#ff4d4f' }}>执行失败，查看控制台了解详情</div>}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '12px 0' }}>
+              <div style={{ color: '#86909c', marginBottom: 12 }}>当前用例没有关联脚本</div>
+              <div style={{ fontSize: 12, color: '#c9cdd4' }}>请先在测试计划中添加此用例，通过测试计划执行</div>
+              <Button type="link" size="small" style={{ marginTop: 8 }}
+                onClick={() => { setRunModalOpen(false); navigate(`/projects/${projectId}/plans?branchId=${branchId}`) }}>
+                前往测试计划 →
+              </Button>
+            </div>
+          )}
         </div>
       </Modal>
     </div>
