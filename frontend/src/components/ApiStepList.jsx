@@ -1,11 +1,13 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import { Input, Select, Button, Tag, Space, Tooltip, Dropdown, Popover } from 'antd'
+import { Input, Select, Button, Tag, Space, Tooltip, Dropdown, Popover, Checkbox, Spin } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, HolderOutlined, CaretRightOutlined, CaretDownOutlined,
   FolderOutlined, RetweetOutlined, BranchesOutlined, ApiOutlined,
   ClockCircleOutlined, UnorderedListOutlined, ThunderboltOutlined, CopyOutlined,
   CodeOutlined, EditOutlined, CheckCircleOutlined, FieldStringOutlined, GlobalOutlined,
+  SendOutlined, FormatPainterOutlined, LockOutlined, LoadingOutlined,
 } from '@ant-design/icons'
+import { api } from '../utils/request'
 
 const methodColors = {
   GET: { color: '#52c41a', bg: '#f6ffed', border: '#b7eb8f' },
@@ -128,64 +130,36 @@ function VarPicker({ onInsert }) {
   )
 }
 
-// ---- 子编辑器 ----
+// ---- KvEditor (Apifox 风格：checkbox + key + value + desc) ----
 function KvEditor({ items = [], onChange, keyPh = 'Key', valPh = 'Value' }) {
   const up = (i, f, v) => onChange(items.map((r, j) => j === i ? { ...r, [f]: v } : r))
+  const typeName = keyPh === 'Header' ? '请求头' : '参数'
   return (
     <div>
+      {items.length > 0 && (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 4, padding: '0 4px', fontSize: 10, color: '#c9cdd4', fontWeight: 600 }}>
+          <span style={{ width: 20 }}></span>
+          <span style={{ flex: 3 }}>{keyPh}</span>
+          <span style={{ flex: 4 }}>{valPh}</span>
+          <span style={{ flex: 3 }}>描述</span>
+          <span style={{ width: 24 }}></span>
+        </div>
+      )}
       {items.length === 0 && (
         <div style={{ padding: '16px 0', textAlign: 'center', color: '#c9cdd4', fontSize: 12 }}>
-          暂无{keyPh === 'Header' ? '请求头' : '参数'}，点击下方按钮添加
+          暂无{typeName}，点击下方按钮添加
         </div>
       )}
       {items.map((r, i) => (
-        <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 3, alignItems: 'center' }}>
-          <Input size="small" value={r.key} placeholder={keyPh} onChange={e => up(i, 'key', e.target.value)} style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} />
-          <Input size="small" value={r.value} placeholder={valPh} onChange={e => up(i, 'value', e.target.value)} style={{ flex: 2, fontFamily: 'monospace', fontSize: 11 }} />
+        <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 3, alignItems: 'center', opacity: r.enabled === false ? 0.45 : 1, transition: 'opacity 0.15s' }}>
+          <Checkbox checked={r.enabled !== false} onChange={e => up(i, 'enabled', e.target.checked)} style={{ marginRight: -2 }} />
+          <Input size="small" value={r.key} placeholder={keyPh} onChange={e => up(i, 'key', e.target.value)} style={{ flex: 3, fontFamily: 'monospace', fontSize: 11 }} />
+          <Input size="small" value={r.value} placeholder={valPh} onChange={e => up(i, 'value', e.target.value)} style={{ flex: 4, fontFamily: 'monospace', fontSize: 11 }} />
+          <Input size="small" value={r.desc || ''} placeholder="描述" onChange={e => up(i, 'desc', e.target.value)} style={{ flex: 3, fontSize: 11, color: '#86909c' }} />
           <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={() => onChange(items.filter((_, j) => j !== i))} />
         </div>
       ))}
-      <Button type="dashed" size="small" block icon={<PlusOutlined />} onClick={() => onChange([...items, { key: '', value: '' }])}>添加</Button>
-    </div>
-  )
-}
-
-function AssertEditor({ items = [], onChange }) {
-  const types = [{ value: 'status', label: '状态码' }, { value: 'jsonPath', label: 'Response JSON' }, { value: 'contains', label: '包含' }, { value: 'header', label: '响应头' }]
-  const ops = [{ value: 'eq', label: '等于' }, { value: 'ne', label: '不等于' }, { value: 'gt', label: '大于' }, { value: 'lt', label: '小于' }, { value: 'contains', label: '包含' }, { value: 'notEmpty', label: '非空' }]
-  const up = (i, f, v) => onChange(items.map((r, j) => j === i ? { ...r, [f]: v } : r))
-  return (
-    <div>
-      {items.map((r, i) => (
-        <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 4, alignItems: 'center', padding: '4px 8px', background: '#fafafa', borderRadius: 6 }}>
-          <Select size="small" value={r.type} onChange={v => up(i, 'type', v)} options={types} style={{ width: 110 }} />
-          {(r.type === 'jsonPath' || r.type === 'header') && (
-            <Input size="small" value={r.path || ''} placeholder="$.data.id" onChange={e => up(i, 'path', e.target.value)} style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} />
-          )}
-          <Select size="small" value={r.operator} onChange={v => up(i, 'operator', v)} options={ops} style={{ width: 72 }} />
-          {r.operator !== 'notEmpty' && <Input size="small" value={r.expected || ''} placeholder="期望值" onChange={e => up(i, 'expected', e.target.value)} style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} />}
-          <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={() => onChange(items.filter((_, j) => j !== i))} />
-        </div>
-      ))}
-      <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => onChange([...items, { type: 'status', operator: 'eq', expected: '200' }])} style={{ marginTop: 4 }}>添加断言</Button>
-    </div>
-  )
-}
-
-function ExtractEditor({ items = [], onChange }) {
-  const up = (i, f, v) => onChange(items.map((r, j) => j === i ? { ...r, [f]: v } : r))
-  return (
-    <div>
-      {items.map((r, i) => (
-        <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 4, alignItems: 'center', padding: '4px 8px', background: '#fafafa', borderRadius: 6 }}>
-          <Input size="small" value={r.variable} placeholder="变量名" onChange={e => up(i, 'variable', e.target.value)} style={{ width: 100, fontFamily: 'monospace', fontSize: 11 }} />
-          <Tag style={{ margin: 0, fontSize: 10, background: '#e6f7ff', color: '#1890ff', border: 'none' }}>临时变量</Tag>
-          <span style={{ fontSize: 11, color: '#86909c' }}>Response JSON</span>
-          <Input size="small" value={r.path || ''} placeholder="$.data.token" onChange={e => up(i, 'path', e.target.value)} style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} />
-          <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={() => onChange(items.filter((_, j) => j !== i))} />
-        </div>
-      ))}
-      <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => onChange([...items, { variable: '', path: '' }])} style={{ marginTop: 4 }}>提取变量</Button>
+      <Button type="dashed" size="small" block icon={<PlusOutlined />} onClick={() => onChange([...items, { key: '', value: '', enabled: true, desc: '' }])}>添加</Button>
     </div>
   )
 }
@@ -194,31 +168,44 @@ function ExtractEditor({ items = [], onChange }) {
 // 左侧面板：紧凑步骤列表（Apifox 风格）
 // ===========================================================================
 
-function CompactApiRow({ step, index, isSelected, onClick }) {
+function CompactApiRow({ step, index, isSelected, onClick, onRemove, onCopy, onDragStart, onDragOver, onDrop }) {
   const method = step.method || 'GET'
   const mc = methodColors[method] || methodColors.GET
   const label = step.action || step.url || '未命名请求'
   const subLabel = step.action && step.url ? step.url : null
+  const postOps = getOps(step, 'postOperations')
+  const assertCount = postOps.filter(o => o.type === 'assertion').length
+  const extractCount = postOps.filter(o => o.type === 'extractor').length
+  const [hovered, setHovered] = useState(false)
+
   return (
-    <div onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', cursor: 'pointer',
-      background: isSelected ? mc.bg : 'transparent', borderLeft: isSelected ? `3px solid ${mc.color}` : '3px solid transparent',
-      transition: 'all 0.12s',
-    }}
-      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f7f8fa' }}
-      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
-    >
+    <div draggable onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; onDragStart?.(index) }}
+      onDragOver={e => { e.preventDefault(); onDragOver?.(index) }}
+      onDrop={e => { e.preventDefault(); onDrop?.(index) }}
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', cursor: 'pointer',
+        background: isSelected ? mc.bg : hovered ? '#f7f8fa' : 'transparent',
+        borderLeft: isSelected ? `3px solid ${mc.color}` : '3px solid transparent',
+        transition: 'all 0.12s',
+      }}>
+      <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', fontSize: 9, flexShrink: 0, opacity: hovered ? 1 : 0, transition: 'opacity 0.1s' }} />
       <Tag style={{ margin: 0, fontWeight: 700, fontSize: 9, background: mc.bg, color: mc.color, border: 'none', padding: '0 5px', lineHeight: '16px', minWidth: 38, textAlign: 'center' }}>{method}</Tag>
       <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
-        <div style={{ fontSize: 12, color: '#1d2129', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {label}
-        </div>
-        {subLabel && (
-          <div style={{ fontSize: 10, color: '#c9cdd4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
-            {subLabel}
-          </div>
-        )}
+        <div style={{ fontSize: 12, color: '#1d2129', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
+        {subLabel && <div style={{ fontSize: 10, color: '#c9cdd4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{subLabel}</div>}
       </div>
+      <div style={{ display: 'flex', gap: 2, flexShrink: 0, alignItems: 'center' }}>
+        {assertCount > 0 && <span title={`${assertCount} 个断言`} style={{ fontSize: 9, background: '#f6ffed', color: '#52c41a', borderRadius: 8, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>{assertCount}</span>}
+        {extractCount > 0 && <span title={`${extractCount} 个提取`} style={{ fontSize: 9, background: '#f9f0ff', color: '#722ed1', borderRadius: 8, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>{extractCount}</span>}
+      </div>
+      {hovered && (
+        <div style={{ display: 'flex', gap: 0, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+          <Tooltip title="复制"><Button type="text" size="small" icon={<CopyOutlined />} onClick={onCopy} style={{ width: 20, height: 20, fontSize: 10, color: '#86909c' }} /></Tooltip>
+          <Tooltip title="删除"><Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={onRemove} style={{ width: 20, height: 20, fontSize: 10 }} /></Tooltip>
+        </div>
+      )}
     </div>
   )
 }
@@ -228,12 +215,10 @@ function CompactGroupRow({ node, children, onRemove }) {
   return (
     <div>
       <div onClick={() => setCollapsed(!collapsed)} style={{
-        display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', cursor: 'pointer',
-        background: '#f9f0ff',
+        display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', cursor: 'pointer', background: '#f9f0ff',
       }}
         onMouseEnter={e => e.currentTarget.style.background = '#f0e6ff'}
-        onMouseLeave={e => e.currentTarget.style.background = '#f9f0ff'}
-      >
+        onMouseLeave={e => e.currentTarget.style.background = '#f9f0ff'}>
         {collapsed ? <CaretRightOutlined style={{ fontSize: 9, color: '#722ed1' }} /> : <CaretDownOutlined style={{ fontSize: 9, color: '#722ed1' }} />}
         <FolderOutlined style={{ color: '#722ed1', fontSize: 11 }} />
         <span style={{ fontSize: 11, color: '#722ed1', fontWeight: 500 }}>Group</span>
@@ -254,8 +239,7 @@ function CompactLoopRow({ node, children, onChange, onRemove }) {
         display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', cursor: 'pointer', background: '#e6f7ff',
       }}
         onMouseEnter={e => e.currentTarget.style.background = '#d6edff'}
-        onMouseLeave={e => e.currentTarget.style.background = '#e6f7ff'}
-      >
+        onMouseLeave={e => e.currentTarget.style.background = '#e6f7ff'}>
         {collapsed ? <CaretRightOutlined style={{ fontSize: 9, color: '#1890ff' }} /> : <CaretDownOutlined style={{ fontSize: 9, color: '#1890ff' }} />}
         <RetweetOutlined style={{ color: '#1890ff', fontSize: 11 }} />
         <span style={{ fontSize: 11, color: '#1890ff', fontWeight: 500 }}>循环 {node.times || 3} 次</span>
@@ -275,8 +259,7 @@ function CompactForEachRow({ node, children, onRemove }) {
         display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', cursor: 'pointer', background: '#e6fffb',
       }}
         onMouseEnter={e => e.currentTarget.style.background = '#b5f5ec'}
-        onMouseLeave={e => e.currentTarget.style.background = '#e6fffb'}
-      >
+        onMouseLeave={e => e.currentTarget.style.background = '#e6fffb'}>
         {collapsed ? <CaretRightOutlined style={{ fontSize: 9, color: '#13c2c2' }} /> : <CaretDownOutlined style={{ fontSize: 9, color: '#13c2c2' }} />}
         <UnorderedListOutlined style={{ color: '#13c2c2', fontSize: 11 }} />
         <span style={{ fontSize: 11, color: '#13c2c2', fontWeight: 500 }}>ForEach</span>
@@ -290,7 +273,7 @@ function CompactForEachRow({ node, children, onRemove }) {
   )
 }
 
-function CompactConditionRow({ node, thenChildren, elseChildren, onRemove }) {
+function CompactConditionRow({ node, onRemove, thenChildren, elseChildren }) {
   const [collapsed, setCollapsed] = useState(false)
   return (
     <div>
@@ -298,20 +281,23 @@ function CompactConditionRow({ node, thenChildren, elseChildren, onRemove }) {
         display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', cursor: 'pointer', background: '#fffbe6',
       }}
         onMouseEnter={e => e.currentTarget.style.background = '#fff1b8'}
-        onMouseLeave={e => e.currentTarget.style.background = '#fffbe6'}
-      >
+        onMouseLeave={e => e.currentTarget.style.background = '#fffbe6'}>
         {collapsed ? <CaretRightOutlined style={{ fontSize: 9, color: '#faad14' }} /> : <CaretDownOutlined style={{ fontSize: 9, color: '#faad14' }} />}
         <BranchesOutlined style={{ color: '#faad14', fontSize: 11 }} />
         <span style={{ fontSize: 11, color: '#faad14', fontWeight: 500 }}>IF</span>
-        <span style={{ fontSize: 11, color: '#d48806', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{node.condition || 'true'}</span>
+        <span style={{ fontSize: 11, color: '#faad14', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{node.condition || 'True'}</span>
         <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={e => { e.stopPropagation(); onRemove() }} style={{ fontSize: 10, width: 20, height: 20 }} />
       </div>
       {!collapsed && (
-        <div style={{ paddingLeft: 16 }}>
-          <div style={{ fontSize: 9, color: '#52c41a', fontWeight: 600, padding: '3px 10px' }}>THEN</div>
-          {thenChildren}
-          <div style={{ fontSize: 9, color: '#ff4d4f', fontWeight: 600, padding: '3px 10px', borderTop: '1px dashed #ffc069' }}>ELSE</div>
-          {elseChildren}
+        <div>
+          <div style={{ paddingLeft: 16 }}>
+            <div style={{ fontSize: 10, color: '#52c41a', padding: '2px 10px', fontWeight: 600 }}>THEN</div>
+            {thenChildren}
+          </div>
+          <div style={{ paddingLeft: 16 }}>
+            <div style={{ fontSize: 10, color: '#ff4d4f', padding: '2px 10px', fontWeight: 600 }}>ELSE</div>
+            {elseChildren}
+          </div>
         </div>
       )}
     </div>
@@ -320,24 +306,37 @@ function CompactConditionRow({ node, thenChildren, elseChildren, onRemove }) {
 
 function CompactWaitRow({ node, onRemove }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', background: '#fafafa' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', background: '#f7f8fa' }}>
       <ClockCircleOutlined style={{ color: '#86909c', fontSize: 11 }} />
       <span style={{ fontSize: 11, color: '#86909c' }}>等待 {node.delay || 1000}ms</span>
-      <span style={{ fontSize: 11, color: '#86909c', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.label || ''}</span>
+      <span style={{ fontSize: 11, color: '#c9cdd4', flex: 1 }}>{node.label || ''}</span>
       <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={onRemove} style={{ fontSize: 10, width: 20, height: 20 }} />
     </div>
   )
 }
 
 function CompactStepList({ steps, onChange, selectedId, onSelect }) {
+  const [dragIdx, setDragIdx] = useState(null)
   const update = (i, ns) => onChange(steps.map((s, j) => j === i ? { ...ns, seq: j + 1 } : s))
   const remove = (i) => onChange(steps.filter((_, j) => j !== i).map((s, j) => ({ ...s, seq: j + 1 })))
+  const copy = (i) => {
+    const clone = JSON.parse(JSON.stringify(steps[i]))
+    clone.action = (clone.action || '') + ' (副本)'
+    onChange([...steps.slice(0, i + 1), { ...clone, seq: i + 2 }, ...steps.slice(i + 1).map((s, j) => ({ ...s, seq: i + j + 3 }))])
+  }
+  const handleDragOver = (targetIdx) => {
+    if (dragIdx === null || dragIdx === targetIdx) return
+    const newSteps = [...steps]
+    const [moved] = newSteps.splice(dragIdx, 1)
+    newSteps.splice(targetIdx, 0, moved)
+    onChange(newSteps.map((s, j) => ({ ...s, seq: j + 1 })))
+    setDragIdx(targetIdx)
+  }
 
   return (
     <div>
       {steps.map((s, i) => {
         const nt = s.nodeType || 'api'
-        const stepId = `${i}-${nt}`
         if (nt === 'group') return (
           <CompactGroupRow key={i} node={s} onRemove={() => remove(i)}>
             <CompactStepList steps={s.children || []} onChange={ch => update(i, { ...s, children: ch })} selectedId={selectedId} onSelect={onSelect} />
@@ -360,7 +359,10 @@ function CompactStepList({ steps, onChange, selectedId, onSelect }) {
           />
         )
         if (nt === 'wait') return <CompactWaitRow key={i} node={s} onRemove={() => remove(i)} />
-        return <CompactApiRow key={i} step={s} index={i} isSelected={selectedId === s} onClick={() => onSelect(s, ns => update(i, ns))} />
+        return <CompactApiRow key={i} step={s} index={i} isSelected={selectedId === s}
+          onClick={() => onSelect(s, ns => update(i, ns))}
+          onRemove={() => remove(i)} onCopy={() => copy(i)}
+          onDragStart={setDragIdx} onDragOver={handleDragOver} onDrop={() => setDragIdx(null)} />
       })}
     </div>
   )
@@ -403,7 +405,7 @@ function opSummary(op) {
     if (op.assertType === 'status') return `${t} ${o} ${op.expected || ''}`
     return `${t} (${op.path || '...'}) ${o} ${op.expected || ''}`
   }
-  if (op.type === 'extractor') return `${op.variable || '...'} 临时变量 Response JSON (${op.path || '...'})`
+  if (op.type === 'extractor') return `${op.variable || '...'} 临时变量 Response JSON (${op.path || '...'})`
   if (op.type === 'script') { const l = (op.code || '').trim().split('\n')[0]; return l ? (l.length > 50 ? l.slice(0, 50) + '...' : l) : '(空脚本)' }
   if (op.type === 'wait') return `${op.delay || 1000}ms${op.label ? '  ' + op.label : ''}`
   return ''
@@ -428,7 +430,6 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
       onMouseEnter={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'}
       onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
     >
-      {/* 折叠行 */}
       <div onClick={() => setExpanded(!expanded)} style={{
         display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', cursor: 'pointer', userSelect: 'none',
       }}>
@@ -442,7 +443,6 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
         {expanded ? <CaretDownOutlined style={{ fontSize: 9, color: '#c9cdd4' }} /> : <CaretRightOutlined style={{ fontSize: 9, color: '#c9cdd4' }} />}
       </div>
 
-      {/* 展开内容 */}
       {expanded && (
         <div style={{ padding: '6px 10px 10px 28px', borderTop: '1px solid #f5f5f5' }}>
           {op.type === 'assertion' && (
@@ -522,7 +522,6 @@ function OperationList({ operations, onChange, addItems, snippets, infoBg, infoB
 
   return (
     <div>
-      {/* 说明条 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: infoBg, borderRadius: 6, marginBottom: 10, border: `1px solid ${infoBorder}` }}>
         <span style={{ fontSize: 13 }}>{infoIcon}</span>
         <div style={{ flex: 1 }}>
@@ -531,7 +530,6 @@ function OperationList({ operations, onChange, addItems, snippets, infoBg, infoB
         </div>
       </div>
 
-      {/* 操作列表 */}
       {operations.length === 0 && (
         <div style={{ padding: '16px 12px', textAlign: 'center', color: '#c9cdd4', fontSize: 11, border: '1px dashed #e5e6eb', borderRadius: 6, marginBottom: 8 }}>
           暂无操作，点击下方按钮添加断言、提取变量或自定义脚本
@@ -545,7 +543,6 @@ function OperationList({ operations, onChange, addItems, snippets, infoBg, infoB
           snippets={snippets} />
       ))}
 
-      {/* 添加按钮 */}
       <Dropdown menu={{ items: addItems, onClick: ({ key }) => {
         const newOp = key === 'assertion' ? { type: 'assertion', assertType: 'status', operator: 'eq', expected: '200' }
           : key === 'extractor' ? { type: 'extractor', variable: '', path: '' }
@@ -573,42 +570,213 @@ const postAddItems = [
 ]
 
 // ===========================================================================
+// Auth 编辑器
+// ===========================================================================
+function AuthEditor({ auth, onChange }) {
+  const a = auth || { type: 'none' }
+  const up = (f, v) => onChange({ ...a, [f]: v })
+  return (
+    <div>
+      <Select size="small" value={a.type || 'none'} onChange={v => up('type', v)} style={{ width: 200, marginBottom: 12 }}
+        options={[
+          { value: 'none', label: '无认证 (No Auth)' },
+          { value: 'bearer', label: 'Bearer Token' },
+          { value: 'basic', label: 'Basic Auth' },
+          { value: 'apikey', label: 'API Key' },
+        ]} />
+      {a.type === 'bearer' && (
+        <div>
+          <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>Token</div>
+          <Input size="small" value={a.token || ''} onChange={e => up('token', e.target.value)}
+            placeholder="输入 Token，支持 {{variable}}" style={{ fontFamily: 'monospace', fontSize: 11 }} />
+          <div style={{ fontSize: 10, color: '#c9cdd4', marginTop: 6 }}>会自动添加 Authorization: Bearer {'<token>'} 请求头</div>
+        </div>
+      )}
+      {a.type === 'basic' && (
+        <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+          <div>
+            <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>用户名</div>
+            <Input size="small" value={a.username || ''} onChange={e => up('username', e.target.value)} placeholder="Username" style={{ fontSize: 11 }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>密码</div>
+            <Input.Password size="small" value={a.password || ''} onChange={e => up('password', e.target.value)} placeholder="Password" style={{ fontSize: 11 }} />
+          </div>
+          <div style={{ fontSize: 10, color: '#c9cdd4' }}>自动进行 Base64 编码并添加 Authorization: Basic 请求头</div>
+        </div>
+      )}
+      {a.type === 'apikey' && (
+        <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>Key 名称</div>
+              <Input size="small" value={a.keyName || ''} onChange={e => up('keyName', e.target.value)} placeholder="X-API-Key" style={{ fontSize: 11 }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>Key 值</div>
+              <Input size="small" value={a.keyValue || ''} onChange={e => up('keyValue', e.target.value)} placeholder="your-api-key" style={{ fontFamily: 'monospace', fontSize: 11 }} />
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>添加到</div>
+            <Select size="small" value={a.keyIn || 'header'} onChange={v => up('keyIn', v)} style={{ width: 160 }}
+              options={[{ value: 'header', label: 'Header' }, { value: 'query', label: 'Query Params' }]} />
+          </div>
+        </div>
+      )}
+      {a.type === 'none' && (
+        <div style={{ padding: '16px 0', textAlign: 'center', color: '#c9cdd4', fontSize: 12 }}>
+          此请求不使用认证
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ===========================================================================
+// Response 面板
+// ===========================================================================
+function ResponsePanel({ response }) {
+  const [viewTab, setViewTab] = useState('body')
+  if (!response) return null
+  const r = response
+  const sc = r.status_code || r.statusCode || 0
+  const isOk = sc >= 200 && sc < 300
+  const statusColor = sc === 0 ? '#ff4d4f' : isOk ? '#52c41a' : sc < 400 ? '#faad14' : '#ff4d4f'
+
+  let prettyBody = r.body || ''
+  try {
+    const parsed = JSON.parse(prettyBody)
+    prettyBody = JSON.stringify(parsed, null, 2)
+  } catch {}
+
+  const sizeStr = r.size > 1024 ? `${(r.size / 1024).toFixed(1)} KB` : `${r.size || 0} B`
+  const respHeaders = r.headers || []
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', marginBottom: 8, borderBottom: '1px solid #f2f3f5' }}>
+        <span style={{ fontWeight: 700, fontSize: 13, color: statusColor }}>{sc} {r.status_text || r.statusText || ''}</span>
+        <span style={{ fontSize: 11, color: '#86909c' }}>{r.duration_ms || r.durationMs || 0} ms</span>
+        <span style={{ fontSize: 11, color: '#86909c' }}>{sizeStr}</span>
+        <div style={{ flex: 1 }} />
+        <div style={{ display: 'flex', gap: 0 }}>
+          {['body', 'headers'].map(t => (
+            <div key={t} onClick={() => setViewTab(t)} style={{
+              padding: '2px 10px', fontSize: 11, cursor: 'pointer',
+              color: viewTab === t ? '#1890ff' : '#86909c', fontWeight: viewTab === t ? 600 : 400,
+              borderBottom: viewTab === t ? '2px solid #1890ff' : '2px solid transparent',
+            }}>{t === 'body' ? 'Body' : `Headers (${respHeaders.length})`}</div>
+          ))}
+        </div>
+      </div>
+      {viewTab === 'body' && (
+        <Input.TextArea value={prettyBody} readOnly autoSize={{ minRows: 4, maxRows: 20 }}
+          style={{ fontFamily: 'monospace', fontSize: 11, background: '#fafbfc', border: '1px solid #f0f0f0' }} />
+      )}
+      {viewTab === 'headers' && (
+        <div>
+          {respHeaders.map((h, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, padding: '3px 0', borderBottom: '1px solid #f8f8f8', fontSize: 11 }}>
+              <span style={{ fontWeight: 600, color: '#4e5969', width: 180, flexShrink: 0, fontFamily: 'monospace' }}>{h.key}</span>
+              <span style={{ color: '#86909c', fontFamily: 'monospace', wordBreak: 'break-all' }}>{h.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ===========================================================================
 // 右侧面板：步骤详情编辑器
 // ===========================================================================
 
 function StepDetailPanel({ step, onChange, baseUrl }) {
   const [activeTab, setActiveTab] = useState('params')
+  const [sending, setSending] = useState(false)
+  const [response, setResponse] = useState(null)
   const method = step.method || 'GET'
   const mc = methodColors[method] || methodColors.GET
   const up = (f, v) => onChange({ ...step, [f]: v })
 
-  const paramCount = step.params?.filter(p => p.key).length || 0
-  const headerCount = step.headers?.filter(h => h.key).length || 0
+  const paramCount = (step.params || []).filter(p => p.key && p.enabled !== false).length
+  const headerCount = (step.headers || []).filter(h => h.key && h.enabled !== false).length
   const bodyHas = step.body?.trim() ? 1 : 0
   const preOps = getOps(step, 'preOperations')
   const postOps = getOps(step, 'postOperations')
   const preCount = preOps.length
   const postCount = postOps.length
+  const hasAuth = step.auth?.type && step.auth.type !== 'none'
+
+  // Params ↔ URL 同步
+  const syncParamsFromUrl = (url) => {
+    const qIdx = url.indexOf('?')
+    if (qIdx < 0) return
+    const path = url.slice(0, qIdx)
+    const qs = url.slice(qIdx + 1)
+    const newParams = qs.split('&').filter(Boolean).map(p => {
+      const [k, ...rest] = p.split('=')
+      return { key: decodeURIComponent(k), value: decodeURIComponent(rest.join('=')), enabled: true, desc: '' }
+    })
+    const existing = (step.params || []).filter(p => p.key && !newParams.find(np => np.key === p.key))
+    onChange({ ...step, url: path, params: [...newParams, ...existing] })
+  }
+
+  const resolvedUrl = useMemo(() => {
+    const base = baseUrl || ''
+    const path = step.url || ''
+    const enabledParams = (step.params || []).filter(p => p.key && p.enabled !== false)
+    const qs = enabledParams.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value || '')}`).join('&')
+    return base + path + (qs ? '?' + qs : '')
+  }, [baseUrl, step.url, step.params])
+
+  const handleSend = async () => {
+    setSending(true)
+    setResponse(null)
+    setActiveTab('response')
+    try {
+      const fullUrl = (baseUrl || '') + (step.url || '')
+      const res = await api.post('/debug/send', {
+        method: step.method || 'GET',
+        url: fullUrl,
+        params: step.params || [],
+        headers: step.headers || [],
+        body: step.body || '',
+        bodyType: step.bodyType || 'json',
+        auth: step.auth || null,
+      })
+      setResponse(res.data)
+    } catch (e) {
+      setResponse({ statusCode: 0, statusText: '请求失败', headers: [], body: e.message, durationMs: 0, size: 0 })
+    }
+    setSending(false)
+  }
 
   const tabs = [
     { key: 'params', label: 'Params', count: paramCount },
     { key: 'body', label: 'Body', count: bodyHas },
     { key: 'headers', label: 'Headers', count: headerCount },
+    { key: 'auth', label: 'Auth', count: hasAuth ? 1 : 0, icon: <LockOutlined style={{ fontSize: 10, marginRight: 2 }} /> },
     { key: 'pre', label: '前置操作', count: preCount },
     { key: 'post', label: '后置操作', count: postCount },
+    ...(response ? [{ key: 'response', label: 'Response', count: 0, highlight: true }] : []),
   ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* 步骤信息 + 描述 */}
-      <div style={{ padding: '10px 16px', borderBottom: '1px solid #f2f3f5', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-          <Input size="small" variant="borderless" value={step.action || ''} onChange={e => up('action', e.target.value)}
-            placeholder="步骤名称（如：登录、获取用户信息）"
-            style={{ fontSize: 12, color: '#1d2129', padding: '0 4px', flex: 1 }} />
-        </div>
+      {/* 步骤名称 */}
+      <div style={{ padding: '8px 16px 0', flexShrink: 0 }}>
+        <Input size="small" variant="borderless" value={step.action || ''} onChange={e => up('action', e.target.value)}
+          placeholder="步骤名称（如：登录、获取用户信息）"
+          style={{ fontSize: 12, color: '#1d2129', padding: '0 4px' }} />
+      </div>
+
+      {/* Method + URL + Send */}
+      <div style={{ padding: '6px 16px 8px', borderBottom: '1px solid #f2f3f5', flexShrink: 0 }}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <Select size="small" value={method} onChange={v => up('method', v)} style={{ width: 90 }}
+            popupMatchSelectWidth={false}
             options={['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => ({
               value: m, label: <span style={{ color: methodColors[m]?.color, fontWeight: 700 }}>{m}</span>
             }))} />
@@ -616,28 +784,47 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
             {baseUrl && (
               <Tooltip title={baseUrl}>
                 <span style={{ fontSize: 11, color: '#86909c', background: '#f7f8fa', border: '1px solid #e5e6eb', borderRight: 'none',
-                  borderRadius: '4px 0 0 4px', padding: '3px 8px', whiteSpace: 'nowrap', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis',
+                  borderRadius: '4px 0 0 4px', padding: '3px 8px', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis',
                   display: 'inline-block', lineHeight: '16px', fontFamily: 'monospace', flexShrink: 0 }}>
                   <GlobalOutlined style={{ marginRight: 4, fontSize: 10 }} />{baseUrl}
                 </span>
               </Tooltip>
             )}
-            <Input size="small" value={step.url || ''} onChange={e => up('url', e.target.value)}
-              placeholder="/api/auth/login" style={{ fontFamily: 'monospace', fontSize: 12, borderRadius: baseUrl ? '0 4px 4px 0' : undefined }} />
+            <Input size="small" value={step.url || ''} style={{ fontFamily: 'monospace', fontSize: 12, borderRadius: baseUrl ? '0 4px 4px 0' : undefined }}
+              placeholder="/api/auth/login"
+              onChange={e => {
+                const v = e.target.value
+                if (v.includes('?')) syncParamsFromUrl(v)
+                else up('url', v)
+              }} />
             <VarPicker onInsert={v => up('url', (step.url || '') + v)} />
           </div>
+          <Button type="primary" size="small" icon={sending ? <LoadingOutlined /> : <SendOutlined />}
+            loading={sending} onClick={handleSend}
+            style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 600, minWidth: 64 }}>
+            发送
+          </Button>
         </div>
+        {/* 完整 URL 预览 */}
+        {(paramCount > 0 || baseUrl) && (
+          <div style={{ fontSize: 10, color: '#c9cdd4', marginTop: 4, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            title={resolvedUrl}>
+            {resolvedUrl}
+          </div>
+        )}
       </div>
 
       {/* Tab 栏 */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #f2f3f5', background: '#fafbfc', flexShrink: 0, paddingLeft: 4 }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid #f2f3f5', background: '#fafbfc', flexShrink: 0, paddingLeft: 4, overflowX: 'auto' }}>
         {tabs.map(t => (
           <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
-            padding: '7px 14px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
-            color: activeTab === t.key ? '#1890ff' : '#86909c', fontWeight: activeTab === t.key ? 600 : 400,
-            borderBottom: activeTab === t.key ? '2px solid #1890ff' : '2px solid transparent', transition: 'all 0.12s',
+            padding: '7px 12px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
+            color: t.highlight ? '#52c41a' : activeTab === t.key ? '#1890ff' : '#86909c',
+            fontWeight: activeTab === t.key ? 600 : 400,
+            borderBottom: activeTab === t.key ? `2px solid ${t.highlight ? '#52c41a' : '#1890ff'}` : '2px solid transparent',
+            transition: 'all 0.12s',
           }}>
-            {t.label}
+            {t.icon}{t.label}
             {t.count > 0 && <span style={{ fontSize: 10, marginLeft: 3, color: activeTab === t.key ? '#1890ff' : '#c9cdd4' }}>{t.count}</span>}
           </div>
         ))}
@@ -649,15 +836,40 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
         {activeTab === 'headers' && <KvEditor items={step.headers || []} onChange={v => up('headers', v)} keyPh="Header" valPh="Value" />}
         {activeTab === 'body' && (
           <div>
-            <Select size="small" value={step.bodyType || 'json'} onChange={v => up('bodyType', v)} style={{ width: 90, marginBottom: 6 }}
-              options={[{ value: 'json', label: 'JSON' }, { value: 'form', label: 'Form' }, { value: 'none', label: '无' }]} />
-            {(step.bodyType || 'json') !== 'none' && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+              <Select size="small" value={step.bodyType || 'json'} onChange={v => up('bodyType', v)} style={{ width: 140 }}
+                options={[
+                  { value: 'json', label: 'JSON' },
+                  { value: 'form', label: 'x-www-form-urlencoded' },
+                  { value: 'form-data', label: 'form-data' },
+                  { value: 'raw', label: 'Raw' },
+                  { value: 'none', label: '无 Body' },
+                ]} />
+              {(step.bodyType || 'json') === 'json' && (
+                <Tooltip title="格式化 JSON">
+                  <Button size="small" type="text" icon={<FormatPainterOutlined />} onClick={() => {
+                    try { up('body', JSON.stringify(JSON.parse(step.body || '{}'), null, 2)) } catch {}
+                  }}>格式化</Button>
+                </Tooltip>
+              )}
+            </div>
+            {(step.bodyType || 'json') === 'none' && (
+              <div style={{ padding: '16px 0', textAlign: 'center', color: '#c9cdd4', fontSize: 12 }}>此请求不包含 Body</div>
+            )}
+            {((step.bodyType || 'json') === 'json' || step.bodyType === 'raw') && (
               <Input.TextArea value={step.body || ''} onChange={e => up('body', e.target.value)}
                 placeholder='{\n  "username": "admin"\n}' autoSize={{ minRows: 6, maxRows: 18 }}
                 style={{ fontFamily: 'monospace', fontSize: 11 }} />
             )}
+            {step.bodyType === 'form' && (
+              <KvEditor items={step.formParams || []} onChange={v => up('formParams', v)} keyPh="字段名" valPh="字段值" />
+            )}
+            {step.bodyType === 'form-data' && (
+              <KvEditor items={step.formDataParams || []} onChange={v => up('formDataParams', v)} keyPh="字段名" valPh="字段值" />
+            )}
           </div>
         )}
+        {activeTab === 'auth' && <AuthEditor auth={step.auth} onChange={v => up('auth', v)} />}
         {activeTab === 'pre' && (
           <OperationList
             operations={preOps}
@@ -680,6 +892,11 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
             infoDesc="执行顺序按列表排列，可拖拽调整"
           />
         )}
+        {activeTab === 'response' && (
+          sending
+            ? <div style={{ textAlign: 'center', padding: 40 }}><Spin tip="发送中..." /></div>
+            : <ResponsePanel response={response} />
+        )}
       </div>
     </div>
   )
@@ -700,7 +917,7 @@ const addMenuItems = [
 ]
 
 function makeNewStep(key, seq) {
-  if (key === 'api') return { nodeType: 'api', seq, method: 'GET', url: '', action: '', params: [], headers: [], body: '', bodyType: 'json', preOperations: [], postOperations: [{ type: 'assertion', assertType: 'status', operator: 'eq', expected: '200' }] }
+  if (key === 'api') return { nodeType: 'api', seq, method: 'GET', url: '', action: '', params: [], headers: [], body: '', bodyType: 'json', auth: { type: 'none' }, preOperations: [], postOperations: [{ type: 'assertion', assertType: 'status', operator: 'eq', expected: '200' }] }
   if (key === 'group') return { nodeType: 'group', seq, label: '', children: [] }
   if (key === 'loop') return { nodeType: 'loop', seq, label: '', times: 3, children: [] }
   if (key === 'forEach') return { nodeType: 'forEach', seq, iterVar: 'item', dataSource: '', children: [] }
@@ -709,7 +926,7 @@ function makeNewStep(key, seq) {
 }
 
 export default function ApiStepList({ steps, onChange, environments, runEnv }) {
-  const [selected, setSelected] = useState(null) // { step, onStepChange }
+  const [selected, setSelected] = useState(null)
 
   const baseUrl = useMemo(() => {
     if (!runEnv || !environments?.length) return ''
@@ -730,7 +947,6 @@ export default function ApiStepList({ steps, onChange, environments, runEnv }) {
     }
   }, [selected])
 
-  // 自动选中第一个 API 步骤
   useEffect(() => {
     if (!selected && steps.length > 0) {
       const firstApi = steps.findIndex(s => (s.nodeType || 'api') === 'api')
@@ -756,9 +972,9 @@ export default function ApiStepList({ steps, onChange, environments, runEnv }) {
   return (
     <div style={{ display: 'flex', border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden', minHeight: 480, height: 'calc(100vh - 340px)', maxHeight: 800, background: '#fff' }}>
       {/* 左侧：紧凑步骤列表 */}
-      <div style={{ width: 320, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div style={{ width: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ padding: '8px 10px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafbfc' }}>
-          <span style={{ fontSize: 12, color: '#1d2129', fontWeight: 600 }}>已选 {steps.length} 项</span>
+          <span style={{ fontSize: 12, color: '#1d2129', fontWeight: 600 }}>步骤 ({steps.length})</span>
           <Dropdown menu={{ items: addMenuItems, onClick: handleAdd }} trigger={['click']}>
             <Button type="primary" size="small" icon={<PlusOutlined />} ghost>添加</Button>
           </Dropdown>
@@ -839,7 +1055,6 @@ function genStepsCode(steps, indent = '    ') {
       continue
     }
     lines.push(`${indent}# Step ${s.seq}: ${s.action || s.method + ' ' + s.url}`)
-    // 前置操作（兼容旧 preScript）
     const preOps = getOps(s, 'preOperations')
     for (const op of preOps) {
       if (op.type === 'script' && op.code?.trim()) {
@@ -851,12 +1066,11 @@ function genStepsCode(steps, indent = '    ') {
     const method = (s.method || 'GET').toLowerCase()
     const url = resolveVars(s.url || '/')
     let kwargs = []
-    if (s.params?.filter(p => p.key).length) { const obj = s.params.filter(p => p.key).map(p => `"${p.key}": "${p.value || ''}"`).join(', '); kwargs.push(`params={${obj}}`) }
-    if (s.headers?.filter(h => h.key).length) { const obj = s.headers.filter(h => h.key).map(h => `"${h.key}": "${h.value || ''}"`).join(', '); kwargs.push(`headers={${obj}}`) }
+    if (s.params?.filter(p => p.key && p.enabled !== false).length) { const obj = s.params.filter(p => p.key && p.enabled !== false).map(p => `"${p.key}": "${p.value || ''}"`).join(', '); kwargs.push(`params={${obj}}`) }
+    if (s.headers?.filter(h => h.key && h.enabled !== false).length) { const obj = s.headers.filter(h => h.key && h.enabled !== false).map(h => `"${h.key}": "${h.value || ''}"`).join(', '); kwargs.push(`headers={${obj}}`) }
     if ((s.bodyType || 'json') !== 'none' && s.body?.trim()) { kwargs.push(s.bodyType === 'form' ? `data="${s.body}"` : `json=${s.body}`) }
     const argStr = kwargs.length ? `, ${kwargs.join(', ')}` : ''
     lines.push(`${indent}response = client.${method}(f"${url}"${argStr})`)
-    // 后置操作（兼容旧 assertions/extractors/postScript，按列表顺序执行）
     const postOps = getOps(s, 'postOperations')
     for (const op of postOps) {
       if (op.type === 'assertion') {

@@ -15,6 +15,8 @@ from app.api.plans import router as plans_router, reports_router
 from app.api.tasks import router as tasks_router
 from app.api.logs import router as logs_router
 from app.api.scripts import router as scripts_router, export_router as scripts_export_router
+from app.api.testforge import router as testforge_router
+from app.api.debug import router as debug_router
 from app.core.middleware import CamelCaseResponse, TokenRefreshMiddleware, TraceIdMiddleware
 
 app = FastAPI(
@@ -53,3 +55,5 @@ app.include_router(tasks_router)
 app.include_router(logs_router)
 app.include_router(scripts_router)
 app.include_router(scripts_export_router)
+app.include_router(testforge_router)
+app.include_router(debug_router)
