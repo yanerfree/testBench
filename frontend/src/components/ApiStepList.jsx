@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import { Input, Select, Button, Tag, Space, Tooltip, Dropdown, Popover, Checkbox, Spin } from 'antd'
+import { Input, Select, Button, Tag, Space, Tooltip, Dropdown, Popover, Checkbox, Spin, message, AutoComplete } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, HolderOutlined, CaretRightOutlined, CaretDownOutlined,
   FolderOutlined, RetweetOutlined, BranchesOutlined, ApiOutlined,
   ClockCircleOutlined, UnorderedListOutlined, ThunderboltOutlined, CopyOutlined,
   CodeOutlined, EditOutlined, CheckCircleOutlined, FieldStringOutlined, GlobalOutlined,
   SendOutlined, FormatPainterOutlined, LockOutlined, LoadingOutlined,
+  SwapOutlined, SearchOutlined, ColumnHeightOutlined,
 } from '@ant-design/icons'
 import { api } from '../utils/request'
 
@@ -130,19 +131,83 @@ function VarPicker({ onInsert }) {
   )
 }
 
-// ---- KvEditor (Apifox 风格：checkbox + key + value + desc) ----
+// ---- 常用 Header 预设 ----
+const commonHeaders = [
+  { value: 'Content-Type', desc: 'application/json' },
+  { value: 'Accept', desc: 'application/json' },
+  { value: 'Authorization', desc: 'Bearer <token>' },
+  { value: 'X-Request-ID', desc: 'UUID 追踪' },
+  { value: 'Cache-Control', desc: 'no-cache' },
+  { value: 'Accept-Language', desc: 'zh-CN,en' },
+  { value: 'User-Agent', desc: 'testBench/1.0' },
+  { value: 'X-API-Key', desc: 'API 密钥' },
+  { value: 'Origin', desc: 'CORS 来源' },
+  { value: 'Referer', desc: '来源页面' },
+]
+const headerOptions = commonHeaders.map(h => ({ value: h.value, label: <span>{h.value} <span style={{ fontSize: 10, color: '#c9cdd4' }}>{h.desc}</span></span> }))
+
+// ---- KvEditor (Apifox 风格：checkbox + key + value + desc + bulk edit) ----
 function KvEditor({ items = [], onChange, keyPh = 'Key', valPh = 'Value' }) {
+  const [bulkMode, setBulkMode] = useState(false)
+  const [bulkText, setBulkText] = useState('')
   const up = (i, f, v) => onChange(items.map((r, j) => j === i ? { ...r, [f]: v } : r))
   const typeName = keyPh === 'Header' ? '请求头' : '参数'
+  const isHeader = keyPh === 'Header'
+
+  const toBulk = () => {
+    const t = items.filter(r => r.key).map(r => {
+      const prefix = r.enabled === false ? '// ' : ''
+      const desc = r.desc ? `  // ${r.desc}` : ''
+      return `${prefix}${r.key}: ${r.value || ''}${desc}`
+    }).join('\n')
+    setBulkText(t)
+    setBulkMode(true)
+  }
+
+  const fromBulk = () => {
+    const newItems = bulkText.split('\n').filter(l => l.trim()).map(line => {
+      const disabled = line.trimStart().startsWith('//')
+      const clean = disabled ? line.replace(/^\s*\/\/\s*/, '') : line
+      const descMatch = clean.match(/\s+\/\/\s*(.+)$/)
+      const desc = descMatch ? descMatch[1] : ''
+      const withoutDesc = descMatch ? clean.slice(0, descMatch.index) : clean
+      const colonIdx = withoutDesc.indexOf(':')
+      if (colonIdx < 0) return { key: withoutDesc.trim(), value: '', enabled: !disabled, desc }
+      return { key: withoutDesc.slice(0, colonIdx).trim(), value: withoutDesc.slice(colonIdx + 1).trim(), enabled: !disabled, desc }
+    })
+    onChange(newItems)
+    setBulkMode(false)
+  }
+
+  if (bulkMode) {
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ fontSize: 11, color: '#86909c' }}>每行一个，格式: <code style={{ fontSize: 10, background: '#f5f5f5', padding: '1px 4px', borderRadius: 3 }}>key: value  // 描述</code></span>
+          <Space size={4}>
+            <Button size="small" onClick={() => setBulkMode(false)}>取消</Button>
+            <Button size="small" type="primary" onClick={fromBulk}>确定</Button>
+          </Space>
+        </div>
+        <Input.TextArea value={bulkText} onChange={e => setBulkText(e.target.value)}
+          autoSize={{ minRows: 6, maxRows: 18 }} placeholder={`Content-Type: application/json\nAuthorization: Bearer {{token}}  // 认证\n// X-Debug: true  // 注释行=禁用`}
+          style={{ fontFamily: 'monospace', fontSize: 11 }} />
+      </div>
+    )
+  }
+
   return (
     <div>
       {items.length > 0 && (
-        <div style={{ display: 'flex', gap: 4, marginBottom: 4, padding: '0 4px', fontSize: 10, color: '#c9cdd4', fontWeight: 600 }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 4, padding: '0 4px', fontSize: 10, color: '#c9cdd4', fontWeight: 600, alignItems: 'center' }}>
           <span style={{ width: 20 }}></span>
           <span style={{ flex: 3 }}>{keyPh}</span>
           <span style={{ flex: 4 }}>{valPh}</span>
           <span style={{ flex: 3 }}>描述</span>
           <span style={{ width: 24 }}></span>
+          <Tooltip title="批量编辑">
+            <Button type="text" size="small" icon={<EditOutlined />} onClick={toBulk} style={{ width: 20, height: 16, fontSize: 10, color: '#c9cdd4' }} />
+          </Tooltip>
         </div>
       )}
       {items.length === 0 && (
@@ -153,13 +218,22 @@ function KvEditor({ items = [], onChange, keyPh = 'Key', valPh = 'Value' }) {
       {items.map((r, i) => (
         <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 3, alignItems: 'center', opacity: r.enabled === false ? 0.45 : 1, transition: 'opacity 0.15s' }}>
           <Checkbox checked={r.enabled !== false} onChange={e => up(i, 'enabled', e.target.checked)} style={{ marginRight: -2 }} />
-          <Input size="small" value={r.key} placeholder={keyPh} onChange={e => up(i, 'key', e.target.value)} style={{ flex: 3, fontFamily: 'monospace', fontSize: 11 }} />
+          {isHeader ? (
+            <AutoComplete size="small" value={r.key} placeholder={keyPh} onChange={v => up(i, 'key', v)}
+              options={headerOptions.filter(o => !r.key || o.value.toLowerCase().includes(r.key.toLowerCase()))}
+              style={{ flex: 3, fontFamily: 'monospace', fontSize: 11 }} />
+          ) : (
+            <Input size="small" value={r.key} placeholder={keyPh} onChange={e => up(i, 'key', e.target.value)} style={{ flex: 3, fontFamily: 'monospace', fontSize: 11 }} />
+          )}
           <Input size="small" value={r.value} placeholder={valPh} onChange={e => up(i, 'value', e.target.value)} style={{ flex: 4, fontFamily: 'monospace', fontSize: 11 }} />
           <Input size="small" value={r.desc || ''} placeholder="描述" onChange={e => up(i, 'desc', e.target.value)} style={{ flex: 3, fontSize: 11, color: '#86909c' }} />
           <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={() => onChange(items.filter((_, j) => j !== i))} />
         </div>
       ))}
-      <Button type="dashed" size="small" block icon={<PlusOutlined />} onClick={() => onChange([...items, { key: '', value: '', enabled: true, desc: '' }])}>添加</Button>
+      <div style={{ display: 'flex', gap: 4 }}>
+        <Button type="dashed" size="small" style={{ flex: 1 }} icon={<PlusOutlined />} onClick={() => onChange([...items, { key: '', value: '', enabled: true, desc: '' }])}>添加</Button>
+        {items.length > 0 && <Tooltip title="批量编辑"><Button size="small" icon={<EditOutlined />} onClick={toBulk} /></Tooltip>}
+      </div>
     </div>
   )
 }
@@ -634,52 +708,133 @@ function AuthEditor({ auth, onChange }) {
 }
 
 // ===========================================================================
-// Response 面板
+// Response 面板（Pretty/Raw + 复制 + 搜索 + Cookie）
 // ===========================================================================
 function ResponsePanel({ response }) {
   const [viewTab, setViewTab] = useState('body')
+  const [bodyMode, setBodyMode] = useState('pretty')
+  const [search, setSearch] = useState('')
   if (!response) return null
   const r = response
   const sc = r.status_code || r.statusCode || 0
   const isOk = sc >= 200 && sc < 300
   const statusColor = sc === 0 ? '#ff4d4f' : isOk ? '#52c41a' : sc < 400 ? '#faad14' : '#ff4d4f'
+  const durationMs = r.duration_ms || r.durationMs || 0
+  const durationColor = durationMs < 200 ? '#52c41a' : durationMs < 1000 ? '#faad14' : '#ff4d4f'
 
-  let prettyBody = r.body || ''
+  const rawBody = r.body || ''
+  let prettyBody = rawBody
+  let isJson = false
   try {
-    const parsed = JSON.parse(prettyBody)
+    const parsed = JSON.parse(rawBody)
     prettyBody = JSON.stringify(parsed, null, 2)
+    isJson = true
   } catch {}
 
-  const sizeStr = r.size > 1024 ? `${(r.size / 1024).toFixed(1)} KB` : `${r.size || 0} B`
+  const displayBody = bodyMode === 'pretty' && isJson ? prettyBody : rawBody
+  const sizeStr = r.size > 1024 * 1024 ? `${(r.size / 1024 / 1024).toFixed(1)} MB` : r.size > 1024 ? `${(r.size / 1024).toFixed(1)} KB` : `${r.size || 0} B`
   const respHeaders = r.headers || []
+  const cookies = respHeaders.filter(h => h.key.toLowerCase() === 'set-cookie').map(h => {
+    const parts = h.value.split(';').map(p => p.trim())
+    const [nv, ...attrs] = parts
+    const eqIdx = nv.indexOf('=')
+    return { name: eqIdx > 0 ? nv.slice(0, eqIdx) : nv, value: eqIdx > 0 ? nv.slice(eqIdx + 1) : '', attrs: attrs.join('; ') }
+  })
+
+  const copyBody = () => {
+    navigator.clipboard?.writeText(displayBody).then(() => message.success('已复制到剪贴板'))
+  }
+
+  const highlightSearch = (text) => {
+    if (!search) return text
+    const parts = text.split(new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
+    return parts.map((p, i) => p.toLowerCase() === search.toLowerCase()
+      ? <mark key={i} style={{ background: '#ffe58f', padding: 0 }}>{p}</mark> : p)
+  }
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', marginBottom: 8, borderBottom: '1px solid #f2f3f5' }}>
-        <span style={{ fontWeight: 700, fontSize: 13, color: statusColor }}>{sc} {r.status_text || r.statusText || ''}</span>
-        <span style={{ fontSize: 11, color: '#86909c' }}>{r.duration_ms || r.durationMs || 0} ms</span>
+      {/* 状态栏 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', marginBottom: 8, borderBottom: '1px solid #f2f3f5' }}>
+        <span style={{ fontWeight: 700, fontSize: 14, color: statusColor, background: statusColor + '10', padding: '2px 8px', borderRadius: 4 }}>
+          {sc} {r.status_text || r.statusText || ''}
+        </span>
+        <span style={{ fontSize: 11, color: durationColor, fontWeight: 600 }}>{durationMs} ms</span>
         <span style={{ fontSize: 11, color: '#86909c' }}>{sizeStr}</span>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', gap: 0 }}>
-          {['body', 'headers'].map(t => (
-            <div key={t} onClick={() => setViewTab(t)} style={{
+          {[
+            { key: 'body', label: 'Body' },
+            { key: 'headers', label: `Headers (${respHeaders.length})` },
+            ...(cookies.length > 0 ? [{ key: 'cookies', label: `Cookies (${cookies.length})` }] : []),
+          ].map(t => (
+            <div key={t.key} onClick={() => setViewTab(t.key)} style={{
               padding: '2px 10px', fontSize: 11, cursor: 'pointer',
-              color: viewTab === t ? '#1890ff' : '#86909c', fontWeight: viewTab === t ? 600 : 400,
-              borderBottom: viewTab === t ? '2px solid #1890ff' : '2px solid transparent',
-            }}>{t === 'body' ? 'Body' : `Headers (${respHeaders.length})`}</div>
+              color: viewTab === t.key ? '#1890ff' : '#86909c', fontWeight: viewTab === t.key ? 600 : 400,
+              borderBottom: viewTab === t.key ? '2px solid #1890ff' : '2px solid transparent',
+            }}>{t.label}</div>
           ))}
         </div>
       </div>
+
+      {/* Body */}
       {viewTab === 'body' && (
-        <Input.TextArea value={prettyBody} readOnly autoSize={{ minRows: 4, maxRows: 20 }}
-          style={{ fontFamily: 'monospace', fontSize: 11, background: '#fafbfc', border: '1px solid #f0f0f0' }} />
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <div style={{ display: 'flex', gap: 0 }}>
+              {isJson && ['pretty', 'raw'].map(m => (
+                <div key={m} onClick={() => setBodyMode(m)} style={{
+                  padding: '2px 8px', fontSize: 10, cursor: 'pointer', borderRadius: 3,
+                  background: bodyMode === m ? '#e6f7ff' : 'transparent',
+                  color: bodyMode === m ? '#1890ff' : '#86909c', fontWeight: bodyMode === m ? 600 : 400,
+                }}>{m === 'pretty' ? 'Pretty' : 'Raw'}</div>
+              ))}
+            </div>
+            <Space size={4}>
+              <Input size="small" prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />} value={search}
+                onChange={e => setSearch(e.target.value)} placeholder="搜索" allowClear
+                style={{ width: 140, fontSize: 11 }} />
+              <Tooltip title="复制"><Button size="small" icon={<CopyOutlined />} onClick={copyBody} /></Tooltip>
+            </Space>
+          </div>
+          <pre style={{
+            margin: 0, padding: 12, background: '#fafbfc', border: '1px solid #f0f0f0', borderRadius: 6,
+            fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: 'auto',
+            whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+          }}>{search ? highlightSearch(displayBody) : displayBody}</pre>
+        </div>
       )}
+
+      {/* Headers */}
       {viewTab === 'headers' && (
         <div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+            <Tooltip title="复制全部">
+              <Button size="small" icon={<CopyOutlined />} onClick={() => {
+                const t = respHeaders.map(h => `${h.key}: ${h.value}`).join('\n')
+                navigator.clipboard?.writeText(t).then(() => message.success('已复制'))
+              }} />
+            </Tooltip>
+          </div>
           {respHeaders.map((h, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, padding: '3px 0', borderBottom: '1px solid #f8f8f8', fontSize: 11 }}>
-              <span style={{ fontWeight: 600, color: '#4e5969', width: 180, flexShrink: 0, fontFamily: 'monospace' }}>{h.key}</span>
+            <div key={i} style={{ display: 'flex', gap: 8, padding: '4px 0', borderBottom: '1px solid #f8f8f8', fontSize: 11 }}>
+              <span style={{ fontWeight: 600, color: '#4e5969', width: 200, flexShrink: 0, fontFamily: 'monospace' }}>{h.key}</span>
               <span style={{ color: '#86909c', fontFamily: 'monospace', wordBreak: 'break-all' }}>{h.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Cookies */}
+      {viewTab === 'cookies' && (
+        <div>
+          {cookies.map((c, i) => (
+            <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid #f8f8f8', fontSize: 11 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontWeight: 600, color: '#4e5969', fontFamily: 'monospace' }}>{c.name}</span>
+                <span style={{ color: '#1890ff', fontFamily: 'monospace', wordBreak: 'break-all' }}>{c.value}</span>
+              </div>
+              {c.attrs && <div style={{ fontSize: 10, color: '#c9cdd4', marginTop: 2 }}>{c.attrs}</div>}
             </div>
           ))}
         </div>
@@ -753,6 +908,31 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
     setSending(false)
   }
 
+  const generateCurl = () => {
+    const m = (step.method || 'GET').toUpperCase()
+    const parts = [`curl -X ${m}`]
+    const fullUrl = resolvedUrl || (baseUrl || '') + (step.url || '')
+    parts.push(`  '${fullUrl}'`)
+    const allHeaders = [...(step.headers || []).filter(h => h.key && h.enabled !== false)]
+    if (step.auth?.type === 'bearer' && step.auth.token) allHeaders.push({ key: 'Authorization', value: `Bearer ${step.auth.token}` })
+    if (step.auth?.type === 'basic' && step.auth.username) allHeaders.push({ key: 'Authorization', value: `Basic ${btoa(`${step.auth.username}:${step.auth.password || ''}`)}` })
+    if (step.auth?.type === 'apikey' && step.auth.keyName && step.auth.keyIn !== 'query') allHeaders.push({ key: step.auth.keyName, value: step.auth.keyValue || '' })
+    for (const h of allHeaders) parts.push(`  -H '${h.key}: ${h.value}'`)
+    if (m !== 'GET' && step.body?.trim()) {
+      if ((step.bodyType || 'json') === 'json') {
+        if (!allHeaders.find(h => h.key.toLowerCase() === 'content-type')) parts.push(`  -H 'Content-Type: application/json'`)
+        parts.push(`  -d '${step.body.replace(/'/g, "'\\''")}'`)
+      } else {
+        parts.push(`  -d '${step.body.replace(/'/g, "'\\''")}'`)
+      }
+    }
+    return parts.join(' \\\n')
+  }
+
+  const copyCurl = () => {
+    navigator.clipboard?.writeText(generateCurl()).then(() => message.success('cURL 已复制'))
+  }
+
   const tabs = [
     { key: 'params', label: 'Params', count: paramCount },
     { key: 'body', label: 'Body', count: bodyHas },
@@ -760,8 +940,11 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
     { key: 'auth', label: 'Auth', count: hasAuth ? 1 : 0, icon: <LockOutlined style={{ fontSize: 10, marginRight: 2 }} /> },
     { key: 'pre', label: '前置操作', count: preCount },
     { key: 'post', label: '后置操作', count: postCount },
+    { key: 'code', label: '生成代码', count: 0, icon: <CodeOutlined style={{ fontSize: 10, marginRight: 2 }} /> },
     ...(response ? [{ key: 'response', label: 'Response', count: 0, highlight: true }] : []),
   ]
+
+  const [codeLang, setCodeLang] = useState('curl')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -799,6 +982,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
               }} />
             <VarPicker onInsert={v => up('url', (step.url || '') + v)} />
           </div>
+          <Tooltip title="复制 cURL"><Button size="small" icon={<CopyOutlined />} onClick={copyCurl} style={{ color: '#86909c' }} /></Tooltip>
           <Button type="primary" size="small" icon={sending ? <LoadingOutlined /> : <SendOutlined />}
             loading={sending} onClick={handleSend}
             style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 600, minWidth: 64 }}>
@@ -892,6 +1076,57 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
             infoDesc="执行顺序按列表排列，可拖拽调整"
           />
         )}
+        {activeTab === 'code' && (() => {
+          const genPython = () => {
+            const m = (step.method || 'GET').toLowerCase()
+            const lines = ['import httpx', '', `response = httpx.${m}(`]
+            lines.push(`    "${resolvedUrl}",`)
+            const hdrs = (step.headers || []).filter(h => h.key && h.enabled !== false)
+            if (step.auth?.type === 'bearer' && step.auth.token) hdrs.push({ key: 'Authorization', value: `Bearer ${step.auth.token}` })
+            if (hdrs.length) { lines.push(`    headers={${JSON.stringify(Object.fromEntries(hdrs.map(h => [h.key, h.value])))}},`) }
+            if (m !== 'get' && step.body?.trim()) { lines.push(`    json=${step.body},`) }
+            lines.push(')')
+            lines.push('', 'print(response.status_code)', 'print(response.json())')
+            return lines.join('\n')
+          }
+          const genJs = () => {
+            const m = (step.method || 'GET').toUpperCase()
+            const lines = [`const response = await fetch("${resolvedUrl}", {`, `  method: "${m}",`]
+            const hdrs = (step.headers || []).filter(h => h.key && h.enabled !== false)
+            if (step.auth?.type === 'bearer' && step.auth.token) hdrs.push({ key: 'Authorization', value: `Bearer ${step.auth.token}` })
+            if (hdrs.length || (m !== 'GET' && step.body?.trim())) {
+              const hObj = Object.fromEntries([...hdrs.map(h => [h.key, h.value]), ...(m !== 'GET' && (step.bodyType || 'json') === 'json' ? [['Content-Type', 'application/json']] : [])])
+              lines.push(`  headers: ${JSON.stringify(hObj)},`)
+            }
+            if (m !== 'GET' && step.body?.trim()) { lines.push(`  body: JSON.stringify(${step.body}),`) }
+            lines.push('})', '', 'const data = await response.json()', 'console.log(data)')
+            return lines.join('\n')
+          }
+          const codeMap = { curl: generateCurl, python: genPython, javascript: genJs }
+          const code = codeMap[codeLang]?.() || ''
+          return (
+            <div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                {['curl', 'python', 'javascript'].map(l => (
+                  <div key={l} onClick={() => setCodeLang(l)} style={{
+                    padding: '3px 10px', fontSize: 11, cursor: 'pointer', borderRadius: 4,
+                    background: codeLang === l ? '#1890ff' : '#f7f8fa', color: codeLang === l ? '#fff' : '#4e5969',
+                    fontWeight: codeLang === l ? 600 : 400, transition: 'all 0.12s',
+                  }}>{l === 'curl' ? 'cURL' : l === 'python' ? 'Python' : 'JavaScript'}</div>
+                ))}
+                <div style={{ flex: 1 }} />
+                <Tooltip title="复制"><Button size="small" icon={<CopyOutlined />} onClick={() => {
+                  navigator.clipboard?.writeText(code).then(() => message.success('已复制'))
+                }} /></Tooltip>
+              </div>
+              <pre style={{
+                margin: 0, padding: 12, background: '#1e1e1e', color: '#d4d4d4', borderRadius: 6,
+                fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: 'auto',
+                whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+              }}>{code}</pre>
+            </div>
+          )
+        })()}
         {activeTab === 'response' && (
           sending
             ? <div style={{ textAlign: 'center', padding: 40 }}><Spin tip="发送中..." /></div>
