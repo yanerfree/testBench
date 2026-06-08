@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react'
-import { Input, Select, Button, Tag, Space, Tooltip, Dropdown, Popover } from 'antd'
+import { useState, useRef, useCallback } from 'react'
+import { Input, Select, Button, Tag, Space, Tooltip, Dropdown, Popover, Drawer } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, HolderOutlined, CaretRightOutlined, CaretDownOutlined,
   SendOutlined, FolderOutlined, RetweetOutlined, BranchesOutlined, ApiOutlined,
   ClockCircleOutlined, UnorderedListOutlined, ThunderboltOutlined, CopyOutlined,
+  CodeOutlined, EditOutlined,
 } from '@ant-design/icons'
 
 const methodColors = {
@@ -27,6 +28,128 @@ const dynamicVars = [
   { key: '$randomString', label: '随机字符串', desc: '8 位随机字符', example: 'aB3kP9mZ' },
   { key: '$randomName', label: '随机姓名', desc: '随机中文姓名', example: '张三' },
 ]
+
+// ---- 前置脚本代码片段 ----
+const preScriptSnippets = [
+  {
+    key: 'setHeader', label: '设置请求头',
+    desc: '添加 Authorization 等 Header',
+    code: '# 设置请求头（在 headers 参数中生效）\nheaders["Authorization"] = f"Bearer {token}"',
+  },
+  {
+    key: 'genSign', label: '生成签名',
+    desc: 'MD5 签名计算，结果写入 Header',
+    code: 'import hashlib\ntimestamp_str = str(int(time.time()))\nraw = f"{timestamp_str}{secret_key}"\nsign = hashlib.md5(raw.encode()).hexdigest()\nheaders["X-Timestamp"] = timestamp_str\nheaders["X-Sign"] = sign',
+  },
+  {
+    key: 'dynamicParam', label: '动态参数',
+    desc: '生成动态值供请求使用',
+    code: '# 动态参数 — 后续可在 URL/Body 中引用\norder_no = f"ORD_{int(time.time())}_{random.randint(1000,9999)}"',
+  },
+  {
+    key: 'debugPrint', label: '打印调试信息',
+    desc: '输出当前变量状态',
+    code: 'print(f"[PRE] 当前 token = {token}")\nprint(f"[PRE] 请求即将发送: {url}")',
+  },
+  {
+    key: 'readEnv', label: '读取环境变量',
+    desc: '从系统环境变量获取配置',
+    code: 'import os\napi_key = os.environ.get("API_KEY", "default_key")\nbase_url = os.environ.get("BASE_URL", "http://localhost:8000")',
+  },
+  {
+    key: 'setBody', label: '构造请求体',
+    desc: '动态构造 JSON Body',
+    code: '# 动态构造请求体\nimport json\nrequest_body = json.dumps({\n    "username": f"user_{random.randint(1000,9999)}",\n    "timestamp": int(time.time()),\n})',
+  },
+]
+
+// ---- 后置脚本代码片段 ----
+const postScriptSnippets = [
+  {
+    key: 'printResp', label: '打印响应信息',
+    desc: '输出状态码 + 响应体摘要',
+    code: 'print(f"[POST] 状态码: {response.status_code}")\nprint(f"[POST] 响应体: {response.text[:500]}")',
+  },
+  {
+    key: 'extractData', label: '提取并保存数据',
+    desc: '从响应 JSON 中提取字段到变量',
+    code: '# 提取响应数据到变量（后续步骤可直接使用）\ndata = response.json()\nuser_id = data["data"]["id"]\ntoken = data["data"]["token"]',
+  },
+  {
+    key: 'condCheck', label: '条件检查',
+    desc: '根据响应数据执行不同逻辑',
+    code: 'if response.status_code == 200:\n    result = response.json()\n    print(f"[POST] 成功: {result.get(\'message\', \'OK\')}")\nelse:\n    print(f"[POST] 失败: {response.status_code} - {response.text[:200]}")',
+  },
+  {
+    key: 'cleanup', label: '清理测试数据',
+    desc: '发送 DELETE 请求清理刚创建的资源',
+    code: '# 清理本步骤创建的测试数据\nif response.status_code in (200, 201):\n    resource_id = response.json()["data"]["id"]\n    client.delete(f"/api/resources/{resource_id}")',
+  },
+  {
+    key: 'delay', label: '延时等待',
+    desc: '请求后等待（限流/异步场景）',
+    code: 'import time\ntime.sleep(1)  # 等待 1 秒，适用于限流或异步处理场景',
+  },
+  {
+    key: 'saveToFile', label: '保存到文件',
+    desc: '将响应数据写入文件备查',
+    code: 'import json\nwith open("/tmp/response_debug.json", "w") as f:\n    json.dump(response.json(), f, ensure_ascii=False, indent=2)\nprint("[POST] 响应已保存到 /tmp/response_debug.json")',
+  },
+]
+
+// ---- 片段插入工具 ----
+function insertAtCursor(textareaRef, currentValue, snippet, onChange) {
+  const el = textareaRef.current?.resizableTextArea?.textArea
+  if (el) {
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const before = currentValue.slice(0, start)
+    const after = currentValue.slice(end)
+    const sep = before.length > 0 && !before.endsWith('\n') ? '\n' : ''
+    const newValue = before + sep + snippet + '\n' + after
+    onChange(newValue)
+    requestAnimationFrame(() => {
+      const pos = (before + sep + snippet + '\n').length
+      el.setSelectionRange(pos, pos)
+      el.focus()
+    })
+  } else {
+    const sep = currentValue && !currentValue.endsWith('\n') ? '\n' : ''
+    onChange(currentValue + sep + snippet + '\n')
+  }
+}
+
+function SnippetPicker({ snippets, onInsert }) {
+  return (
+    <Popover trigger="click" placement="bottomRight" arrow={false}
+      content={
+        <div style={{ width: 340, maxHeight: 400, overflow: 'auto' }}>
+          <div style={{ fontSize: 11, color: '#86909c', padding: '4px 8px 6px', fontWeight: 600 }}>点击插入代码片段</div>
+          {snippets.map(s => (
+            <div key={s.key} onClick={() => onInsert(s.code)}
+              style={{ padding: '8px 10px', cursor: 'pointer', borderRadius: 6, marginBottom: 2 }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f0f5ff'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                <CodeOutlined style={{ fontSize: 11, color: '#1890ff' }} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#1d2129' }}>{s.label}</span>
+                <span style={{ fontSize: 10, color: '#86909c' }}>{s.desc}</span>
+              </div>
+              <pre style={{
+                margin: 0, padding: '4px 8px', background: '#fafafa', borderRadius: 4,
+                fontSize: 10, color: '#4e5969', fontFamily: 'monospace', lineHeight: 1.5,
+                whiteSpace: 'pre-wrap', border: '1px solid #f0f0f0', maxHeight: 80, overflow: 'hidden',
+              }}>{s.code}</pre>
+            </div>
+          ))}
+        </div>
+      }>
+      <Tooltip title="插入代码片段">
+        <Button type="text" size="small" icon={<CodeOutlined />} style={{ color: '#1890ff', fontSize: 12 }}>片段</Button>
+      </Tooltip>
+    </Popover>
+  )
+}
 
 function VarPicker({ onInsert }) {
   return (
@@ -113,36 +236,29 @@ function ExtractEditor({ items = [], onChange }) {
   )
 }
 
-// ---- API 步骤卡片（左右布局） ----
-function ApiStepCard({ step, index, onChange, onRemove, canRemove }) {
-  const [expanded, setExpanded] = useState(false)
-  const [activeTab, setActiveTab] = useState('params')
+// ---- API 步骤折叠卡片（仅摘要行） ----
+function ApiStepCardCollapsed({ step, index, onRemove, canRemove, onOpenDrawer }) {
   const method = step.method || 'GET'
   const mc = methodColors[method] || methodColors.GET
-  const up = (f, v) => onChange({ ...step, [f]: v })
 
   const badges = []
   if (step.params?.some(p => p.key)) badges.push({ label: `${step.params.filter(p => p.key).length} 参数`, color: '#86909c' })
   if (step.body?.trim()) badges.push({ label: 'Body', color: '#722ed1' })
   if (step.assertions?.length) badges.push({ label: `${step.assertions.length} 断言`, color: '#52c41a' })
   if (step.extractors?.length) badges.push({ label: `${step.extractors.length} 变量`, color: '#1890ff' })
-
-  const tabs = [
-    { key: 'params', label: 'Params' }, { key: 'headers', label: 'Headers' },
-    { key: 'body', label: 'Body' }, { key: 'assertions', label: '断言' },
-    { key: 'extractors', label: '变量' }, { key: 'preScript', label: '前置脚本' },
-    { key: 'postScript', label: '后置脚本' },
-  ]
+  if (step.preScript?.trim()) badges.push({ label: '前置', color: '#13c2c2' })
+  if (step.postScript?.trim()) badges.push({ label: '后置', color: '#fa8c16' })
 
   return (
     <div style={{
-      border: `1px solid ${expanded ? mc.border : '#f2f3f5'}`, borderRadius: 8, marginBottom: 6,
-      background: '#fff', transition: 'border-color 0.15s',
-    }}>
-      {/* 折叠头 */}
-      <div onClick={() => setExpanded(!expanded)} style={{
-        display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', cursor: 'pointer',
-        borderBottom: expanded ? `1px solid ${mc.border}` : 'none', userSelect: 'none',
+      border: '1px solid #f2f3f5', borderRadius: 8, marginBottom: 6,
+      background: '#fff', transition: 'all 0.15s',
+    }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = mc.border; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = '#f2f3f5'; e.currentTarget.style.boxShadow = 'none' }}
+    >
+      <div onClick={onOpenDrawer} style={{
+        display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', cursor: 'pointer', userSelect: 'none',
       }}>
         <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', fontSize: 10 }} />
         <span style={{
@@ -156,90 +272,204 @@ function ApiStepCard({ step, index, onChange, onRemove, canRemove }) {
         <span style={{ fontSize: 11, color: '#86909c', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{step.action}</span>
         {badges.map((b, i) => <Tag key={i} style={{ fontSize: 9, margin: 0, padding: '0 4px', lineHeight: '16px', background: '#f7f8fa', color: b.color, border: 'none' }}>{b.label}</Tag>)}
         {canRemove && <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={e => { e.stopPropagation(); onRemove() }} style={{ marginLeft: 4 }} />}
-        {expanded ? <CaretDownOutlined style={{ fontSize: 10, color: '#86909c' }} /> : <CaretRightOutlined style={{ fontSize: 10, color: '#86909c' }} />}
+        <EditOutlined style={{ fontSize: 11, color: '#c9cdd4' }} />
+      </div>
+    </div>
+  )
+}
+
+// ---- API 步骤抽屉内容（左右布局 + 增强脚本编辑） ----
+function ApiStepDrawerContent({ step, index, onChange }) {
+  const [activeTab, setActiveTab] = useState('params')
+  const preScriptRef = useRef(null)
+  const postScriptRef = useRef(null)
+  const method = step.method || 'GET'
+  const mc = methodColors[method] || methodColors.GET
+  const up = (f, v) => onChange({ ...step, [f]: v })
+
+  const tabs = [
+    { key: 'params', label: 'Params' }, { key: 'headers', label: 'Headers' },
+    { key: 'body', label: 'Body' }, { key: 'assertions', label: '断言' },
+    { key: 'extractors', label: '变量' }, { key: 'preScript', label: '前置脚本' },
+    { key: 'postScript', label: '后置脚本' },
+  ]
+
+  const tabCounts = {
+    params: step.params?.filter(p => p.key).length || 0,
+    headers: step.headers?.filter(h => h.key).length || 0,
+    assertions: step.assertions?.length || 0,
+    extractors: step.extractors?.length || 0,
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* 顶部标识栏 */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8, padding: '14px 20px',
+        borderBottom: '1px solid #f2f3f5', background: '#fafbfc', flexShrink: 0,
+      }}>
+        <span style={{
+          width: 24, height: 22, borderRadius: 4, background: mc.bg, color: mc.color,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11, flexShrink: 0,
+          border: `1px solid ${mc.border}`,
+        }}>{index + 1}</span>
+        <Tag style={{ margin: 0, fontWeight: 700, fontSize: 11, background: mc.bg, color: mc.color, border: `1px solid ${mc.border}`, padding: '1px 8px', lineHeight: '20px' }}>{method}</Tag>
+        <span style={{ fontFamily: 'monospace', fontSize: 13, color: '#1d2129', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {step.url || '/api/...'}
+        </span>
+        {step.action && <span style={{ fontSize: 12, color: '#86909c' }}>{step.action}</span>}
       </div>
 
-      {/* 展开内容 — 左右布局 */}
-      {expanded && (
-        <div style={{ display: 'flex', minHeight: 200 }}>
-          {/* 左侧：Method + URL + 描述 */}
-          <div style={{ width: 280, borderRight: '1px solid #f2f3f5', padding: '10px 12px', flexShrink: 0 }}>
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>请求方法</div>
-              <Select size="small" value={method} onChange={v => up('method', v)} style={{ width: '100%' }}
-                options={['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => ({
-                  value: m, label: <span style={{ color: methodColors[m]?.color, fontWeight: 600 }}>{m}</span>
-                }))} />
+      {/* 主体：左右布局 */}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        {/* 左侧：Method + URL + 描述 */}
+        <div style={{ width: 260, borderRight: '1px solid #f2f3f5', padding: '14px 16px', flexShrink: 0, overflow: 'auto' }}>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4, fontWeight: 500 }}>请求方法</div>
+            <Select size="small" value={method} onChange={v => up('method', v)} style={{ width: '100%' }}
+              options={['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => ({
+                value: m, label: <span style={{ color: methodColors[m]?.color, fontWeight: 600 }}>{m}</span>
+              }))} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: 11, color: '#86909c', fontWeight: 500 }}>请求路径</span>
+              <VarPicker onInsert={v => up('url', (step.url || '') + v)} />
             </div>
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <span style={{ fontSize: 11, color: '#86909c' }}>请求路径</span>
-                <VarPicker onInsert={v => up('url', (step.url || '') + v)} />
-              </div>
-              <Input size="small" value={step.url || ''} onChange={e => up('url', e.target.value)}
-                placeholder="/api/auth/login  支持 {{$uuid}} 等变量" style={{ fontFamily: 'monospace', fontSize: 12 }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>步骤描述</div>
-              <Input.TextArea size="small" value={step.action || ''} onChange={e => up('action', e.target.value)}
-                placeholder="用户登录获取 token" autoSize={{ minRows: 2, maxRows: 4 }} style={{ fontSize: 12 }} />
-            </div>
+            <Input size="small" value={step.url || ''} onChange={e => up('url', e.target.value)}
+              placeholder="/api/auth/login" style={{ fontFamily: 'monospace', fontSize: 12 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4, fontWeight: 500 }}>步骤描述</div>
+            <Input.TextArea size="small" value={step.action || ''} onChange={e => up('action', e.target.value)}
+              placeholder="用户登录获取 token" autoSize={{ minRows: 2, maxRows: 5 }} style={{ fontSize: 12 }} />
           </div>
 
-          {/* 右侧：Tabs */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-            <div style={{ display: 'flex', borderBottom: '1px solid #f2f3f5', background: '#fafbfc', flexShrink: 0 }}>
-              {tabs.map(t => (
+          {/* 执行流程可视化 */}
+          <div style={{ marginTop: 16, padding: '10px 12px', background: '#f7f8fa', borderRadius: 6 }}>
+            <div style={{ fontSize: 10, color: '#86909c', fontWeight: 600, marginBottom: 8 }}>执行顺序</div>
+            {['1. 前置脚本', '2. 发送请求', '3. 断言检查', '4. 提取变量', '5. 后置脚本'].map((item, i) => (
+              <div key={i} style={{
+                fontSize: 10, color: '#4e5969', padding: '3px 0', display: 'flex', alignItems: 'center', gap: 4,
+              }}>
+                <span style={{
+                  width: 4, height: 4, borderRadius: 2, flexShrink: 0,
+                  background: i === 0 ? '#1890ff' : i === 1 ? '#52c41a' : i === 2 ? '#faad14' : i === 3 ? '#722ed1' : '#fa8c16',
+                }} />
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 右侧：Tabs */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid #f2f3f5', background: '#fafbfc', flexShrink: 0 }}>
+            {tabs.map(t => {
+              const count = tabCounts[t.key]
+              return (
                 <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
-                  padding: '6px 12px', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap',
+                  padding: '8px 14px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
                   color: activeTab === t.key ? '#1890ff' : '#86909c',
                   fontWeight: activeTab === t.key ? 600 : 400,
                   borderBottom: activeTab === t.key ? '2px solid #1890ff' : '2px solid transparent',
-                }}>{t.label}{t.key === 'assertions' && step.assertions?.length ? ` (${step.assertions.length})` : ''}{t.key === 'extractors' && step.extractors?.length ? ` (${step.extractors.length})` : ''}</div>
-              ))}
-            </div>
-            <div style={{ padding: '8px 10px', flex: 1, overflow: 'auto' }}>
-              {activeTab === 'params' && <KvEditor items={step.params || []} onChange={v => up('params', v)} keyPh="参数名" valPh="参数值" />}
-              {activeTab === 'headers' && <KvEditor items={step.headers || []} onChange={v => up('headers', v)} keyPh="Header" valPh="Value" />}
-              {activeTab === 'body' && (
-                <div>
-                  <Select size="small" value={step.bodyType || 'json'} onChange={v => up('bodyType', v)} style={{ width: 90, marginBottom: 6 }}
-                    options={[{ value: 'json', label: 'JSON' }, { value: 'form', label: 'Form' }, { value: 'none', label: '无' }]} />
-                  {(step.bodyType || 'json') !== 'none' && (
-                    <Input.TextArea value={step.body || ''} onChange={e => up('body', e.target.value)}
-                      placeholder='{\n  "username": "admin"\n}' autoSize={{ minRows: 4, maxRows: 12 }}
-                      style={{ fontFamily: 'monospace', fontSize: 11 }} />
-                  )}
+                  transition: 'all 0.15s',
+                }}>
+                  {t.label}
+                  {count > 0 && <span style={{ fontSize: 9, marginLeft: 3, color: activeTab === t.key ? '#1890ff' : '#c9cdd4' }}>({count})</span>}
+                  {t.key === 'preScript' && step.preScript?.trim() && <span style={{ marginLeft: 3, width: 5, height: 5, borderRadius: 3, background: '#1890ff', display: 'inline-block', verticalAlign: 'middle' }} />}
+                  {t.key === 'postScript' && step.postScript?.trim() && <span style={{ marginLeft: 3, width: 5, height: 5, borderRadius: 3, background: '#fa8c16', display: 'inline-block', verticalAlign: 'middle' }} />}
                 </div>
-              )}
-              {activeTab === 'assertions' && <AssertEditor items={step.assertions || []} onChange={v => up('assertions', v)} />}
-              {activeTab === 'extractors' && <ExtractEditor items={step.extractors || []} onChange={v => up('extractors', v)} />}
-              {activeTab === 'preScript' && (
-                <div>
-                  <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>请求前执行的 Python 代码（可用于签名、动态参数等）</div>
-                  <Input.TextArea value={step.preScript || ''} onChange={e => up('preScript', e.target.value)}
-                    placeholder={'# 前置脚本示例\nimport hashlib\nsign = hashlib.md5(f"{timestamp}{secret}".encode()).hexdigest()'}
-                    autoSize={{ minRows: 4, maxRows: 12 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+              )
+            })}
+          </div>
+          <div style={{ padding: '12px 14px', flex: 1, overflow: 'auto' }}>
+            {activeTab === 'params' && <KvEditor items={step.params || []} onChange={v => up('params', v)} keyPh="参数名" valPh="参数值" />}
+            {activeTab === 'headers' && <KvEditor items={step.headers || []} onChange={v => up('headers', v)} keyPh="Header" valPh="Value" />}
+            {activeTab === 'body' && (
+              <div>
+                <Select size="small" value={step.bodyType || 'json'} onChange={v => up('bodyType', v)} style={{ width: 90, marginBottom: 6 }}
+                  options={[{ value: 'json', label: 'JSON' }, { value: 'form', label: 'Form' }, { value: 'none', label: '无' }]} />
+                {(step.bodyType || 'json') !== 'none' && (
+                  <Input.TextArea value={step.body || ''} onChange={e => up('body', e.target.value)}
+                    placeholder='{\n  "username": "admin"\n}' autoSize={{ minRows: 6, maxRows: 16 }}
+                    style={{ fontFamily: 'monospace', fontSize: 11 }} />
+                )}
+              </div>
+            )}
+            {activeTab === 'assertions' && <AssertEditor items={step.assertions || []} onChange={v => up('assertions', v)} />}
+            {activeTab === 'extractors' && <ExtractEditor items={step.extractors || []} onChange={v => up('extractors', v)} />}
+
+            {/* 前置脚本 Tab */}
+            {activeTab === 'preScript' && (
+              <div>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
+                  background: '#e6f7ff', borderRadius: 6, marginBottom: 10, border: '1px solid #bae7ff',
+                }}>
+                  <span style={{ fontSize: 14 }}>{"⚡"}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, color: '#1890ff', fontWeight: 600 }}>请求前执行</div>
+                    <div style={{ fontSize: 10, color: '#4e5969', marginTop: 1 }}>可修改请求参数、设置 Header、生成签名、准备测试数据</div>
+                  </div>
                 </div>
-              )}
-              {activeTab === 'postScript' && (
-                <div>
-                  <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>请求后执行的 Python 代码（可用于数据清理、日志等）</div>
-                  <Input.TextArea value={step.postScript || ''} onChange={e => up('postScript', e.target.value)}
-                    placeholder={'# 后置脚本示例\nprint(f"响应状态: {response.status_code}")\nprint(f"耗时: {response.elapsed.total_seconds()}s")'}
-                    autoSize={{ minRows: 4, maxRows: 12 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, color: '#86909c', fontWeight: 500 }}>Python 代码</span>
+                  <Space size={4}>
+                    <VarPicker onInsert={v => {
+                      const cur = step.preScript || ''
+                      const sep = cur && !cur.endsWith('\n') ? '\n' : ''
+                      up('preScript', cur + sep + v)
+                    }} />
+                    <SnippetPicker snippets={preScriptSnippets}
+                      onInsert={code => insertAtCursor(preScriptRef, step.preScript || '', code, v => up('preScript', v))} />
+                  </Space>
                 </div>
-              )}
-            </div>
+                <Input.TextArea ref={preScriptRef} value={step.preScript || ''} onChange={e => up('preScript', e.target.value)}
+                  placeholder="# 在此编写前置脚本，或点击右上角「片段」快速插入常用代码"
+                  autoSize={{ minRows: 8, maxRows: 20 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+              </div>
+            )}
+
+            {/* 后置脚本 Tab */}
+            {activeTab === 'postScript' && (
+              <div>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
+                  background: '#fff7e6', borderRadius: 6, marginBottom: 10, border: '1px solid #ffd591',
+                }}>
+                  <span style={{ fontSize: 14 }}>{"📋"}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, color: '#fa8c16', fontWeight: 600 }}>断言和变量提取之后执行</div>
+                    <div style={{ fontSize: 10, color: '#4e5969', marginTop: 1 }}>可做数据清理、日志输出、条件逻辑、保存响应数据</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, color: '#86909c', fontWeight: 500 }}>Python 代码</span>
+                  <Space size={4}>
+                    <VarPicker onInsert={v => {
+                      const cur = step.postScript || ''
+                      const sep = cur && !cur.endsWith('\n') ? '\n' : ''
+                      up('postScript', cur + sep + v)
+                    }} />
+                    <SnippetPicker snippets={postScriptSnippets}
+                      onInsert={code => insertAtCursor(postScriptRef, step.postScript || '', code, v => up('postScript', v))} />
+                  </Space>
+                </div>
+                <Input.TextArea ref={postScriptRef} value={step.postScript || ''} onChange={e => up('postScript', e.target.value)}
+                  placeholder="# 在此编写后置脚本，或点击右上角「片段」快速插入常用代码"
+                  autoSize={{ minRows: 8, maxRows: 20 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
 
 // ---- 编排节点：分组 ----
-function GroupNode({ node, index, onChange, onRemove }) {
+function GroupNode({ node, index, onChange, onRemove, onOpenDrawer }) {
   const [collapsed, setCollapsed] = useState(false)
   return (
     <div style={{ border: '1px solid #d3adf7', borderRadius: 8, marginBottom: 6, background: '#fafafe' }}>
@@ -257,7 +487,7 @@ function GroupNode({ node, index, onChange, onRemove }) {
       </div>
       {!collapsed && (
         <div style={{ padding: '8px 8px 8px 20px', borderTop: '1px solid #f0e6ff' }}>
-          <StepListInner steps={node.children || []} onChange={ch => onChange({ ...node, children: ch })} />
+          <StepListInner steps={node.children || []} onChange={ch => onChange({ ...node, children: ch })} onOpenDrawer={onOpenDrawer} />
         </div>
       )}
     </div>
@@ -265,7 +495,7 @@ function GroupNode({ node, index, onChange, onRemove }) {
 }
 
 // ---- 编排节点：循环 ----
-function LoopNode({ node, index, onChange, onRemove }) {
+function LoopNode({ node, index, onChange, onRemove, onOpenDrawer }) {
   const [collapsed, setCollapsed] = useState(false)
   return (
     <div style={{ border: '1px solid #91d5ff', borderRadius: 8, marginBottom: 6, background: '#fafeff' }}>
@@ -286,7 +516,7 @@ function LoopNode({ node, index, onChange, onRemove }) {
       </div>
       {!collapsed && (
         <div style={{ padding: '8px 8px 8px 20px', borderTop: '1px solid #d6edff' }}>
-          <StepListInner steps={node.children || []} onChange={ch => onChange({ ...node, children: ch })} />
+          <StepListInner steps={node.children || []} onChange={ch => onChange({ ...node, children: ch })} onOpenDrawer={onOpenDrawer} />
         </div>
       )}
     </div>
@@ -294,7 +524,7 @@ function LoopNode({ node, index, onChange, onRemove }) {
 }
 
 // ---- 编排节点：条件 ----
-function ConditionNode({ node, index, onChange, onRemove }) {
+function ConditionNode({ node, index, onChange, onRemove, onOpenDrawer }) {
   const [collapsed, setCollapsed] = useState(false)
   return (
     <div style={{ border: '1px solid #ffc069', borderRadius: 8, marginBottom: 6, background: '#fffef8' }}>
@@ -314,11 +544,11 @@ function ConditionNode({ node, index, onChange, onRemove }) {
         <div>
           <div style={{ padding: '6px 8px 6px 20px', borderTop: '1px solid #fff1b8' }}>
             <div style={{ fontSize: 10, color: '#52c41a', fontWeight: 600, marginBottom: 4 }}>THEN</div>
-            <StepListInner steps={node.thenSteps || []} onChange={ch => onChange({ ...node, thenSteps: ch })} />
+            <StepListInner steps={node.thenSteps || []} onChange={ch => onChange({ ...node, thenSteps: ch })} onOpenDrawer={onOpenDrawer} />
           </div>
           <div style={{ padding: '6px 8px 6px 20px', borderTop: '1px dashed #ffc069' }}>
             <div style={{ fontSize: 10, color: '#ff4d4f', fontWeight: 600, marginBottom: 4 }}>ELSE</div>
-            <StepListInner steps={node.elseSteps || []} onChange={ch => onChange({ ...node, elseSteps: ch })} />
+            <StepListInner steps={node.elseSteps || []} onChange={ch => onChange({ ...node, elseSteps: ch })} onOpenDrawer={onOpenDrawer} />
           </div>
         </div>
       )}
@@ -346,7 +576,7 @@ function WaitNode({ node, onChange, onRemove }) {
 }
 
 // ---- 编排节点：ForEach 循环 ----
-function ForEachNode({ node, onChange, onRemove }) {
+function ForEachNode({ node, onChange, onRemove, onOpenDrawer }) {
   const [collapsed, setCollapsed] = useState(false)
   return (
     <div style={{ border: '1px solid #87e8de', borderRadius: 8, marginBottom: 6, background: '#f6fffb' }}>
@@ -368,13 +598,14 @@ function ForEachNode({ node, onChange, onRemove }) {
       </div>
       {!collapsed && (
         <div style={{ padding: '8px 8px 8px 20px', borderTop: '1px solid #b5f5ec' }}>
-          <StepListInner steps={node.children || []} onChange={ch => onChange({ ...node, children: ch })} />
+          <StepListInner steps={node.children || []} onChange={ch => onChange({ ...node, children: ch })} onOpenDrawer={onOpenDrawer} />
         </div>
       )}
     </div>
   )
 }
-function StepListInner({ steps, onChange }) {
+
+function StepListInner({ steps, onChange, onOpenDrawer }) {
   const update = (i, ns) => onChange(steps.map((s, j) => j === i ? { ...ns, seq: j + 1 } : s))
   const remove = (i) => onChange(steps.filter((_, j) => j !== i).map((s, j) => ({ ...s, seq: j + 1 })))
   const addApi = () => onChange([...steps, {
@@ -407,12 +638,14 @@ function StepListInner({ steps, onChange }) {
     <div>
       {steps.map((s, i) => {
         const nt = s.nodeType || 'api'
-        if (nt === 'group') return <GroupNode key={i} node={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} />
-        if (nt === 'loop') return <LoopNode key={i} node={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} />
-        if (nt === 'forEach') return <ForEachNode key={i} node={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} />
-        if (nt === 'condition') return <ConditionNode key={i} node={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} />
+        if (nt === 'group') return <GroupNode key={i} node={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} onOpenDrawer={onOpenDrawer} />
+        if (nt === 'loop') return <LoopNode key={i} node={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} onOpenDrawer={onOpenDrawer} />
+        if (nt === 'forEach') return <ForEachNode key={i} node={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} onOpenDrawer={onOpenDrawer} />
+        if (nt === 'condition') return <ConditionNode key={i} node={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} onOpenDrawer={onOpenDrawer} />
         if (nt === 'wait') return <WaitNode key={i} node={s} onChange={ns => update(i, ns)} onRemove={() => remove(i)} />
-        return <ApiStepCard key={i} step={s} index={i} onChange={ns => update(i, ns)} onRemove={() => remove(i)} canRemove={steps.length > 1} />
+        return <ApiStepCardCollapsed key={i} step={s} index={i}
+          onRemove={() => remove(i)} canRemove={steps.length > 1}
+          onOpenDrawer={() => onOpenDrawer(s, ns => update(i, ns), i)} />
       })}
       <Dropdown menu={addMenu} trigger={['click']}>
         <Button type="dashed" block icon={<PlusOutlined />} style={{ borderRadius: 8 }}>添加步骤</Button>
@@ -423,7 +656,44 @@ function StepListInner({ steps, onChange }) {
 
 // ---- 主导出组件 ----
 export default function ApiStepList({ steps, onChange }) {
-  return <StepListInner steps={steps} onChange={onChange} />
+  const [drawerState, setDrawerState] = useState(null)
+
+  const openDrawer = useCallback((step, onStepChange, index) => {
+    setDrawerState({ step, onStepChange, index })
+  }, [])
+
+  const closeDrawer = useCallback(() => {
+    setDrawerState(null)
+  }, [])
+
+  const handleDrawerChange = useCallback((newStep) => {
+    if (drawerState) {
+      drawerState.onStepChange(newStep)
+      setDrawerState(prev => prev ? { ...prev, step: newStep } : null)
+    }
+  }, [drawerState])
+
+  return (
+    <>
+      <StepListInner steps={steps} onChange={onChange} onOpenDrawer={openDrawer} />
+      <Drawer
+        open={!!drawerState}
+        onClose={closeDrawer}
+        width={760}
+        destroyOnClose={false}
+        closable={true}
+        styles={{ header: { display: 'none' }, body: { padding: 0 } }}
+      >
+        {drawerState && (
+          <ApiStepDrawerContent
+            step={drawerState.step}
+            index={drawerState.index}
+            onChange={handleDrawerChange}
+          />
+        )}
+      </Drawer>
+    </>
+  )
 }
 
 // ---- 代码生成（支持全部编排节点） ----
