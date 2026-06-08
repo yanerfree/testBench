@@ -432,23 +432,34 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
       {expanded && (
         <div style={{ padding: '6px 10px 10px 28px', borderTop: '1px solid #f5f5f5' }}>
           {op.type === 'assertion' && (
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Select size="small" value={op.assertType || 'status'} onChange={v => up('assertType', v)} options={assertTypes} style={{ width: 120 }} />
-              {(op.assertType === 'jsonPath' || op.assertType === 'header') && (
-                <Input size="small" value={op.path || ''} placeholder="$.data.id" onChange={e => up('path', e.target.value)} style={{ width: 160, fontFamily: 'monospace', fontSize: 11 }} />
-              )}
-              <Select size="small" value={op.operator || 'eq'} onChange={v => up('operator', v)} options={assertOps} style={{ width: 80 }} />
-              {op.operator !== 'notEmpty' && (
-                <Input size="small" value={op.expected || ''} placeholder="期望值" onChange={e => up('expected', e.target.value)} style={{ flex: 1, minWidth: 80, fontFamily: 'monospace', fontSize: 11 }} />
-              )}
+            <div>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Select size="small" value={op.assertType || 'status'} onChange={v => up('assertType', v)} options={assertTypes} style={{ width: 120 }} />
+                {(op.assertType === 'jsonPath' || op.assertType === 'header') && (
+                  <Tooltip title="JSONPath 示例：$.data.id, $.list[0].name, $.total"><Input size="small" value={op.path || ''} placeholder="$.data.id" onChange={e => up('path', e.target.value)} style={{ width: 160, fontFamily: 'monospace', fontSize: 11 }} /></Tooltip>
+                )}
+                <Select size="small" value={op.operator || 'eq'} onChange={v => up('operator', v)} options={assertOps} style={{ width: 80 }} />
+                {op.operator !== 'notEmpty' && (
+                  <Input size="small" value={op.expected || ''} placeholder={op.assertType === 'status' ? '200' : '期望值'} onChange={e => up('expected', e.target.value)} style={{ flex: 1, minWidth: 80, fontFamily: 'monospace', fontSize: 11 }} />
+                )}
+              </div>
+              <div style={{ fontSize: 10, color: '#c9cdd4', marginTop: 4 }}>
+                {op.assertType === 'status' && '验证接口返回的 HTTP 状态码，如 200、201、404'}
+                {op.assertType === 'jsonPath' && '用 JSONPath 定位响应 JSON 中的字段，如 $.data.token'}
+                {op.assertType === 'contains' && '检查响应体文本是否包含指定字符串'}
+                {op.assertType === 'header' && '检查响应头中指定字段的值，如 Content-Type'}
+              </div>
             </div>
           )}
           {op.type === 'extractor' && (
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              <Input size="small" value={op.variable || ''} placeholder="变量名" onChange={e => up('variable', e.target.value)} style={{ width: 100, fontFamily: 'monospace', fontSize: 11 }} />
-              <Tag style={{ margin: 0, fontSize: 10, background: '#e6f7ff', color: '#1890ff', border: 'none' }}>临时变量</Tag>
-              <span style={{ fontSize: 11, color: '#86909c' }}>Response JSON</span>
-              <Input size="small" value={op.path || ''} placeholder="$.data.token" onChange={e => up('path', e.target.value)} style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} />
+            <div>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                <Tooltip title="后续步骤可用 {{变量名}} 引用"><Input size="small" value={op.variable || ''} placeholder="如: token" onChange={e => up('variable', e.target.value)} style={{ width: 100, fontFamily: 'monospace', fontSize: 11 }} /></Tooltip>
+                <Tag style={{ margin: 0, fontSize: 10, background: '#e6f7ff', color: '#1890ff', border: 'none' }}>临时变量</Tag>
+                <span style={{ fontSize: 11, color: '#86909c' }}>Response JSON</span>
+                <Tooltip title="JSONPath 示例：$.data.token, $.list[0].id"><Input size="small" value={op.path || ''} placeholder="$.data.token" onChange={e => up('path', e.target.value)} style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} /></Tooltip>
+              </div>
+              <div style={{ fontSize: 10, color: '#c9cdd4', marginTop: 4 }}>从响应 JSON 中提取值存为临时变量，后续步骤用 {'{{变量名}}'} 引用</div>
             </div>
           )}
           {op.type === 'script' && (
@@ -465,10 +476,13 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
             </div>
           )}
           {op.type === 'wait' && (
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <Input size="small" value={op.delay ?? 1000} type="number" onChange={e => up('delay', parseInt(e.target.value) || 0)} style={{ width: 80, textAlign: 'center', fontSize: 11 }} />
-              <span style={{ fontSize: 11, color: '#86909c' }}>ms</span>
-              <Input size="small" value={op.label || ''} placeholder="描述（可选）" onChange={e => up('label', e.target.value)} style={{ flex: 1, fontSize: 11 }} />
+            <div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <Input size="small" value={op.delay ?? 1000} type="number" onChange={e => up('delay', parseInt(e.target.value) || 0)} style={{ width: 80, textAlign: 'center', fontSize: 11 }} />
+                <span style={{ fontSize: 11, color: '#86909c' }}>ms</span>
+                <Input size="small" value={op.label || ''} placeholder="描述（可选）" onChange={e => up('label', e.target.value)} style={{ flex: 1, fontSize: 11 }} />
+              </div>
+              <div style={{ fontSize: 10, color: '#c9cdd4', marginTop: 4 }}>在两个操作之间暂停指定毫秒数，1000ms = 1秒</div>
             </div>
           )}
         </div>
@@ -504,6 +518,11 @@ function OperationList({ operations, onChange, addItems, snippets, infoBg, infoB
       </div>
 
       {/* 操作列表 */}
+      {operations.length === 0 && (
+        <div style={{ padding: '16px 12px', textAlign: 'center', color: '#c9cdd4', fontSize: 11, border: '1px dashed #e5e6eb', borderRadius: 6, marginBottom: 8 }}>
+          暂无操作，点击下方按钮添加断言、提取变量或自定义脚本
+        </div>
+      )}
       {operations.map((op, i) => (
         <OperationItem key={i} op={op} index={i}
           onChange={newOp => onChange(operations.map((o, j) => j === i ? newOp : o))}
@@ -516,7 +535,7 @@ function OperationList({ operations, onChange, addItems, snippets, infoBg, infoB
       <Dropdown menu={{ items: addItems, onClick: ({ key }) => {
         const newOp = key === 'assertion' ? { type: 'assertion', assertType: 'status', operator: 'eq', expected: '200' }
           : key === 'extractor' ? { type: 'extractor', variable: '', path: '' }
-          : key === 'script' ? { type: 'script', code: '' }
+          : key === 'script' ? { type: 'script', code: '# 在此编写脚本，点击右上角「片段」可快速插入常用模板\n' }
           : { type: 'wait', delay: 1000, label: '' }
         onChange([...operations, newOp])
       }}} trigger={['click']}>
@@ -529,14 +548,14 @@ function OperationList({ operations, onChange, addItems, snippets, infoBg, infoB
 }
 
 const preAddItems = [
-  { key: 'script', icon: <CodeOutlined />, label: '自定义脚本' },
-  { key: 'wait', icon: <ClockCircleOutlined />, label: '等待时间' },
+  { key: 'script', icon: <CodeOutlined />, label: <span>自定义脚本<span style={{ fontSize: 10, color: '#86909c', marginLeft: 6 }}>修改请求参数、生成签名等</span></span> },
+  { key: 'wait', icon: <ClockCircleOutlined />, label: <span>等待时间<span style={{ fontSize: 10, color: '#86909c', marginLeft: 6 }}>暂停指定毫秒数</span></span> },
 ]
 const postAddItems = [
-  { key: 'assertion', icon: <CheckCircleOutlined />, label: '断言' },
-  { key: 'extractor', icon: <FieldStringOutlined />, label: '提取变量' },
-  { key: 'script', icon: <CodeOutlined />, label: '自定义脚本' },
-  { key: 'wait', icon: <ClockCircleOutlined />, label: '等待时间' },
+  { key: 'assertion', icon: <CheckCircleOutlined />, label: <span>断言<span style={{ fontSize: 10, color: '#86909c', marginLeft: 6 }}>验证状态码、响应体字段</span></span> },
+  { key: 'extractor', icon: <FieldStringOutlined />, label: <span>提取变量<span style={{ fontSize: 10, color: '#86909c', marginLeft: 6 }}>从响应中提取值供后续步骤使用</span></span> },
+  { key: 'script', icon: <CodeOutlined />, label: <span>自定义脚本<span style={{ fontSize: 10, color: '#86909c', marginLeft: 6 }}>编写自定义逻辑</span></span> },
+  { key: 'wait', icon: <ClockCircleOutlined />, label: <span>等待时间<span style={{ fontSize: 10, color: '#86909c', marginLeft: 6 }}>暂停指定毫秒数</span></span> },
 ]
 
 // ===========================================================================
