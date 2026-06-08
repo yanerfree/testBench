@@ -353,106 +353,195 @@ function CompactStepList({ steps, onChange, selectedId, onSelect }) {
 }
 
 // ===========================================================================
+// 数据格式迁移（旧格式 → 新格式）
+// ===========================================================================
+function getOps(step, key) {
+  if (step[key]) return step[key]
+  if (key === 'preOperations') {
+    const ops = []
+    if (step.preScript?.trim()) ops.push({ type: 'script', code: step.preScript })
+    return ops
+  }
+  const ops = []
+  for (const a of (step.assertions || [])) ops.push({ type: 'assertion', assertType: a.type, path: a.path, operator: a.operator, expected: a.expected })
+  for (const e of (step.extractors || [])) ops.push({ type: 'extractor', variable: e.variable, path: e.path })
+  if (step.postScript?.trim()) ops.push({ type: 'script', code: step.postScript })
+  return ops
+}
+
+// ===========================================================================
+// 操作条目摘要文本
+// ===========================================================================
+const opMeta = {
+  assertion: { icon: <CheckCircleOutlined />, color: '#52c41a', label: '断言' },
+  extractor: { icon: <FieldStringOutlined />, color: '#722ed1', label: '提取变量' },
+  script: { icon: <CodeOutlined />, color: '#1890ff', label: '脚本' },
+  wait: { icon: <ClockCircleOutlined />, color: '#86909c', label: '等待' },
+}
+
+const assertTypes = [{ value: 'status', label: '状态码' }, { value: 'jsonPath', label: 'Response JSON' }, { value: 'contains', label: '包含' }, { value: 'header', label: '响应头' }]
+const assertOps = [{ value: 'eq', label: '等于' }, { value: 'ne', label: '不等于' }, { value: 'gt', label: '大于' }, { value: 'lt', label: '小于' }, { value: 'contains', label: '包含' }, { value: 'notEmpty', label: '非空' }]
+
+function opSummary(op) {
+  if (op.type === 'assertion') {
+    const t = assertTypes.find(x => x.value === op.assertType)?.label || op.assertType
+    const o = assertOps.find(x => x.value === op.operator)?.label || op.operator
+    if (op.assertType === 'status') return `${t} ${o} ${op.expected || ''}`
+    return `${t} (${op.path || '...'}) ${o} ${op.expected || ''}`
+  }
+  if (op.type === 'extractor') return `${op.variable || '...'} 临时变量 Response JSON (${op.path || '...'})`
+  if (op.type === 'script') { const l = (op.code || '').trim().split('\n')[0]; return l ? (l.length > 50 ? l.slice(0, 50) + '...' : l) : '(空脚本)' }
+  if (op.type === 'wait') return `${op.delay || 1000}ms${op.label ? '  ' + op.label : ''}`
+  return ''
+}
+
+// ===========================================================================
+// 单个操作条目（可展开编辑 + 可拖拽）
+// ===========================================================================
+function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver, onDrop, snippets }) {
+  const [expanded, setExpanded] = useState(false)
+  const scriptRef = useRef(null)
+  const meta = opMeta[op.type] || opMeta.script
+  const up = (f, v) => onChange({ ...op, [f]: v })
+
+  return (
+    <div
+      draggable
+      onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; onDragStart(index) }}
+      onDragOver={e => { e.preventDefault(); onDragOver(index) }}
+      onDrop={e => { e.preventDefault(); onDrop(index) }}
+      style={{ border: '1px solid #f0f0f0', borderRadius: 6, marginBottom: 4, background: '#fff', transition: 'box-shadow 0.12s' }}
+      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'}
+      onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+    >
+      {/* 折叠行 */}
+      <div onClick={() => setExpanded(!expanded)} style={{
+        display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', cursor: 'pointer', userSelect: 'none',
+      }}>
+        <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', fontSize: 10, flexShrink: 0 }} />
+        <span style={{ color: meta.color, fontSize: 11, flexShrink: 0 }}>{meta.icon}</span>
+        <span style={{ fontSize: 11, color: meta.color, fontWeight: 500, flexShrink: 0 }}>{meta.label}</span>
+        <span style={{ fontSize: 11, color: '#86909c', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: op.type === 'script' ? 'monospace' : 'inherit' }}>
+          {opSummary(op)}
+        </span>
+        <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={e => { e.stopPropagation(); onRemove() }} style={{ width: 20, height: 20 }} />
+        {expanded ? <CaretDownOutlined style={{ fontSize: 9, color: '#c9cdd4' }} /> : <CaretRightOutlined style={{ fontSize: 9, color: '#c9cdd4' }} />}
+      </div>
+
+      {/* 展开内容 */}
+      {expanded && (
+        <div style={{ padding: '6px 10px 10px 28px', borderTop: '1px solid #f5f5f5' }}>
+          {op.type === 'assertion' && (
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Select size="small" value={op.assertType || 'status'} onChange={v => up('assertType', v)} options={assertTypes} style={{ width: 120 }} />
+              {(op.assertType === 'jsonPath' || op.assertType === 'header') && (
+                <Input size="small" value={op.path || ''} placeholder="$.data.id" onChange={e => up('path', e.target.value)} style={{ width: 160, fontFamily: 'monospace', fontSize: 11 }} />
+              )}
+              <Select size="small" value={op.operator || 'eq'} onChange={v => up('operator', v)} options={assertOps} style={{ width: 80 }} />
+              {op.operator !== 'notEmpty' && (
+                <Input size="small" value={op.expected || ''} placeholder="期望值" onChange={e => up('expected', e.target.value)} style={{ flex: 1, minWidth: 80, fontFamily: 'monospace', fontSize: 11 }} />
+              )}
+            </div>
+          )}
+          {op.type === 'extractor' && (
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <Input size="small" value={op.variable || ''} placeholder="变量名" onChange={e => up('variable', e.target.value)} style={{ width: 100, fontFamily: 'monospace', fontSize: 11 }} />
+              <Tag style={{ margin: 0, fontSize: 10, background: '#e6f7ff', color: '#1890ff', border: 'none' }}>临时变量</Tag>
+              <span style={{ fontSize: 11, color: '#86909c' }}>Response JSON</span>
+              <Input size="small" value={op.path || ''} placeholder="$.data.token" onChange={e => up('path', e.target.value)} style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} />
+            </div>
+          )}
+          {op.type === 'script' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+                <Space size={4}>
+                  <VarPicker onInsert={v => { const c = op.code || ''; up('code', c + (c && !c.endsWith('\n') ? '\n' : '') + v) }} />
+                  {snippets && <SnippetPicker snippets={snippets} onInsert={code => insertAtCursor(scriptRef, op.code || '', code, v => up('code', v))} />}
+                </Space>
+              </div>
+              <Input.TextArea ref={scriptRef} value={op.code || ''} onChange={e => up('code', e.target.value)}
+                placeholder="# 在此编写脚本，或点击「片段」快速插入" autoSize={{ minRows: 3, maxRows: 16 }}
+                style={{ fontFamily: 'monospace', fontSize: 11 }} />
+            </div>
+          )}
+          {op.type === 'wait' && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <Input size="small" value={op.delay ?? 1000} type="number" onChange={e => up('delay', parseInt(e.target.value) || 0)} style={{ width: 80, textAlign: 'center', fontSize: 11 }} />
+              <span style={{ fontSize: 11, color: '#86909c' }}>ms</span>
+              <Input size="small" value={op.label || ''} placeholder="描述（可选）" onChange={e => up('label', e.target.value)} style={{ flex: 1, fontSize: 11 }} />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ===========================================================================
+// 操作列表（扁平、可拖拽排序）
+// ===========================================================================
+function OperationList({ operations, onChange, addItems, snippets, infoBg, infoBorder, infoColor, infoIcon, infoTitle, infoDesc }) {
+  const [dragIdx, setDragIdx] = useState(null)
+
+  const handleDragOver = (targetIdx) => {
+    if (dragIdx === null || dragIdx === targetIdx) return
+    const newOps = [...operations]
+    const [moved] = newOps.splice(dragIdx, 1)
+    newOps.splice(targetIdx, 0, moved)
+    onChange(newOps)
+    setDragIdx(targetIdx)
+  }
+
+  return (
+    <div>
+      {/* 说明条 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: infoBg, borderRadius: 6, marginBottom: 10, border: `1px solid ${infoBorder}` }}>
+        <span style={{ fontSize: 13 }}>{infoIcon}</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, color: infoColor, fontWeight: 600 }}>{infoTitle}</div>
+          <div style={{ fontSize: 10, color: '#4e5969', marginTop: 1 }}>{infoDesc}</div>
+        </div>
+      </div>
+
+      {/* 操作列表 */}
+      {operations.map((op, i) => (
+        <OperationItem key={i} op={op} index={i}
+          onChange={newOp => onChange(operations.map((o, j) => j === i ? newOp : o))}
+          onRemove={() => onChange(operations.filter((_, j) => j !== i))}
+          onDragStart={setDragIdx} onDragOver={handleDragOver} onDrop={() => setDragIdx(null)}
+          snippets={snippets} />
+      ))}
+
+      {/* 添加按钮 */}
+      <Dropdown menu={{ items: addItems, onClick: ({ key }) => {
+        const newOp = key === 'assertion' ? { type: 'assertion', assertType: 'status', operator: 'eq', expected: '200' }
+          : key === 'extractor' ? { type: 'extractor', variable: '', path: '' }
+          : key === 'script' ? { type: 'script', code: '' }
+          : { type: 'wait', delay: 1000, label: '' }
+        onChange([...operations, newOp])
+      }}} trigger={['click']}>
+        <Button type="link" icon={<PlusOutlined />} style={{ padding: '4px 0', marginTop: 4 }}>
+          添加{infoTitle.replace('执行', '操作')}
+        </Button>
+      </Dropdown>
+    </div>
+  )
+}
+
+const preAddItems = [
+  { key: 'script', icon: <CodeOutlined />, label: '自定义脚本' },
+  { key: 'wait', icon: <ClockCircleOutlined />, label: '等待时间' },
+]
+const postAddItems = [
+  { key: 'assertion', icon: <CheckCircleOutlined />, label: '断言' },
+  { key: 'extractor', icon: <FieldStringOutlined />, label: '提取变量' },
+  { key: 'script', icon: <CodeOutlined />, label: '自定义脚本' },
+  { key: 'wait', icon: <ClockCircleOutlined />, label: '等待时间' },
+]
+
+// ===========================================================================
 // 右侧面板：步骤详情编辑器
 // ===========================================================================
-
-function PreOperations({ step, onChange }) {
-  const ref = useRef(null)
-  const up = (f, v) => onChange({ ...step, [f]: v })
-  const hasScript = !!step.preScript?.trim()
-
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#e6f7ff', borderRadius: 6, marginBottom: 12, border: '1px solid #bae7ff' }}>
-        <span style={{ fontSize: 13 }}>{"⚡"}</span>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, color: '#1890ff', fontWeight: 600 }}>请求前执行</div>
-          <div style={{ fontSize: 10, color: '#4e5969', marginTop: 1 }}>可修改请求参数、设置 Header、生成签名、准备数据</div>
-        </div>
-      </div>
-
-      {/* 自定义脚本 */}
-      <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: '#fafbfc', borderBottom: '1px solid #f0f0f0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <CodeOutlined style={{ fontSize: 11, color: '#1890ff' }} />
-            <span style={{ fontSize: 12, fontWeight: 500, color: '#1d2129' }}>自定义脚本</span>
-            {hasScript && <span style={{ width: 6, height: 6, borderRadius: 3, background: '#1890ff' }} />}
-          </div>
-          <Space size={4}>
-            <VarPicker onInsert={v => { const c = step.preScript || ''; up('preScript', c + (c && !c.endsWith('\n') ? '\n' : '') + v) }} />
-            <SnippetPicker snippets={preScriptSnippets} onInsert={code => insertAtCursor(ref, step.preScript || '', code, v => up('preScript', v))} />
-          </Space>
-        </div>
-        <Input.TextArea ref={ref} value={step.preScript || ''} onChange={e => up('preScript', e.target.value)}
-          placeholder="# 在此编写前置脚本，或点击「片段」快速插入" autoSize={{ minRows: 5, maxRows: 20 }}
-          style={{ fontFamily: 'monospace', fontSize: 11, border: 'none', borderRadius: 0 }} />
-      </div>
-    </div>
-  )
-}
-
-function PostOperations({ step, onChange }) {
-  const ref = useRef(null)
-  const up = (f, v) => onChange({ ...step, [f]: v })
-  const hasScript = !!step.postScript?.trim()
-  const assertCount = step.assertions?.length || 0
-  const extractCount = step.extractors?.length || 0
-
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#fff7e6', borderRadius: 6, marginBottom: 12, border: '1px solid #ffd591' }}>
-        <span style={{ fontSize: 13 }}>{"📋"}</span>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, color: '#fa8c16', fontWeight: 600 }}>请求后执行</div>
-          <div style={{ fontSize: 10, color: '#4e5969', marginTop: 1 }}>执行顺序：断言 → 提取变量 → 自定义脚本</div>
-        </div>
-      </div>
-
-      {/* 断言 */}
-      <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, marginBottom: 10, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#fafbfc', borderBottom: '1px solid #f0f0f0' }}>
-          <CheckCircleOutlined style={{ fontSize: 11, color: '#52c41a' }} />
-          <span style={{ fontSize: 12, fontWeight: 500, color: '#1d2129' }}>断言</span>
-          {assertCount > 0 && <Tag style={{ margin: 0, fontSize: 10, background: '#f6ffed', color: '#52c41a', border: 'none', padding: '0 6px' }}>{assertCount}</Tag>}
-        </div>
-        <div style={{ padding: '8px 10px' }}>
-          <AssertEditor items={step.assertions || []} onChange={v => up('assertions', v)} />
-        </div>
-      </div>
-
-      {/* 提取变量 */}
-      <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, marginBottom: 10, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#fafbfc', borderBottom: '1px solid #f0f0f0' }}>
-          <FieldStringOutlined style={{ fontSize: 11, color: '#722ed1' }} />
-          <span style={{ fontSize: 12, fontWeight: 500, color: '#1d2129' }}>提取变量</span>
-          {extractCount > 0 && <Tag style={{ margin: 0, fontSize: 10, background: '#f9f0ff', color: '#722ed1', border: 'none', padding: '0 6px' }}>{extractCount}</Tag>}
-        </div>
-        <div style={{ padding: '8px 10px' }}>
-          <ExtractEditor items={step.extractors || []} onChange={v => up('extractors', v)} />
-        </div>
-      </div>
-
-      {/* 自定义脚本 */}
-      <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: '#fafbfc', borderBottom: '1px solid #f0f0f0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <CodeOutlined style={{ fontSize: 11, color: '#fa8c16' }} />
-            <span style={{ fontSize: 12, fontWeight: 500, color: '#1d2129' }}>自定义脚本</span>
-            {hasScript && <span style={{ width: 6, height: 6, borderRadius: 3, background: '#fa8c16' }} />}
-          </div>
-          <Space size={4}>
-            <VarPicker onInsert={v => { const c = step.postScript || ''; up('postScript', c + (c && !c.endsWith('\n') ? '\n' : '') + v) }} />
-            <SnippetPicker snippets={postScriptSnippets} onInsert={code => insertAtCursor(ref, step.postScript || '', code, v => up('postScript', v))} />
-          </Space>
-        </div>
-        <Input.TextArea ref={ref} value={step.postScript || ''} onChange={e => up('postScript', e.target.value)}
-          placeholder="# 在此编写后置脚本，或点击「片段」快速插入" autoSize={{ minRows: 4, maxRows: 16 }}
-          style={{ fontFamily: 'monospace', fontSize: 11, border: 'none', borderRadius: 0 }} />
-      </div>
-    </div>
-  )
-}
 
 function StepDetailPanel({ step, onChange }) {
   const [activeTab, setActiveTab] = useState('params')
@@ -463,8 +552,10 @@ function StepDetailPanel({ step, onChange }) {
   const paramCount = step.params?.filter(p => p.key).length || 0
   const headerCount = step.headers?.filter(h => h.key).length || 0
   const bodyHas = step.body?.trim() ? 1 : 0
-  const preCount = step.preScript?.trim() ? 1 : 0
-  const postCount = (step.assertions?.length || 0) + (step.extractors?.length || 0) + (step.postScript?.trim() ? 1 : 0)
+  const preOps = getOps(step, 'preOperations')
+  const postOps = getOps(step, 'postOperations')
+  const preCount = preOps.length
+  const postCount = postOps.length
 
   const tabs = [
     { key: 'params', label: 'Params', count: paramCount },
@@ -523,8 +614,28 @@ function StepDetailPanel({ step, onChange }) {
             )}
           </div>
         )}
-        {activeTab === 'pre' && <PreOperations step={step} onChange={onChange} />}
-        {activeTab === 'post' && <PostOperations step={step} onChange={onChange} />}
+        {activeTab === 'pre' && (
+          <OperationList
+            operations={preOps}
+            onChange={ops => onChange({ ...step, preOperations: ops })}
+            addItems={preAddItems}
+            snippets={preScriptSnippets}
+            infoBg="#e6f7ff" infoBorder="#bae7ff" infoColor="#1890ff"
+            infoIcon="⚡" infoTitle="请求前执行"
+            infoDesc="可修改请求参数、设置 Header、生成签名、准备数据"
+          />
+        )}
+        {activeTab === 'post' && (
+          <OperationList
+            operations={postOps}
+            onChange={ops => onChange({ ...step, postOperations: ops })}
+            addItems={postAddItems}
+            snippets={postScriptSnippets}
+            infoBg="#fff7e6" infoBorder="#ffd591" infoColor="#fa8c16"
+            infoIcon="📋" infoTitle="请求后执行"
+            infoDesc="执行顺序按列表排列，可拖拽调整"
+          />
+        )}
       </div>
     </div>
   )
@@ -545,7 +656,7 @@ const addMenuItems = [
 ]
 
 function makeNewStep(key, seq) {
-  if (key === 'api') return { nodeType: 'api', seq, method: 'GET', url: '', action: '', params: [], headers: [], body: '', bodyType: 'json', assertions: [{ type: 'status', operator: 'eq', expected: '200' }], extractors: [] }
+  if (key === 'api') return { nodeType: 'api', seq, method: 'GET', url: '', action: '', params: [], headers: [], body: '', bodyType: 'json', preOperations: [], postOperations: [{ type: 'assertion', assertType: 'status', operator: 'eq', expected: '200' }] }
   if (key === 'group') return { nodeType: 'group', seq, label: '', children: [] }
   if (key === 'loop') return { nodeType: 'loop', seq, label: '', times: 3, children: [] }
   if (key === 'forEach') return { nodeType: 'forEach', seq, iterVar: 'item', dataSource: '', children: [] }
@@ -676,9 +787,14 @@ function genStepsCode(steps, indent = '    ') {
       continue
     }
     lines.push(`${indent}# Step ${s.seq}: ${s.action || s.method + ' ' + s.url}`)
-    if (s.preScript?.trim()) {
-      lines.push(`${indent}# 前置脚本`)
-      for (const line of s.preScript.trim().split('\n')) lines.push(`${indent}${line}`)
+    // 前置操作（兼容旧 preScript）
+    const preOps = getOps(s, 'preOperations')
+    for (const op of preOps) {
+      if (op.type === 'script' && op.code?.trim()) {
+        lines.push(`${indent}# 前置脚本`)
+        for (const line of op.code.trim().split('\n')) lines.push(`${indent}${line}`)
+      }
+      if (op.type === 'wait') lines.push(`${indent}time.sleep(${(op.delay || 1000) / 1000})`)
     }
     const method = (s.method || 'GET').toLowerCase()
     const url = resolveVars(s.url || '/')
@@ -688,24 +804,28 @@ function genStepsCode(steps, indent = '    ') {
     if ((s.bodyType || 'json') !== 'none' && s.body?.trim()) { kwargs.push(s.bodyType === 'form' ? `data="${s.body}"` : `json=${s.body}`) }
     const argStr = kwargs.length ? `, ${kwargs.join(', ')}` : ''
     lines.push(`${indent}response = client.${method}(f"${url}"${argStr})`)
-    for (const a of (s.assertions || [])) {
-      if (a.type === 'status') lines.push(`${indent}assert response.status_code == ${a.expected || 200}`)
-      else if (a.type === 'jsonPath' && a.path) {
-        const expr = 'response.json()' + a.path.replace('$.', '').split('.').map(p => `["${p}"]`).join('')
-        if (a.operator === 'notEmpty') lines.push(`${indent}assert ${expr}`)
-        else if (a.operator === 'eq') { const v = isNaN(a.expected) ? `"${a.expected}"` : a.expected; lines.push(`${indent}assert ${expr} == ${v}`) }
-        else if (a.operator === 'contains') lines.push(`${indent}assert "${a.expected}" in str(${expr})`)
-      } else if (a.type === 'contains' && a.expected) lines.push(`${indent}assert "${a.expected}" in response.text`)
-    }
-    for (const e of (s.extractors || [])) {
-      if (e.variable && e.path) {
-        const expr = 'response.json()' + e.path.replace('$.', '').split('.').map(p => `["${p}"]`).join('')
-        lines.push(`${indent}${e.variable} = ${expr}`)
+    // 后置操作（兼容旧 assertions/extractors/postScript，按列表顺序执行）
+    const postOps = getOps(s, 'postOperations')
+    for (const op of postOps) {
+      if (op.type === 'assertion') {
+        const a = op
+        if (a.assertType === 'status') lines.push(`${indent}assert response.status_code == ${a.expected || 200}`)
+        else if (a.assertType === 'jsonPath' && a.path) {
+          const expr = 'response.json()' + a.path.replace('$.', '').split('.').map(p => `["${p}"]`).join('')
+          if (a.operator === 'notEmpty') lines.push(`${indent}assert ${expr}`)
+          else if (a.operator === 'eq') { const v = isNaN(a.expected) ? `"${a.expected}"` : a.expected; lines.push(`${indent}assert ${expr} == ${v}`) }
+          else if (a.operator === 'contains') lines.push(`${indent}assert "${a.expected}" in str(${expr})`)
+        } else if (a.assertType === 'contains' && a.expected) lines.push(`${indent}assert "${a.expected}" in response.text`)
       }
-    }
-    if (s.postScript?.trim()) {
-      lines.push(`${indent}# 后置脚本`)
-      for (const line of s.postScript.trim().split('\n')) lines.push(`${indent}${line}`)
+      if (op.type === 'extractor' && op.variable && op.path) {
+        const expr = 'response.json()' + op.path.replace('$.', '').split('.').map(p => `["${p}"]`).join('')
+        lines.push(`${indent}${op.variable} = ${expr}`)
+      }
+      if (op.type === 'script' && op.code?.trim()) {
+        lines.push(`${indent}# 后置脚本`)
+        for (const line of op.code.trim().split('\n')) lines.push(`${indent}${line}`)
+      }
+      if (op.type === 'wait') lines.push(`${indent}time.sleep(${(op.delay || 1000) / 1000})`)
     }
     lines.push('')
   }
