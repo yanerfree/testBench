@@ -67,7 +67,8 @@ async def delete_node(session: AsyncSession, node_id: uuid.UUID) -> bool:
     node = await session.get(ApiNode, node_id)
     if not node:
         return False
-    await session.delete(node)
+    # DB 外键 ON DELETE CASCADE 会级联删除子节点
+    await session.execute(delete(ApiNode).where(ApiNode.id == node_id))
     await session.flush()
     return True
 
@@ -106,91 +107,85 @@ async def import_postman(
     """解析 Postman Collection v2.1 JSON，导入为 api_nodes 树"""
     count = 0
 
-    def parse_items(items: list, parent_id=None, sort=0):
+    async def _parse(items_list, parent_id, sort_start=0):
         nonlocal count
-        for i, item in enumerate(items):
+        for i, item in enumerate(items_list):
             if "item" in item:
                 folder = ApiNode(
                     project_id=project_id, parent_id=parent_id,
                     node_type="folder", name=item.get("name", "Folder"),
-                    sort_order=sort + i, created_by=user_id,
+                    sort_order=sort_start + i, created_by=user_id,
                 )
                 session.add(folder)
-                session.flush()
-                parse_items(item["item"], parent_id=folder.id, sort=0)
+                await session.flush()
+                await session.refresh(folder)
+                await _parse(item["item"], folder.id, 0)
             elif "request" in item:
                 req = item["request"]
                 if isinstance(req, str):
-                    node = ApiNode(
+                    ep = ApiNode(
                         project_id=project_id, parent_id=parent_id,
                         node_type="endpoint", name=item.get("name", "Request"),
-                        method="GET", url=req, sort_order=sort + i, created_by=user_id,
+                        method="GET", url=req,
+                        sort_order=sort_start + i, created_by=user_id,
                     )
+                    session.add(ep)
+                    count += 1
                 else:
                     method = req.get("method", "GET")
                     url_obj = req.get("url", {})
-                    url = url_obj if isinstance(url_obj, str) else url_obj.get("raw", "")
+                    raw_url = url_obj if isinstance(url_obj, str) else url_obj.get("raw", "")
 
                     headers = []
                     for h in req.get("header", []):
-                        headers.append({
-                            "key": h.get("key", ""),
-                            "value": h.get("value", ""),
-                            "enabled": not h.get("disabled", False),
-                            "desc": h.get("description", ""),
-                        })
+                        headers.append({"key": h.get("key", ""), "value": h.get("value", ""),
+                                        "enabled": not h.get("disabled", False), "desc": h.get("description", "")})
 
                     params = []
                     if isinstance(url_obj, dict):
                         for q in url_obj.get("query", []):
-                            params.append({
-                                "key": q.get("key", ""),
-                                "value": q.get("value", ""),
-                                "enabled": not q.get("disabled", False),
-                                "desc": q.get("description", ""),
-                            })
+                            params.append({"key": q.get("key", ""), "value": q.get("value", ""),
+                                           "enabled": not q.get("disabled", False), "desc": q.get("description", "")})
 
-                    body = ""
-                    body_type = "none"
+                    body_str = ""
+                    bt = "none"
                     body_obj = req.get("body")
                     if body_obj:
                         mode = body_obj.get("mode", "")
                         if mode == "raw":
-                            body = body_obj.get("raw", "")
+                            body_str = body_obj.get("raw", "")
                             opts = body_obj.get("options", {}).get("raw", {})
-                            body_type = "json" if opts.get("language") == "json" else "raw"
+                            bt = "json" if opts.get("language") == "json" else "raw"
                         elif mode == "urlencoded":
-                            body_type = "form"
-                            body = body_obj.get("urlencoded", [])
+                            bt = "form"
                         elif mode == "formdata":
-                            body_type = "form-data"
-                            body = body_obj.get("formdata", [])
+                            bt = "form-data"
 
                     auth_data = None
                     auth_obj = req.get("auth")
                     if auth_obj:
-                        auth_type = auth_obj.get("type", "")
-                        if auth_type == "bearer":
+                        at = auth_obj.get("type", "")
+                        if at == "bearer":
                             tokens = auth_obj.get("bearer", [])
-                            token_val = next((t["value"] for t in tokens if t.get("key") == "token"), "")
-                            auth_data = {"type": "bearer", "token": token_val}
-                        elif auth_type == "basic":
+                            tv = next((t["value"] for t in tokens if t.get("key") == "token"), "")
+                            auth_data = {"type": "bearer", "token": tv}
+                        elif at == "basic":
                             basics = auth_obj.get("basic", [])
                             u = next((t["value"] for t in basics if t.get("key") == "username"), "")
                             p = next((t["value"] for t in basics if t.get("key") == "password"), "")
                             auth_data = {"type": "basic", "username": u, "password": p}
 
-                    node = ApiNode(
+                    ep = ApiNode(
                         project_id=project_id, parent_id=parent_id,
                         node_type="endpoint", name=item.get("name", "Request"),
-                        method=method, url=url, params=params or None,
-                        headers=headers or None, body=body if isinstance(body, str) else None,
-                        body_type=body_type, auth=auth_data,
+                        method=method, url=raw_url,
+                        params=params or None, headers=headers or None,
+                        body=body_str, body_type=bt, auth=auth_data,
                         description=item.get("description", "") or req.get("description", ""),
-                        sort_order=sort + i, created_by=user_id,
+                        sort_order=sort_start + i, created_by=user_id,
                     )
-                session.add(node)
-                count += 1
+                    session.add(ep)
+                    count += 1
 
     info = collection.get("info", {})
     items = collection.get("item", [])
@@ -204,86 +199,7 @@ async def import_postman(
         session.add(root)
         await session.flush()
         await session.refresh(root)
-
-        # 递归同步解析（数据量通常不大）
-        def _sync_parse(items_list, parent, sort_start=0):
-            nonlocal count
-            for i, item in enumerate(items_list):
-                if "item" in item:
-                    folder = ApiNode(
-                        project_id=project_id, parent_id=parent,
-                        node_type="folder", name=item.get("name", "Folder"),
-                        sort_order=sort_start + i, created_by=user_id,
-                    )
-                    session.add(folder)
-                elif "request" in item:
-                    req = item["request"]
-                    if isinstance(req, str):
-                        ep = ApiNode(
-                            project_id=project_id, parent_id=parent,
-                            node_type="endpoint", name=item.get("name", "Request"),
-                            method="GET", url=req,
-                            sort_order=sort_start + i, created_by=user_id,
-                        )
-                        session.add(ep)
-                        count += 1
-                    else:
-                        method = req.get("method", "GET")
-                        url_obj = req.get("url", {})
-                        raw_url = url_obj if isinstance(url_obj, str) else url_obj.get("raw", "")
-
-                        headers = []
-                        for h in req.get("header", []):
-                            headers.append({"key": h.get("key", ""), "value": h.get("value", ""),
-                                            "enabled": not h.get("disabled", False), "desc": h.get("description", "")})
-
-                        params = []
-                        if isinstance(url_obj, dict):
-                            for q in url_obj.get("query", []):
-                                params.append({"key": q.get("key", ""), "value": q.get("value", ""),
-                                               "enabled": not q.get("disabled", False), "desc": q.get("description", "")})
-
-                        body_str = ""
-                        bt = "none"
-                        body_obj = req.get("body")
-                        if body_obj:
-                            mode = body_obj.get("mode", "")
-                            if mode == "raw":
-                                body_str = body_obj.get("raw", "")
-                                opts = body_obj.get("options", {}).get("raw", {})
-                                bt = "json" if opts.get("language") == "json" else "raw"
-                            elif mode == "urlencoded":
-                                bt = "form"
-                            elif mode == "formdata":
-                                bt = "form-data"
-
-                        auth_data = None
-                        auth_obj = req.get("auth")
-                        if auth_obj:
-                            at = auth_obj.get("type", "")
-                            if at == "bearer":
-                                tokens = auth_obj.get("bearer", [])
-                                tv = next((t["value"] for t in tokens if t.get("key") == "token"), "")
-                                auth_data = {"type": "bearer", "token": tv}
-                            elif at == "basic":
-                                basics = auth_obj.get("basic", [])
-                                u = next((t["value"] for t in basics if t.get("key") == "username"), "")
-                                p = next((t["value"] for t in basics if t.get("key") == "password"), "")
-                                auth_data = {"type": "basic", "username": u, "password": p}
-
-                        ep = ApiNode(
-                            project_id=project_id, parent_id=parent,
-                            node_type="endpoint", name=item.get("name", "Request"),
-                            method=method, url=raw_url,
-                            params=params or None, headers=headers or None,
-                            body=body_str, body_type=bt, auth=auth_data,
-                            description=item.get("description", "") or req.get("description", ""),
-                            sort_order=sort_start + i, created_by=user_id,
-                        )
-                        session.add(ep)
-                        count += 1
-
-        _sync_parse(items, root.id)
+        await _parse(items, root.id)
         await session.flush()
 
     return count
