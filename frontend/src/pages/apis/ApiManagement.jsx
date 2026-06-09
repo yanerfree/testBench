@@ -316,8 +316,21 @@ function parseCurl(curlStr) {
   return result
 }
 
+// =========== 变量替换引擎 ===========
+function resolveVars(text, vars) {
+  if (!text || !vars?.length) return text
+  return String(text).replace(/\{\{(\w+)\}\}/g, (match, key) => {
+    const v = vars.find(v => v.key === key)
+    return v ? v.value : match
+  })
+}
+
+function hasVars(text) {
+  return /\{\{\w+\}\}/.test(text || '')
+}
+
 // =========== 右侧编辑器 ===========
-function EndpointEditor({ node, onSave, onSend, sending, response, baseUrl, environments, runEnv, onEnvChange, onBaseUrlChange }) {
+function EndpointEditor({ node, onSave, onSend, sending, response, envVars }) {
   const [data, setData] = useState(node)
   const [activeTab, setActiveTab] = useState('params')
   const [dirty, setDirty] = useState(false)
@@ -377,7 +390,10 @@ function EndpointEditor({ node, onSave, onSend, sending, response, baseUrl, envi
   const headerCount = (data.headers || []).filter(h => h.key && h.enabled !== false).length
   const hasAuth = data.auth?.type && data.auth.type !== 'none'
 
-  const handleSend = () => onSend(data, baseUrl)
+  const handleSend = () => onSend(data)
+
+  const resolvedUrl = resolveVars(data.url || '', envVars)
+  const urlHasVars = hasVars(data.url)
 
   const tabs = [
     { key: 'params', label: 'Params', count: paramCount },
@@ -390,13 +406,10 @@ function EndpointEditor({ node, onSave, onSend, sending, response, baseUrl, envi
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }} onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleSend() } }}>
-      {/* Name + Env + Save */}
+      {/* Name + Save */}
       <div style={{ padding: '8px 16px 0', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
         <Input size="small" variant="borderless" value={data.name || ''} onChange={e => up('name', e.target.value)}
           placeholder="接口名称" style={{ fontSize: 13, fontWeight: 600, color: '#1d2129', flex: 1, padding: '0 4px' }} />
-        <Select size="small" value={runEnv || '__none__'} onChange={v => onEnvChange(v === '__none__' ? null : v)}
-          style={{ width: 120 }} popupMatchSelectWidth={false}
-          options={[{ value: '__none__', label: '无环境' }, ...environments.map(e => ({ value: e.id, label: e.name }))]} />
         <Button size="small" type="primary" disabled={!dirty} onClick={() => { onSave(data); setDirty(false) }}>保存</Button>
       </div>
 
@@ -405,31 +418,21 @@ function EndpointEditor({ node, onSave, onSend, sending, response, baseUrl, envi
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <Select size="small" value={method} onChange={v => up('method', v)} style={{ width: 90 }} popupMatchSelectWidth={false}
             options={['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => ({ value: m, label: <span style={{ color: methodColors[m]?.color, fontWeight: 700 }}>{m}</span> }))} />
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-            {baseUrl && !/^https?:\/\//i.test(data.url || '') && (
-              <Tooltip title={`Base URL: ${baseUrl}`}>
-                <span style={{ fontSize: 11, color: '#4e5969', background: '#f6ffed', border: '1px solid #b7eb8f', borderRight: 'none', borderRadius: '4px 0 0 4px', padding: '3px 8px', whiteSpace: 'nowrap', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', lineHeight: '16px', fontFamily: 'monospace', flexShrink: 0, cursor: 'default' }}>
-                  <GlobalOutlined style={{ marginRight: 4, fontSize: 10 }} />{baseUrl}
-                </span>
-              </Tooltip>
-            )}
-            <Input size="small" value={data.url || ''} onChange={e => handleUrlChange(e.target.value)}
-              placeholder={baseUrl ? '/path/to/api' : 'https://example.com/api'}
-              style={{ fontFamily: 'monospace', fontSize: 12, borderRadius: (baseUrl && !/^https?:\/\//i.test(data.url || '')) ? '0 4px 4px 0' : undefined }}
-              onPaste={e => {
-                const text = e.clipboardData?.getData('text') || ''
-                if (text.trimStart().toLowerCase().startsWith('curl ')) {
-                  e.preventDefault(); setCurlText(text); setImportCurlOpen(true)
-                }
-              }} />
-          </div>
+          <Input size="small" value={data.url || ''} onChange={e => handleUrlChange(e.target.value)}
+            placeholder="{{BASE_URL}}/api/users 或 https://example.com/api"
+            style={{ flex: 1, fontFamily: 'monospace', fontSize: 12 }}
+            onPaste={e => {
+              const text = e.clipboardData?.getData('text') || ''
+              if (text.trimStart().toLowerCase().startsWith('curl ')) {
+                e.preventDefault(); setCurlText(text); setImportCurlOpen(true)
+              }
+            }} />
           <Tooltip title="导入 cURL"><Button size="small" icon={<ImportOutlined />} onClick={() => setImportCurlOpen(true)} style={{ color: '#666' }} /></Tooltip>
           <Tooltip title="复制 cURL"><Button size="small" icon={<CopyOutlined />} onClick={() => {
-            const rawUrl = data.url || ''
-            const fullUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : (baseUrl || '') + rawUrl
+            const fullUrl = resolvedUrl
             const parts = [`curl -X ${method}`, `  '${fullUrl}'`]
-            ;(data.headers || []).filter(h => h.key && h.enabled !== false).forEach(h => parts.push(`  -H '${h.key}: ${h.value}'`))
-            if (method !== 'GET' && data.body?.trim()) parts.push(`  -d '${data.body.replace(/'/g, "'\\''")}'`)
+            ;(data.headers || []).filter(h => h.key && h.enabled !== false).forEach(h => parts.push(`  -H '${resolveVars(h.key, envVars)}: ${resolveVars(h.value, envVars)}'`))
+            if (method !== 'GET' && data.body?.trim()) parts.push(`  -d '${resolveVars(data.body, envVars).replace(/'/g, "'\\''")}'`)
             navigator.clipboard?.writeText(parts.join(' \\\n')).then(() => message.success('cURL 已复制'))
           }} style={{ color: '#666' }} /></Tooltip>
           <Tooltip title="Ctrl+Enter">
@@ -437,15 +440,11 @@ function EndpointEditor({ node, onSave, onSend, sending, response, baseUrl, envi
               style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 600, minWidth: 64 }}>发送</Button>
           </Tooltip>
         </div>
-        {/* Base URL 管理行 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 11 }}>
-          <span style={{ color: '#999' }}>Base URL:</span>
-          <Input size="small" value={baseUrl} onChange={e => onBaseUrlChange(e.target.value)}
-            placeholder="手动输入或从环境读取" style={{ flex: 1, fontSize: 11, fontFamily: 'monospace', height: 22 }} />
-          {/^https?:\/\//i.test(data.url || '') && baseUrl && (
-            <span style={{ color: '#faad14', fontSize: 10, whiteSpace: 'nowrap' }}>URL 已包含域名，Base URL 不生效</span>
-          )}
-        </div>
+        {urlHasVars && (
+          <div style={{ marginTop: 3, fontSize: 10, color: '#999', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ color: '#52c41a', marginRight: 4 }}>→</span>{resolvedUrl}
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -511,7 +510,7 @@ export default function ApiManagement() {
   const [responses, setResponses] = useState({})
   const [environments, setEnvironments] = useState([])
   const [runEnv, setRunEnv] = useState(null)
-  const [customBaseUrl, setCustomBaseUrl] = useState('')
+  const [envVars, setEnvVars] = useState([])
   const [ctxMenu, setCtxMenu] = useState(null)
 
   const loadNodes = async () => {
@@ -532,8 +531,7 @@ export default function ApiManagement() {
         api.get(`/environments/${envs[0].id}/variables`).then(r => {
           envs[0].variables = r.data || []
           setEnvironments([...envs])
-          const v = (r.data || []).find(v => v.key === 'BASE_URL')
-          setCustomBaseUrl(v?.value || '')
+          setEnvVars(r.data || [])
         }).catch(() => {})
       }
     }).catch(() => {})
@@ -544,17 +542,15 @@ export default function ApiManagement() {
 
   const handleEnvChange = useCallback((envId) => {
     setRunEnv(envId)
-    if (!envId) { setCustomBaseUrl(''); return }
+    if (!envId) { setEnvVars([]); return }
     const env = environments.find(e => e.id === envId)
     if (env?.variables) {
-      const v = env.variables.find(v => v.key === 'BASE_URL')
-      setCustomBaseUrl(v?.value || '')
+      setEnvVars(env.variables)
     } else {
       api.get(`/environments/${envId}/variables`).then(res => {
         env.variables = res.data || []
         setEnvironments([...environments])
-        const v = (res.data || []).find(v => v.key === 'BASE_URL')
-        setCustomBaseUrl(v?.value || '')
+        setEnvVars(res.data || [])
       }).catch(() => {})
     }
   }, [environments])
@@ -637,16 +633,19 @@ export default function ApiManagement() {
     } catch { message.error('复制失败') }
   }
 
-  const handleSend = async (data, baseUrl) => {
+  const handleSend = async (data) => {
     setSendingMap(prev => ({ ...prev, [data.id]: true }))
     setResponses(prev => ({ ...prev, [data.id]: null }))
     try {
-      const rawUrl = data.url || ''
-      const fullUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : (baseUrl || '') + rawUrl
+      const fullUrl = resolveVars(data.url || '', envVars)
+      const resolvedHeaders = (data.headers || []).map(h => ({
+        ...h, key: resolveVars(h.key, envVars), value: resolveVars(h.value, envVars),
+      }))
+      const resolvedBody = resolveVars(data.body || '', envVars)
       const res = await api.post('/debug/send', {
         method: data.method || 'GET', url: fullUrl,
-        params: data.params || [], headers: data.headers || [],
-        body: data.body || '', bodyType: data.bodyType || 'json', auth: data.auth || null,
+        params: data.params || [], headers: resolvedHeaders,
+        body: resolvedBody, bodyType: data.bodyType || 'json', auth: data.auth || null,
       })
       setResponses(prev => ({ ...prev, [data.id]: res.data }))
     } catch (e) {
@@ -704,6 +703,19 @@ export default function ApiManagement() {
           </Dropdown>
         </div>
 
+        {/* 全局环境选择器 */}
+        <div style={{ padding: '6px 10px', borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: 6, background: '#fafafa' }}>
+          <GlobalOutlined style={{ fontSize: 12, color: '#52c41a' }} />
+          <Select size="small" value={runEnv || '__none__'} onChange={v => handleEnvChange(v === '__none__' ? null : v)}
+            style={{ flex: 1 }} popupMatchSelectWidth={false}
+            options={[{ value: '__none__', label: '无环境' }, ...environments.map(e => ({ value: e.id, label: e.name }))]} />
+          {envVars.length > 0 && (
+            <Tooltip title={envVars.map(v => `${v.key} = ${v.value}`).join('\n')} overlayStyle={{ whiteSpace: 'pre-wrap', maxWidth: 360 }}>
+              <span style={{ fontSize: 10, color: '#52c41a', cursor: 'default' }}>{envVars.length} 变量</span>
+            </Tooltip>
+          )}
+        </div>
+
         {/* 树 */}
         <div style={{ flex: 1, overflow: 'auto' }}>
           {filteredTree.length === 0 ? (
@@ -756,8 +768,7 @@ export default function ApiManagement() {
         {/* 编辑器内容 */}
         {selected && selected.nodeType === 'endpoint' ? (
           <EndpointEditor key={activeTabId} node={selected} onSave={handleSave} onSend={handleSend}
-            sending={!!sendingMap[activeTabId]} response={responses[activeTabId]} baseUrl={customBaseUrl}
-            environments={environments} runEnv={runEnv} onEnvChange={handleEnvChange} onBaseUrlChange={setCustomBaseUrl} />
+            sending={!!sendingMap[activeTabId]} response={responses[activeTabId]} envVars={envVars} />
         ) : selected && selected.nodeType === 'folder' ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
