@@ -3,7 +3,7 @@ import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-
 import { Layout, Menu, Avatar, Dropdown, Button, Tooltip, message, Modal, Form, Input } from 'antd'
 import {
   FolderOutlined, FileTextOutlined, UnorderedListOutlined, BarChartOutlined,
-  SettingOutlined, UserOutlined, FileSearchOutlined,
+  SettingOutlined, UserOutlined, FileSearchOutlined, ApiOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined,
 } from '@ant-design/icons'
 import { api } from './utils/request'
@@ -20,6 +20,7 @@ import EnvConfig from './pages/settings/EnvConfig'
 import UserManagement from './pages/settings/UserManagement'
 import AuditLogs from './pages/settings/AuditLogs'
 import ChannelConfig from './pages/settings/ChannelConfig'
+import ApiManagement from './pages/apis/ApiManagement'
 
 const { Header, Sider, Content } = Layout
 
@@ -59,6 +60,7 @@ function AppLayout() {
     { key: '/projects', icon: <FolderOutlined />, label: '返回项目列表' },
     { type: 'divider' },
     { key: `/projects/${projectId}/cases`, icon: <FileTextOutlined />, label: '用例管理' },
+    { key: `/projects/${projectId}/apis`, icon: <ApiOutlined />, label: 'API 接口' },
     { key: `/projects/${projectId}/plans`, icon: <UnorderedListOutlined />, label: '测试计划' },
     { key: `/projects/${projectId}/reports`, icon: <BarChartOutlined />, label: '测试报告' },
     { type: 'divider' },
@@ -179,6 +181,7 @@ function AppLayout() {
             <Route path="/projects" element={<ProjectList />} />
             <Route path="/projects/:projectId/cases" element={<CaseManagement />} />
             <Route path="/projects/:projectId/cases/:caseId" element={<CaseDetail />} />
+            <Route path="/projects/:projectId/apis" element={<ApiManagement />} />
             <Route path="/projects/:projectId/plans" element={<PlanList />} />
             <Route path="/projects/:projectId/plans/:planId" element={<PlanDetail />} />
             <Route path="/projects/:projectId/plans/:planId/manual-record" element={<ManualRecord />} />

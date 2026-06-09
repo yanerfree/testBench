@@ -12,6 +12,7 @@ from app.models.environment import GlobalVariable, Environment, EnvironmentVaria
 from app.models.plan import Plan, PlanCase  # noqa: F401
 from app.models.report import TestReport, TestReportScenario, TestReportStep  # noqa: F401
 from app.models.audit_log import AuditLog  # noqa: F401
+from app.models.api_collection import ApiNode  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

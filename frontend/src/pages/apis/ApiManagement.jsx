@@ -1,0 +1,807 @@
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useParams } from 'react-router-dom'
+import { Input, Select, Button, Tag, Space, Tooltip, Dropdown, Popover, Checkbox, Spin, message, Modal, Upload, Empty, AutoComplete } from 'antd'
+import {
+  PlusOutlined, DeleteOutlined, FolderOutlined, FolderOpenOutlined, ApiOutlined,
+  ImportOutlined, ExportOutlined, SearchOutlined, EditOutlined, CopyOutlined,
+  SendOutlined, LoadingOutlined, GlobalOutlined, FormatPainterOutlined,
+  LockOutlined, CodeOutlined, CaretRightOutlined, CaretDownOutlined,
+  HolderOutlined, MoreOutlined, CheckCircleOutlined, FieldStringOutlined,
+  ThunderboltOutlined, ClockCircleOutlined, CloseOutlined, SwapOutlined,
+} from '@ant-design/icons'
+import { api } from '../../utils/request'
+
+const methodColors = {
+  GET: { color: '#52c41a', bg: '#f6ffed' },
+  POST: { color: '#fa8c16', bg: '#fff7e6' },
+  PUT: { color: '#faad14', bg: '#fffbe6' },
+  PATCH: { color: '#722ed1', bg: '#f9f0ff' },
+  DELETE: { color: '#ff4d4f', bg: '#fff2f0' },
+}
+
+const commonHeaders = [
+  { value: 'Content-Type', desc: 'application/json' },
+  { value: 'Accept', desc: 'application/json' },
+  { value: 'Authorization', desc: 'Bearer <token>' },
+  { value: 'X-Request-ID', desc: 'UUID 追踪' },
+  { value: 'Cache-Control', desc: 'no-cache' },
+  { value: 'User-Agent', desc: 'testBench/1.0' },
+]
+const headerOptions = commonHeaders.map(h => ({ value: h.value, label: <span>{h.value} <span style={{ fontSize: 10, color: '#c9cdd4' }}>{h.desc}</span></span> }))
+
+// =========== KvEditor ===========
+function KvEditor({ items = [], onChange, keyPh = 'Key', valPh = 'Value' }) {
+  const [bulkMode, setBulkMode] = useState(false)
+  const [bulkText, setBulkText] = useState('')
+  const up = (i, f, v) => onChange(items.map((r, j) => j === i ? { ...r, [f]: v } : r))
+  const isHeader = keyPh === 'Header'
+  const toBulk = () => {
+    setBulkText(items.filter(r => r.key).map(r => `${r.enabled === false ? '// ' : ''}${r.key}: ${r.value || ''}${r.desc ? `  // ${r.desc}` : ''}`).join('\n'))
+    setBulkMode(true)
+  }
+  const fromBulk = () => {
+    const newItems = bulkText.split('\n').filter(l => l.trim()).map(line => {
+      const disabled = line.trimStart().startsWith('//')
+      const clean = disabled ? line.replace(/^\s*\/\/\s*/, '') : line
+      const descMatch = clean.match(/\s+\/\/\s*(.+)$/)
+      const desc = descMatch ? descMatch[1] : ''
+      const withoutDesc = descMatch ? clean.slice(0, descMatch.index) : clean
+      const ci = withoutDesc.indexOf(':')
+      if (ci < 0) return { key: withoutDesc.trim(), value: '', enabled: !disabled, desc }
+      return { key: withoutDesc.slice(0, ci).trim(), value: withoutDesc.slice(ci + 1).trim(), enabled: !disabled, desc }
+    })
+    onChange(newItems)
+    setBulkMode(false)
+  }
+  if (bulkMode) return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{ fontSize: 11, color: '#86909c' }}>格式: <code style={{ fontSize: 10, background: '#f5f5f5', padding: '1px 4px', borderRadius: 3 }}>key: value  // 描述</code></span>
+        <Space size={4}><Button size="small" onClick={() => setBulkMode(false)}>取消</Button><Button size="small" type="primary" onClick={fromBulk}>确定</Button></Space>
+      </div>
+      <Input.TextArea value={bulkText} onChange={e => setBulkText(e.target.value)} autoSize={{ minRows: 5, maxRows: 14 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+    </div>
+  )
+  return (
+    <div>
+      {items.length > 0 && (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 4, padding: '0 4px', fontSize: 10, color: '#c9cdd4', fontWeight: 600, alignItems: 'center' }}>
+          <span style={{ width: 20 }}></span>
+          <span style={{ flex: 3 }}>{keyPh}</span>
+          <span style={{ flex: 4 }}>{valPh}</span>
+          <span style={{ flex: 3 }}>描述</span>
+          <span style={{ width: 24 }}></span>
+          <Tooltip title="批量编辑"><Button type="text" size="small" icon={<EditOutlined />} onClick={toBulk} style={{ width: 20, height: 16, fontSize: 10, color: '#c9cdd4' }} /></Tooltip>
+        </div>
+      )}
+      {items.length === 0 && <div style={{ padding: '12px 0', textAlign: 'center', color: '#c9cdd4', fontSize: 12 }}>暂无，点击添加</div>}
+      {items.map((r, i) => (
+        <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 3, alignItems: 'center', opacity: r.enabled === false ? 0.45 : 1 }}>
+          <Checkbox checked={r.enabled !== false} onChange={e => up(i, 'enabled', e.target.checked)} style={{ marginRight: -2 }} />
+          {isHeader ? (
+            <AutoComplete size="small" value={r.key} placeholder={keyPh} onChange={v => up(i, 'key', v)} options={headerOptions.filter(o => !r.key || o.value.toLowerCase().includes(r.key.toLowerCase()))} style={{ flex: 3, fontFamily: 'monospace', fontSize: 11 }} />
+          ) : (
+            <Input size="small" value={r.key} placeholder={keyPh} onChange={e => up(i, 'key', e.target.value)} style={{ flex: 3, fontFamily: 'monospace', fontSize: 11 }} />
+          )}
+          <Input size="small" value={r.value} placeholder={valPh} onChange={e => up(i, 'value', e.target.value)} style={{ flex: 4, fontFamily: 'monospace', fontSize: 11 }} />
+          <Input size="small" value={r.desc || ''} placeholder="描述" onChange={e => up(i, 'desc', e.target.value)} style={{ flex: 3, fontSize: 11, color: '#86909c' }} />
+          <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={() => onChange(items.filter((_, j) => j !== i))} />
+        </div>
+      ))}
+      <Button type="dashed" size="small" block icon={<PlusOutlined />} onClick={() => onChange([...items, { key: '', value: '', enabled: true, desc: '' }])}>添加</Button>
+    </div>
+  )
+}
+
+// =========== AuthEditor ===========
+function AuthEditor({ auth, onChange }) {
+  const a = auth || { type: 'none' }
+  const up = (f, v) => onChange({ ...a, [f]: v })
+  return (
+    <div>
+      <Select size="small" value={a.type || 'none'} onChange={v => up('type', v)} style={{ width: 200, marginBottom: 12 }}
+        options={[{ value: 'none', label: '无认证' }, { value: 'bearer', label: 'Bearer Token' }, { value: 'basic', label: 'Basic Auth' }, { value: 'apikey', label: 'API Key' }]} />
+      {a.type === 'bearer' && <div><div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>Token</div><Input size="small" value={a.token || ''} onChange={e => up('token', e.target.value)} placeholder="输入 Token" style={{ fontFamily: 'monospace', fontSize: 11 }} /></div>}
+      {a.type === 'basic' && <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}><div><div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>用户名</div><Input size="small" value={a.username || ''} onChange={e => up('username', e.target.value)} /></div><div><div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>密码</div><Input.Password size="small" value={a.password || ''} onChange={e => up('password', e.target.value)} /></div></div>}
+      {a.type === 'apikey' && <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}><div style={{ display: 'flex', gap: 8 }}><div style={{ flex: 1 }}><div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>Key</div><Input size="small" value={a.keyName || ''} onChange={e => up('keyName', e.target.value)} /></div><div style={{ flex: 1 }}><div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>Value</div><Input size="small" value={a.keyValue || ''} onChange={e => up('keyValue', e.target.value)} style={{ fontFamily: 'monospace', fontSize: 11 }} /></div></div><div><div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>添加到</div><Select size="small" value={a.keyIn || 'header'} onChange={v => up('keyIn', v)} style={{ width: 160 }} options={[{ value: 'header', label: 'Header' }, { value: 'query', label: 'Query Params' }]} /></div></div>}
+      {a.type === 'none' && <div style={{ padding: '12px 0', textAlign: 'center', color: '#c9cdd4', fontSize: 12 }}>不使用认证</div>}
+    </div>
+  )
+}
+
+// =========== ResponsePanel ===========
+function ResponsePanel({ response }) {
+  const [viewTab, setViewTab] = useState('body')
+  const [bodyMode, setBodyMode] = useState('pretty')
+  const [search, setSearch] = useState('')
+  if (!response) return null
+  const r = response
+  const sc = r.statusCode || 0
+  const statusColor = sc === 0 ? '#ff4d4f' : sc < 300 ? '#52c41a' : sc < 400 ? '#faad14' : '#ff4d4f'
+  const durationMs = r.durationMs || 0
+  const durationColor = durationMs < 200 ? '#52c41a' : durationMs < 1000 ? '#faad14' : '#ff4d4f'
+  const rawBody = r.body || ''
+  let prettyBody = rawBody, isJson = false
+  try { prettyBody = JSON.stringify(JSON.parse(rawBody), null, 2); isJson = true } catch {}
+  const displayBody = bodyMode === 'pretty' && isJson ? prettyBody : rawBody
+  const sizeStr = r.size > 1024 ? `${(r.size / 1024).toFixed(1)} KB` : `${r.size || 0} B`
+  const respHeaders = r.headers || []
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', marginBottom: 8, borderBottom: '1px solid #f2f3f5' }}>
+        <span style={{ fontWeight: 700, fontSize: 14, color: statusColor, background: statusColor + '10', padding: '2px 8px', borderRadius: 4 }}>{sc} {r.statusText || ''}</span>
+        <span style={{ fontSize: 11, color: durationColor, fontWeight: 600 }}>{durationMs} ms</span>
+        <span style={{ fontSize: 11, color: '#86909c' }}>{sizeStr}</span>
+        <div style={{ flex: 1 }} />
+        {['body', 'headers'].map(t => (
+          <div key={t} onClick={() => setViewTab(t)} style={{ padding: '2px 10px', fontSize: 11, cursor: 'pointer', color: viewTab === t ? '#1890ff' : '#86909c', fontWeight: viewTab === t ? 600 : 400, borderBottom: viewTab === t ? '2px solid #1890ff' : '2px solid transparent' }}>
+            {t === 'body' ? 'Body' : `Headers (${respHeaders.length})`}
+          </div>
+        ))}
+      </div>
+      {viewTab === 'body' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <div style={{ display: 'flex', gap: 0 }}>
+              {isJson && ['pretty', 'raw'].map(m => (
+                <div key={m} onClick={() => setBodyMode(m)} style={{ padding: '2px 8px', fontSize: 10, cursor: 'pointer', borderRadius: 3, background: bodyMode === m ? '#e6f7ff' : 'transparent', color: bodyMode === m ? '#1890ff' : '#86909c' }}>{m === 'pretty' ? 'Pretty' : 'Raw'}</div>
+              ))}
+            </div>
+            <Space size={4}>
+              <Input size="small" prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />} value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索" allowClear style={{ width: 140, fontSize: 11 }} />
+              <Tooltip title="复制"><Button size="small" icon={<CopyOutlined />} onClick={() => navigator.clipboard?.writeText(displayBody).then(() => message.success('已复制'))} /></Tooltip>
+            </Space>
+          </div>
+          <pre style={{ margin: 0, padding: 12, background: '#fafbfc', border: '1px solid #f0f0f0', borderRadius: 6, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{displayBody}</pre>
+        </div>
+      )}
+      {viewTab === 'headers' && respHeaders.map((h, i) => (
+        <div key={i} style={{ display: 'flex', gap: 8, padding: '4px 0', borderBottom: '1px solid #f8f8f8', fontSize: 11 }}>
+          <span style={{ fontWeight: 600, color: '#4e5969', width: 200, flexShrink: 0, fontFamily: 'monospace' }}>{h.key}</span>
+          <span style={{ color: '#86909c', fontFamily: 'monospace', wordBreak: 'break-all' }}>{h.value}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// =========== 左侧树节点 ===========
+function TreeNode({ node, children, level, isSelected, onClick, onContextMenu, onRename }) {
+  const [expanded, setExpanded] = useState(true)
+  const [hovered, setHovered] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState(node.name)
+  const isFolder = node.nodeType === 'folder'
+  const mc = methodColors[node.method] || methodColors.GET
+
+  const commitRename = () => {
+    setEditing(false)
+    if (editName.trim() && editName !== node.name) onRename(node.id, editName.trim())
+  }
+
+  if (isFolder) {
+    return (
+      <div>
+        <div onClick={() => { setExpanded(!expanded); onClick(node) }}
+          onDoubleClick={e => { e.stopPropagation(); setEditName(node.name); setEditing(true) }}
+          onContextMenu={e => { e.preventDefault(); onContextMenu(node, e) }}
+          onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', paddingLeft: 10 + level * 16,
+            cursor: 'pointer', background: isSelected ? '#e6f7ff' : hovered ? '#f7f8fa' : 'transparent',
+          }}>
+          {expanded ? <CaretDownOutlined style={{ fontSize: 9, color: '#86909c' }} /> : <CaretRightOutlined style={{ fontSize: 9, color: '#86909c' }} />}
+          {expanded ? <FolderOpenOutlined style={{ fontSize: 12, color: '#faad14' }} /> : <FolderOutlined style={{ fontSize: 12, color: '#faad14' }} />}
+          {editing ? (
+            <Input size="small" autoFocus value={editName} onChange={e => setEditName(e.target.value)}
+              onClick={e => e.stopPropagation()} onBlur={commitRename}
+              onPressEnter={commitRename} onKeyDown={e => { if (e.key === 'Escape') setEditing(false) }}
+              style={{ flex: 1, fontSize: 11, height: 20, padding: '0 4px' }} />
+          ) : (
+            <span style={{ fontSize: 12, color: '#1d2129', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
+          )}
+          {hovered && !editing && <MoreOutlined style={{ color: '#c9cdd4', fontSize: 12 }} onClick={e => { e.stopPropagation(); onContextMenu(node, e) }} />}
+        </div>
+        {expanded && children}
+      </div>
+    )
+  }
+
+  const displayName = node.name && node.name !== '新建接口' ? node.name : (node.url ? node.url.split('?')[0] : '未命名')
+
+  return (
+    <div onClick={() => onClick(node)}
+      onDoubleClick={e => { e.stopPropagation(); setEditName(node.name || ''); setEditing(true) }}
+      onContextMenu={e => { e.preventDefault(); onContextMenu(node, e) }}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', paddingLeft: 10 + level * 16,
+        cursor: 'pointer', background: isSelected ? mc.bg : hovered ? '#f7f8fa' : 'transparent',
+        borderLeft: isSelected ? `3px solid ${mc.color}` : '3px solid transparent',
+      }}>
+      <Tag style={{ margin: 0, fontWeight: 700, fontSize: 8, background: mc.bg, color: mc.color, border: 'none', padding: '0 4px', lineHeight: '14px', minWidth: 32, textAlign: 'center' }}>{node.method || 'GET'}</Tag>
+      {editing ? (
+        <Input size="small" autoFocus value={editName} onChange={e => setEditName(e.target.value)}
+          onClick={e => e.stopPropagation()} onBlur={commitRename}
+          onPressEnter={commitRename} onKeyDown={e => { if (e.key === 'Escape') setEditing(false) }}
+          style={{ flex: 1, fontSize: 11, height: 20, padding: '0 4px' }} />
+      ) : (
+        <span style={{ fontSize: 12, color: '#1d2129', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {displayName}
+          {node.name && node.name !== '新建接口' && node.url && (
+            <span style={{ fontSize: 10, color: '#c9cdd4', marginLeft: 4 }}>{node.url.split('?')[0]}</span>
+          )}
+        </span>
+      )}
+      {hovered && !editing && <MoreOutlined style={{ color: '#c9cdd4', fontSize: 12 }} onClick={e => { e.stopPropagation(); onContextMenu(node, e) }} />}
+    </div>
+  )
+}
+
+function buildTree(nodes) {
+  const map = {}
+  const roots = []
+  for (const n of nodes) map[n.id] = { ...n, children: [] }
+  for (const n of nodes) {
+    if (n.parentId && map[n.parentId]) map[n.parentId].children.push(map[n.id])
+    else roots.push(map[n.id])
+  }
+  return roots
+}
+
+function renderTree(nodes, level, selectedId, onSelect, onCtx, onRename) {
+  return nodes.map(n => (
+    <TreeNode key={n.id} node={n} level={level} isSelected={selectedId === n.id}
+      onClick={onSelect} onContextMenu={onCtx} onRename={onRename}>
+      {n.children?.length > 0 && renderTree(n.children, level + 1, selectedId, onSelect, onCtx, onRename)}
+    </TreeNode>
+  ))
+}
+
+// =========== URL ↔ Params 双向同步 ===========
+function urlToParams(url) {
+  try {
+    const q = url.includes('?') ? url.split('?')[1] : ''
+    if (!q) return []
+    return q.split('&').filter(Boolean).map(s => {
+      const [k, ...rest] = s.split('=')
+      return { key: decodeURIComponent(k), value: decodeURIComponent(rest.join('=')), enabled: true, desc: '' }
+    })
+  } catch { return [] }
+}
+
+function paramsToQuery(params) {
+  const active = (params || []).filter(p => p.key && p.enabled !== false)
+  if (!active.length) return ''
+  return '?' + active.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value || '')}`).join('&')
+}
+
+function getUrlBase(url) {
+  return (url || '').split('?')[0]
+}
+
+// =========== cURL 解析器 ===========
+function parseCurl(curlStr) {
+  const s = curlStr.replace(/\\\n/g, ' ').replace(/\\\r\n/g, ' ').trim()
+  const result = { method: 'GET', url: '', headers: [], body: '', bodyType: 'json', auth: null, params: [] }
+  const tokenRe = /'([^']*)'|"([^"]*)"|(\S+)/g
+  const tokens = []
+  let m
+  while ((m = tokenRe.exec(s))) tokens.push(m[1] ?? m[2] ?? m[3])
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i]
+    if (t === 'curl') continue
+    if ((t === '-X' || t === '--request') && tokens[i + 1]) { result.method = tokens[++i].toUpperCase(); continue }
+    if ((t === '-H' || t === '--header') && tokens[i + 1]) {
+      const h = tokens[++i], ci = h.indexOf(':')
+      if (ci > 0) result.headers.push({ key: h.slice(0, ci).trim(), value: h.slice(ci + 1).trim(), enabled: true, desc: '' })
+      continue
+    }
+    if ((t === '-d' || t === '--data' || t === '--data-raw' || t === '--data-binary') && tokens[i + 1]) {
+      result.body = tokens[++i]; if (result.method === 'GET') result.method = 'POST'; continue
+    }
+    if ((t === '-u' || t === '--user') && tokens[i + 1]) {
+      const [u, p] = tokens[++i].split(':')
+      result.auth = { type: 'basic', username: u, password: p || '' }; continue
+    }
+    if (t.startsWith('http://') || t.startsWith('https://')) result.url = t
+  }
+  if (result.url.includes('?')) { result.params = urlToParams(result.url); result.url = getUrlBase(result.url) }
+  const authH = result.headers.find(h => h.key.toLowerCase() === 'authorization')
+  if (authH && !result.auth) {
+    if (authH.value.toLowerCase().startsWith('bearer ')) result.auth = { type: 'bearer', token: authH.value.slice(7) }
+    result.headers = result.headers.filter(h => h !== authH)
+  }
+  try { JSON.parse(result.body); result.bodyType = 'json' } catch { if (result.body.includes('=')) result.bodyType = 'form'; else result.bodyType = 'raw' }
+  return result
+}
+
+// =========== 右侧编辑器 ===========
+function EndpointEditor({ node, onSave, onSend, sending, response, environments, runEnv, onResponseReady }) {
+  const [data, setData] = useState(node)
+  const [activeTab, setActiveTab] = useState('params')
+  const [dirty, setDirty] = useState(false)
+  const [importCurlOpen, setImportCurlOpen] = useState(false)
+  const [curlText, setCurlText] = useState('')
+  const syncingRef = useRef(false)
+
+  useEffect(() => { setData(node); setDirty(false); setActiveTab('params') }, [node.id])
+
+  useEffect(() => {
+    if (response && !sending) setActiveTab('response')
+  }, [response, sending])
+
+  const up = (f, v) => { setData(prev => ({ ...prev, [f]: v })); setDirty(true) }
+  const method = data.method || 'GET'
+  const mc = methodColors[method] || methodColors.GET
+
+  const handleUrlChange = (newUrl) => {
+    if (syncingRef.current) return
+    syncingRef.current = true
+    up('url', newUrl)
+    if (newUrl.includes('?')) {
+      const newParams = urlToParams(newUrl)
+      setData(prev => ({ ...prev, url: newUrl, params: newParams }))
+      setDirty(true)
+    }
+    syncingRef.current = false
+  }
+
+  const handleParamsChange = (newParams) => {
+    if (syncingRef.current) return
+    syncingRef.current = true
+    const base = getUrlBase(data.url || '')
+    const query = paramsToQuery(newParams)
+    setData(prev => ({ ...prev, params: newParams, url: base + query }))
+    setDirty(true)
+    syncingRef.current = false
+  }
+
+  const handleImportCurl = () => {
+    const parsed = parseCurl(curlText)
+    setData(prev => ({
+      ...prev,
+      method: parsed.method, url: parsed.url + paramsToQuery(parsed.params),
+      headers: parsed.headers.length ? parsed.headers : prev.headers,
+      body: parsed.body || prev.body, bodyType: parsed.bodyType,
+      params: parsed.params.length ? parsed.params : prev.params,
+      auth: parsed.auth || prev.auth,
+    }))
+    setDirty(true)
+    setImportCurlOpen(false)
+    setCurlText('')
+    message.success('cURL 已导入')
+  }
+
+  const baseUrl = useMemo(() => {
+    if (!runEnv || !environments?.length) return ''
+    const env = environments.find(e => e.id === runEnv)
+    if (!env?.variables) return ''
+    const v = env.variables.find(v => v.key === 'BASE_URL')
+    return v?.value || ''
+  }, [runEnv, environments])
+
+  const paramCount = (data.params || []).filter(p => p.key && p.enabled !== false).length
+  const headerCount = (data.headers || []).filter(h => h.key && h.enabled !== false).length
+  const hasAuth = data.auth?.type && data.auth.type !== 'none'
+
+  const handleSend = () => onSend(data, baseUrl)
+
+  const tabs = [
+    { key: 'params', label: 'Params', count: paramCount },
+    { key: 'body', label: 'Body', count: data.body?.trim() ? 1 : 0 },
+    { key: 'headers', label: 'Headers', count: headerCount },
+    { key: 'auth', label: 'Auth', count: hasAuth ? 1 : 0 },
+    { key: 'desc', label: '说明', count: data.description?.trim() ? 1 : 0 },
+    ...(response ? [{ key: 'response', label: 'Response', count: 0, highlight: true }] : []),
+  ]
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }} onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleSend() } }}>
+      {/* Name + Save */}
+      <div style={{ padding: '8px 16px 0', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Input size="small" variant="borderless" value={data.name || ''} onChange={e => up('name', e.target.value)}
+          placeholder="接口名称" style={{ fontSize: 13, fontWeight: 600, color: '#1d2129', flex: 1, padding: '0 4px' }} />
+        <Button size="small" type="primary" disabled={!dirty} onClick={() => { onSave(data); setDirty(false) }}>保存</Button>
+      </div>
+
+      {/* Method + URL + Send */}
+      <div style={{ padding: '6px 16px 8px', borderBottom: '1px solid #f2f3f5', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <Select size="small" value={method} onChange={v => up('method', v)} style={{ width: 90 }} popupMatchSelectWidth={false}
+            options={['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => ({ value: m, label: <span style={{ color: methodColors[m]?.color, fontWeight: 700 }}>{m}</span> }))} />
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+            {baseUrl && (
+              <Tooltip title={baseUrl}>
+                <span style={{ fontSize: 11, color: '#86909c', background: '#f7f8fa', border: '1px solid #e5e6eb', borderRight: 'none', borderRadius: '4px 0 0 4px', padding: '3px 8px', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', lineHeight: '16px', fontFamily: 'monospace', flexShrink: 0 }}>
+                  <GlobalOutlined style={{ marginRight: 4, fontSize: 10 }} />{baseUrl}
+                </span>
+              </Tooltip>
+            )}
+            <Input size="small" value={data.url || ''} onChange={e => handleUrlChange(e.target.value)}
+              placeholder="/api/users" style={{ fontFamily: 'monospace', fontSize: 12, borderRadius: baseUrl ? '0 4px 4px 0' : undefined }}
+              onPaste={e => {
+                const text = e.clipboardData?.getData('text') || ''
+                if (text.trimStart().toLowerCase().startsWith('curl ')) {
+                  e.preventDefault(); setCurlText(text); setImportCurlOpen(true)
+                }
+              }} />
+          </div>
+          <Tooltip title="导入 cURL"><Button size="small" icon={<ImportOutlined />} onClick={() => setImportCurlOpen(true)} style={{ color: '#86909c' }} /></Tooltip>
+          <Tooltip title="复制 cURL"><Button size="small" icon={<CopyOutlined />} onClick={() => {
+            const rawUrl = data.url || ''
+            const fullUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : (baseUrl || '') + rawUrl
+            const parts = [`curl -X ${method}`, `  '${fullUrl}'`]
+            ;(data.headers || []).filter(h => h.key && h.enabled !== false).forEach(h => parts.push(`  -H '${h.key}: ${h.value}'`))
+            if (method !== 'GET' && data.body?.trim()) parts.push(`  -d '${data.body.replace(/'/g, "'\\''")}'`)
+            navigator.clipboard?.writeText(parts.join(' \\\n')).then(() => message.success('cURL 已复制'))
+          }} style={{ color: '#86909c' }} /></Tooltip>
+          <Tooltip title="Ctrl+Enter">
+            <Button type="primary" size="small" icon={sending ? <LoadingOutlined /> : <SendOutlined />} loading={sending} onClick={handleSend}
+              style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 600, minWidth: 64 }}>发送</Button>
+          </Tooltip>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #f2f3f5', background: '#fafbfc', flexShrink: 0, paddingLeft: 4, overflowX: 'auto' }}>
+        {tabs.map(t => (
+          <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
+            padding: '7px 12px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
+            color: t.highlight ? '#52c41a' : activeTab === t.key ? '#1890ff' : '#86909c',
+            fontWeight: activeTab === t.key ? 600 : 400,
+            borderBottom: activeTab === t.key ? `2px solid ${t.highlight ? '#52c41a' : '#1890ff'}` : '2px solid transparent',
+          }}>{t.label}{t.count > 0 && <span style={{ fontSize: 10, marginLeft: 3, color: '#c9cdd4' }}>{t.count}</span>}</div>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div style={{ padding: '12px 16px', flex: 1, overflow: 'auto' }}>
+        {activeTab === 'params' && <KvEditor items={data.params || []} onChange={handleParamsChange} keyPh="参数名" valPh="参数值" />}
+        {activeTab === 'headers' && <KvEditor items={data.headers || []} onChange={v => up('headers', v)} keyPh="Header" valPh="Value" />}
+        {activeTab === 'body' && (
+          <div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+              <Select size="small" value={data.bodyType || 'json'} onChange={v => up('bodyType', v)} style={{ width: 140 }}
+                options={[{ value: 'json', label: 'JSON' }, { value: 'form', label: 'x-www-form-urlencoded' }, { value: 'form-data', label: 'form-data' }, { value: 'raw', label: 'Raw' }, { value: 'none', label: '无 Body' }]} />
+              {(data.bodyType || 'json') === 'json' && <Tooltip title="格式化"><Button size="small" type="text" icon={<FormatPainterOutlined />} onClick={() => { try { up('body', JSON.stringify(JSON.parse(data.body || '{}'), null, 2)) } catch {} }}>格式化</Button></Tooltip>}
+            </div>
+            {(data.bodyType || 'json') === 'none' && <div style={{ padding: '12px 0', textAlign: 'center', color: '#c9cdd4', fontSize: 12 }}>无 Body</div>}
+            {((data.bodyType || 'json') === 'json' || data.bodyType === 'raw') && (
+              <Input.TextArea value={data.body || ''} onChange={e => up('body', e.target.value)} placeholder='{"key": "value"}' autoSize={{ minRows: 6, maxRows: 18 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+            )}
+            {data.bodyType === 'form' && <KvEditor items={data.formParams || []} onChange={v => up('formParams', v)} keyPh="字段名" valPh="字段值" />}
+            {data.bodyType === 'form-data' && <KvEditor items={data.formDataParams || []} onChange={v => up('formDataParams', v)} keyPh="字段名" valPh="字段值" />}
+          </div>
+        )}
+        {activeTab === 'auth' && <AuthEditor auth={data.auth} onChange={v => up('auth', v)} />}
+        {activeTab === 'desc' && <Input.TextArea value={data.description || ''} onChange={e => up('description', e.target.value)} placeholder="接口说明、备注..." autoSize={{ minRows: 4, maxRows: 12 }} style={{ fontSize: 12 }} />}
+        {activeTab === 'response' && (sending ? <div style={{ textAlign: 'center', padding: 40 }}><Spin tip="发送中..." /></div> : <ResponsePanel response={response} />)}
+      </div>
+
+      {/* cURL Import Modal */}
+      <Modal open={importCurlOpen} onCancel={() => { setImportCurlOpen(false); setCurlText('') }}
+        title="导入 cURL" width={560} okText="导入" onOk={handleImportCurl} okButtonProps={{ disabled: !curlText.trim() }}>
+        <div style={{ fontSize: 12, color: '#86909c', marginBottom: 8 }}>粘贴 cURL 命令，自动解析为请求参数。也可以直接在 URL 栏粘贴 cURL 命令。</div>
+        <Input.TextArea value={curlText} onChange={e => setCurlText(e.target.value)}
+          placeholder={'curl -X GET \'https://api.example.com/users\' \\\n  -H \'Authorization: Bearer token\' \\\n  -H \'Content-Type: application/json\''}
+          autoSize={{ minRows: 6, maxRows: 14 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+      </Modal>
+    </div>
+  )
+}
+
+// =========== 主页面 ===========
+export default function ApiManagement() {
+  const { projectId } = useParams()
+  const [nodes, setNodes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [openTabs, setOpenTabs] = useState([])
+  const [activeTabId, setActiveTabId] = useState(null)
+  const [search, setSearch] = useState('')
+  const [importOpen, setImportOpen] = useState(false)
+  const [importFile, setImportFile] = useState(null)
+  const [importing, setImporting] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [responses, setResponses] = useState({})
+  const [environments, setEnvironments] = useState([])
+  const [runEnv, setRunEnv] = useState(null)
+  const [ctxMenu, setCtxMenu] = useState(null)
+
+  const loadNodes = async () => {
+    try {
+      const res = await api.get(`/projects/${projectId}/api-nodes`)
+      setNodes(res.data || [])
+    } catch { message.error('加载失败') }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    loadNodes()
+    api.get('/environments').then(res => {
+      const envs = res.data || []
+      setEnvironments(envs)
+      if (envs.length > 0) {
+        setRunEnv(envs[0].id)
+        api.get(`/environments/${envs[0].id}/variables`).then(r => {
+          envs[0].variables = r.data || []
+          setEnvironments([...envs])
+        }).catch(() => {})
+      }
+    }).catch(() => {})
+  }, [projectId])
+
+  useEffect(() => {
+    if (!runEnv) return
+    const env = environments.find(e => e.id === runEnv)
+    if (env && !env.variables) {
+      api.get(`/environments/${runEnv}/variables`).then(res => {
+        env.variables = res.data || []
+        setEnvironments([...environments])
+      }).catch(() => {})
+    }
+  }, [runEnv])
+
+  const selected = nodes.find(n => n.id === activeTabId)
+  const tree = useMemo(() => buildTree(nodes), [nodes])
+  const filteredTree = useMemo(() => {
+    if (!search) return tree
+    const filtered = nodes.filter(n => n.name?.toLowerCase().includes(search.toLowerCase()) || n.url?.toLowerCase().includes(search.toLowerCase()))
+    const ids = new Set(filtered.map(n => n.id))
+    filtered.forEach(n => { let p = n.parentId; while (p) { ids.add(p); p = nodes.find(nn => nn.id === p)?.parentId } })
+    return buildTree(nodes.filter(n => ids.has(n.id)))
+  }, [tree, search, nodes])
+
+  const openTab = (node) => {
+    if (!openTabs.includes(node.id)) setOpenTabs(prev => [...prev, node.id])
+    setActiveTabId(node.id)
+  }
+
+  const closeTab = (id, e) => {
+    e?.stopPropagation()
+    setOpenTabs(prev => {
+      const next = prev.filter(t => t !== id)
+      if (activeTabId === id) setActiveTabId(next.length > 0 ? next[next.length - 1] : null)
+      return next
+    })
+    setResponses(prev => { const n = { ...prev }; delete n[id]; return n })
+  }
+
+  const handleCreate = async (parentId, type) => {
+    const body = type === 'folder'
+      ? { parentId, nodeType: 'folder', name: '新建文件夹', sortOrder: nodes.length }
+      : { parentId, nodeType: 'endpoint', name: '新建接口', method: 'GET', url: '', sortOrder: nodes.length }
+    try {
+      const res = await api.post(`/projects/${projectId}/api-nodes`, body)
+      setNodes(prev => [...prev, res.data])
+      if (type === 'endpoint') openTab(res.data)
+      message.success(`${type === 'folder' ? '文件夹' : '接口'}已创建`)
+    } catch { message.error('创建失败') }
+  }
+
+  const handleSave = async (data) => {
+    try {
+      const res = await api.put(`/projects/${projectId}/api-nodes/${data.id}`, data)
+      setNodes(prev => prev.map(n => n.id === data.id ? { ...n, ...res.data } : n))
+      message.success('已保存')
+    } catch { message.error('保存失败') }
+  }
+
+  const handleRename = async (id, newName) => {
+    setNodes(prev => prev.map(n => n.id === id ? { ...n, name: newName } : n))
+    try {
+      await api.put(`/projects/${projectId}/api-nodes/${id}`, { name: newName })
+    } catch { message.error('重命名失败') }
+  }
+
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/projects/${projectId}/api-nodes/${id}`)
+      setNodes(prev => prev.filter(n => n.id !== id && n.parentId !== id))
+      closeTab(id)
+      message.success('已删除')
+    } catch { message.error('删除失败') }
+  }
+
+  const handleDuplicate = async (id) => {
+    try {
+      const res = await api.post(`/projects/${projectId}/api-nodes/${id}/duplicate`)
+      setNodes(prev => [...prev, res.data])
+      openTab(res.data)
+      message.success('已复制')
+    } catch { message.error('复制失败') }
+  }
+
+  const handleSend = async (data, baseUrl) => {
+    setSending(true)
+    setResponses(prev => ({ ...prev, [data.id]: null }))
+    try {
+      const rawUrl = data.url || ''
+      const fullUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : (baseUrl || '') + rawUrl
+      const res = await api.post('/debug/send', {
+        method: data.method || 'GET', url: fullUrl,
+        params: data.params || [], headers: data.headers || [],
+        body: data.body || '', bodyType: data.bodyType || 'json', auth: data.auth || null,
+      })
+      setResponses(prev => ({ ...prev, [data.id]: res.data }))
+    } catch (e) {
+      setResponses(prev => ({ ...prev, [data.id]: { statusCode: 0, statusText: '失败', headers: [], body: e.message, durationMs: 0, size: 0 } }))
+    }
+    setSending(false)
+  }
+
+  const handleImport = async () => {
+    if (!importFile) return
+    setImporting(true)
+    try {
+      const text = await importFile.text()
+      const collection = JSON.parse(text)
+      await api.post(`/projects/${projectId}/api-nodes/import/postman`, { collection })
+      await loadNodes()
+      setImportOpen(false)
+      setImportFile(null)
+      message.success('导入成功')
+    } catch (e) {
+      message.error('导入失败: ' + (e.message || '格式错误'))
+    }
+    setImporting(false)
+  }
+
+  const contextMenuItems = (node) => [
+    ...(node.nodeType === 'folder' ? [
+      { key: 'add-endpoint', icon: <ApiOutlined />, label: '新建接口', onClick: () => handleCreate(node.id, 'endpoint') },
+      { key: 'add-folder', icon: <FolderOutlined />, label: '新建子文件夹', onClick: () => handleCreate(node.id, 'folder') },
+      { type: 'divider' },
+    ] : []),
+    { key: 'duplicate', icon: <CopyOutlined />, label: '复制', onClick: () => handleDuplicate(node.id) },
+    { key: 'delete', icon: <DeleteOutlined />, label: '删除', danger: true, onClick: () => {
+      Modal.confirm({ title: `确认删除「${node.name}」?`, content: node.nodeType === 'folder' ? '文件夹下的所有接口也会被删除' : undefined, onOk: () => handleDelete(node.id) })
+    }},
+  ]
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
+
+  return (
+    <div style={{ display: 'flex', border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden', height: 'calc(100vh - 80px)', background: '#fff' }}>
+      {/* 左侧：接口树 */}
+      <div style={{ width: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        {/* 工具栏 */}
+        <div style={{ padding: '8px 10px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 6, background: '#fafbfc' }}>
+          <Input size="small" prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />} placeholder="搜索接口..."
+            value={search} onChange={e => setSearch(e.target.value)} allowClear style={{ flex: 1, fontSize: 11 }} />
+          <Dropdown menu={{ items: [
+            { key: 'endpoint', icon: <ApiOutlined />, label: '新建接口', onClick: () => handleCreate(null, 'endpoint') },
+            { key: 'folder', icon: <FolderOutlined />, label: '新建文件夹', onClick: () => handleCreate(null, 'folder') },
+            { type: 'divider' },
+            { key: 'import', icon: <ImportOutlined />, label: '导入 Postman', onClick: () => setImportOpen(true) },
+          ]}} trigger={['click']}>
+            <Button type="primary" size="small" icon={<PlusOutlined />} ghost />
+          </Dropdown>
+        </div>
+
+        {/* 环境选择 */}
+        <div style={{ padding: '6px 10px', borderBottom: '1px solid #f0f0f0' }}>
+          <Select size="small" value={runEnv} onChange={setRunEnv} style={{ width: '100%' }} placeholder="选择环境"
+            options={environments.map(e => ({ value: e.id, label: e.name }))} />
+        </div>
+
+        {/* 树 */}
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          {filteredTree.length === 0 ? (
+            <Empty description="暂无接口" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: 40 }}>
+              <Space direction="vertical" size={8}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => handleCreate(null, 'endpoint')}>新建接口</Button>
+                <Button icon={<ImportOutlined />} onClick={() => setImportOpen(true)}>导入 Postman</Button>
+              </Space>
+            </Empty>
+          ) : (
+            renderTree(filteredTree, 0, activeTabId, (node) => {
+              if (node.nodeType === 'endpoint') openTab(node)
+              else setActiveTabId(node.id)
+            }, (node, e) => {
+              setCtxMenu({ node, items: contextMenuItems(node), x: e.clientX, y: e.clientY })
+            }, handleRename)
+          )}
+        </div>
+      </div>
+
+      {/* 右侧 */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        {/* 多标签栏 */}
+        {openTabs.length > 0 && (
+          <div style={{ display: 'flex', borderBottom: '1px solid #f0f0f0', background: '#fafbfc', overflowX: 'auto', flexShrink: 0 }}>
+            {openTabs.map(tid => {
+              const tn = nodes.find(n => n.id === tid)
+              if (!tn) return null
+              const mc = methodColors[tn.method] || methodColors.GET
+              const isActive = tid === activeTabId
+              return (
+                <div key={tid} onClick={() => setActiveTabId(tid)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', cursor: 'pointer',
+                    borderBottom: isActive ? `2px solid ${mc.color}` : '2px solid transparent',
+                    background: isActive ? '#fff' : 'transparent', whiteSpace: 'nowrap', fontSize: 12,
+                    borderRight: '1px solid #f0f0f0',
+                  }}>
+                  <Tag style={{ margin: 0, fontWeight: 700, fontSize: 8, background: mc.bg, color: mc.color, border: 'none', padding: '0 3px', lineHeight: '13px' }}>{tn.method || 'GET'}</Tag>
+                  <span style={{ color: isActive ? '#1d2129' : '#86909c', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {tn.name || tn.url?.split('?')[0] || '未命名'}
+                  </span>
+                  <CloseOutlined onClick={e => closeTab(tid, e)} style={{ fontSize: 9, color: '#c9cdd4', marginLeft: 2 }} />
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* 编辑器内容 */}
+        {selected && selected.nodeType === 'endpoint' ? (
+          <EndpointEditor key={activeTabId} node={selected} onSave={handleSave} onSend={handleSend}
+            sending={sending} response={responses[activeTabId]} environments={environments} runEnv={runEnv} />
+        ) : selected && selected.nodeType === 'folder' ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <FolderOpenOutlined style={{ fontSize: 20, color: '#faad14' }} />
+              <Input value={selected.name} onChange={e => {
+                const newName = e.target.value
+                setNodes(prev => prev.map(n => n.id === selected.id ? { ...n, name: newName } : n))
+              }} onBlur={() => handleSave({ ...selected, name: nodes.find(n => n.id === selected.id)?.name })}
+                variant="borderless" style={{ fontSize: 16, fontWeight: 600, flex: 1 }} />
+            </div>
+            <div style={{ color: '#86909c', fontSize: 12 }}>
+              包含 {nodes.filter(n => n.parentId === selected.id).length} 个子项
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <Space>
+                <Button icon={<ApiOutlined />} onClick={() => handleCreate(selected.id, 'endpoint')}>新建接口</Button>
+                <Button icon={<FolderOutlined />} onClick={() => handleCreate(selected.id, 'folder')}>新建子文件夹</Button>
+              </Space>
+            </div>
+          </div>
+        ) : (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c9cdd4' }}>
+            <div style={{ textAlign: 'center' }}>
+              <ApiOutlined style={{ fontSize: 40, marginBottom: 12 }} />
+              <div style={{ fontSize: 13 }}>选择一个接口开始调试</div>
+              <div style={{ fontSize: 11, marginTop: 6 }}>或导入 Postman Collection 快速开始</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 右键菜单 */}
+      {ctxMenu && (
+        <div style={{ position: 'fixed', left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000 }} onClick={() => setCtxMenu(null)}>
+          <div style={{ background: '#fff', borderRadius: 8, boxShadow: '0 6px 16px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 160 }}>
+            {ctxMenu.items.map((item, i) => item.type === 'divider'
+              ? <div key={i} style={{ height: 1, background: '#f0f0f0', margin: '4px 0' }} />
+              : <div key={item.key} onClick={item.onClick} style={{
+                  padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
+                  color: item.danger ? '#ff4d4f' : '#4e5969',
+                }} onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  {item.icon}<span>{item.label}</span>
+                </div>
+            )}
+          </div>
+        </div>
+      )}
+      {ctxMenu && <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setCtxMenu(null)} />}
+
+      {/* Import Modal */}
+      <Modal open={importOpen} onCancel={() => { setImportOpen(false); setImportFile(null) }}
+        title="导入 Postman Collection" width={520} okText="导入" onOk={handleImport} confirmLoading={importing}>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: '#86909c', marginBottom: 8 }}>
+            支持 Postman Collection v2.0/v2.1 JSON 格式。从 Postman 中 Export → Collection v2.1 即可。
+          </div>
+          <Upload.Dragger accept=".json"
+            beforeUpload={file => { setImportFile(file); return false }}
+            fileList={importFile ? [importFile] : []}
+            onRemove={() => setImportFile(null)}>
+            <p style={{ fontSize: 12, color: '#86909c' }}><ImportOutlined style={{ fontSize: 24, color: '#1890ff', display: 'block', marginBottom: 8 }} />点击或拖拽 JSON 文件到此处</p>
+          </Upload.Dragger>
+        </div>
+      </Modal>
+    </div>
+  )
+}
