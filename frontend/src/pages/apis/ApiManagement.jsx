@@ -166,13 +166,17 @@ function ResponsePanel({ response }) {
 }
 
 // =========== 左侧树节点 ===========
-function TreeNode({ node, children, level, isSelected, onClick, onContextMenu, onRename }) {
+function TreeNode({ node, children, level, isSelected, onClick, onContextMenu, onRename, autoEdit }) {
   const [expanded, setExpanded] = useState(true)
   const [hovered, setHovered] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState(node.name)
   const isFolder = node.nodeType === 'folder'
   const mc = methodColors[node.method] || methodColors.GET
+
+  useEffect(() => {
+    if (autoEdit) { setEditName(node.name || ''); setEditing(true) }
+  }, [autoEdit])
 
   const commitRename = () => {
     setEditing(false)
@@ -207,7 +211,8 @@ function TreeNode({ node, children, level, isSelected, onClick, onContextMenu, o
     )
   }
 
-  const displayName = node.name && node.name !== '新建接口' ? node.name : (node.url ? node.url.split('?')[0] : '未命名')
+  const displayName = node.name || (node.url ? node.url.split('?')[0] : '未命名接口')
+  const showUrlHint = node.name && node.url && node.url !== node.name
 
   return (
     <div onClick={() => onClick(node)}
@@ -228,7 +233,7 @@ function TreeNode({ node, children, level, isSelected, onClick, onContextMenu, o
       ) : (
         <span style={{ fontSize: 12, color: '#1d2129', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {displayName}
-          {node.name && node.name !== '新建接口' && node.url && (
+          {showUrlHint && (
             <span style={{ fontSize: 10, color: '#999', marginLeft: 4 }}>{node.url.split('?')[0]}</span>
           )}
         </span>
@@ -249,11 +254,11 @@ function buildTree(nodes) {
   return roots
 }
 
-function renderTree(nodes, level, selectedId, onSelect, onCtx, onRename) {
+function renderTree(nodes, level, selectedId, onSelect, onCtx, onRename, newNodeId) {
   return nodes.map(n => (
     <TreeNode key={n.id} node={n} level={level} isSelected={selectedId === n.id}
-      onClick={onSelect} onContextMenu={onCtx} onRename={onRename}>
-      {n.children?.length > 0 && renderTree(n.children, level + 1, selectedId, onSelect, onCtx, onRename)}
+      onClick={onSelect} onContextMenu={onCtx} onRename={onRename} autoEdit={n.id === newNodeId}>
+      {n.children?.length > 0 && renderTree(n.children, level + 1, selectedId, onSelect, onCtx, onRename, newNodeId)}
     </TreeNode>
   ))
 }
@@ -407,51 +412,56 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }} onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleSend() } }}>
       {/* Name + Save */}
-      <div style={{ padding: '8px 16px 0', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Input size="small" variant="borderless" value={data.name || ''} onChange={e => up('name', e.target.value)}
-          placeholder="接口名称" style={{ fontSize: 13, fontWeight: 600, color: '#1d2129', flex: 1, padding: '0 4px' }} />
-        <Button size="small" type="primary" disabled={!dirty} onClick={() => { onSave(data); setDirty(false) }}>保存</Button>
+      <div style={{ padding: '8px 16px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #f0f0f0' }}>
+        <Input variant="borderless" value={data.name || ''} onChange={e => up('name', e.target.value)}
+          placeholder="输入接口名称" style={{ fontSize: 14, fontWeight: 600, color: '#1d2129', flex: 1, padding: '2px 4px' }} />
+        <Button size="small" type={dirty ? 'primary' : 'default'} disabled={!dirty} onClick={() => { onSave(data); setDirty(false) }}
+          style={dirty ? {} : { color: '#bbb', borderColor: '#e0e0e0' }}>保存</Button>
       </div>
 
       {/* Method + URL + Send */}
-      <div style={{ padding: '6px 16px 8px', borderBottom: '1px solid #e5e6e8', flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <Select size="small" value={method} onChange={v => up('method', v)} style={{ width: 90 }} popupMatchSelectWidth={false}
-            options={['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => ({ value: m, label: <span style={{ color: methodColors[m]?.color, fontWeight: 700 }}>{m}</span> }))} />
-          <Input size="small" value={data.url || ''} onChange={e => handleUrlChange(e.target.value)}
+      <div style={{ padding: '8px 16px', borderBottom: '1px solid #e5e6e8', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Select size="middle" value={method} onChange={v => up('method', v)} style={{ width: 100 }} popupMatchSelectWidth={false}
+            options={['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => ({ value: m, label: <span style={{ color: methodColors[m]?.color, fontWeight: 700, fontSize: 13 }}>{m}</span> }))} />
+          <Input value={data.url || ''} onChange={e => handleUrlChange(e.target.value)}
             placeholder="{{BASE_URL}}/api/users 或 https://example.com/api"
-            style={{ flex: 1, fontFamily: 'monospace', fontSize: 12 }}
+            style={{ flex: 1, fontFamily: 'monospace', fontSize: 13 }}
             onPaste={e => {
               const text = e.clipboardData?.getData('text') || ''
               if (text.trimStart().toLowerCase().startsWith('curl ')) {
                 e.preventDefault(); setCurlText(text); setImportCurlOpen(true)
               }
             }} />
-          <Tooltip title="导入 cURL"><Button size="small" icon={<ImportOutlined />} onClick={() => setImportCurlOpen(true)} style={{ color: '#666' }} /></Tooltip>
-          <Tooltip title="复制 cURL"><Button size="small" icon={<CopyOutlined />} onClick={() => {
-            const fullUrl = resolvedUrl
-            const parts = [`curl -X ${method}`, `  '${fullUrl}'`]
-            ;(data.headers || []).filter(h => h.key && h.enabled !== false).forEach(h => parts.push(`  -H '${resolveVars(h.key, envVars)}: ${resolveVars(h.value, envVars)}'`))
-            if (method !== 'GET' && data.body?.trim()) parts.push(`  -d '${resolveVars(data.body, envVars).replace(/'/g, "'\\''")}'`)
-            navigator.clipboard?.writeText(parts.join(' \\\n')).then(() => message.success('cURL 已复制'))
-          }} style={{ color: '#666' }} /></Tooltip>
-          <Tooltip title="Ctrl+Enter">
-            <Button type="primary" size="small" icon={sending ? <LoadingOutlined /> : <SendOutlined />} loading={sending} onClick={handleSend}
-              style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 600, minWidth: 64 }}>发送</Button>
+          <Dropdown menu={{ items: [
+            { key: 'import-curl', icon: <ImportOutlined />, label: '导入 cURL', onClick: () => setImportCurlOpen(true) },
+            { key: 'copy-curl', icon: <CopyOutlined />, label: '复制 cURL', onClick: () => {
+              const fullUrl = resolvedUrl
+              const parts = [`curl -X ${method}`, `  '${fullUrl}'`]
+              ;(data.headers || []).filter(h => h.key && h.enabled !== false).forEach(h => parts.push(`  -H '${resolveVars(h.key, envVars)}: ${resolveVars(h.value, envVars)}'`))
+              if (method !== 'GET' && data.body?.trim()) parts.push(`  -d '${resolveVars(data.body, envVars).replace(/'/g, "'\\''")}'`)
+              navigator.clipboard?.writeText(parts.join(' \\\n')).then(() => message.success('cURL 已复制'))
+            }},
+          ]}} trigger={['click']}>
+            <Button icon={<CodeOutlined />} style={{ color: '#666' }} />
+          </Dropdown>
+          <Tooltip title="Ctrl+Enter 发送">
+            <Button type="primary" icon={sending ? <LoadingOutlined /> : <SendOutlined />} loading={sending} onClick={handleSend}
+              style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 600, minWidth: 72, height: 32 }}>发送</Button>
           </Tooltip>
         </div>
         {urlHasVars && (
-          <div style={{ marginTop: 3, fontSize: 10, color: '#999', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ marginTop: 4, fontSize: 11, color: '#999', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             <span style={{ color: '#52c41a', marginRight: 4 }}>→</span>{resolvedUrl}
           </div>
         )}
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #e5e6e8', background: '#f0f1f3', flexShrink: 0, paddingLeft: 4, overflowX: 'auto' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid #e5e6e8', background: '#fafafa', flexShrink: 0, paddingLeft: 8, overflowX: 'auto' }}>
         {tabs.map(t => (
           <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
-            padding: '7px 12px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
+            padding: '8px 14px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
             color: t.highlight ? '#52c41a' : activeTab === t.key ? '#1890ff' : '#666',
             fontWeight: activeTab === t.key ? 600 : 400,
             borderBottom: activeTab === t.key ? `2px solid ${t.highlight ? '#52c41a' : '#1890ff'}` : '2px solid transparent',
@@ -512,6 +522,7 @@ export default function ApiManagement() {
   const [runEnv, setRunEnv] = useState(null)
   const [envVars, setEnvVars] = useState([])
   const [ctxMenu, setCtxMenu] = useState(null)
+  const [newNodeId, setNewNodeId] = useState(null)
 
   const loadNodes = async () => {
     try {
@@ -585,6 +596,8 @@ export default function ApiManagement() {
       const res = await api.post(`/projects/${projectId}/api-nodes`, body)
       setNodes(prev => [...prev, res.data])
       if (type === 'endpoint') openTab(res.data)
+      setNewNodeId(res.data.id)
+      setTimeout(() => setNewNodeId(null), 500)
       message.success(`${type === 'folder' ? '文件夹' : '接口'}已创建`)
     } catch { message.error('创建失败') }
   }
@@ -731,7 +744,7 @@ export default function ApiManagement() {
               else setActiveTabId(node.id)
             }, (node, e) => {
               setCtxMenu({ node, items: contextMenuItems(node), x: e.clientX, y: e.clientY })
-            }, handleRename)
+            }, handleRename, newNodeId)
           )}
         </div>
       </div>
@@ -740,7 +753,7 @@ export default function ApiManagement() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* 多标签栏 */}
         {openTabs.length > 0 && (
-          <div style={{ display: 'flex', borderBottom: '1px solid #e0e0e0', background: '#f0f1f3', overflowX: 'auto', flexShrink: 0 }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid #e0e0e0', background: '#fafafa', overflowX: 'auto', flexShrink: 0 }}>
             {openTabs.map(tid => {
               const tn = nodes.find(n => n.id === tid)
               if (!tn) return null
@@ -749,16 +762,16 @@ export default function ApiManagement() {
               return (
                 <div key={tid} onClick={() => setActiveTabId(tid)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', cursor: 'pointer',
                     borderBottom: isActive ? `2px solid ${mc.color}` : '2px solid transparent',
                     background: isActive ? '#fff' : 'transparent', whiteSpace: 'nowrap', fontSize: 12,
-                    borderRight: '1px solid #e0e0e0',
+                    borderRight: '1px solid #eee',
                   }}>
                   <Tag style={{ margin: 0, fontWeight: 700, fontSize: 8, background: mc.bg, color: mc.color, border: 'none', padding: '0 3px', lineHeight: '13px' }}>{tn.method || 'GET'}</Tag>
-                  <span style={{ color: isActive ? '#1d2129' : '#666', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {tn.name || tn.url?.split('?')[0] || '未命名'}
+                  <span style={{ color: isActive ? '#1d2129' : '#666', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {tn.name || '未命名接口'}
                   </span>
-                  <CloseOutlined onClick={e => closeTab(tid, e)} style={{ fontSize: 9, color: '#999', marginLeft: 2 }} />
+                  <CloseOutlined onClick={e => closeTab(tid, e)} style={{ fontSize: 9, color: '#bbb', marginLeft: 4 }} />
                 </div>
               )
             })}
