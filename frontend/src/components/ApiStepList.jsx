@@ -1,12 +1,12 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import { Input, Select, Button, Tag, Space, Tooltip, Dropdown, Popover, Checkbox, Spin, message, AutoComplete } from 'antd'
+import { Input, Select, Button, Tag, Space, Tooltip, Dropdown, Popover, Checkbox, Spin, message, AutoComplete, Modal } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, HolderOutlined, CaretRightOutlined, CaretDownOutlined,
   FolderOutlined, RetweetOutlined, BranchesOutlined, ApiOutlined,
   ClockCircleOutlined, UnorderedListOutlined, ThunderboltOutlined, CopyOutlined,
   CodeOutlined, EditOutlined, CheckCircleOutlined, FieldStringOutlined, GlobalOutlined,
   SendOutlined, FormatPainterOutlined, LockOutlined, LoadingOutlined,
-  SwapOutlined, SearchOutlined, ColumnHeightOutlined,
+  SwapOutlined, SearchOutlined, ColumnHeightOutlined, ImportOutlined, DownOutlined,
 } from '@ant-design/icons'
 import { api } from '../utils/request'
 
@@ -145,6 +145,71 @@ const commonHeaders = [
   { value: 'Referer', desc: '来源页面' },
 ]
 const headerOptions = commonHeaders.map(h => ({ value: h.value, label: <span>{h.value} <span style={{ fontSize: 10, color: '#c9cdd4' }}>{h.desc}</span></span> }))
+
+// ---- cURL 解析器 ----
+function parseCurl(curlStr) {
+  const s = curlStr.replace(/\\\n/g, ' ').replace(/\s+/g, ' ').trim()
+  const result = { method: 'GET', url: '', headers: [], body: '', bodyType: 'json', auth: { type: 'none' }, params: [] }
+
+  const re = /'[^']*'|"[^"]*"|\S+/g
+  const tokens = []
+  let m
+  while ((m = re.exec(s)) !== null) {
+    let t = m[0]
+    if ((t.startsWith("'") && t.endsWith("'")) || (t.startsWith('"') && t.endsWith('"'))) t = t.slice(1, -1)
+    tokens.push(t)
+  }
+
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i]
+    if (t === 'curl') continue
+    if (t === '-X' || t === '--request') { result.method = (tokens[++i] || 'GET').toUpperCase(); continue }
+    if (t === '-H' || t === '--header') {
+      const hv = tokens[++i] || ''
+      const ci = hv.indexOf(':')
+      if (ci > 0) {
+        const k = hv.slice(0, ci).trim(), v = hv.slice(ci + 1).trim()
+        if (k.toLowerCase() === 'authorization') {
+          if (v.toLowerCase().startsWith('bearer ')) { result.auth = { type: 'bearer', token: v.slice(7) }; continue }
+          if (v.toLowerCase().startsWith('basic ')) {
+            try { const d = atob(v.slice(6)); const [u, ...p] = d.split(':'); result.auth = { type: 'basic', username: u, password: p.join(':') } } catch {}
+            continue
+          }
+        }
+        result.headers.push({ key: k, value: v, enabled: true, desc: '' })
+      }
+      continue
+    }
+    if (t === '-d' || t === '--data' || t === '--data-raw' || t === '--data-binary') { result.body = tokens[++i] || ''; continue }
+    if (t === '-u' || t === '--user') {
+      const cred = tokens[++i] || ''
+      const [u, ...p] = cred.split(':')
+      result.auth = { type: 'basic', username: u, password: p.join(':') }
+      continue
+    }
+    if (t.startsWith('-')) { if (!t.includes('=') && i + 1 < tokens.length && !tokens[i + 1].startsWith('-')) i++; continue }
+    if (!result.url && (t.startsWith('http') || t.startsWith('/'))) {
+      const urlObj = (() => { try { return new URL(t) } catch { return null } })()
+      if (urlObj) {
+        result.url = urlObj.origin + urlObj.pathname
+        urlObj.searchParams.forEach((v, k) => result.params.push({ key: k, value: v, enabled: true, desc: '' }))
+      } else {
+        result.url = t
+      }
+    }
+  }
+
+  if (result.body) {
+    try { JSON.parse(result.body); result.bodyType = 'json' } catch { result.bodyType = 'raw' }
+    if (result.method === 'GET') result.method = 'POST'
+  }
+
+  const ct = result.headers.find(h => h.key.toLowerCase() === 'content-type')
+  if (ct?.value?.includes('x-www-form-urlencoded')) result.bodyType = 'form'
+  if (ct?.value?.includes('multipart/form-data')) result.bodyType = 'form-data'
+
+  return result
+}
 
 // ---- KvEditor (Apifox 风格：checkbox + key + value + desc + bulk edit) ----
 function KvEditor({ items = [], onChange, keyPh = 'Key', valPh = 'Value' }) {
@@ -710,7 +775,7 @@ function AuthEditor({ auth, onChange }) {
 // ===========================================================================
 // Response 面板（Pretty/Raw + 复制 + 搜索 + Cookie）
 // ===========================================================================
-function ResponsePanel({ response }) {
+function ResponsePanel({ response, onAddAssertion }) {
   const [viewTab, setViewTab] = useState('body')
   const [bodyMode, setBodyMode] = useState('pretty')
   const [search, setSearch] = useState('')
@@ -745,6 +810,47 @@ function ResponsePanel({ response }) {
     navigator.clipboard?.writeText(displayBody).then(() => message.success('已复制到剪贴板'))
   }
 
+  const renderJsonTree = (obj, path = '$') => {
+    if (obj === null) return <span style={{ color: '#86909c' }}>null</span>
+    if (typeof obj === 'boolean') return <span style={{ color: '#d32029' }}>{String(obj)}</span>
+    if (typeof obj === 'number') return <span style={{ color: '#d32029' }}>{obj}</span>
+    if (typeof obj === 'string') return <span style={{ color: '#52c41a' }}>"{obj}"</span>
+    if (Array.isArray(obj)) {
+      if (obj.length === 0) return <span>[]</span>
+      return (
+        <span>{'[\n'}
+          {obj.map((item, i) => (
+            <span key={i}>{'  '}{renderJsonTree(item, `${path}[${i}]`)}{i < obj.length - 1 ? ',\n' : '\n'}</span>
+          ))}
+        {']'}</span>
+      )
+    }
+    if (typeof obj === 'object') {
+      const entries = Object.entries(obj)
+      if (entries.length === 0) return <span>{'{}'}</span>
+      return (
+        <span>{'{\n'}
+          {entries.map(([k, v], i) => (
+            <span key={k}>
+              {'  '}<span style={{ color: '#1890ff' }}>"{k}"</span>: {renderJsonTree(v, `${path}.${k}`)}
+              {onAddAssertion && typeof v !== 'object' && (
+                <Tooltip title={`断言 ${path}.${k}`}>
+                  <span onClick={(e) => { e.stopPropagation(); onAddAssertion(path + '.' + k, v) }}
+                    style={{ cursor: 'pointer', marginLeft: 6, fontSize: 9, color: '#c9cdd4', opacity: 0.6, transition: 'opacity 0.1s' }}
+                    onMouseEnter={e => e.target.style.opacity = 1} onMouseLeave={e => e.target.style.opacity = 0.6}>
+                    +断言
+                  </span>
+                </Tooltip>
+              )}
+              {i < entries.length - 1 ? ',\n' : '\n'}
+            </span>
+          ))}
+        {'}'}</span>
+      )
+    }
+    return <span>{String(obj)}</span>
+  }
+
   const highlightSearch = (text) => {
     if (!search) return text
     const parts = text.split(new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
@@ -756,9 +862,14 @@ function ResponsePanel({ response }) {
     <div>
       {/* 状态栏 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', marginBottom: 8, borderBottom: '1px solid #f2f3f5' }}>
-        <span style={{ fontWeight: 700, fontSize: 14, color: statusColor, background: statusColor + '10', padding: '2px 8px', borderRadius: 4 }}>
-          {sc} {r.status_text || r.statusText || ''}
-        </span>
+        <Tooltip title={onAddAssertion ? '点击添加状态码断言' : ''}>
+          <span onClick={() => onAddAssertion?.('status', sc)} style={{
+            fontWeight: 700, fontSize: 14, color: statusColor, background: statusColor + '10', padding: '2px 8px', borderRadius: 4,
+            cursor: onAddAssertion ? 'pointer' : 'default',
+          }}>
+            {sc} {r.status_text || r.statusText || ''}
+          </span>
+        </Tooltip>
         <span style={{ fontSize: 11, color: durationColor, fontWeight: 600 }}>{durationMs} ms</span>
         <span style={{ fontSize: 11, color: '#86909c' }}>{sizeStr}</span>
         <div style={{ flex: 1 }} />
@@ -801,7 +912,7 @@ function ResponsePanel({ response }) {
             margin: 0, padding: 12, background: '#fafbfc', border: '1px solid #f0f0f0', borderRadius: 6,
             fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: 'auto',
             whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-          }}>{search ? highlightSearch(displayBody) : displayBody}</pre>
+          }}>{bodyMode === 'pretty' && isJson && onAddAssertion ? renderJsonTree(JSON.parse(rawBody)) : (search ? highlightSearch(displayBody) : displayBody)}</pre>
         </div>
       )}
 
@@ -851,6 +962,8 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
   const [activeTab, setActiveTab] = useState('params')
   const [sending, setSending] = useState(false)
   const [response, setResponse] = useState(null)
+  const [importCurlOpen, setImportCurlOpen] = useState(false)
+  const [curlText, setCurlText] = useState('')
   const method = step.method || 'GET'
   const mc = methodColors[method] || methodColors.GET
   const up = (f, v) => onChange({ ...step, [f]: v })
@@ -933,6 +1046,32 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
     navigator.clipboard?.writeText(generateCurl()).then(() => message.success('cURL 已复制'))
   }
 
+  const handleImportCurl = () => {
+    if (!curlText.trim()) return
+    const parsed = parseCurl(curlText)
+    const urlPath = baseUrl && parsed.url.startsWith(baseUrl) ? parsed.url.slice(baseUrl.length) : parsed.url
+    onChange({
+      ...step,
+      method: parsed.method,
+      url: urlPath,
+      headers: parsed.headers.length ? parsed.headers : step.headers,
+      params: parsed.params.length ? parsed.params : step.params,
+      body: parsed.body || step.body,
+      bodyType: parsed.bodyType,
+      auth: parsed.auth.type !== 'none' ? parsed.auth : step.auth,
+    })
+    setImportCurlOpen(false)
+    setCurlText('')
+    message.success('cURL 已导入')
+  }
+
+  const handleKeyDown = (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
   const tabs = [
     { key: 'params', label: 'Params', count: paramCount },
     { key: 'body', label: 'Body', count: bodyHas },
@@ -947,7 +1086,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
   const [codeLang, setCodeLang] = useState('curl')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }} onKeyDown={handleKeyDown}>
       {/* 步骤名称 */}
       <div style={{ padding: '8px 16px 0', flexShrink: 0 }}>
         <Input size="small" variant="borderless" value={step.action || ''} onChange={e => up('action', e.target.value)}
@@ -979,15 +1118,26 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
                 const v = e.target.value
                 if (v.includes('?')) syncParamsFromUrl(v)
                 else up('url', v)
+              }}
+              onPaste={e => {
+                const text = e.clipboardData?.getData('text') || ''
+                if (text.trimStart().toLowerCase().startsWith('curl ')) {
+                  e.preventDefault()
+                  setCurlText(text)
+                  setImportCurlOpen(true)
+                }
               }} />
             <VarPicker onInsert={v => up('url', (step.url || '') + v)} />
           </div>
+          <Tooltip title="导入 cURL"><Button size="small" icon={<ImportOutlined />} onClick={() => setImportCurlOpen(true)} style={{ color: '#86909c' }} /></Tooltip>
           <Tooltip title="复制 cURL"><Button size="small" icon={<CopyOutlined />} onClick={copyCurl} style={{ color: '#86909c' }} /></Tooltip>
-          <Button type="primary" size="small" icon={sending ? <LoadingOutlined /> : <SendOutlined />}
-            loading={sending} onClick={handleSend}
-            style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 600, minWidth: 64 }}>
-            发送
-          </Button>
+          <Tooltip title="Ctrl+Enter">
+            <Button type="primary" size="small" icon={sending ? <LoadingOutlined /> : <SendOutlined />}
+              loading={sending} onClick={handleSend}
+              style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 600, minWidth: 64 }}>
+              发送
+            </Button>
+          </Tooltip>
         </div>
         {/* 完整 URL 预览 */}
         {(paramCount > 0 || baseUrl) && (
@@ -997,6 +1147,30 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
           </div>
         )}
       </div>
+
+      {/* Import cURL Modal */}
+      <Modal open={importCurlOpen} onCancel={() => { setImportCurlOpen(false); setCurlText('') }}
+        title="导入 cURL" width={560} okText="导入" onOk={handleImportCurl}>
+        <div style={{ marginBottom: 8, fontSize: 12, color: '#86909c' }}>
+          粘贴 cURL 命令，自动解析为请求配置。也可以直接在 URL 栏粘贴 cURL 触发导入。
+        </div>
+        <Input.TextArea value={curlText} onChange={e => setCurlText(e.target.value)}
+          placeholder={`curl -X POST 'https://api.example.com/login' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"username":"admin","password":"123456"}'`}
+          autoSize={{ minRows: 6, maxRows: 14 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+        {curlText.trim() && (() => {
+          const preview = parseCurl(curlText)
+          return (
+            <div style={{ marginTop: 10, padding: 10, background: '#f7f8fa', borderRadius: 6, fontSize: 11 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4, color: '#4e5969' }}>解析预览：</div>
+              <div><Tag color={methodColors[preview.method]?.color}>{preview.method}</Tag> <span style={{ fontFamily: 'monospace' }}>{preview.url}</span></div>
+              {preview.headers.length > 0 && <div style={{ color: '#86909c', marginTop: 4 }}>Headers: {preview.headers.map(h => h.key).join(', ')}</div>}
+              {preview.params.length > 0 && <div style={{ color: '#86909c' }}>Params: {preview.params.map(p => `${p.key}=${p.value}`).join(', ')}</div>}
+              {preview.body && <div style={{ color: '#86909c' }}>Body: {preview.body.slice(0, 100)}{preview.body.length > 100 ? '...' : ''}</div>}
+              {preview.auth.type !== 'none' && <div style={{ color: '#86909c' }}>Auth: {preview.auth.type}</div>}
+            </div>
+          )
+        })()}
+      </Modal>
 
       {/* Tab 栏 */}
       <div style={{ display: 'flex', borderBottom: '1px solid #f2f3f5', background: '#fafbfc', flexShrink: 0, paddingLeft: 4, overflowX: 'auto' }}>
@@ -1130,7 +1304,16 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
         {activeTab === 'response' && (
           sending
             ? <div style={{ textAlign: 'center', padding: 40 }}><Spin tip="发送中..." /></div>
-            : <ResponsePanel response={response} />
+            : <ResponsePanel response={response} onAddAssertion={(path, value) => {
+                const postOps = getOps(step, 'postOperations')
+                const isStatus = path === 'status'
+                const newAssertion = isStatus
+                  ? { type: 'assertion', assertType: 'status', operator: 'eq', expected: String(value) }
+                  : { type: 'assertion', assertType: 'jsonPath', path, operator: 'eq', expected: String(value) }
+                onChange({ ...step, postOperations: [...postOps, newAssertion] })
+                message.success(isStatus ? `已添加状态码断言: ${value}` : `已添加断言: ${path}`)
+                setActiveTab('post')
+              }} />
         )}
       </div>
     </div>
