@@ -12,6 +12,7 @@ export default function ScriptEditor({
   projectId, branchId, caseId, scriptType,
   accentColor = '#1890ff',
   autoGenerateCode = null,
+  onScriptSaved = null,
 }) {
   const [script, setScript] = useState(null)
   const [versions, setVersions] = useState([])
@@ -81,6 +82,7 @@ export default function ScriptEditor({
         setDirty(false)
         message.success(`已保存 v${data.data.version}`)
         fetchVersions()
+        onScriptSaved?.()
       }
     } catch { message.error('保存失败') }
     finally { setSaving(false) }

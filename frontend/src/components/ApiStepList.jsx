@@ -7,6 +7,7 @@ import {
   CodeOutlined, EditOutlined, CheckCircleOutlined, FieldStringOutlined, GlobalOutlined,
   SendOutlined, FormatPainterOutlined, LockOutlined, LoadingOutlined,
   SwapOutlined, SearchOutlined, ColumnHeightOutlined, ImportOutlined, DownOutlined,
+  FormOutlined,
 } from '@ant-design/icons'
 import { api } from '../utils/request'
 
@@ -32,33 +33,33 @@ const dynamicVars = [
   { key: '$randomName', label: '随机姓名', desc: '随机中文姓名', example: '张三' },
 ]
 
-// ---- 前置脚本片段 ----
+// ---- 前置脚本片段（按使用场景分组）----
 const preScriptSnippets = [
-  { key: 'setHeader', label: '设置请求头', desc: '添加 Authorization 等 Header',
-    code: '# 设置请求头\nheaders["Authorization"] = f"Bearer {token}"' },
-  { key: 'genSign', label: '生成签名', desc: 'MD5 签名计算',
-    code: 'import hashlib\ntimestamp_str = str(int(time.time()))\nraw = f"{timestamp_str}{secret_key}"\nsign = hashlib.md5(raw.encode()).hexdigest()\nheaders["X-Timestamp"] = timestamp_str\nheaders["X-Sign"] = sign' },
-  { key: 'dynamicParam', label: '动态参数', desc: '生成动态值供请求使用',
-    code: '# 动态参数\norder_no = f"ORD_{int(time.time())}_{random.randint(1000,9999)}"' },
-  { key: 'debugPrint', label: '打印调试', desc: '输出调试日志',
-    code: 'print(f"[PRE] 请求即将发送: {url}")' },
-  { key: 'readEnv', label: '读取环境变量', desc: '从系统环境变量获取配置',
-    code: 'import os\napi_key = os.environ.get("API_KEY", "default_key")' },
-  { key: 'setBody', label: '构造请求体', desc: '动态构造 JSON Body',
-    code: 'import json\nrequest_body = json.dumps({\n    "username": f"user_{random.randint(1000,9999)}",\n    "timestamp": int(time.time()),\n})' },
+  { key: 'setAuth', label: '从上下文设置认证', desc: '用前一步提取的 token 设置 Authorization', group: '认证 & Header',
+    code: '# 从上下文取 token 设置认证头\ntoken = context.get("token", "")\nheaders["Authorization"] = f"Bearer {token}"' },
+  { key: 'urlPathParam', label: 'URL 路径参数替换', desc: '用上下文变量替换 URL 中的占位符', group: '认证 & Header',
+    code: '# 用上下文变量替换 URL 路径参数\nresource_id = context.get("resource_id", "")\nurl = url.replace("{resource_id}", str(resource_id))' },
+  { key: 'modifyBodyField', label: '修改 Body 字段', desc: '解析 JSON Body 后修改指定字段', group: '请求体操作',
+    code: 'import json\n_body = json.loads(body)\n_body["user_id"] = context.get("user_id", "")\n_body["project_id"] = context.get("project_id", "")\nbody = json.dumps(_body, ensure_ascii=False)' },
+  { key: 'replaceBody', label: '替换整个请求体', desc: '用上下文数据动态构造完整 Body', group: '请求体操作',
+    code: 'import json\nbody = json.dumps({\n    "username": context.get("username", "test_user"),\n    "password": "Test@123",\n    "role": "member",\n}, ensure_ascii=False)' },
+  { key: 'genTestData', label: '生成唯一测试数据', desc: '随机用户名/邮箱存入 context 供后续使用', group: '数据生成',
+    code: 'import random, string, time\n_suffix = f"{int(time.time())}_{random.randint(100,999)}"\ncontext["username"] = f"test_user_{_suffix}"\ncontext["email"] = f"test_{_suffix}@example.com"' },
 ]
 
 const postScriptSnippets = [
-  { key: 'printResp', label: '打印响应', desc: '输出状态码 + 响应体',
-    code: 'print(f"[POST] 状态码: {response.status_code}")\nprint(f"[POST] 响应体: {response.text[:500]}")' },
-  { key: 'extractData', label: '提取数据', desc: '从响应 JSON 提取字段',
-    code: '# 提取响应数据\ndata = response.json()\nuser_id = data["data"]["id"]\ntoken = data["data"]["token"]' },
-  { key: 'condCheck', label: '条件检查', desc: '根据响应执行不同逻辑',
-    code: 'if response.status_code == 200:\n    print(f"[POST] 成功")\nelse:\n    print(f"[POST] 失败: {response.status_code}")' },
-  { key: 'cleanup', label: '清理数据', desc: 'DELETE 请求清理资源',
-    code: '# 清理测试数据\nif response.status_code in (200, 201):\n    resource_id = response.json()["data"]["id"]\n    client.delete(f"/api/resources/{resource_id}")' },
-  { key: 'delay', label: '延时等待', desc: '请求后等待',
-    code: 'import time\ntime.sleep(1)  # 等待 1 秒' },
+  { key: 'extractToken', label: '提取登录 Token', desc: '从登录响应中提取 token 存入上下文', group: '提取数据',
+    code: 'data = response.json()\ncontext["token"] = data["data"]["token"]\nprint(f"[POST] token 已提取: {context[\'token\'][:20]}...")' },
+  { key: 'extractId', label: '提取资源 ID', desc: '创建资源后提取 ID 供后续步骤使用', group: '提取数据',
+    code: 'data = response.json()\ncontext["resource_id"] = data["data"]["id"]\nprint(f"[POST] 资源 ID: {context[\'resource_id\']}")' },
+  { key: 'extractBatch', label: '批量提取字段', desc: '一次提取多个字段到上下文', group: '提取数据',
+    code: 'data = response.json()["data"]\nfor key in ["id", "name", "status"]:\n    context[key] = data.get(key, "")\n    print(f"[POST] {key} = {context[key]}")' },
+  { key: 'prettyPrint', label: '格式化打印响应', desc: '美化输出状态码 + JSON 响应体', group: '调试 & 日志',
+    code: 'import json\nprint(f"[POST] 状态码: {response.status_code}")\ntry:\n    print(f"[POST] 响应体:\\n{json.dumps(response.json(), indent=2, ensure_ascii=False)}")\nexcept:\n    print(f"[POST] 响应体: {response.text[:500]}")' },
+  { key: 'errorLog', label: '条件错误日志', desc: '非 2xx 时记录详细错误信息', group: '调试 & 日志',
+    code: 'if response.status_code >= 400:\n    print(f"[ERROR] {response.status_code} - {response.url}")\n    print(f"[ERROR] 响应: {response.text[:300]}")' },
+  { key: 'chainCleanup', label: '链式清理资源', desc: '用上下文中的 ID + Token 发送删除请求', group: '清理',
+    code: '# 清理测试创建的资源\nresource_id = context.get("resource_id")\nif resource_id:\n    _headers = {"Authorization": f"Bearer {context.get(\'token\', \'\')}"}\n    _resp = client.delete(f"/api/resources/{resource_id}", headers=_headers)\n    print(f"[CLEANUP] 删除 {resource_id}: {_resp.status_code}")' },
 ]
 
 // ---- 工具组件 ----
@@ -77,22 +78,39 @@ function insertAtCursor(ref, cur, snippet, onChange) {
 }
 
 function SnippetPicker({ snippets, onInsert }) {
+  const grouped = useMemo(() => {
+    const groups = []
+    let curGroup = null
+    for (const s of snippets) {
+      if (s.group && s.group !== curGroup) {
+        curGroup = s.group
+        groups.push({ type: 'header', label: curGroup })
+      }
+      groups.push({ type: 'item', ...s })
+    }
+    return groups
+  }, [snippets])
+
   return (
     <Popover trigger="click" placement="bottomRight" arrow={false}
       content={
         <div style={{ width: 340, maxHeight: 400, overflow: 'auto' }}>
           <div style={{ fontSize: 11, color: '#86909c', padding: '4px 8px 6px', fontWeight: 600 }}>点击插入代码片段</div>
-          {snippets.map(s => (
-            <div key={s.key} onClick={() => onInsert(s.code)}
+          {grouped.map((item, idx) => item.type === 'header' ? (
+            <div key={`g-${idx}`} style={{ padding: '6px 10px 2px', fontSize: 10, color: '#1890ff', fontWeight: 600, borderTop: idx > 0 ? '1px solid #f0f0f0' : 'none', marginTop: idx > 0 ? 4 : 0 }}>
+              {item.label}
+            </div>
+          ) : (
+            <div key={item.key} onClick={() => onInsert(item.code)}
               style={{ padding: '8px 10px', cursor: 'pointer', borderRadius: 6, marginBottom: 2 }}
               onMouseEnter={e => e.currentTarget.style.background = '#f0f5ff'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                 <CodeOutlined style={{ fontSize: 11, color: '#1890ff' }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#1d2129' }}>{s.label}</span>
-                <span style={{ fontSize: 10, color: '#86909c' }}>{s.desc}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#1d2129' }}>{item.label}</span>
+                <span style={{ fontSize: 10, color: '#86909c' }}>{item.desc}</span>
               </div>
-              <pre style={{ margin: 0, padding: '4px 8px', background: '#fafafa', borderRadius: 4, fontSize: 10, color: '#4e5969', fontFamily: 'monospace', lineHeight: 1.5, whiteSpace: 'pre-wrap', border: '1px solid #f0f0f0', maxHeight: 80, overflow: 'hidden' }}>{s.code}</pre>
+              <pre style={{ margin: 0, padding: '4px 8px', background: '#fafafa', borderRadius: 4, fontSize: 10, color: '#4e5969', fontFamily: 'monospace', lineHeight: 1.5, whiteSpace: 'pre-wrap', border: '1px solid #f0f0f0', maxHeight: 80, overflow: 'hidden' }}>{item.code}</pre>
             </div>
           ))}
         </div>
@@ -119,7 +137,7 @@ function VarPicker({ onInsert }) {
                 <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#1890ff' }}>{`{{${v.key}}}`}</div>
                 <div style={{ fontSize: 10, color: '#86909c' }}>{v.desc}</div>
               </div>
-              <span style={{ fontSize: 10, color: '#c9cdd4', fontFamily: 'monospace' }}>{v.example}</span>
+              <span style={{ fontSize: 10, color: '#8c8c8c', fontFamily: 'monospace' }}>{v.example}</span>
             </div>
           ))}
         </div>
@@ -144,7 +162,7 @@ const commonHeaders = [
   { value: 'Origin', desc: 'CORS 来源' },
   { value: 'Referer', desc: '来源页面' },
 ]
-const headerOptions = commonHeaders.map(h => ({ value: h.value, label: <span>{h.value} <span style={{ fontSize: 10, color: '#c9cdd4' }}>{h.desc}</span></span> }))
+const headerOptions = commonHeaders.map(h => ({ value: h.value, label: <span>{h.value} <span style={{ fontSize: 10, color: '#8c8c8c' }}>{h.desc}</span></span> }))
 
 // ---- cURL 解析器 ----
 function parseCurl(curlStr) {
@@ -264,19 +282,19 @@ function KvEditor({ items = [], onChange, keyPh = 'Key', valPh = 'Value' }) {
   return (
     <div>
       {items.length > 0 && (
-        <div style={{ display: 'flex', gap: 4, marginBottom: 4, padding: '0 4px', fontSize: 10, color: '#c9cdd4', fontWeight: 600, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 4, padding: '0 4px', fontSize: 10, color: '#8c8c8c', fontWeight: 600, alignItems: 'center' }}>
           <span style={{ width: 20 }}></span>
           <span style={{ flex: 3 }}>{keyPh}</span>
           <span style={{ flex: 4 }}>{valPh}</span>
           <span style={{ flex: 3 }}>描述</span>
           <span style={{ width: 24 }}></span>
           <Tooltip title="批量编辑">
-            <Button type="text" size="small" icon={<EditOutlined />} onClick={toBulk} style={{ width: 20, height: 16, fontSize: 10, color: '#c9cdd4' }} />
+            <Button type="text" size="small" icon={<EditOutlined />} onClick={toBulk} style={{ width: 20, height: 16, fontSize: 10, color: '#8c8c8c' }} />
           </Tooltip>
         </div>
       )}
       {items.length === 0 && (
-        <div style={{ padding: '16px 0', textAlign: 'center', color: '#c9cdd4', fontSize: 12 }}>
+        <div style={{ padding: '16px 0', textAlign: 'center', color: '#8c8c8c', fontSize: 12 }}>
           暂无{typeName}，点击下方按钮添加
         </div>
       )}
@@ -333,7 +351,7 @@ function CompactApiRow({ step, index, isSelected, onClick, onRemove, onCopy, onD
       <Tag style={{ margin: 0, fontWeight: 700, fontSize: 9, background: mc.bg, color: mc.color, border: 'none', padding: '0 5px', lineHeight: '16px', minWidth: 38, textAlign: 'center' }}>{method}</Tag>
       <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
         <div style={{ fontSize: 12, color: '#1d2129', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
-        {subLabel && <div style={{ fontSize: 10, color: '#c9cdd4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{subLabel}</div>}
+        {subLabel && <div style={{ fontSize: 10, color: '#8c8c8c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{subLabel}</div>}
       </div>
       <div style={{ display: 'flex', gap: 2, flexShrink: 0, alignItems: 'center' }}>
         {assertCount > 0 && <span title={`${assertCount} 个断言`} style={{ fontSize: 9, background: '#f6ffed', color: '#52c41a', borderRadius: 8, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>{assertCount}</span>}
@@ -448,7 +466,7 @@ function CompactWaitRow({ node, onRemove }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', background: '#f7f8fa' }}>
       <ClockCircleOutlined style={{ color: '#86909c', fontSize: 11 }} />
       <span style={{ fontSize: 11, color: '#86909c' }}>等待 {node.delay || 1000}ms</span>
-      <span style={{ fontSize: 11, color: '#c9cdd4', flex: 1 }}>{node.label || ''}</span>
+      <span style={{ fontSize: 11, color: '#8c8c8c', flex: 1 }}>{node.label || ''}</span>
       <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={onRemove} style={{ fontSize: 10, width: 20, height: 20 }} />
     </div>
   )
@@ -530,6 +548,8 @@ function getOps(step, key) {
 const opMeta = {
   assertion: { icon: <CheckCircleOutlined />, color: '#52c41a', label: '断言' },
   extractor: { icon: <FieldStringOutlined />, color: '#722ed1', label: '提取变量' },
+  headerSetter: { icon: <LockOutlined />, color: '#13c2c2', label: '设置 Header' },
+  bodySetter: { icon: <FormOutlined />, color: '#eb2f96', label: '设置 Body' },
   script: { icon: <CodeOutlined />, color: '#1890ff', label: '脚本' },
   wait: { icon: <ClockCircleOutlined />, color: '#86909c', label: '等待' },
 }
@@ -545,6 +565,15 @@ function opSummary(op) {
     return `${t} (${op.path || '...'}) ${o} ${op.expected || ''}`
   }
   if (op.type === 'extractor') return `${op.variable || '...'} 临时变量 Response JSON (${op.path || '...'})`
+  if (op.type === 'headerSetter') {
+    const val = op.sourceType === 'context' ? `{{${op.value || '...'}}}` : (op.value || '...')
+    return `${op.headerKey || '...'}: ${val}`
+  }
+  if (op.type === 'bodySetter') {
+    if (op.mode === 'replace') return `替换整个 Body`
+    const val = op.sourceType === 'context' ? `{{${op.value || '...'}}}` : (op.value || '...')
+    return `$.${op.path || '...'} = ${val}`
+  }
   if (op.type === 'script') { const l = (op.code || '').trim().split('\n')[0]; return l ? (l.length > 50 ? l.slice(0, 50) + '...' : l) : '(空脚本)' }
   if (op.type === 'wait') return `${op.delay || 1000}ms${op.label ? '  ' + op.label : ''}`
   return ''
@@ -575,7 +604,7 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
         <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', fontSize: 10, flexShrink: 0 }} />
         <span style={{ color: meta.color, fontSize: 11, flexShrink: 0 }}>{meta.icon}</span>
         <span style={{ fontSize: 11, color: meta.color, fontWeight: 500, flexShrink: 0 }}>{meta.label}</span>
-        <span style={{ fontSize: 11, color: '#86909c', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: op.type === 'script' ? 'monospace' : 'inherit' }}>
+        <span style={{ fontSize: 12, color: '#4e5969', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: op.type === 'script' ? 'monospace' : 'inherit' }}>
           {opSummary(op)}
         </span>
         <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={e => { e.stopPropagation(); onRemove() }} style={{ width: 20, height: 20 }} />
@@ -596,7 +625,7 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
                   <Input size="small" value={op.expected || ''} placeholder={op.assertType === 'status' ? '200' : '期望值'} onChange={e => up('expected', e.target.value)} style={{ flex: 1, minWidth: 80, fontFamily: 'monospace', fontSize: 11 }} />
                 )}
               </div>
-              <div style={{ fontSize: 10, color: '#c9cdd4', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 4 }}>
                 {op.assertType === 'status' && '验证接口返回的 HTTP 状态码，如 200、201、404'}
                 {op.assertType === 'jsonPath' && '用 JSONPath 定位响应 JSON 中的字段，如 $.data.token'}
                 {op.assertType === 'contains' && '检查响应体文本是否包含指定字符串'}
@@ -612,7 +641,60 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
                 <span style={{ fontSize: 11, color: '#86909c' }}>Response JSON</span>
                 <Tooltip title="JSONPath 示例：$.data.token, $.list[0].id"><Input size="small" value={op.path || ''} placeholder="$.data.token" onChange={e => up('path', e.target.value)} style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} /></Tooltip>
               </div>
-              <div style={{ fontSize: 10, color: '#c9cdd4', marginTop: 4 }}>从响应 JSON 中提取值存为临时变量，后续步骤用 {'{{变量名}}'} 引用</div>
+              <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 4 }}>从响应 JSON 中提取值存为临时变量，后续步骤用 {'{{变量名}}'} 引用</div>
+            </div>
+          )}
+          {op.type === 'headerSetter' && (
+            <div>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                <AutoComplete size="small" value={op.headerKey || ''} options={headerOptions} onChange={v => up('headerKey', v)}
+                  placeholder="Header 名称" style={{ width: 160, fontSize: 11 }} filterOption={(input, opt) => opt.value.toLowerCase().includes(input.toLowerCase())} />
+                <Select size="small" value={op.sourceType || 'literal'} onChange={v => up('sourceType', v)} style={{ width: 110 }}
+                  options={[{ value: 'literal', label: '直接输入' }, { value: 'context', label: '上下文变量' }]} />
+                <Input size="small" value={op.value || ''} onChange={e => up('value', e.target.value)}
+                  placeholder={op.sourceType === 'context' ? '变量名，如 token' : '值，如 Bearer xxx'}
+                  prefix={op.sourceType === 'context' ? <span style={{ color: '#1890ff', fontSize: 10 }}>{'{{'}...{'}}'}</span> : null}
+                  style={{ flex: 1, minWidth: 120, fontFamily: 'monospace', fontSize: 11 }} />
+              </div>
+              <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 4 }}>设置请求头字段，"上下文变量"模式会自动用前面步骤提取的值</div>
+            </div>
+          )}
+          {op.type === 'bodySetter' && (
+            <div>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 6 }}>
+                <Select size="small" value={op.mode || 'field'} onChange={v => up('mode', v)} style={{ width: 110 }}
+                  options={[{ value: 'field', label: '设置字段' }, { value: 'replace', label: '替换整体' }]} />
+                {op.mode !== 'replace' && (
+                  <Select size="small" value={op.sourceType || 'literal'} onChange={v => up('sourceType', v)} style={{ width: 110 }}
+                    options={[{ value: 'literal', label: '直接输入' }, { value: 'context', label: '上下文变量' }]} />
+                )}
+              </div>
+              {(op.mode || 'field') === 'field' ? (
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <Input size="small" value={op.path || ''} onChange={e => up('path', e.target.value)}
+                    placeholder="字段路径，如 data.user_id" style={{ width: 160, fontFamily: 'monospace', fontSize: 11 }} />
+                  <span style={{ fontSize: 11, color: '#86909c' }}>=</span>
+                  <Input size="small" value={op.value || ''} onChange={e => up('value', e.target.value)}
+                    placeholder={op.sourceType === 'context' ? '变量名' : '值'}
+                    prefix={op.sourceType === 'context' ? <span style={{ color: '#1890ff', fontSize: 10 }}>{'{{'}...{'}}'}</span> : null}
+                    style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} />
+                </div>
+              ) : (
+                <div>
+                  {op.sourceType === 'context' ? (
+                    <Input size="small" value={op.value || ''} onChange={e => up('value', e.target.value)}
+                      placeholder="上下文变量名" prefix={<span style={{ color: '#1890ff', fontSize: 10 }}>{'{{'}...{'}}'}</span>}
+                      style={{ fontFamily: 'monospace', fontSize: 11 }} />
+                  ) : (
+                    <Input.TextArea value={op.value || ''} onChange={e => up('value', e.target.value)}
+                      placeholder='{"key": "value"}' autoSize={{ minRows: 2, maxRows: 8 }}
+                      style={{ fontFamily: 'monospace', fontSize: 11 }} />
+                  )}
+                </div>
+              )}
+              <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 4 }}>
+                {(op.mode || 'field') === 'field' ? '修改 Body 中的指定字段（支持嵌套路径，如 data.list.0.id）' : '用新内容替换整个请求体'}
+              </div>
             </div>
           )}
           {op.type === 'script' && (
@@ -635,7 +717,7 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
                 <span style={{ fontSize: 11, color: '#86909c' }}>ms</span>
                 <Input size="small" value={op.label || ''} placeholder="描述（可选）" onChange={e => up('label', e.target.value)} style={{ flex: 1, fontSize: 11 }} />
               </div>
-              <div style={{ fontSize: 10, color: '#c9cdd4', marginTop: 4 }}>在两个操作之间暂停指定毫秒数，1000ms = 1秒</div>
+              <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 4 }}>在两个操作之间暂停指定毫秒数，1000ms = 1秒</div>
             </div>
           )}
         </div>
@@ -670,7 +752,7 @@ function OperationList({ operations, onChange, addItems, snippets, infoBg, infoB
       </div>
 
       {operations.length === 0 && (
-        <div style={{ padding: '16px 12px', textAlign: 'center', color: '#c9cdd4', fontSize: 11, border: '1px dashed #e5e6eb', borderRadius: 6, marginBottom: 8 }}>
+        <div style={{ padding: '16px 12px', textAlign: 'center', color: '#8c8c8c', fontSize: 11, border: '1px dashed #e5e6eb', borderRadius: 6, marginBottom: 8 }}>
           暂无操作，点击下方按钮添加断言、提取变量或自定义脚本
         </div>
       )}
@@ -685,6 +767,8 @@ function OperationList({ operations, onChange, addItems, snippets, infoBg, infoB
       <Dropdown menu={{ items: addItems, onClick: ({ key }) => {
         const newOp = key === 'assertion' ? { type: 'assertion', assertType: 'status', operator: 'eq', expected: '200' }
           : key === 'extractor' ? { type: 'extractor', variable: '', path: '' }
+          : key === 'headerSetter' ? { type: 'headerSetter', headerKey: '', value: '', sourceType: 'literal' }
+          : key === 'bodySetter' ? { type: 'bodySetter', mode: 'field', path: '', value: '', sourceType: 'literal' }
           : key === 'script' ? { type: 'script', code: '# 在此编写脚本，点击右上角「片段」可快速插入常用模板\n' }
           : { type: 'wait', delay: 1000, label: '' }
         onChange([...operations, newOp])
@@ -698,14 +782,17 @@ function OperationList({ operations, onChange, addItems, snippets, infoBg, infoB
 }
 
 const preAddItems = [
-  { key: 'script', icon: <CodeOutlined />, label: <span>自定义脚本<span style={{ fontSize: 10, color: '#86909c', marginLeft: 6 }}>修改请求参数、生成签名等</span></span> },
-  { key: 'wait', icon: <ClockCircleOutlined />, label: <span>等待时间<span style={{ fontSize: 10, color: '#86909c', marginLeft: 6 }}>暂停指定毫秒数</span></span> },
+  { key: 'headerSetter', icon: <LockOutlined />, label: <span>设置 Header<span style={{ fontSize: 11, color: '#86909c', marginLeft: 6 }}>添加/修改请求头字段</span></span> },
+  { key: 'bodySetter', icon: <FormOutlined />, label: <span>设置 Body<span style={{ fontSize: 11, color: '#86909c', marginLeft: 6 }}>修改请求体字段或替换整体</span></span> },
+  { type: 'divider' },
+  { key: 'script', icon: <CodeOutlined />, label: <span>自定义脚本<span style={{ fontSize: 11, color: '#86909c', marginLeft: 6 }}>编写自定义前置逻辑</span></span> },
+  { key: 'wait', icon: <ClockCircleOutlined />, label: <span>等待时间<span style={{ fontSize: 11, color: '#86909c', marginLeft: 6 }}>暂停指定毫秒数</span></span> },
 ]
 const postAddItems = [
-  { key: 'assertion', icon: <CheckCircleOutlined />, label: <span>断言<span style={{ fontSize: 10, color: '#86909c', marginLeft: 6 }}>验证状态码、响应体字段</span></span> },
-  { key: 'extractor', icon: <FieldStringOutlined />, label: <span>提取变量<span style={{ fontSize: 10, color: '#86909c', marginLeft: 6 }}>从响应中提取值供后续步骤使用</span></span> },
-  { key: 'script', icon: <CodeOutlined />, label: <span>自定义脚本<span style={{ fontSize: 10, color: '#86909c', marginLeft: 6 }}>编写自定义逻辑</span></span> },
-  { key: 'wait', icon: <ClockCircleOutlined />, label: <span>等待时间<span style={{ fontSize: 10, color: '#86909c', marginLeft: 6 }}>暂停指定毫秒数</span></span> },
+  { key: 'assertion', icon: <CheckCircleOutlined />, label: <span>断言<span style={{ fontSize: 11, color: '#86909c', marginLeft: 6 }}>验证状态码、响应体字段</span></span> },
+  { key: 'extractor', icon: <FieldStringOutlined />, label: <span>提取变量<span style={{ fontSize: 11, color: '#86909c', marginLeft: 6 }}>从响应中提取值供后续步骤使用</span></span> },
+  { key: 'script', icon: <CodeOutlined />, label: <span>自定义脚本<span style={{ fontSize: 11, color: '#86909c', marginLeft: 6 }}>编写自定义逻辑</span></span> },
+  { key: 'wait', icon: <ClockCircleOutlined />, label: <span>等待时间<span style={{ fontSize: 11, color: '#86909c', marginLeft: 6 }}>暂停指定毫秒数</span></span> },
 ]
 
 // ===========================================================================
@@ -728,7 +815,7 @@ function AuthEditor({ auth, onChange }) {
           <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>Token</div>
           <Input size="small" value={a.token || ''} onChange={e => up('token', e.target.value)}
             placeholder="输入 Token，支持 {{variable}}" style={{ fontFamily: 'monospace', fontSize: 11 }} />
-          <div style={{ fontSize: 10, color: '#c9cdd4', marginTop: 6 }}>会自动添加 Authorization: Bearer {'<token>'} 请求头</div>
+          <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 6 }}>会自动添加 Authorization: Bearer {'<token>'} 请求头</div>
         </div>
       )}
       {a.type === 'basic' && (
@@ -741,7 +828,7 @@ function AuthEditor({ auth, onChange }) {
             <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>密码</div>
             <Input.Password size="small" value={a.password || ''} onChange={e => up('password', e.target.value)} placeholder="Password" style={{ fontSize: 11 }} />
           </div>
-          <div style={{ fontSize: 10, color: '#c9cdd4' }}>自动进行 Base64 编码并添加 Authorization: Basic 请求头</div>
+          <div style={{ fontSize: 11, color: '#8c8c8c' }}>自动进行 Base64 编码并添加 Authorization: Basic 请求头</div>
         </div>
       )}
       {a.type === 'apikey' && (
@@ -764,7 +851,7 @@ function AuthEditor({ auth, onChange }) {
         </div>
       )}
       {a.type === 'none' && (
-        <div style={{ padding: '16px 0', textAlign: 'center', color: '#c9cdd4', fontSize: 12 }}>
+        <div style={{ padding: '16px 0', textAlign: 'center', color: '#8c8c8c', fontSize: 12 }}>
           此请求不使用认证
         </div>
       )}
@@ -945,7 +1032,7 @@ function ResponsePanel({ response, onAddAssertion }) {
                 <span style={{ fontWeight: 600, color: '#4e5969', fontFamily: 'monospace' }}>{c.name}</span>
                 <span style={{ color: '#1890ff', fontFamily: 'monospace', wordBreak: 'break-all' }}>{c.value}</span>
               </div>
-              {c.attrs && <div style={{ fontSize: 10, color: '#c9cdd4', marginTop: 2 }}>{c.attrs}</div>}
+              {c.attrs && <div style={{ fontSize: 10, color: '#8c8c8c', marginTop: 2 }}>{c.attrs}</div>}
             </div>
           ))}
         </div>
@@ -967,6 +1054,12 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
   const method = step.method || 'GET'
   const mc = methodColors[method] || methodColors.GET
   const up = (f, v) => onChange({ ...step, [f]: v })
+
+  const urlHasOwnBase = (url) => {
+    if (!url) return false
+    const lower = url.toLowerCase()
+    return lower.startsWith('http://') || lower.startsWith('https://') || url.startsWith('{{BASE_URL}}') || url.startsWith('{{base_url}}')
+  }
 
   const paramCount = (step.params || []).filter(p => p.key && p.enabled !== false).length
   const headerCount = (step.headers || []).filter(h => h.key && h.enabled !== false).length
@@ -994,9 +1087,11 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
   const resolvedUrl = useMemo(() => {
     const base = baseUrl || ''
     const path = step.url || ''
+    const hasOwnBase = urlHasOwnBase(path)
+    const fullPath = hasOwnBase ? path.replace(/\{\{BASE_URL\}\}/gi, base) : base + path
     const enabledParams = (step.params || []).filter(p => p.key && p.enabled !== false)
     const qs = enabledParams.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value || '')}`).join('&')
-    return base + path + (qs ? '?' + qs : '')
+    return fullPath + (qs ? '?' + qs : '')
   }, [baseUrl, step.url, step.params])
 
   const handleSend = async () => {
@@ -1004,7 +1099,8 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
     setResponse(null)
     setActiveTab('response')
     try {
-      const fullUrl = (baseUrl || '') + (step.url || '')
+      const path = step.url || ''
+      const fullUrl = urlHasOwnBase(path) ? path.replace(/\{\{BASE_URL\}\}/gi, baseUrl || '') : (baseUrl || '') + path
       const res = await api.post('/debug/send', {
         method: step.method || 'GET',
         url: fullUrl,
@@ -1103,7 +1199,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
               value: m, label: <span style={{ color: methodColors[m]?.color, fontWeight: 700 }}>{m}</span>
             }))} />
           <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-            {baseUrl && (
+            {baseUrl && !urlHasOwnBase(step.url) && (
               <Tooltip title={baseUrl}>
                 <span style={{ fontSize: 11, color: '#86909c', background: '#f7f8fa', border: '1px solid #e5e6eb', borderRight: 'none',
                   borderRadius: '4px 0 0 4px', padding: '3px 8px', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis',
@@ -1140,8 +1236,8 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
           </Tooltip>
         </div>
         {/* 完整 URL 预览 */}
-        {(paramCount > 0 || baseUrl) && (
-          <div style={{ fontSize: 10, color: '#c9cdd4', marginTop: 4, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+        {paramCount > 0 && (
+          <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 4, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             title={resolvedUrl}>
             {resolvedUrl}
           </div>
@@ -1183,7 +1279,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
             transition: 'all 0.12s',
           }}>
             {t.icon}{t.label}
-            {t.count > 0 && <span style={{ fontSize: 10, marginLeft: 3, color: activeTab === t.key ? '#1890ff' : '#c9cdd4' }}>{t.count}</span>}
+            {t.count > 0 && <span style={{ fontSize: 11, marginLeft: 3, color: activeTab === t.key ? '#1890ff' : '#8c8c8c' }}>{t.count}</span>}
           </div>
         ))}
       </div>
@@ -1212,7 +1308,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
               )}
             </div>
             {(step.bodyType || 'json') === 'none' && (
-              <div style={{ padding: '16px 0', textAlign: 'center', color: '#c9cdd4', fontSize: 12 }}>此请求不包含 Body</div>
+              <div style={{ padding: '16px 0', textAlign: 'center', color: '#8c8c8c', fontSize: 12 }}>此请求不包含 Body</div>
             )}
             {((step.bodyType || 'json') === 'json' || step.bodyType === 'raw') && (
               <Input.TextArea value={step.body || ''} onChange={e => up('body', e.target.value)}
@@ -1407,7 +1503,7 @@ export default function ApiStepList({ steps, onChange, environments, runEnv }) {
         {selected ? (
           <StepDetailPanel step={selected.step} onChange={handleDetailChange} baseUrl={baseUrl} />
         ) : (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c9cdd4' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8c8c8c' }}>
             <div style={{ textAlign: 'center' }}>
               <ApiOutlined style={{ fontSize: 40, marginBottom: 12 }} />
               <div style={{ fontSize: 13 }}>请选择一个 API 步骤查看详情</div>
@@ -1433,7 +1529,7 @@ function resolveVars(s) {
     .replace(/\{\{\$randomPhone\}\}/g, 'f"138{random.randint(10000000,99999999)}"')
     .replace(/\{\{\$randomString\}\}/g, '"".join(random.choices(string.ascii_letters + string.digits, k=8))')
     .replace(/\{\{\$randomName\}\}/g, 'random.choice(["张三","李四","王五","赵六"])')
-    .replace(/\{\{(\w+)\}\}/g, '{$1}')
+    .replace(/\{\{(\w+)\}\}/g, "{context.get('$1', '')}")
 }
 
 function genStepsCode(steps, indent = '    ') {
@@ -1474,19 +1570,55 @@ function genStepsCode(steps, indent = '    ') {
     }
     lines.push(`${indent}# Step ${s.seq}: ${s.action || s.method + ' ' + s.url}`)
     const preOps = getOps(s, 'preOperations')
+    const method = (s.method || 'GET').toLowerCase()
+    let url = resolveVars((s.url || '/').replace(/^\{\{BASE_URL\}\}/gi, ''))
+    const hasBodySetter = preOps.some(op => op.type === 'bodySetter')
+    const stepHeaders = (s.headers || []).filter(h => h.key && h.enabled !== false)
+    if (stepHeaders.length) {
+      const obj = stepHeaders.map(h => `"${h.key}": "${h.value || ''}"`).join(', ')
+      lines.push(`${indent}headers.update({${obj}})`)
+    }
+    if (hasBodySetter && !preOps.some(op => op.type === 'bodySetter' && op.mode === 'replace') && (s.bodyType || 'json') !== 'none' && s.body?.trim()) {
+      lines.push(`${indent}body = '${s.body.replace(/'/g, "\\'").replace(/\n/g, '\\n')}'`)
+    }
     for (const op of preOps) {
+      if (op.type === 'headerSetter' && op.headerKey) {
+        const val = op.sourceType === 'context' ? `context.get("${op.value || ''}", "")` : `"${op.value || ''}"`
+        if (op.headerKey === 'Authorization' && op.sourceType === 'context') {
+          lines.push(`${indent}headers["${op.headerKey}"] = f"Bearer {${val}}"`)
+        } else {
+          lines.push(`${indent}headers["${op.headerKey}"] = ${val}`)
+        }
+      }
+      if (op.type === 'bodySetter') {
+        if (op.mode === 'replace') {
+          const val = op.sourceType === 'context' ? `context.get("${op.value || ''}", "{}")` : `'${(op.value || '{}').replace(/'/g, "\\'")}'`
+          lines.push(`${indent}body = ${val}`)
+        } else if (op.path) {
+          lines.push(`${indent}_body = json.loads(body)`)
+          const parts = op.path.split('.')
+          let accessor = '_body'
+          for (const p of parts.slice(0, -1)) accessor += `["${p}"]`
+          const lastKey = parts[parts.length - 1]
+          const val = op.sourceType === 'context' ? `context.get("${op.value || ''}", "")` : `"${op.value || ''}"`
+          lines.push(`${indent}${accessor}["${lastKey}"] = ${val}`)
+          lines.push(`${indent}body = json.dumps(_body, ensure_ascii=False)`)
+        }
+      }
       if (op.type === 'script' && op.code?.trim()) {
         lines.push(`${indent}# 前置脚本`)
         for (const line of op.code.trim().split('\n')) lines.push(`${indent}${line}`)
       }
       if (op.type === 'wait') lines.push(`${indent}time.sleep(${(op.delay || 1000) / 1000})`)
     }
-    const method = (s.method || 'GET').toLowerCase()
-    const url = resolveVars(s.url || '/')
     let kwargs = []
     if (s.params?.filter(p => p.key && p.enabled !== false).length) { const obj = s.params.filter(p => p.key && p.enabled !== false).map(p => `"${p.key}": "${p.value || ''}"`).join(', '); kwargs.push(`params={${obj}}`) }
-    if (s.headers?.filter(h => h.key && h.enabled !== false).length) { const obj = s.headers.filter(h => h.key && h.enabled !== false).map(h => `"${h.key}": "${h.value || ''}"`).join(', '); kwargs.push(`headers={${obj}}`) }
-    if ((s.bodyType || 'json') !== 'none' && s.body?.trim()) { kwargs.push(s.bodyType === 'form' ? `data="${s.body}"` : `json=${s.body}`) }
+    if (stepHeaders.length || hasHeaderSetter) { kwargs.push('headers=headers') }
+    if (hasBodySetter) {
+      kwargs.push('json=json.loads(body)' + (s.bodyType === 'form' ? '' : ''))
+    } else if ((s.bodyType || 'json') !== 'none' && s.body?.trim()) {
+      kwargs.push(s.bodyType === 'form' ? `data="${s.body}"` : `json=${s.body}`)
+    }
     const argStr = kwargs.length ? `, ${kwargs.join(', ')}` : ''
     lines.push(`${indent}response = client.${method}(f"${url}"${argStr})`)
     const postOps = getOps(s, 'postOperations')
@@ -1503,7 +1635,7 @@ function genStepsCode(steps, indent = '    ') {
       }
       if (op.type === 'extractor' && op.variable && op.path) {
         const expr = 'response.json()' + op.path.replace('$.', '').split('.').map(p => `["${p}"]`).join('')
-        lines.push(`${indent}${op.variable} = ${expr}`)
+        lines.push(`${indent}context["${op.variable}"] = ${expr}`)
       }
       if (op.type === 'script' && op.code?.trim()) {
         lines.push(`${indent}# 后置脚本`)
@@ -1516,14 +1648,19 @@ function genStepsCode(steps, indent = '    ') {
   return lines
 }
 
-export function generateApiCodeFromSteps(steps, title) {
+export function generateApiCodeFromSteps(steps, title, baseUrl) {
   const fnName = 'test_' + (title || 'scenario').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').substring(0, 40).toLowerCase()
   const needsExtras = JSON.stringify(steps).includes('{{$')
+  const stepsJson = JSON.stringify(steps)
+  const needsJson = stepsJson.includes('"bodySetter"')
+  const resolvedBase = baseUrl || 'http://localhost:8000'
   const header = [
     'import httpx', 'import pytest', 'import time',
+    ...(needsJson ? ['import json'] : []),
     ...(needsExtras ? ['import uuid', 'import random', 'import string', 'from datetime import datetime, timezone'] : []),
-    '', '', 'BASE_URL = "http://localhost:8000"', '', '',
-    `def ${fnName}():`, `    """${title || '接口测试'}"""`, '    client = httpx.Client(base_url=BASE_URL)', '',
+    '', '', `BASE_URL = "${resolvedBase}"`, '', '',
+    `def ${fnName}():`, `    """${title || '接口测试'}"""`, '    client = httpx.Client(base_url=BASE_URL)',
+    '    context = {}', '    headers = {}', '',
   ]
   return [...header, ...genStepsCode(steps)].join('\n')
 }

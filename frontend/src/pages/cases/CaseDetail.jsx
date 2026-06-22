@@ -279,6 +279,7 @@ function ScenarioEditor({
   onImportTemplate, manualSteps, caseTitle,
   projectId, branchId, caseId,
   environments, runEnv,
+  onScriptSaved,
 }) {
   const extraCol = type === 'api' ? 'apiEndpoint' : 'uiTarget'
   const extraLabel = type === 'api' ? '接口端点' : '页面/元素'
@@ -439,7 +440,8 @@ function ScenarioEditor({
           <ScriptEditor
             projectId={projectId} branchId={branchId} caseId={caseId}
             scriptType={type === 'api' ? 'api' : 'ui'} accentColor={accentColor}
-            autoGenerateCode={type === 'api' ? generateApiCodeFromSteps(steps, caseTitle) : generateUiCode(steps, caseTitle)}
+            autoGenerateCode={type === 'api' ? generateApiCodeFromSteps(steps, caseTitle, (() => { const env = runEnv && environments?.find(e => e.id === runEnv); return env?.variables?.find(v => v.key === 'BASE_URL')?.value || '' })()) : generateUiCode(steps, caseTitle)}
+            onScriptSaved={onScriptSaved}
           />
         </div>
       )}
@@ -519,6 +521,7 @@ export default function CaseDetail() {
   const [runModalOpen, setRunModalOpen] = useState(false)
   const [runStatus, setRunStatus] = useState('idle')
   const [runEnv, setRunEnv] = useState(null)
+  const [hasActiveScript, setHasActiveScript] = useState(false)
 
   // 编辑状态
   const [title, setTitle] = useState('')
@@ -619,6 +622,13 @@ export default function CaseDetail() {
       setIsApiTemplate(vals.isApiTemplate); setIsUiTemplate(vals.isUiTemplate)
 
       savedRef.current = JSON.stringify(vals)
+
+      // Check if there's an active script in the scripts table
+      try {
+        const scriptRes = await api.get(`/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/active?type=${vals.type}`)
+        setHasActiveScript(!!scriptRes.data)
+      } catch { setHasActiveScript(false) }
+
       const envs = envRes.data || []
       setEnvironments(envs)
       if (envs.length) {
@@ -857,6 +867,7 @@ export default function CaseDetail() {
                 manualSteps={steps} caseTitle={title}
                 projectId={projectId} branchId={branchId} caseId={caseId}
                 environments={environments} runEnv={runEnv}
+                onScriptSaved={() => setHasActiveScript(true)}
               />
             )},
 
@@ -869,6 +880,7 @@ export default function CaseDetail() {
                 onImportTemplate={() => { setTemplateModalType('ui'); setTemplateModalOpen(true) }}
                 manualSteps={steps} caseTitle={title}
                 projectId={projectId} branchId={branchId} caseId={caseId}
+                onScriptSaved={() => setHasActiveScript(true)}
               />
             )},
 
@@ -958,11 +970,13 @@ export default function CaseDetail() {
             <Select value={runEnv} onChange={setRunEnv} style={{ width: '100%' }} placeholder="请选择环境"
               options={environments.map(e => ({ value: e.id, label: e.name }))} />
           </div>
-          {scriptRefFile ? (
+          {(scriptRefFile || hasActiveScript) ? (
             <div style={{ textAlign: 'center', padding: '8px 0' }}>
-              <div style={{ fontSize: 12, color: '#86909c', marginBottom: 12 }}>
-                脚本: <span style={{ fontFamily: 'monospace', color: '#4e5969' }}>{scriptRefFile}</span>
-              </div>
+              {scriptRefFile && (
+                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 12 }}>
+                  脚本: <span style={{ fontFamily: 'monospace', color: '#4e5969' }}>{scriptRefFile}</span>
+                </div>
+              )}
               <Button type="primary" loading={runStatus === 'running'} disabled={!runEnv}
                 onClick={async () => {
                   if (!runEnv) { message.warning('请先选择执行环境'); return }
@@ -986,11 +1000,7 @@ export default function CaseDetail() {
           ) : (
             <div style={{ textAlign: 'center', padding: '12px 0' }}>
               <div style={{ color: '#86909c', marginBottom: 12 }}>当前用例没有关联脚本</div>
-              <div style={{ fontSize: 12, color: '#c9cdd4' }}>请先在测试计划中添加此用例，通过测试计划执行</div>
-              <Button type="link" size="small" style={{ marginTop: 8 }}
-                onClick={() => { setRunModalOpen(false); navigate(`/projects/${projectId}/plans?branchId=${branchId}`) }}>
-                前往测试计划 →
-              </Button>
+              <div style={{ fontSize: 12, color: '#8c8c8c' }}>请先在「接口测试」→「代码视图」中生成并保存脚本</div>
             </div>
           )}
         </div>
