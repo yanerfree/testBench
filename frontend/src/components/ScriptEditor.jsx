@@ -13,6 +13,7 @@ export default function ScriptEditor({
   accentColor = '#1890ff',
   autoGenerateCode = null,
   onScriptSaved = null,
+  envId = null,
 }) {
   const [script, setScript] = useState(null)
   const [versions, setVersions] = useState([])
@@ -108,7 +109,11 @@ export default function ScriptEditor({
     setRunning(true)
     setRunResult(null)
     try {
-      const res = await fetch(`${apiBase}/run?type=${scriptType}`, { method: 'POST', headers })
+      const res = await fetch(`${apiBase}/run?type=${scriptType}`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ envId: envId || null }),
+      })
       const data = await res.json()
       if (data.data) {
         setRunResult(data.data)

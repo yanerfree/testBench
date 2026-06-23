@@ -1655,10 +1655,10 @@ export function generateApiCodeFromSteps(steps, title, baseUrl) {
   const needsJson = stepsJson.includes('"bodySetter"')
   const resolvedBase = baseUrl || 'http://localhost:8000'
   const header = [
-    'import httpx', 'import pytest', 'import time',
+    'import httpx', 'import pytest', 'import time', 'import os',
     ...(needsJson ? ['import json'] : []),
     ...(needsExtras ? ['import uuid', 'import random', 'import string', 'from datetime import datetime, timezone'] : []),
-    '', '', `BASE_URL = "${resolvedBase}"`, '', '',
+    '', '', `BASE_URL = os.environ.get("BASE_URL", "${resolvedBase}")`, '', '',
     `def ${fnName}():`, `    """${title || '接口测试'}"""`, '    client = httpx.Client(base_url=BASE_URL)',
     '    context = {}', '    headers = {}', '',
   ]

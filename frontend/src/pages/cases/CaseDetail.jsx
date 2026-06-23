@@ -442,6 +442,7 @@ function ScenarioEditor({
             scriptType={type === 'api' ? 'api' : 'ui'} accentColor={accentColor}
             autoGenerateCode={type === 'api' ? generateApiCodeFromSteps(steps, caseTitle, (() => { const env = runEnv && environments?.find(e => e.id === runEnv); return env?.variables?.find(v => v.key === 'BASE_URL')?.value || '' })()) : generateUiCode(steps, caseTitle)}
             onScriptSaved={onScriptSaved}
+            envId={runEnv}
           />
         </div>
       )}
@@ -520,8 +521,11 @@ export default function CaseDetail() {
 
   const [runModalOpen, setRunModalOpen] = useState(false)
   const [runStatus, setRunStatus] = useState('idle')
+  const [runResult, setRunResult] = useState(null)
   const [runEnv, setRunEnv] = useState(null)
   const [hasActiveScript, setHasActiveScript] = useState(false)
+  const [scriptRuns, setScriptRuns] = useState([])
+  const [scriptRunsLoading, setScriptRunsLoading] = useState(false)
 
   // 编辑状态
   const [title, setTitle] = useState('')
@@ -663,6 +667,15 @@ export default function CaseDetail() {
     } finally { setScriptLoading(false) }
   }
 
+  async function loadScriptRuns() {
+    setScriptRunsLoading(true)
+    try {
+      const res = await api.get(`/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/runs?type=${type}`)
+      setScriptRuns(res.data || [])
+    } catch { setScriptRuns([]) }
+    finally { setScriptRunsLoading(false) }
+  }
+
   useEffect(() => {
     const handler = (e) => { if (isDirty) { e.preventDefault(); e.returnValue = '' } }
     window.addEventListener('beforeunload', handler)
@@ -787,7 +800,7 @@ export default function CaseDetail() {
 
       <div style={{ display: 'flex', gap: 16 }}>
         <div style={{ flex: 1 }}>
-          <Tabs defaultActiveKey="manual" items={[
+          <Tabs defaultActiveKey="manual" onChange={k => { if (k === 'history') loadScriptRuns() }} items={[
             { key: 'manual', label: '手动测试步骤', children: (
               <Card styles={{ body: { padding: '16px 20px' } }}>
                 <div style={{ marginBottom: 20 }}>
@@ -886,7 +899,38 @@ export default function CaseDetail() {
 
             { key: 'history', label: '执行历史', children: (
               <Card styles={{ body: { padding: '16px 24px' } }}>
-                <div style={{ color: '#86909c', textAlign: 'center', padding: 24 }}>暂无执行记录</div>
+                <Table
+                  size="small"
+                  loading={scriptRunsLoading}
+                  dataSource={scriptRuns}
+                  rowKey="id"
+                  pagination={false}
+                  locale={{ emptyText: '暂无执行记录' }}
+                  expandable={{
+                    expandedRowRender: r => r.stdout ? (
+                      <pre style={{ margin: 0, padding: 12, background: '#1e1e1e', color: '#d4d4d4', borderRadius: 6, fontSize: 12, fontFamily: 'monospace', maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{r.stdout}</pre>
+                    ) : <span style={{ color: '#c9cdd4' }}>无输出日志</span>,
+                    rowExpandable: () => true,
+                  }}
+                  columns={[
+                    {
+                      title: '时间', dataIndex: 'createdAt', width: 170,
+                      render: v => v ? new Date(v).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'
+                    },
+                    {
+                      title: '状态', dataIndex: 'status', width: 100,
+                      render: v => <Tag color={v === 'passed' ? 'success' : v === 'failed' ? 'error' : 'warning'} style={{ fontWeight: 600 }}>{(v || 'unknown').toUpperCase()}</Tag>
+                    },
+                    {
+                      title: '耗时', dataIndex: 'durationMs', width: 100,
+                      render: v => v != null ? `${(v / 1000).toFixed(1)}s` : '-'
+                    },
+                    {
+                      title: '错误摘要', dataIndex: 'errorSummary', ellipsis: true,
+                      render: v => v ? <span style={{ color: '#ff4d4f', fontFamily: 'monospace', fontSize: 12 }}>{v}</span> : '-'
+                    },
+                  ]}
+                />
               </Card>
             )},
           ]} />
@@ -959,7 +1003,7 @@ export default function CaseDetail() {
         }}
       />
 
-      <Modal open={runModalOpen} onCancel={() => setRunModalOpen(false)} footer={null} title="执行用例" width={480}>
+      <Modal open={runModalOpen} onCancel={() => { setRunModalOpen(false); setRunResult(null); setRunStatus('idle') }} footer={null} title="执行用例" width={560}>
         <div style={{ padding: '12px 0' }}>
           <div style={{ padding: '12px 16px', background: '#f7f8fa', borderRadius: 10, marginBottom: 20 }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>{title}</div>
@@ -971,31 +1015,58 @@ export default function CaseDetail() {
               options={environments.map(e => ({ value: e.id, label: e.name }))} />
           </div>
           {(scriptRefFile || hasActiveScript) ? (
-            <div style={{ textAlign: 'center', padding: '8px 0' }}>
+            <div>
               {scriptRefFile && (
-                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 12, textAlign: 'center' }}>
                   脚本: <span style={{ fontFamily: 'monospace', color: '#4e5969' }}>{scriptRefFile}</span>
                 </div>
               )}
-              <Button type="primary" loading={runStatus === 'running'} disabled={!runEnv}
-                onClick={async () => {
-                  if (!runEnv) { message.warning('请先选择执行环境'); return }
-                  setRunStatus('running')
-                  try {
-                    const res = await api.post(`/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/run?type=${type}`)
-                    setRunStatus('done')
-                    if (res.data?.status === 'passed') message.success('执行通过 ✓')
-                    else message.warning(`执行完成: ${res.data?.status || 'unknown'}`)
-                  } catch (e) {
-                    setRunStatus('error')
-                    message.error(`执行失败: ${e?.response?.data?.error?.message || e.message}`)
-                  }
-                }}
-                icon={<PlayCircleOutlined />} style={{ minWidth: 160 }}>
-                快速执行
-              </Button>
-              {runStatus === 'done' && <div style={{ marginTop: 8, fontSize: 12, color: '#52c41a' }}>执行完成</div>}
-              {runStatus === 'error' && <div style={{ marginTop: 8, fontSize: 12, color: '#ff4d4f' }}>执行失败，查看控制台了解详情</div>}
+              <div style={{ textAlign: 'center', marginBottom: runResult ? 16 : 0 }}>
+                <Button type="primary" loading={runStatus === 'running'} disabled={!runEnv}
+                  onClick={async () => {
+                    if (!runEnv) { message.warning('请先选择执行环境'); return }
+                    setRunStatus('running'); setRunResult(null)
+                    try {
+                      const res = await api.post(`/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/run?type=${type}`, { envId: runEnv })
+                      setRunStatus('done')
+                      setRunResult(res.data)
+                    } catch (e) {
+                      setRunStatus('error')
+                      setRunResult({ status: 'error', errorSummary: e?.response?.data?.error?.message || e.message })
+                    }
+                  }}
+                  icon={<PlayCircleOutlined />} style={{ minWidth: 160 }}>
+                  快速执行
+                </Button>
+              </div>
+
+              {runResult && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                    <Tag color={runResult.status === 'passed' ? 'success' : runResult.status === 'failed' ? 'error' : 'warning'}
+                      style={{ fontWeight: 700, fontSize: 13, padding: '2px 12px' }}>
+                      {(runResult.status || 'UNKNOWN').toUpperCase()}
+                    </Tag>
+                    {runResult.durationMs != null && (
+                      <span style={{ fontSize: 12, color: '#86909c' }}>耗时 {(runResult.durationMs / 1000).toFixed(1)}s</span>
+                    )}
+                  </div>
+
+                  {runResult.errorSummary && (
+                    <div style={{ padding: '10px 14px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 8, marginBottom: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#ff4d4f', marginBottom: 4 }}>错误信息</div>
+                      <pre style={{ margin: 0, fontSize: 12, color: '#434343', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 150, overflow: 'auto' }}>{runResult.errorSummary}</pre>
+                    </div>
+                  )}
+
+                  {runResult.stdout && (
+                    <details>
+                      <summary style={{ cursor: 'pointer', fontSize: 12, color: '#86909c', marginBottom: 6, userSelect: 'none' }}>执行日志</summary>
+                      <pre style={{ margin: 0, padding: 12, background: '#1e1e1e', color: '#d4d4d4', borderRadius: 8, fontSize: 11, fontFamily: 'monospace', maxHeight: 250, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{runResult.stdout}</pre>
+                    </details>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '12px 0' }}>

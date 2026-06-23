@@ -1,12 +1,13 @@
 import uuid
 import io
+import re
 import shutil
 import tempfile
 import zipfile
 from pathlib import Path
 
 import anyio
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +16,8 @@ from app.core.exceptions import AppError, NotFoundError
 from app.deps.auth import require_project_role
 from app.deps.db import get_db
 from app.models.case import Case
-from app.models.script import Script
+from app.models.environment import EnvironmentVariable
+from app.models.script import Script, ScriptRun
 from app.models.user import User
 from app.schemas.script import CreateScriptRequest, ScriptResponse
 from app.services import script_service
@@ -92,21 +94,40 @@ async def run_script(
     branch_id: uuid.UUID,
     case_id: uuid.UUID,
     script_type: str = Query(alias="type", default="api"),
+    env_id: uuid.UUID | None = Body(default=None, alias="envId", embed=True),
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+    user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
-    """直接运行 DB 中的脚本，返回执行结果。"""
+    """直接运行 DB 中的脚本，返回执行结果并持久化到 script_runs 表。"""
     script = await script_service.get_active_script(session, case_id, script_type)
     if not script:
         raise NotFoundError(code="SCRIPT_NOT_FOUND", message="没有可执行的脚本")
 
+    env_vars: dict[str, str] = {}
+    if env_id:
+        rows = await session.execute(
+            select(EnvironmentVariable)
+            .where(EnvironmentVariable.environment_id == env_id)
+        )
+        for v in rows.scalars().all():
+            env_vars[v.key] = v.value
+
     file_name = script.file_name or f"test_{script_type}.py"
+    content = script.content
+
+    if env_vars.get("BASE_URL"):
+        content = re.sub(
+            r'(BASE_URL\s*=\s*)(["\']).*?\2',
+            lambda m: f'{m.group(1)}{m.group(2)}{env_vars["BASE_URL"]}{m.group(2)}',
+            content,
+            count=1,
+        )
 
     sandbox_dir = tempfile.mkdtemp(prefix="tb_run_")
     try:
         script_path = Path(sandbox_dir) / file_name
         script_path.parent.mkdir(parents=True, exist_ok=True)
-        script_path.write_text(script.content, encoding="utf-8")
+        script_path.write_text(content, encoding="utf-8")
 
         from app.engine.executor import execute_single_case
         result = await anyio.to_thread.run_sync(
@@ -114,13 +135,66 @@ async def run_script(
                 sandbox_dir=sandbox_dir,
                 script_ref_file=file_name,
                 script_ref_func=script.func_name,
+                env_vars=env_vars,
                 timeout=120,
             )
         )
     finally:
         shutil.rmtree(sandbox_dir, ignore_errors=True)
 
+    run_record = ScriptRun(
+        case_id=case_id,
+        script_id=script.id,
+        script_type=script_type,
+        status=result.get("status", "error"),
+        duration_ms=result.get("duration_ms"),
+        error_summary=result.get("error_summary"),
+        stdout=result.get("stdout"),
+        executed_by=user.id,
+    )
+    session.add(run_record)
+    await session.commit()
+    await session.refresh(run_record)
+
+    result["id"] = str(run_record.id)
+    result["created_at"] = run_record.created_at.isoformat()
     return {"data": result}
+
+
+@router.get("/runs")
+async def list_script_runs(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    script_type: str = Query(alias="type", default="api"),
+    limit: int = Query(default=20, le=100),
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """获取用例的脚本执行历史列表。"""
+    result = await session.execute(
+        select(ScriptRun)
+        .where(ScriptRun.case_id == case_id, ScriptRun.script_type == script_type)
+        .order_by(ScriptRun.created_at.desc())
+        .limit(limit)
+    )
+    runs = result.scalars().all()
+    return {
+        "data": [
+            {
+                "id": str(r.id),
+                "case_id": str(r.case_id),
+                "script_type": r.script_type,
+                "status": r.status,
+                "duration_ms": r.duration_ms,
+                "error_summary": r.error_summary,
+                "stdout": r.stdout,
+                "executed_by": str(r.executed_by),
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in runs
+        ]
+    }
 
 
 @router.post("/{script_id}/activate")
