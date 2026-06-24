@@ -49,8 +49,12 @@ async def import_generated_cases(
             continue
 
         max_seq += 1
-        case_code = f"TC-{max_seq:04d}"
+        module = c.get("module", "ai")
+        prefix = module.replace(" ", "-").replace("/", "-")[:16]
+        case_code = f"TC-{prefix}-{max_seq:05d}"
         tea_id = f"ai-{uuid.uuid4().hex[:8]}"
+
+        tags = c.get("tags", [])
 
         case = Case(
             branch_id=branch_id,
@@ -63,7 +67,8 @@ async def import_generated_cases(
             preconditions=c.get("preconditions"),
             steps=c.get("steps", []),
             expected_result=c.get("expected_result"),
-            source="imported",
+            tags=tags,
+            source="ai",
             remark="AI 生成",
         )
         session.add(case)

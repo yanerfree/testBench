@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin, TreeSelect, Checkbox } from 'antd'
-import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined } from '@ant-design/icons'
+import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined, CodeOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 import TestForgeModal from './TestForgeModal'
+import AIScriptModal from '../../components/AIScriptModal'
 
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
 const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' }
@@ -134,6 +135,7 @@ export default function CaseManagement() {
   // 导入
   const [importOpen, setImportOpen] = useState(false)
   const [testforgeOpen, setTestforgeOpen] = useState(false)
+  const [scriptModalOpen, setScriptModalOpen] = useState(false)
   const [importResult, setImportResult] = useState(null)
   const [importing, setImporting] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -646,6 +648,9 @@ export default function CaseManagement() {
                 }}>
                   <Button size="small" type="link" danger>批量删除</Button>
                 </Popconfirm>
+                <Button size="small" type="link" icon={<CodeOutlined />} onClick={() => setScriptModalOpen(true)}>
+                  AI 生成脚本
+                </Button>
                 </>)}
               </div>
             )}
@@ -830,6 +835,14 @@ export default function CaseManagement() {
         folders={folderTree}
         open={testforgeOpen}
         onClose={() => setTestforgeOpen(false)}
+      />
+
+      <AIScriptModal
+        projectId={projectId}
+        branchId={currentBranch}
+        caseIds={selectedRowKeys}
+        open={scriptModalOpen}
+        onClose={() => setScriptModalOpen(false)}
       />
     </div>
   )
