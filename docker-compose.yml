@@ -34,6 +34,16 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-8}
       WORKERS: ${WORKERS:-2}
+      # AI / LLM
+      AI_PROVIDER: ${AI_PROVIDER:-openai_compatible}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_AUTH_TOKEN: ${AI_AUTH_TOKEN:-}
+      AI_MODEL: ${AI_MODEL:-claude-sonnet-4-6}
+      AI_MAX_TOKENS: ${AI_MAX_TOKENS:-4096}
+      AI_TEMPERATURE: ${AI_TEMPERATURE:-0.3}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-120}
+      AI_ENABLED: ${AI_ENABLED:-false}
     depends_on:
       db:
         condition: service_healthy

@@ -18,6 +18,9 @@ from app.api.scripts import router as scripts_router, export_router as scripts_e
 from app.api.testforge import router as testforge_router
 from app.api.debug import router as debug_router
 from app.api.api_collections import router as api_collections_router
+from app.api.llm_mock import router as llm_mock_router
+from app.api.api_mock import router as api_mock_router
+from app.api.ai import router as ai_router, config_router as ai_config_router
 from app.core.middleware import CamelCaseResponse, TokenRefreshMiddleware, TraceIdMiddleware
 
 app = FastAPI(
@@ -59,3 +62,7 @@ app.include_router(scripts_export_router)
 app.include_router(testforge_router)
 app.include_router(debug_router)
 app.include_router(api_collections_router)
+app.include_router(llm_mock_router)
+app.include_router(api_mock_router)
+app.include_router(ai_router)
+app.include_router(ai_config_router)

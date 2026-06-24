@@ -67,7 +67,9 @@ export const api = {
   get: (url) => request(url),
   post: (url, body) => request(url, { method: 'POST', body }),
   put: (url, body) => request(url, { method: 'PUT', body }),
+  patch: (url, body) => request(url, { method: 'PATCH', body }),
   del: (url) => request(url, { method: 'DELETE' }),
+  delete: (url) => request(url, { method: 'DELETE' }),
   download: async (url) => {
     const token = localStorage.getItem('token')
     const res = await fetch(`${BASE_URL}${url}`, {
@@ -75,5 +77,74 @@ export const api = {
     })
     if (!res.ok) throw new Error(`下载失败 (${res.status})`)
     return res.blob()
+  },
+  /**
+   * SSE 流式请求 — 用于 AI 生成接口
+   * @param {string} url
+   * @param {object} body
+   * @param {{ onChunk?: (data: object) => void, onDone?: (data: object) => void, onError?: (msg: string) => void }} callbacks
+   * @returns {{ abort: () => void }}
+   */
+  stream: (url, body, { onChunk, onDone, onError } = {}) => {
+    const token = localStorage.getItem('token')
+    const controller = new AbortController()
+
+    ;(async () => {
+      try {
+        const res = await fetch(`${BASE_URL}${url}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        })
+
+        if (!res.ok) {
+          const text = await res.text()
+          onError?.(text || `请求失败 (${res.status})`)
+          return
+        }
+
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+
+          const lines = buffer.split('\n\n')
+          buffer = lines.pop()
+
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed || !trimmed.startsWith('data: ')) continue
+            const payload = trimmed.slice(6)
+            if (payload === '[DONE]') { onDone?.({}); return }
+            try {
+              const data = JSON.parse(payload)
+              if (data.type === 'error') {
+                onError?.(data.message || '生成失败')
+                return
+              }
+              if (data.type === 'done') {
+                onDone?.(data)
+              } else {
+                onChunk?.(data)
+              }
+            } catch { /* skip unparseable chunks */ }
+          }
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          onError?.(err.message || '网络错误')
+        }
+      }
+    })()
+
+    return { abort: () => controller.abort() }
   },
 }
