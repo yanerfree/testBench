@@ -35,7 +35,9 @@ class LLMError(Exception):
 
 
 def _build_headers() -> dict[str, str]:
-    headers: dict[str, str] = {}
+    headers: dict[str, str] = {
+        "User-Agent": "claude-cli/1.0",
+    }
     if settings.ai_auth_token:
         headers["Authorization"] = f"Bearer {settings.ai_auth_token}"
     elif settings.ai_api_key:
