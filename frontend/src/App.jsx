@@ -4,7 +4,8 @@ import { Layout, Menu, Avatar, Dropdown, Button, Tooltip, message, Modal, Form, 
 import {
   FolderOutlined, FileTextOutlined, UnorderedListOutlined, BarChartOutlined,
   SettingOutlined, UserOutlined, FileSearchOutlined, ApiOutlined,
-  MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined,
+  MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined, RobotOutlined,
+  CloudServerOutlined,
 } from '@ant-design/icons'
 import { api } from './utils/request'
 import ProjectList from './pages/projects/ProjectList'
@@ -21,6 +22,10 @@ import UserManagement from './pages/settings/UserManagement'
 import AuditLogs from './pages/settings/AuditLogs'
 import ChannelConfig from './pages/settings/ChannelConfig'
 import ApiManagement from './pages/apis/ApiManagement'
+import LlmMock from './pages/llm-mock/LlmMock'
+import ApiMock from './pages/api-mock/ApiMock'
+import AIProviderConfig from './pages/settings/AIProviderConfig'
+import ProjectAIConfig from './pages/settings/ProjectAIConfig'
 
 const { Header, Sider, Content } = Layout
 
@@ -64,6 +69,7 @@ function AppLayout() {
     { key: `/projects/${projectId}/plans`, icon: <UnorderedListOutlined />, label: '测试计划' },
     { key: `/projects/${projectId}/reports`, icon: <BarChartOutlined />, label: '测试报告' },
     { type: 'divider' },
+    { key: `/projects/${projectId}/settings/ai`, icon: <RobotOutlined />, label: 'AI 配置' },
     { key: `/projects/${projectId}/logs`, icon: <FileSearchOutlined />, label: '操作日志' },
   ] : [
     // ---- 系统级菜单 ----
@@ -71,10 +77,14 @@ function AppLayout() {
     { type: 'divider' },
     { key: '/settings/env', icon: <SettingOutlined />, label: '环境配置' },
     { key: '/settings/channels', icon: <BellOutlined />, label: '通知渠道' },
+    { key: '/settings/ai-providers', icon: <RobotOutlined />, label: 'AI 服务配置' },
     ...(user.role === 'admin' ? [
       { key: '/settings/users', icon: <UserOutlined />, label: '用户管理' },
     ] : []),
     { key: '/settings/logs', icon: <FileSearchOutlined />, label: '操作日志' },
+    { type: 'divider' },
+    { key: '/tools/llm-mock', icon: <RobotOutlined />, label: 'LLM Mock' },
+    { key: '/tools/api-mock', icon: <CloudServerOutlined />, label: 'API Mock' },
   ]
 
   const handleLogout = async () => {
@@ -188,10 +198,14 @@ function AppLayout() {
             <Route path="/projects/:projectId/reports" element={<ReportList />} />
             <Route path="/projects/:projectId/reports/:reportId" element={<ReportDetail />} />
             <Route path="/projects/:projectId/logs" element={<AuditLogs />} />
+            <Route path="/projects/:projectId/settings/ai" element={<ProjectAIConfig />} />
             <Route path="/settings/env" element={<EnvConfig />} />
             <Route path="/settings/channels" element={<ChannelConfig />} />
+            <Route path="/settings/ai-providers" element={<AIProviderConfig />} />
             <Route path="/settings/users" element={<UserManagement />} />
             <Route path="/settings/logs" element={<AuditLogs />} />
+            <Route path="/tools/llm-mock" element={<LlmMock />} />
+            <Route path="/tools/api-mock" element={<ApiMock />} />
           </Routes>
         </Content>
       </Layout>

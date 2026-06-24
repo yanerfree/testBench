@@ -1,0 +1,296 @@
+import { useState, useEffect, useCallback } from 'react'
+import {
+  Button, Table, Modal, Form, Input, Select, InputNumber, Switch,
+  message, Tag, Space, Card, Popconfirm, Tooltip, Spin, Badge, Typography,
+} from 'antd'
+import {
+  PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined,
+  CloseCircleOutlined, StarOutlined, StarFilled, ThunderboltOutlined,
+  ApiOutlined, EyeOutlined, EyeInvisibleOutlined, LoadingOutlined,
+} from '@ant-design/icons'
+import { api } from '../../utils/request'
+
+const { Text, Paragraph } = Typography
+
+const PROVIDERS = [
+  { value: 'openai_compatible', label: '公司 AI 网关 / OpenAI 兼容' },
+  { value: 'anthropic', label: 'Anthropic (直连)' },
+  { value: 'ollama', label: 'Ollama (本地)' },
+]
+
+export default function AIProviderConfig() {
+  const [configs, setConfigs] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [testingId, setTestingId] = useState(null)
+  const [showSecret, setShowSecret] = useState({})
+  const [form] = Form.useForm()
+
+  const fetchConfigs = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/ai-providers')
+      setConfigs(res.data || [])
+    } catch { /* */ } finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { fetchConfigs() }, [fetchConfigs])
+
+  const openCreate = () => {
+    setEditingId(null)
+    form.resetFields()
+    form.setFieldsValue({
+      provider: 'openai_compatible',
+      temperature: 0.3,
+      maxTokens: 4096,
+      timeoutSeconds: 120,
+      isSystemDefault: false,
+    })
+    setModalOpen(true)
+  }
+
+  const openEdit = async (record) => {
+    setEditingId(record.id)
+    try {
+      const res = await api.get(`/ai-providers/${record.id}`)
+      const d = res.data
+      form.setFieldsValue({
+        name: d.name,
+        provider: d.provider,
+        baseUrl: d.baseUrl,
+        model: d.model,
+        temperature: d.temperature,
+        maxTokens: d.maxTokens,
+        timeoutSeconds: d.timeoutSeconds,
+        isSystemDefault: d.isSystemDefault,
+      })
+      setModalOpen(true)
+    } catch { /* */ }
+  }
+
+  const handleSave = async () => {
+    try {
+      const values = await form.validateFields()
+      const body = {
+        name: values.name,
+        provider: values.provider,
+        base_url: values.baseUrl,
+        model: values.model,
+        temperature: values.temperature,
+        max_tokens: values.maxTokens,
+        timeout_seconds: values.timeoutSeconds,
+        is_system_default: values.isSystemDefault || false,
+      }
+      if (values.apiKey) body.api_key = values.apiKey
+      if (values.authToken) body.auth_token = values.authToken
+
+      if (editingId) {
+        await api.put(`/ai-providers/${editingId}`, body)
+        message.success('更新成功')
+      } else {
+        await api.post('/ai-providers', body)
+        message.success('创建成功')
+      }
+      setModalOpen(false)
+      fetchConfigs()
+    } catch { /* */ }
+  }
+
+  const handleDelete = async (id) => {
+    try {
+      await api.del(`/ai-providers/${id}`)
+      message.success('已删除')
+      fetchConfigs()
+    } catch { /* */ }
+  }
+
+  const handleTest = async (id) => {
+    setTestingId(id)
+    try {
+      const res = await api.post(`/ai-providers/${id}/test`)
+      const d = res.data
+      if (d.success) {
+        message.success(`${d.message}  ·  ${d.latencyMs}ms`)
+      } else {
+        message.error(d.message)
+      }
+      fetchConfigs()
+    } catch { /* */ } finally { setTestingId(null) }
+  }
+
+  const handleTestNew = async () => {
+    try {
+      const values = await form.validateFields(['provider', 'baseUrl', 'model', 'apiKey', 'authToken'])
+      const body = {
+        provider: values.provider,
+        base_url: values.baseUrl,
+        model: values.model,
+      }
+      if (values.apiKey) body.api_key = values.apiKey
+      if (values.authToken) body.auth_token = values.authToken
+
+      message.loading({ content: '正在测试连接...', key: 'test-new' })
+      const res = await api.post('/ai-providers/test-connection', body)
+      const d = res.data
+      if (d.success) {
+        message.success({ content: `${d.message}  ·  ${d.latencyMs}ms`, key: 'test-new' })
+      } else {
+        message.error({ content: d.message, key: 'test-new' })
+      }
+    } catch { /* */ }
+  }
+
+  const statusTag = (record) => {
+    if (!record.status) return <Tag>未测试</Tag>
+    if (record.status === 'ok') return <Tag color="success" icon={<CheckCircleOutlined />}>正常</Tag>
+    return <Tag color="error" icon={<CloseCircleOutlined />}>{record.statusMessage || '异常'}</Tag>
+  }
+
+  const columns = [
+    {
+      title: '配置名称',
+      dataIndex: 'name',
+      render: (name, r) => (
+        <Space>
+          {r.isSystemDefault ? <StarFilled style={{ color: '#faad14' }} /> : null}
+          <Text strong>{name}</Text>
+          {r.isSystemDefault && <Tag color="gold" style={{ fontSize: 11 }}>系统默认</Tag>}
+        </Space>
+      ),
+    },
+    {
+      title: '服务商',
+      dataIndex: 'provider',
+      width: 180,
+      render: (p) => PROVIDERS.find(x => x.value === p)?.label || p,
+    },
+    {
+      title: '模型',
+      dataIndex: 'model',
+      width: 200,
+      render: (m) => <Tag>{m}</Tag>,
+    },
+    {
+      title: '状态',
+      width: 130,
+      render: (_, r) => statusTag(r),
+    },
+    {
+      title: '启用',
+      dataIndex: 'isEnabled',
+      width: 70,
+      render: (v) => v ? <Badge status="success" text="是" /> : <Badge status="default" text="否" />,
+    },
+    {
+      title: '操作',
+      width: 220,
+      render: (_, record) => (
+        <Space size={4}>
+          <Tooltip title="测试连接">
+            <Button
+              size="small"
+              icon={testingId === record.id ? <LoadingOutlined /> : <ThunderboltOutlined />}
+              loading={testingId === record.id}
+              onClick={() => handleTest(record.id)}
+            />
+          </Tooltip>
+          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>
+            编辑
+          </Button>
+          <Popconfirm title="确认删除此配置？" onConfirm={() => handleDelete(record.id)}>
+            <Button size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ]
+
+  return (
+    <div>
+      <div style={{ marginBottom: 12 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#1d2129' }}>
+          AI 服务配置
+        </h2>
+        <span style={{ fontSize: 13, color: '#86909c' }}>
+          管理 AI 服务连接，配置后可下发给项目使用。标星的配置为系统默认，新项目自动使用。
+        </span>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          新增 AI 服务配置
+        </Button>
+      </div>
+
+      <Table
+        rowKey="id"
+        columns={columns}
+        dataSource={configs}
+        loading={loading}
+        pagination={false}
+        size="middle"
+      />
+
+      <Modal
+        title={editingId ? '编辑 AI 服务配置' : '新增 AI 服务配置'}
+        open={modalOpen}
+        onCancel={() => setModalOpen(false)}
+        width={560}
+        footer={[
+          <Button key="test" icon={<ThunderboltOutlined />} onClick={handleTestNew}>
+            测试连接
+          </Button>,
+          <Button key="cancel" onClick={() => setModalOpen(false)}>
+            取消
+          </Button>,
+          <Button key="save" type="primary" onClick={handleSave}>
+            保存
+          </Button>,
+        ]}
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="name" label="配置名称" rules={[{ required: true, message: '请输入配置名称' }]}>
+            <Input placeholder="例如: 公司网关-Haiku" />
+          </Form.Item>
+
+          <Form.Item name="provider" label="服务商类型" rules={[{ required: true }]}>
+            <Select options={PROVIDERS} />
+          </Form.Item>
+
+          <Form.Item name="baseUrl" label="API 地址" rules={[{ required: true, message: '请输入 API 地址' }]}>
+            <Input placeholder="http://192.168.51.10:8080/v1" />
+          </Form.Item>
+
+          <Form.Item name="apiKey" label="API Key" extra="留空表示不修改">
+            <Input.Password placeholder={editingId ? '留空则不修改' : 'sk-...'} />
+          </Form.Item>
+
+          <Form.Item name="authToken" label="网关 Token (Bearer)" extra="留空表示不修改">
+            <Input.Password placeholder={editingId ? '留空则不修改' : 'gw-...'} />
+          </Form.Item>
+
+          <Form.Item name="model" label="模型名称" rules={[{ required: true, message: '请输入模型' }]}>
+            <Input placeholder="claude-haiku-4-5-20251001" />
+          </Form.Item>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <Form.Item name="temperature" label="温度">
+              <InputNumber min={0} max={2} step={0.1} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="maxTokens" label="最大 Token">
+              <InputNumber min={100} max={128000} step={100} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="timeoutSeconds" label="超时 (秒)">
+              <InputNumber min={10} max={600} style={{ width: '100%' }} />
+            </Form.Item>
+          </div>
+
+          <Form.Item name="isSystemDefault" valuePropName="checked" label="系统默认">
+            <Switch checkedChildren="默认" unCheckedChildren="否" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  )
+}

@@ -21,6 +21,7 @@ from app.api.api_collections import router as api_collections_router
 from app.api.llm_mock import router as llm_mock_router
 from app.api.api_mock import router as api_mock_router
 from app.api.ai import router as ai_router, config_router as ai_config_router
+from app.api.ai_config import router as ai_provider_router, project_router as project_ai_config_router
 from app.core.middleware import CamelCaseResponse, TokenRefreshMiddleware, TraceIdMiddleware
 
 app = FastAPI(
@@ -66,3 +67,5 @@ app.include_router(llm_mock_router)
 app.include_router(api_mock_router)
 app.include_router(ai_router)
 app.include_router(ai_config_router)
+app.include_router(ai_provider_router)
+app.include_router(project_ai_config_router)
