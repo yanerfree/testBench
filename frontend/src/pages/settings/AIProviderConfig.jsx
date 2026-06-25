@@ -256,9 +256,19 @@ export default function AIProviderConfig() {
           AI 服务配置
         </h2>
         <span style={{ fontSize: 13, color: '#86909c' }}>
-          管理 AI 服务连接，配置后可下发给项目使用。标星的配置为系统默认，新项目自动使用。
+          管理 AI 服务连接。创建配置后需要<b>分配给项目</b>，项目内才能使用 AI 功能。
         </span>
       </div>
+
+      <Card size="small" style={{ marginBottom: 12, background: '#f6f7f9' }}>
+        <div style={{ fontSize: 13, lineHeight: 2 }}>
+          <b>AI 服务为以下功能提供支持：</b>
+          <span style={{ marginLeft: 12 }}>AI 用例生成 · AI 脚本生成 · 质量评审 · 失败诊断</span>
+          <br/>
+          <b>配置步骤：</b>
+          <span style={{ marginLeft: 12 }}>① 新增 AI 服务 → ② 测试连接 → ③ 分配给项目 → ④ 项目内选择使用</span>
+        </div>
+      </Card>
 
       <div style={{ marginBottom: 12 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>

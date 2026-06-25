@@ -150,9 +150,27 @@ export default function ProjectAIConfig() {
           AI 配置
         </h2>
         <span style={{ fontSize: 13, color: '#86909c' }}>
-          选择或创建本项目使用的 AI 服务。系统配置由管理员统一管理，项目也可自建专属配置。
+          配置 AI 服务后，以下功能将在本项目中可用。不配置不影响手动测试管理。
         </span>
       </div>
+
+      {/* 功能说明 */}
+      <Card size="small" style={{ marginBottom: 16, background: '#f6f7f9' }}>
+        <div style={{ fontSize: 13, lineHeight: 2 }}>
+          <b>配置 AI 后可用的功能：</b>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 24px', marginTop: 4 }}>
+            <span>{hasActiveConfig ? '✅' : '❌'} <b>AI 用例生成</b> — 从接口定义自动生成多维度测试用例</span>
+            <span>{hasActiveConfig ? '✅' : '❌'} <b>AI 脚本生成</b> — 根据用例自动生成 pytest 测试脚本</span>
+            <span style={{ color: '#86909c' }}>{'⏳'} <b>质量评审</b> — AI 评审用例质量并打分（即将上线）</span>
+            <span style={{ color: '#86909c' }}>{'⏳'} <b>失败诊断</b> — AI 分析测试失败原因（即将上线）</span>
+          </div>
+          {!hasActiveConfig && (
+            <div style={{ marginTop: 8, color: '#fa8c16' }}>
+              {'⚠️'} 未配置 AI 服务时，以上功能不可用。手动管理用例、执行测试、API Mock 等功能不受影响。
+            </div>
+          )}
+        </div>
+      </Card>
 
       {/* 当前状态横幅 */}
       {hasActiveConfig ? (

@@ -1,24 +1,23 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
-  Drawer, Button, Input, Form, Select, Tag, Space, Steps, message,
-  Typography, Card, Badge, Tooltip, Collapse,
+  Drawer, Button, Input, Form, Tag, Space, Steps, message, Alert,
+  Typography, Card, Badge,
 } from 'antd'
 import {
-  RobotOutlined, SendOutlined, CloseOutlined, LoadingOutlined,
+  RobotOutlined, LoadingOutlined,
   CheckCircleOutlined, ExclamationCircleOutlined, ThunderboltOutlined,
-  FileTextOutlined, StopOutlined,
+  FileTextOutlined, StopOutlined, BulbOutlined,
 } from '@ant-design/icons'
 import { api } from '../utils/request'
 
-const { Text, Paragraph } = Typography
+const { Text } = Typography
 const { TextArea } = Input
 
 export default function AISidebar() {
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const [running, setRunning] = useState(false)
-  const [events, setEvents] = useState([])
   const [generatedCases, setGeneratedCases] = useState([])
   const [currentStep, setCurrentStep] = useState(-1)
   const [stepStatuses, setStepStatuses] = useState({})
@@ -42,7 +41,6 @@ export default function AISidebar() {
   }, [projectId])
 
   const resetState = () => {
-    setEvents([])
     setGeneratedCases([])
     setCurrentStep(-1)
     setStepStatuses({})
@@ -54,7 +52,7 @@ export default function AISidebar() {
     try {
       const values = await form.validateFields()
       if (!branchId) {
-        message.error('请先进入项目的用例管理页面')
+        message.error('无法获取项目分支，请刷新页面重试')
         return
       }
 
@@ -71,8 +69,6 @@ export default function AISidebar() {
 
       const { abort } = api.stream(url, body, {
         onChunk: (data) => {
-          setEvents(prev => [...prev, data])
-
           if (data.type === 'step_start') {
             setCurrentStep(data.step)
             setStepStatuses(prev => ({ ...prev, [data.step]: 'process' }))
@@ -109,39 +105,47 @@ export default function AISidebar() {
   if (!isProjectPage) return null
 
   const stepItems = [
-    { title: '上下文收集', status: stepStatuses[1] || 'wait' },
-    { title: '维度规划 + 生成', status: stepStatuses[2] || 'wait' },
-    { title: '解析入库', status: stepStatuses[3] || 'wait' },
+    { title: '上下文收集', description: '读取项目 API 和已有用例', status: stepStatuses[1] || 'wait' },
+    { title: '维度规划 + 生成', description: 'AI 多维度生成测试用例', status: stepStatuses[2] || 'wait' },
+    { title: '解析入库', description: '解析结果并写入系统', status: stepStatuses[3] || 'wait' },
   ]
+
+  const showForm = !running && !result && !error
 
   return (
     <>
-      <Tooltip title="AI 助手" placement="left">
-        <Button
-          type="primary"
-          shape="circle"
-          size="large"
-          icon={running ? <LoadingOutlined /> : <RobotOutlined />}
-          onClick={() => setOpen(true)}
-          style={{
-            position: 'fixed',
-            right: 24,
-            bottom: 24,
-            zIndex: 1000,
-            width: 48,
-            height: 48,
-            boxShadow: '0 4px 12px rgba(0,185,107,0.4)',
-          }}
-        />
-      </Tooltip>
+      {/* ── 浮动入口按钮：带文字标签 ── */}
+      <div
+        onClick={() => setOpen(true)}
+        style={{
+          position: 'fixed',
+          right: 24,
+          bottom: 24,
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          background: '#00b96b',
+          color: '#fff',
+          padding: '10px 18px 10px 14px',
+          borderRadius: 24,
+          cursor: 'pointer',
+          boxShadow: '0 4px 16px rgba(0,185,107,0.4)',
+          fontSize: 14,
+          fontWeight: 500,
+          transition: 'transform 0.2s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+      >
+        {running ? <LoadingOutlined style={{ fontSize: 18 }} /> : <RobotOutlined style={{ fontSize: 18 }} />}
+        <span>{running ? 'AI 生成中...' : 'AI 生成用例'}</span>
+        {generatedCases.length > 0 && !open && (
+          <Badge count={generatedCases.length} size="small" style={{ marginLeft: 4 }} />
+        )}
+      </div>
 
-      {generatedCases.length > 0 && !open && (
-        <Badge
-          count={generatedCases.length}
-          style={{ position: 'fixed', right: 20, bottom: 64, zIndex: 1001 }}
-        />
-      )}
-
+      {/* ── 侧边栏 Drawer ── */}
       <Drawer
         title={
           <Space>
@@ -151,7 +155,7 @@ export default function AISidebar() {
           </Space>
         }
         placement="right"
-        width={420}
+        width={440}
         open={open}
         onClose={() => setOpen(false)}
         extra={running && (
@@ -160,53 +164,83 @@ export default function AISidebar() {
           </Button>
         )}
       >
-        {/* 输入表单 */}
-        {!running && !result && (
-          <Form form={form} layout="vertical">
-            <Form.Item
-              name="interfaceInfo"
-              label="接口信息"
-              rules={[{ required: true, message: '请输入接口信息' }]}
-            >
-              <TextArea
-                rows={4}
-                placeholder={"POST /api/users 创建用户\n请求: {username, email, password}\n响应: 201 {id, username}"}
-              />
-            </Form.Item>
+        {/* ── 输入表单 ── */}
+        {showForm && (
+          <>
+            <Alert
+              type="info"
+              showIcon
+              icon={<BulbOutlined />}
+              message="使用说明"
+              description={
+                <div style={{ fontSize: 12, lineHeight: 1.8 }}>
+                  1. 填写要测试的 <b>接口信息</b>（URL、请求参数、响应格式）<br/>
+                  2. 填写 <b>业务规则</b>（每行一条，如"用户名唯一"）<br/>
+                  3. 指定 <b>模块名称</b>，生成的用例会归入该模块<br/>
+                  4. 点击"开始生成"，AI 会自动从 6 个维度生成测试用例并入库
+                </div>
+              }
+              style={{ marginBottom: 16 }}
+              closable
+            />
 
-            <Form.Item name="businessRules" label="业务规则（每行一条）">
-              <TextArea
-                rows={3}
-                placeholder={"用户名 3-20 字符\n邮箱必须唯一\n密码至少 8 位"}
-              />
-            </Form.Item>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <Form form={form} layout="vertical">
               <Form.Item
-                name="module"
-                label="模块"
-                rules={[{ required: true, message: '请输入模块名' }]}
+                name="interfaceInfo"
+                label="接口信息"
+                rules={[{ required: true, message: '请输入接口信息' }]}
+                tooltip="填写接口的 HTTP 方法、路径、请求参数和响应格式"
               >
-                <Input placeholder="用户管理" />
+                <TextArea
+                  rows={4}
+                  placeholder={"POST /api/users 创建用户\n请求: {username: string, email: string}\n响应: 201 {id, username, email}"}
+                />
               </Form.Item>
-              <Form.Item name="submodule" label="子模块">
-                <Input placeholder="注册（可选）" />
-              </Form.Item>
-            </div>
 
-            <Button
-              type="primary"
-              icon={<ThunderboltOutlined />}
-              onClick={handleRun}
-              block
-              size="large"
-            >
-              开始生成
-            </Button>
-          </Form>
+              <Form.Item
+                name="businessRules"
+                label="业务规则"
+                tooltip="每行写一条规则，AI 会针对每条规则生成对应的测试用例"
+              >
+                <TextArea
+                  rows={3}
+                  placeholder={"用户名 3-20 字符\n邮箱必须唯一\n密码至少 8 位含大小写"}
+                />
+              </Form.Item>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <Form.Item
+                  name="module"
+                  label="模块"
+                  rules={[{ required: true, message: '请输入模块名' }]}
+                  tooltip="用例会归入此模块文件夹"
+                >
+                  <Input placeholder="用户管理" />
+                </Form.Item>
+                <Form.Item name="submodule" label="子模块" tooltip="可选，进一步细分">
+                  <Input placeholder="注册" />
+                </Form.Item>
+              </div>
+
+              <Button
+                type="primary"
+                icon={<ThunderboltOutlined />}
+                onClick={handleRun}
+                block
+                size="large"
+              >
+                开始生成
+              </Button>
+
+              <div style={{ marginTop: 12, padding: '8px 12px', background: '#f9f9f9', borderRadius: 6, fontSize: 12, color: '#86909c' }}>
+                AI 会从 <b>正向流程、参数验证、业务规则、边界值、异常场景、安全</b> 六个维度自动生成测试用例，
+                并去重后直接入库到用例管理中。
+              </div>
+            </Form>
+          </>
         )}
 
-        {/* 执行进度 */}
+        {/* ── 执行进度 ── */}
         {(running || result || error) && (
           <div>
             <Steps
@@ -217,7 +251,6 @@ export default function AISidebar() {
               style={{ marginBottom: 16 }}
             />
 
-            {/* 生成的用例列表 */}
             {generatedCases.length > 0 && (
               <Card
                 size="small"
@@ -225,6 +258,7 @@ export default function AISidebar() {
                   <Space>
                     <FileTextOutlined />
                     <span>已生成 {generatedCases.length} 条用例</span>
+                    {running && <Text type="secondary" style={{ fontSize: 11 }}>（实时更新）</Text>}
                   </Space>
                 }
                 style={{ marginBottom: 16 }}
@@ -246,7 +280,6 @@ export default function AISidebar() {
               </Card>
             )}
 
-            {/* 最终结果 */}
             {result && (
               <Card size="small" style={{ borderColor: '#52c41a', background: '#f6ffed' }}>
                 <Space direction="vertical" size={4}>
@@ -261,6 +294,9 @@ export default function AISidebar() {
                       ))}
                     </Space>
                   )}
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    刷新用例列表即可看到新生成的用例
+                  </Text>
                 </Space>
                 <div style={{ marginTop: 12 }}>
                   <Button type="primary" ghost onClick={resetState} block>
@@ -270,7 +306,6 @@ export default function AISidebar() {
               </Card>
             )}
 
-            {/* 错误 */}
             {error && (
               <Card size="small" style={{ borderColor: '#ff4d4f', background: '#fff2f0' }}>
                 <Space direction="vertical" size={4}>
