@@ -13,7 +13,7 @@ mcp = FastMCP(
 
 
 def _register(func, name: str, description: str):
-    """注册一个 MCP 工具。自动包装 session 获取。"""
+    """注册一个 MCP 工具。mock 模式返回模拟数据，否则查真实 DB。"""
     import functools
     import inspect
 
@@ -23,6 +23,10 @@ def _register(func, name: str, description: str):
 
     @functools.wraps(func)
     async def wrapper(**kwargs):
+        from app.api.mcp_mock import get_mock_response
+        mock = get_mock_response(name)
+        if mock is not None:
+            return mock
         if has_session:
             async with get_mcp_session() as session:
                 return await func(session=session, **kwargs)

@@ -24,6 +24,7 @@ import ChannelConfig from './pages/settings/ChannelConfig'
 import ApiManagement from './pages/apis/ApiManagement'
 import LlmMock from './pages/llm-mock/LlmMock'
 import ApiMock from './pages/api-mock/ApiMock'
+import McpMock from './pages/mcp-mock/McpMock'
 import AIProviderConfig from './pages/settings/AIProviderConfig'
 import ProjectAIConfig from './pages/settings/ProjectAIConfig'
 import AICapabilities from './pages/settings/AICapabilities'
@@ -105,6 +106,7 @@ function AppLayout() {
     { type: 'divider' },
     { key: '/tools/llm-mock', icon: <RobotOutlined />, label: 'LLM Mock' },
     { key: '/tools/api-mock', icon: <CloudServerOutlined />, label: 'API Mock' },
+    { key: '/tools/mcp-mock', icon: <ApiOutlined />, label: 'MCP Mock' },
   ]
 
   const handleLogout = async () => {
@@ -229,6 +231,7 @@ function AppLayout() {
             <Route path="/settings/logs" element={<AuditLogs />} />
             <Route path="/tools/llm-mock" element={<LlmMock />} />
             <Route path="/tools/api-mock" element={<ApiMock />} />
+            <Route path="/tools/mcp-mock" element={<McpMock />} />
           </Routes>
         </Content>
       </Layout>
