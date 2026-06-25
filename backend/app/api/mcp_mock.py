@@ -1,127 +1,168 @@
-"""MCP Mock — 模拟 MCP 工具返回数据，不查真实数据库"""
+"""MCP Mock 服务 — 可配置每个工具的响应（成功/失败/自定义），供外部 MCP 客户端测试用"""
 from __future__ import annotations
 
+import copy
 import json
 import logging
-from pathlib import Path
 
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/mcp-mock", tags=["mcp-mock"])
 
-_CONFIG_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "mcp-mock-config.json"
 
-MOCK_DATA = {
+# ── 默认模拟数据 ──────────────────────────────────
+
+DEFAULT_SUCCESS = {
     "tb_list_cases": {
         "cases": [
-            {"id": "mock-001", "caseCode": "TC-DEMO-00001", "title": "用户登录-正常流程", "type": "api", "priority": "P0", "folderId": None, "preconditions": "用户已注册", "steps": [{"action": "POST /api/auth/login {username, password}", "expected": "返回 200 + token"}], "expectedResult": "登录成功，返回 JWT", "automationStatus": "pending", "source": "mock"},
-            {"id": "mock-002", "caseCode": "TC-DEMO-00002", "title": "用户登录-密码错误", "type": "api", "priority": "P1", "folderId": None, "preconditions": "用户已注册", "steps": [{"action": "POST /api/auth/login {username, wrongPassword}", "expected": "返回 401"}], "expectedResult": "登录失败，返回错误提示", "automationStatus": "pending", "source": "mock"},
+            {"id": "mock-001", "caseCode": "TC-DEMO-00001", "title": "用户登录-正常流程", "type": "api", "priority": "P0", "preconditions": "用户已注册", "steps": [{"action": "POST /api/auth/login {username, password}", "expected": "返回 200 + token"}], "expectedResult": "登录成功"},
+            {"id": "mock-002", "caseCode": "TC-DEMO-00002", "title": "用户登录-密码错误", "type": "api", "priority": "P1", "preconditions": "用户已注册", "steps": [{"action": "POST /api/auth/login {username, wrong}", "expected": "返回 401"}], "expectedResult": "登录失败"},
         ],
         "total": 2, "page": 1, "pageSize": 50,
     },
-    "tb_get_case": {
-        "id": "mock-001", "caseCode": "TC-DEMO-00001", "title": "用户登录-正常流程", "type": "api", "priority": "P0",
-        "preconditions": "用户已注册", "steps": [{"action": "POST /api/auth/login", "expected": "返回 200"}],
-        "expectedResult": "登录成功", "automationStatus": "pending", "source": "mock",
-    },
-    "tb_create_case": {
-        "id": "mock-new", "caseCode": "TC-MOCK-00001", "title": "(mock) 新建的用例", "type": "api", "priority": "P2",
-        "source": "mock",
-    },
+    "tb_get_case": {"id": "mock-001", "caseCode": "TC-DEMO-00001", "title": "用户登录-正常流程", "type": "api", "priority": "P0", "steps": [{"action": "POST /api/auth/login", "expected": "返回 200"}]},
+    "tb_create_case": {"id": "mock-new", "caseCode": "TC-MOCK-00001", "title": "(mock) 新建的用例", "type": "api", "priority": "P2"},
     "tb_get_folder_tree": [
-        {"id": "folder-1", "name": "用户管理", "path": "/用户管理", "depth": 1, "caseCount": 5, "children": [
-            {"id": "folder-2", "name": "登录", "path": "/用户管理/登录", "depth": 2, "caseCount": 3, "children": []},
-        ]},
-        {"id": "folder-3", "name": "项目管理", "path": "/项目管理", "depth": 1, "caseCount": 8, "children": []},
+        {"id": "folder-1", "name": "用户管理", "depth": 1, "caseCount": 5, "children": [{"id": "folder-2", "name": "登录", "depth": 2, "caseCount": 3, "children": []}]},
+        {"id": "folder-3", "name": "项目管理", "depth": 1, "caseCount": 8, "children": []},
     ],
     "tb_list_api_tree": [
-        {"id": "api-1", "type": "folder", "name": "用户模块", "method": None, "url": None, "parentId": None},
-        {"id": "api-2", "type": "endpoint", "name": "用户登录", "method": "POST", "url": "/api/auth/login", "parentId": "api-1", "headers": {"Content-Type": "application/json"}, "body": {"username": "string", "password": "string"}},
-        {"id": "api-3", "type": "endpoint", "name": "获取用户列表", "method": "GET", "url": "/api/users", "parentId": "api-1"},
+        {"id": "api-1", "type": "folder", "name": "用户模块", "method": None, "url": None},
+        {"id": "api-2", "type": "endpoint", "name": "用户登录", "method": "POST", "url": "/api/auth/login", "headers": {"Content-Type": "application/json"}, "body": {"username": "string", "password": "string"}},
+        {"id": "api-3", "type": "endpoint", "name": "获取用户列表", "method": "GET", "url": "/api/users"},
     ],
-    "tb_get_api_node": {
-        "id": "api-2", "type": "endpoint", "name": "用户登录", "method": "POST", "url": "/api/auth/login",
-        "headers": {"Content-Type": "application/json"},
-        "body": {"username": "string", "password": "string"},
-        "description": "用户登录接口，返回 JWT token",
-    },
-    "tb_list_environments": [
-        {"id": "env-1", "name": "development", "description": "开发环境"},
-        {"id": "env-2", "name": "staging", "description": "预发布环境"},
-        {"id": "env-3", "name": "production", "description": "生产环境"},
-    ],
-    "tb_get_merged_variables": {
-        "BASE_URL": "http://localhost:8000",
-        "AUTH_TOKEN": "mock-jwt-token-xxx",
-        "DB_HOST": "localhost",
-    },
+    "tb_get_api_node": {"id": "api-2", "type": "endpoint", "name": "用户登录", "method": "POST", "url": "/api/auth/login", "headers": {"Content-Type": "application/json"}, "body": {"username": "string", "password": "string"}},
+    "tb_list_environments": [{"id": "env-1", "name": "development", "description": "开发环境"}, {"id": "env-2", "name": "staging", "description": "预发布环境"}, {"id": "env-3", "name": "production", "description": "生产环境"}],
+    "tb_get_merged_variables": {"BASE_URL": "http://localhost:8000", "AUTH_TOKEN": "mock-jwt-xxx", "DB_HOST": "localhost"},
 }
 
-_enabled = False
+DEFAULT_ERROR = {"error": "Mock error: tool call failed", "code": "MOCK_ERROR"}
+
+TOOL_DESCRIPTIONS = {
+    "tb_list_cases": "列出测试用例",
+    "tb_get_case": "获取用例详情",
+    "tb_create_case": "创建测试用例",
+    "tb_get_folder_tree": "获取文件夹树",
+    "tb_list_api_tree": "获取 API 接口树",
+    "tb_get_api_node": "获取 API 节点详情",
+    "tb_list_environments": "列出测试环境",
+    "tb_get_merged_variables": "获取合并变量",
+}
+
+
+# ── 运行时状态（内存） ──────────────────────────────
+
+class ToolMockConfig:
+    def __init__(self):
+        self.enabled = False
+        self.tools: dict[str, dict] = {}
+        for name in DEFAULT_SUCCESS:
+            self.tools[name] = {
+                "mode": "success",  # success | error | custom
+                "customData": None,
+                "errorMessage": "Mock error: tool call failed",
+                "delay": 0,
+            }
+
+_config = ToolMockConfig()
 
 
 def is_enabled() -> bool:
-    return _enabled
+    return _config.enabled
 
 
-def get_mock_response(tool_name: str) -> dict | list | None:
-    if not _enabled:
+def get_mock_response(tool_name: str):
+    """MCP 工具 wrapper 调用此函数。返回 None 表示不 mock。"""
+    if not _config.enabled:
         return None
-    return MOCK_DATA.get(tool_name)
+    tool_cfg = _config.tools.get(tool_name)
+    if not tool_cfg:
+        return None
+
+    mode = tool_cfg["mode"]
+    if mode == "success":
+        return DEFAULT_SUCCESS.get(tool_name, {"result": "ok"})
+    elif mode == "error":
+        return {"error": tool_cfg.get("errorMessage", "Mock error"), "code": "MOCK_ERROR"}
+    elif mode == "custom":
+        return tool_cfg.get("customData") or DEFAULT_SUCCESS.get(tool_name)
+    return None
 
 
-class MockConfig(BaseModel):
+# ── API ──────────────────────────────────────────
+
+class GlobalConfig(BaseModel):
     enabled: bool
+
+
+class ToolConfig(BaseModel):
+    mode: str = Field(..., pattern="^(success|error|custom)$")
+    custom_data: dict | list | None = None
+    error_message: str | None = None
 
 
 @router.get("/config")
 async def get_config():
-    return {"data": {"enabled": _enabled, "tools": list(MOCK_DATA.keys())}}
+    tools = []
+    for name, cfg in _config.tools.items():
+        tools.append({
+            "name": name,
+            "description": TOOL_DESCRIPTIONS.get(name, ""),
+            "mode": cfg["mode"],
+            "errorMessage": cfg.get("errorMessage", ""),
+            "hasCustomData": cfg.get("customData") is not None,
+        })
+    return {"data": {"enabled": _config.enabled, "tools": tools}}
 
 
 @router.put("/config")
-async def update_config(body: MockConfig):
-    global _enabled
-    _enabled = body.enabled
-    logger.info("MCP Mock %s", "enabled" if _enabled else "disabled")
-    return {"data": {"enabled": _enabled}}
+async def update_global_config(body: GlobalConfig):
+    _config.enabled = body.enabled
+    logger.info("MCP Mock %s", "enabled" if body.enabled else "disabled")
+    return {"data": {"enabled": _config.enabled}}
+
+
+@router.put("/tools/{tool_name}")
+async def update_tool_config(tool_name: str, body: ToolConfig):
+    if tool_name not in _config.tools:
+        return {"error": f"工具 {tool_name} 不存在"}
+    _config.tools[tool_name]["mode"] = body.mode
+    if body.custom_data is not None:
+        _config.tools[tool_name]["customData"] = body.custom_data
+    if body.error_message is not None:
+        _config.tools[tool_name]["errorMessage"] = body.error_message
+    return {"data": {"name": tool_name, "mode": body.mode}}
 
 
 @router.get("/preview/{tool_name}")
-async def preview_mock_data(tool_name: str):
-    data = MOCK_DATA.get(tool_name)
-    if data is None:
-        return {"data": None, "error": f"工具 {tool_name} 无模拟数据"}
-    return {"data": data}
-
-
-class ToolCallRequest(BaseModel):
-    tool: str
-    arguments: dict = {}
+async def preview_tool_response(tool_name: str):
+    if tool_name not in _config.tools:
+        return {"data": None, "error": f"工具 {tool_name} 不存在"}
+    response = get_mock_response(tool_name) if _config.enabled else DEFAULT_SUCCESS.get(tool_name)
+    mode = _config.tools[tool_name]["mode"]
+    return {"data": response, "mode": mode, "enabled": _config.enabled}
 
 
 @router.post("/call")
-async def call_tool(body: ToolCallRequest):
-    """调用 MCP 工具 — mock 开启时返回模拟数据，关闭时查真实 DB。"""
-    tool_name = body.tool
+async def call_tool(body: dict):
+    """调用 MCP 工具 — mock 开启时返回配置的响应，关闭时查真实 DB。"""
+    tool_name = body.get("tool", "")
+    arguments = body.get("arguments", {})
 
-    if tool_name not in MOCK_DATA:
-        return {"data": None, "error": f"工具 {tool_name} 不存在", "available": list(MOCK_DATA.keys())}
+    if tool_name not in TOOL_DESCRIPTIONS:
+        return {"data": None, "error": f"工具 {tool_name} 不存在", "available": list(TOOL_DESCRIPTIONS.keys())}
 
-    if _enabled:
-        return {
-            "data": MOCK_DATA[tool_name],
-            "source": "mock",
-            "tool": tool_name,
-            "arguments": body.arguments,
-        }
+    if _config.enabled:
+        response = get_mock_response(tool_name)
+        mode = _config.tools[tool_name]["mode"]
+        return {"data": response, "source": "mock", "mode": mode, "tool": tool_name}
 
-    # 真实调用
     from app.mcp.tools import test_cases, api_endpoints, environments
     from app.mcp.deps import get_mcp_session
+    import inspect
 
     TOOL_MAP = {
         "tb_list_cases": test_cases.list_cases,
@@ -139,45 +180,12 @@ async def call_tool(body: ToolCallRequest):
         return {"data": None, "error": f"工具 {tool_name} 无法直接调用"}
 
     try:
-        import inspect
         sig = inspect.signature(func)
-        has_session = "session" in sig.parameters
-
-        if has_session:
+        if "session" in sig.parameters:
             async with get_mcp_session() as session:
-                result = await func(session=session, **body.arguments)
+                result = await func(session=session, **arguments)
         else:
-            result = await func(**body.arguments)
-
-        return {"data": result, "source": "real", "tool": tool_name, "arguments": body.arguments}
+            result = await func(**arguments)
+        return {"data": result, "source": "real", "tool": tool_name}
     except Exception as e:
         return {"data": None, "error": str(e)[:300], "tool": tool_name}
-
-
-@router.get("/tools")
-async def list_available_tools():
-    """列出所有可调用的 MCP 工具及其参数。"""
-    import inspect
-    from app.mcp.tools import test_cases, api_endpoints, environments
-
-    TOOL_MAP = {
-        "tb_list_cases": (test_cases.list_cases, "列出分支下的测试用例"),
-        "tb_get_case": (test_cases.get_case, "获取单条用例详情"),
-        "tb_create_case": (test_cases.create_case, "创建测试用例"),
-        "tb_get_folder_tree": (test_cases.get_folder_tree, "获取文件夹树"),
-        "tb_list_api_tree": (api_endpoints.list_api_tree, "获取 API 接口树"),
-        "tb_get_api_node": (api_endpoints.get_api_node, "获取 API 节点详情"),
-        "tb_list_environments": (environments.list_environments, "列出测试环境"),
-        "tb_get_merged_variables": (environments.get_merged_variables, "获取合并变量"),
-    }
-
-    tools = []
-    for name, (func, desc) in TOOL_MAP.items():
-        sig = inspect.signature(func)
-        params = {
-            k: str(v.annotation.__name__) if v.annotation != inspect.Parameter.empty else "any"
-            for k, v in sig.parameters.items() if k != "session"
-        }
-        tools.append({"name": name, "description": desc, "params": params})
-
-    return {"data": tools, "mock_enabled": _enabled}
