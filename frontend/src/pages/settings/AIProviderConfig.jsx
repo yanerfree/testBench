@@ -119,7 +119,24 @@ export default function AIProviderConfig() {
     } catch { /* */ } finally { setTestingId(null) }
   }
 
-  const handleTestNew = async () => {
+  const handleTestInModal = async () => {
+    if (editingId) {
+      // 编辑已有配置：用服务端已保存的凭据直接测试
+      message.loading({ content: '正在测试连接...', key: 'test-modal' })
+      try {
+        const res = await api.post(`/ai-providers/${editingId}/test`)
+        const d = res.data
+        if (d.success) {
+          message.success({ content: `${d.message}  ·  ${d.latencyMs}ms`, key: 'test-modal' })
+        } else {
+          message.error({ content: d.message, key: 'test-modal' })
+        }
+        fetchConfigs()
+      } catch { /* */ }
+      return
+    }
+
+    // 新建：用表单值直接测试
     try {
       const values = await form.validateFields(['provider', 'baseUrl', 'model', 'apiKey', 'authToken'])
       const body = {
@@ -130,13 +147,13 @@ export default function AIProviderConfig() {
       if (values.apiKey) body.api_key = values.apiKey
       if (values.authToken) body.auth_token = values.authToken
 
-      message.loading({ content: '正在测试连接...', key: 'test-new' })
+      message.loading({ content: '正在测试连接...', key: 'test-modal' })
       const res = await api.post('/ai-providers/test-connection', body)
       const d = res.data
       if (d.success) {
-        message.success({ content: `${d.message}  ·  ${d.latencyMs}ms`, key: 'test-new' })
+        message.success({ content: `${d.message}  ·  ${d.latencyMs}ms`, key: 'test-modal' })
       } else {
-        message.error({ content: d.message, key: 'test-new' })
+        message.error({ content: d.message, key: 'test-modal' })
       }
     } catch { /* */ }
   }
@@ -238,7 +255,7 @@ export default function AIProviderConfig() {
         onCancel={() => setModalOpen(false)}
         width={560}
         footer={[
-          <Button key="test" icon={<ThunderboltOutlined />} onClick={handleTestNew}>
+          <Button key="test" icon={<ThunderboltOutlined />} onClick={handleTestInModal}>
             测试连接
           </Button>,
           <Button key="cancel" onClick={() => setModalOpen(false)}>

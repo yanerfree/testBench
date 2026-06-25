@@ -386,3 +386,91 @@ async def select_system_config_for_project(
 
     await session.commit()
     return {"data": {"selected": True, "providerConfigId": str(provider_config_id)}}
+
+
+class ProjectCustomConfigCreate(BaseModel):
+    name: str = Field(..., max_length=100)
+    provider: str = Field(default="openai_compatible", max_length=50)
+    base_url: str = Field(..., max_length=500)
+    api_key: str | None = None
+    auth_token: str | None = None
+    model: str = Field(..., max_length=100)
+    temperature: float = 0.3
+    max_tokens: int = 4096
+    timeout_seconds: int = 120
+
+
+@project_router.post("/custom")
+async def create_project_custom_config(
+    project_id: uuid.UUID,
+    body: ProjectCustomConfigCreate,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    await session.execute(
+        update(ProjectAIConfig).where(ProjectAIConfig.project_id == project_id).values(is_active=False)
+    )
+
+    config = ProjectAIConfig(
+        project_id=project_id,
+        name=body.name,
+        provider=body.provider,
+        base_url=body.base_url,
+        api_key_encrypted=body.api_key or None,
+        auth_token_encrypted=body.auth_token or None,
+        model=body.model,
+        temperature=body.temperature,
+        max_tokens=body.max_tokens,
+        timeout_seconds=body.timeout_seconds,
+        is_active=True,
+    )
+    session.add(config)
+    await session.commit()
+    await session.refresh(config)
+    return {
+        "data": {
+            "id": str(config.id),
+            "name": config.name,
+            "provider": config.provider,
+            "model": config.model,
+            "isActive": config.is_active,
+        }
+    }
+
+
+@project_router.post("/custom/{config_id}/test")
+async def test_project_custom_config(
+    project_id: uuid.UUID,
+    config_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    config = await session.get(ProjectAIConfig, config_id)
+    if not config or config.project_id != project_id:
+        raise NotFoundError(code="CONFIG_NOT_FOUND", message="配置不存在")
+    if not config.base_url:
+        raise AppError(code="NO_URL", message="此配置关联系统配置，请在系统设置中测试", status_code=400)
+
+    result = await _do_test_connection(
+        provider=config.provider or "openai_compatible",
+        base_url=config.base_url,
+        api_key=config.api_key_encrypted,
+        auth_token=config.auth_token_encrypted,
+        model=config.model,
+    )
+    return {"data": result}
+
+
+@project_router.delete("/custom/{config_id}")
+async def delete_project_custom_config(
+    project_id: uuid.UUID,
+    config_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    config = await session.get(ProjectAIConfig, config_id)
+    if not config or config.project_id != project_id:
+        raise NotFoundError(code="CONFIG_NOT_FOUND", message="配置不存在")
+    await session.delete(config)
+    await session.commit()
+    return {"data": {"deleted": True}}
