@@ -333,7 +333,7 @@ export default function TestForgeModal({ projectId, branchId, folders, open, onC
               <div style={{ fontSize: 12, lineHeight: 2 }}>
                 此模式生成 Task JSON 文件，可通过以下方式使用：<br/>
                 <b>方式一：</b>在 Claude Code 终端执行 <code>/tf-forge</code>，AI 通过 MCP 协议读取接口定义并生成用例<br/>
-                <b>方式二：</b>其他 MCP 客户端连接 <code>http://localhost:8000/mcp/</code> 调用 testBench 工具
+                <b>方式二：</b>其他 MCP 客户端连接 <code>{`http://${window.location.hostname}:8000/mcp/`}</code> 调用 testBench 工具
               </div>
             }
             style={{ marginBottom: 16 }}
