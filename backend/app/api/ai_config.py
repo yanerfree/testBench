@@ -199,7 +199,14 @@ async def delete_provider_config(
     config = await session.get(AIProviderConfig, config_id)
     if not config:
         raise NotFoundError(code="CONFIG_NOT_FOUND", message="AI 配置不存在")
-    await session.delete(config)
+
+    from sqlalchemy import delete as sa_delete
+    await session.execute(
+        sa_delete(ProjectAIConfig).where(ProjectAIConfig.provider_config_id == config_id)
+    )
+    await session.execute(
+        sa_delete(AIProviderConfig).where(AIProviderConfig.id == config_id)
+    )
     await session.commit()
     return {"data": {"deleted": True}}
 

@@ -161,13 +161,19 @@ export default function AIProviderConfig() {
   const statusTag = (record) => {
     if (!record.status) return <Tag>未测试</Tag>
     if (record.status === 'ok') return <Tag color="success" icon={<CheckCircleOutlined />}>正常</Tag>
-    return <Tag color="error" icon={<CloseCircleOutlined />}>{record.statusMessage || '异常'}</Tag>
+    const msg = record.statusMessage || '异常'
+    return (
+      <Tooltip title={msg}>
+        <Tag color="error" icon={<CloseCircleOutlined />}>异常</Tag>
+      </Tooltip>
+    )
   }
 
   const columns = [
     {
       title: '配置名称',
       dataIndex: 'name',
+      width: 240,
       render: (name, r) => (
         <Space>
           {r.isSystemDefault ? <StarFilled style={{ color: '#faad14' }} /> : null}
@@ -179,29 +185,29 @@ export default function AIProviderConfig() {
     {
       title: '服务商',
       dataIndex: 'provider',
-      width: 180,
+      width: 160,
       render: (p) => PROVIDERS.find(x => x.value === p)?.label || p,
     },
     {
       title: '模型',
       dataIndex: 'model',
-      width: 200,
+      width: 220,
       render: (m) => <Tag>{m}</Tag>,
     },
     {
       title: '状态',
-      width: 130,
+      width: 100,
       render: (_, r) => statusTag(r),
     },
     {
       title: '启用',
       dataIndex: 'isEnabled',
-      width: 70,
+      width: 60,
       render: (v) => v ? <Badge status="success" text="是" /> : <Badge status="default" text="否" />,
     },
     {
       title: '操作',
-      width: 220,
+      width: 200,
       render: (_, record) => (
         <Space size={4}>
           <Tooltip title="测试连接">
