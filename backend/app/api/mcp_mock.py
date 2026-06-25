@@ -63,8 +63,8 @@ class ToolMockConfig:
             self.tools[name] = {
                 "mode": "success",  # success | error | custom
                 "customData": None,
+                "customIsError": False,
                 "errorMessage": "Mock error: tool call failed",
-                "delay": 0,
             }
 
 _config = ToolMockConfig()
@@ -75,7 +75,7 @@ def is_enabled() -> bool:
 
 
 def get_mock_response(tool_name: str):
-    """MCP 工具 wrapper 调用此函数。返回 None 表示不 mock。"""
+    """MCP 工具 wrapper 调用。返回 None 表示不 mock，返回带 error+code 的 dict 表示错误。"""
     if not _config.enabled:
         return None
     tool_cfg = _config.tools.get(tool_name)
@@ -88,7 +88,11 @@ def get_mock_response(tool_name: str):
     elif mode == "error":
         return {"error": tool_cfg.get("errorMessage", "Mock error"), "code": "MOCK_ERROR"}
     elif mode == "custom":
-        return tool_cfg.get("customData") or DEFAULT_SUCCESS.get(tool_name)
+        data = tool_cfg.get("customData") or DEFAULT_SUCCESS.get(tool_name)
+        if tool_cfg.get("customIsError"):
+            msg = data.get("error", str(data)) if isinstance(data, dict) else str(data)
+            return {"error": msg, "code": "MOCK_CUSTOM_ERROR"}
+        return data
     return None
 
 
@@ -101,6 +105,7 @@ class GlobalConfig(BaseModel):
 class ToolConfig(BaseModel):
     mode: str = Field(..., pattern="^(success|error|custom)$")
     custom_data: dict | list | None = None
+    custom_is_error: bool | None = None
     error_message: str | None = None
 
 
@@ -132,6 +137,8 @@ async def update_tool_config(tool_name: str, body: ToolConfig):
     _config.tools[tool_name]["mode"] = body.mode
     if body.custom_data is not None:
         _config.tools[tool_name]["customData"] = body.custom_data
+    if body.custom_is_error is not None:
+        _config.tools[tool_name]["customIsError"] = body.custom_is_error
     if body.error_message is not None:
         _config.tools[tool_name]["errorMessage"] = body.error_message
     return {"data": {"name": tool_name, "mode": body.mode}}
