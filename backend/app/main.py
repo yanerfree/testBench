@@ -22,6 +22,7 @@ from app.api.llm_mock import router as llm_mock_router
 from app.api.api_mock import router as api_mock_router
 from app.api.ai import router as ai_router, config_router as ai_config_router
 from app.api.ai_config import router as ai_provider_router, project_router as project_ai_config_router
+from app.api.skill_run import router as skill_run_router
 from app.core.middleware import CamelCaseResponse, TokenRefreshMiddleware, TraceIdMiddleware
 
 # --- MCP Server ---
@@ -80,6 +81,7 @@ app.include_router(ai_router)
 app.include_router(ai_config_router)
 app.include_router(ai_provider_router)
 app.include_router(project_ai_config_router)
+app.include_router(skill_run_router)
 
 # --- MCP Server 挂载 ---
 app.mount("/mcp", _mcp_app)
