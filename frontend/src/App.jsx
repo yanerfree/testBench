@@ -70,8 +70,15 @@ function AppLayout() {
     { key: `/projects/${projectId}/plans`, icon: <UnorderedListOutlined />, label: '测试计划' },
     { key: `/projects/${projectId}/reports`, icon: <BarChartOutlined />, label: '测试报告' },
     { type: 'divider' },
-    { key: `/projects/${projectId}/settings/ai`, icon: <RobotOutlined />, label: 'AI 配置' },
-    { key: `/projects/${projectId}/settings/ai-capabilities`, icon: <ThunderboltOutlined />, label: 'AI 能力' },
+    {
+      key: 'ai-group',
+      icon: <RobotOutlined />,
+      label: 'AI 智能',
+      children: [
+        { key: `/projects/${projectId}/settings/ai-capabilities`, icon: <ThunderboltOutlined />, label: '能力总览' },
+        { key: `/projects/${projectId}/settings/ai`, icon: <SettingOutlined />, label: 'AI 配置' },
+      ],
+    },
     { key: `/projects/${projectId}/logs`, icon: <FileSearchOutlined />, label: '操作日志' },
   ] : [
     // ---- 系统级菜单 ----
@@ -79,7 +86,14 @@ function AppLayout() {
     { type: 'divider' },
     { key: '/settings/env', icon: <SettingOutlined />, label: '环境配置' },
     { key: '/settings/channels', icon: <BellOutlined />, label: '通知渠道' },
-    { key: '/settings/ai-providers', icon: <RobotOutlined />, label: 'AI 服务配置' },
+    {
+      key: 'system-ai-group',
+      icon: <RobotOutlined />,
+      label: 'AI 管理',
+      children: [
+        { key: '/settings/ai-providers', icon: <SettingOutlined />, label: 'AI 服务配置' },
+      ],
+    },
     ...(user.role === 'admin' ? [
       { key: '/settings/users', icon: <UserOutlined />, label: '用户管理' },
     ] : []),
