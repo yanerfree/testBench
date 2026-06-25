@@ -5,7 +5,7 @@ import {
   FolderOutlined, FileTextOutlined, UnorderedListOutlined, BarChartOutlined,
   SettingOutlined, UserOutlined, FileSearchOutlined, ApiOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined, RobotOutlined,
-  CloudServerOutlined,
+  CloudServerOutlined, ThunderboltOutlined,
 } from '@ant-design/icons'
 import { api } from './utils/request'
 import ProjectList from './pages/projects/ProjectList'
@@ -26,6 +26,7 @@ import LlmMock from './pages/llm-mock/LlmMock'
 import ApiMock from './pages/api-mock/ApiMock'
 import AIProviderConfig from './pages/settings/AIProviderConfig'
 import ProjectAIConfig from './pages/settings/ProjectAIConfig'
+import AICapabilities from './pages/settings/AICapabilities'
 
 const { Header, Sider, Content } = Layout
 
@@ -70,6 +71,7 @@ function AppLayout() {
     { key: `/projects/${projectId}/reports`, icon: <BarChartOutlined />, label: '测试报告' },
     { type: 'divider' },
     { key: `/projects/${projectId}/settings/ai`, icon: <RobotOutlined />, label: 'AI 配置' },
+    { key: `/projects/${projectId}/settings/ai-capabilities`, icon: <ThunderboltOutlined />, label: 'AI 能力' },
     { key: `/projects/${projectId}/logs`, icon: <FileSearchOutlined />, label: '操作日志' },
   ] : [
     // ---- 系统级菜单 ----
@@ -199,6 +201,7 @@ function AppLayout() {
             <Route path="/projects/:projectId/reports/:reportId" element={<ReportDetail />} />
             <Route path="/projects/:projectId/logs" element={<AuditLogs />} />
             <Route path="/projects/:projectId/settings/ai" element={<ProjectAIConfig />} />
+            <Route path="/projects/:projectId/settings/ai-capabilities" element={<AICapabilities />} />
             <Route path="/settings/env" element={<EnvConfig />} />
             <Route path="/settings/channels" element={<ChannelConfig />} />
             <Route path="/settings/ai-providers" element={<AIProviderConfig />} />
