@@ -592,7 +592,7 @@ export default function CaseManagement() {
                 </Radio.Group>
               </Space>
               <Space>
-                <Button icon={<RobotOutlined />} size="small" onClick={() => setTestforgeOpen(true)}>AI 生成</Button>
+                <Button type="primary" ghost icon={<RobotOutlined />} onClick={() => setTestforgeOpen(true)}>AI 生成用例</Button>
                 <Button icon={<UploadOutlined />} size="small" onClick={() => setImportOpen(true)}>导入</Button>
                 <Button icon={<DownloadOutlined />} size="small" onClick={handleExport} loading={exporting}>导出</Button>
                 <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => {
@@ -835,6 +835,7 @@ export default function CaseManagement() {
         folders={folderTree}
         open={testforgeOpen}
         onClose={() => setTestforgeOpen(false)}
+        onImported={() => fetchCases()}
       />
 
       <AIScriptModal

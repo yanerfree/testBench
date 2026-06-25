@@ -26,7 +26,6 @@ import LlmMock from './pages/llm-mock/LlmMock'
 import ApiMock from './pages/api-mock/ApiMock'
 import AIProviderConfig from './pages/settings/AIProviderConfig'
 import ProjectAIConfig from './pages/settings/ProjectAIConfig'
-import AISidebar from './components/AISidebar'
 
 const { Header, Sider, Content } = Layout
 
@@ -210,8 +209,6 @@ function AppLayout() {
           </Routes>
         </Content>
       </Layout>
-
-      <AISidebar />
 
       <Modal title="修改密码" open={pwdOpen} onOk={handleChangePassword} onCancel={() => setPwdOpen(false)}
         okText="确认修改" cancelText="取消" confirmLoading={pwdLoading} width={400}>
