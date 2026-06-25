@@ -23,10 +23,12 @@ def _register(func, name: str, description: str):
 
     @functools.wraps(func)
     async def wrapper(**kwargs):
-        from app.api.mcp_mock import get_mock_response
-        mock = get_mock_response(name)
-        if mock is not None:
-            return mock
+        from app.api.mcp_mock import is_enabled as mock_enabled, get_mock_response
+        if mock_enabled():
+            result = get_mock_response(name)
+            if isinstance(result, dict) and "error" in result and "code" in result:
+                raise RuntimeError(result["error"])
+            return result
         if has_session:
             async with get_mcp_session() as session:
                 return await func(session=session, **kwargs)
