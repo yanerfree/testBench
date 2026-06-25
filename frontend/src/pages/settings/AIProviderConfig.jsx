@@ -20,6 +20,7 @@ const PROVIDERS = [
 
 export default function AIProviderConfig() {
   const [configs, setConfigs] = useState([])
+  const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -35,7 +36,14 @@ export default function AIProviderConfig() {
     } catch { /* */ } finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { fetchConfigs() }, [fetchConfigs])
+  const fetchProjects = useCallback(async () => {
+    try {
+      const res = await api.get('/projects')
+      setProjects(res.data || [])
+    } catch { /* */ }
+  }, [])
+
+  useEffect(() => { fetchConfigs(); fetchProjects() }, [fetchConfigs, fetchProjects])
 
   const openCreate = () => {
     setEditingId(null)
@@ -64,6 +72,7 @@ export default function AIProviderConfig() {
         maxTokens: d.maxTokens,
         timeoutSeconds: d.timeoutSeconds,
         isSystemDefault: d.isSystemDefault,
+        assignedProjectIds: d.assignedProjectIds || [],
       })
       setModalOpen(true)
     } catch { /* */ }
@@ -81,6 +90,7 @@ export default function AIProviderConfig() {
         max_tokens: values.maxTokens,
         timeout_seconds: values.timeoutSeconds,
         is_system_default: values.isSystemDefault || false,
+        assigned_project_ids: values.assignedProjectIds || [],
       }
       if (values.apiKey) body.api_key = values.apiKey
       if (values.authToken) body.auth_token = values.authToken
@@ -196,8 +206,18 @@ export default function AIProviderConfig() {
     },
     {
       title: '状态',
-      width: 100,
+      width: 80,
       render: (_, r) => statusTag(r),
+    },
+    {
+      title: '已分配项目',
+      dataIndex: 'assignedProjectIds',
+      width: 180,
+      render: (ids) => {
+        if (!ids || ids.length === 0) return <Text type="secondary">未分配</Text>
+        const names = ids.map(id => projects.find(p => p.id === id)?.name || id.slice(0, 8)).join('、')
+        return <Tooltip title={names}><Tag color="blue">{ids.length} 个项目</Tag></Tooltip>
+      },
     },
     {
       title: '启用',
@@ -311,6 +331,20 @@ export default function AIProviderConfig() {
 
           <Form.Item name="isSystemDefault" valuePropName="checked" label="系统默认">
             <Switch checkedChildren="默认" unCheckedChildren="否" />
+          </Form.Item>
+
+          <Form.Item
+            name="assignedProjectIds"
+            label="分配给项目"
+            extra="选择哪些项目可以使用此配置，不选则所有项目不可见"
+          >
+            <Select
+              mode="multiple"
+              placeholder="选择项目..."
+              allowClear
+              options={projects.map(p => ({ value: p.id, label: p.name }))}
+              optionFilterProp="label"
+            />
           </Form.Item>
         </Form>
       </Modal>

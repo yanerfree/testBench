@@ -68,7 +68,7 @@ async def resolve_ai_config(
                 source="project",
             )
 
-    # 2. 系统默认
+    # 2. 系统默认（必须分配给了该项目）
     result = await session.execute(
         select(AIProviderConfig).where(
             AIProviderConfig.is_system_default == True,
@@ -77,17 +77,19 @@ async def resolve_ai_config(
     )
     system_default = result.scalar_one_or_none()
     if system_default:
-        return ResolvedAIConfig(
-            provider=system_default.provider,
-            base_url=system_default.base_url,
-            api_key=system_default.api_key_encrypted,
-            auth_token=system_default.auth_token_encrypted,
-            model=system_default.model,
-            temperature=system_default.temperature,
-            max_tokens=system_default.max_tokens,
-            timeout_seconds=system_default.timeout_seconds,
-            source="system",
-        )
+        assigned = system_default.assigned_project_ids
+        if not project_id or (assigned and str(project_id) in assigned):
+            return ResolvedAIConfig(
+                provider=system_default.provider,
+                base_url=system_default.base_url,
+                api_key=system_default.api_key_encrypted,
+                auth_token=system_default.auth_token_encrypted,
+                model=system_default.model,
+                temperature=system_default.temperature,
+                max_tokens=system_default.max_tokens,
+                timeout_seconds=system_default.timeout_seconds,
+                source="system",
+            )
 
     # 3. .env fallback（向后兼容）
     if settings.ai_enabled and settings.ai_base_url:

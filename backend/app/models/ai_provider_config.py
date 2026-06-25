@@ -12,7 +12,7 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.user import Base
@@ -38,6 +38,7 @@ class AIProviderConfig(Base):
 
     is_system_default: Mapped[bool] = mapped_column(Boolean, default=False)
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    assigned_project_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
 
     status: Mapped[str | None] = mapped_column(String(20), nullable=True)
     status_message: Mapped[str | None] = mapped_column(String(500), nullable=True)

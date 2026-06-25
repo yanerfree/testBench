@@ -36,6 +36,7 @@ class ProviderConfigCreate(BaseModel):
     max_tokens: int = 4096
     timeout_seconds: int = 120
     is_system_default: bool = False
+    assigned_project_ids: list[str] | None = None
 
 
 class ProviderConfigUpdate(BaseModel):
@@ -50,6 +51,7 @@ class ProviderConfigUpdate(BaseModel):
     timeout_seconds: int | None = None
     is_system_default: bool | None = None
     is_enabled: bool | None = None
+    assigned_project_ids: list[str] | None = None
 
 
 class TestConnectionRequest(BaseModel):
@@ -89,6 +91,7 @@ def _serialize_config(c: AIProviderConfig) -> dict:
         "timeoutSeconds": c.timeout_seconds,
         "isSystemDefault": c.is_system_default,
         "isEnabled": c.is_enabled,
+        "assignedProjectIds": c.assigned_project_ids or [],
         "status": c.status,
         "statusMessage": c.status_message,
         "lastTestedAt": c.last_tested_at.isoformat() if c.last_tested_at else None,
@@ -133,6 +136,7 @@ async def create_provider_config(
         max_tokens=body.max_tokens,
         timeout_seconds=body.timeout_seconds,
         is_system_default=body.is_system_default,
+        assigned_project_ids=body.assigned_project_ids,
         created_by=current_user.id,
     )
     session.add(config)
@@ -200,13 +204,12 @@ async def delete_provider_config(
     if not config:
         raise NotFoundError(code="CONFIG_NOT_FOUND", message="AI 配置不存在")
 
-    from sqlalchemy import delete as sa_delete
     await session.execute(
-        sa_delete(ProjectAIConfig).where(ProjectAIConfig.provider_config_id == config_id)
+        update(ProjectAIConfig)
+        .where(ProjectAIConfig.provider_config_id == config_id)
+        .values(provider_config_id=None, is_active=False)
     )
-    await session.execute(
-        sa_delete(AIProviderConfig).where(AIProviderConfig.id == config_id)
-    )
+    await session.delete(config)
     await session.commit()
     return {"data": {"deleted": True}}
 
@@ -336,7 +339,12 @@ async def get_project_ai_config(
             AIProviderConfig.is_system_default.desc(), AIProviderConfig.created_at
         )
     )
-    system_configs = system_result.scalars().all()
+    all_system = system_result.scalars().all()
+    pid_str = str(project_id)
+    system_configs = [
+        c for c in all_system
+        if c.assigned_project_ids and pid_str in c.assigned_project_ids
+    ]
 
     active = next((c for c in configs if c.is_active), None)
 
