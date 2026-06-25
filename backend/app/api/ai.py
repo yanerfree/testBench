@@ -21,6 +21,7 @@ from app.schemas.ai import (
     GenerateScriptRequest,
 )
 from app.services.ai import llm_client
+from app.services.ai_config_resolver import resolve_ai_config
 
 logger = logging.getLogger(__name__)
 
@@ -32,26 +33,37 @@ router = APIRouter(
 config_router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 
-def _check_ai_enabled():
-    if not settings.ai_enabled:
-        raise AppError(code="AI_DISABLED", message="AI 功能未启用，请在系统配置中开启", status_code=503)
-    if not settings.ai_base_url:
-        raise AppError(code="AI_NOT_CONFIGURED", message="AI 服务地址未配置", status_code=503)
+async def _get_ai_config(project_id: uuid.UUID, session: AsyncSession):
+    config = await resolve_ai_config(project_id, session)
+    if not config:
+        raise AppError(
+            code="AI_NOT_CONFIGURED",
+            message="AI 服务未配置，请在项目设置或系统设置中配置 AI 服务",
+            status_code=503,
+        )
+    return config
 
 
 @config_router.get("/config")
-async def get_ai_config() -> dict:
-    base_url = settings.ai_base_url
-    if base_url and len(base_url) > 20:
-        masked = base_url[:15] + "..." + base_url[-5:]
-    else:
-        masked = base_url or ""
+async def get_ai_config(session: AsyncSession = Depends(get_db)) -> dict:
+    config = await resolve_ai_config(None, session)
+    if config:
+        base_url = config.base_url
+        masked = base_url[:15] + "..." + base_url[-5:] if len(base_url) > 20 else base_url
+        return {
+            "data": AIConfigResponse(
+                enabled=True,
+                provider=config.provider,
+                model=config.model,
+                base_url_masked=masked,
+            ).model_dump(by_alias=True)
+        }
     return {
         "data": AIConfigResponse(
-            enabled=settings.ai_enabled,
-            provider=settings.ai_provider,
-            model=settings.ai_model,
-            base_url_masked=masked,
+            enabled=False,
+            provider="",
+            model="",
+            base_url_masked="",
         ).model_dump(by_alias=True)
     }
 
@@ -64,7 +76,7 @@ async def generate_cases(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
-    _check_ai_enabled()
+    config = await _get_ai_config(project_id, session)
 
     from app.services.ai.case_gen_service import build_case_gen_messages
     messages = build_case_gen_messages(
@@ -81,6 +93,7 @@ async def generate_cases(
                 messages,
                 model=body.model,
                 temperature=body.temperature,
+                config=config,
             ):
                 if chunk.delta:
                     full_content += chunk.delta
@@ -109,7 +122,7 @@ async def generate_script(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
-    _check_ai_enabled()
+    config = await _get_ai_config(project_id, session)
 
     from app.services.ai.script_gen_service import build_script_gen_messages
     messages = await build_script_gen_messages(
@@ -125,6 +138,7 @@ async def generate_script(
                 messages,
                 model=body.model,
                 temperature=body.temperature,
+                config=config,
             ):
                 if chunk.delta:
                     full_content += chunk.delta
@@ -153,8 +167,6 @@ async def apply_cases(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
-    _check_ai_enabled()
-
     from app.services.ai.case_gen_service import import_generated_cases
     result = await import_generated_cases(
         cases=body.cases,

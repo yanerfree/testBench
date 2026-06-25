@@ -34,14 +34,16 @@ class LLMError(Exception):
         self.status_code = status_code
 
 
-def _build_headers() -> dict[str, str]:
+def _build_headers(*, config=None) -> dict[str, str]:
     headers: dict[str, str] = {
         "User-Agent": "claude-cli/1.0",
     }
-    if settings.ai_auth_token:
-        headers["Authorization"] = f"Bearer {settings.ai_auth_token}"
-    elif settings.ai_api_key:
-        headers["Authorization"] = f"Bearer {settings.ai_api_key}"
+    auth_token = config.auth_token if config else settings.ai_auth_token
+    api_key = config.api_key if config else settings.ai_api_key
+    if auth_token:
+        headers["Authorization"] = f"Bearer {auth_token}"
+    elif api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     return headers
 
 
@@ -52,12 +54,13 @@ def _build_openai_body(
     model: str | None = None,
     max_tokens: int | None = None,
     temperature: float | None = None,
+    config=None,
 ) -> dict:
     return {
-        "model": model or settings.ai_model,
+        "model": model or (config.model if config else settings.ai_model),
         "messages": messages,
-        "max_tokens": max_tokens or settings.ai_max_tokens,
-        "temperature": temperature if temperature is not None else settings.ai_temperature,
+        "max_tokens": max_tokens or (config.max_tokens if config else settings.ai_max_tokens),
+        "temperature": temperature if temperature is not None else (config.temperature if config else settings.ai_temperature),
         "stream": stream,
     }
 
@@ -69,6 +72,7 @@ def _build_anthropic_body(
     model: str | None = None,
     max_tokens: int | None = None,
     temperature: float | None = None,
+    config=None,
 ) -> dict:
     system_parts = []
     chat_messages = []
@@ -79,10 +83,10 @@ def _build_anthropic_body(
             chat_messages.append({"role": m["role"], "content": m["content"]})
 
     body: dict = {
-        "model": model or settings.ai_model,
+        "model": model or (config.model if config else settings.ai_model),
         "messages": chat_messages,
-        "max_tokens": max_tokens or settings.ai_max_tokens,
-        "temperature": temperature if temperature is not None else settings.ai_temperature,
+        "max_tokens": max_tokens or (config.max_tokens if config else settings.ai_max_tokens),
+        "temperature": temperature if temperature is not None else (config.temperature if config else settings.ai_temperature),
         "stream": stream,
     }
     if system_parts:
@@ -90,20 +94,32 @@ def _build_anthropic_body(
     return body
 
 
-def _get_endpoint() -> str:
-    base = settings.ai_base_url.rstrip("/")
-    if settings.ai_provider == "anthropic":
+def _get_endpoint(*, config=None) -> str:
+    provider = config.provider if config else settings.ai_provider
+    base_url = config.base_url if config else settings.ai_base_url
+    base = base_url.rstrip("/")
+    if provider == "anthropic":
         return f"{base}/messages" if base else "https://api.anthropic.com/v1/messages"
     return f"{base}/chat/completions"
 
 
-def _get_extra_headers() -> dict[str, str]:
-    if settings.ai_provider == "anthropic":
+def _get_extra_headers(*, config=None) -> dict[str, str]:
+    provider = config.provider if config else settings.ai_provider
+    if provider == "anthropic":
         h = {"anthropic-version": "2023-06-01", "content-type": "application/json"}
-        if settings.ai_api_key:
-            h["x-api-key"] = settings.ai_api_key
+        api_key = config.api_key if config else settings.ai_api_key
+        if api_key:
+            h["x-api-key"] = api_key
         return h
     return {"content-type": "application/json"}
+
+
+def _get_timeout(*, config=None) -> int:
+    return config.timeout_seconds if config else settings.ai_timeout_seconds
+
+
+def _get_provider(*, config=None) -> str:
+    return config.provider if config else settings.ai_provider
 
 
 async def complete(
@@ -112,22 +128,24 @@ async def complete(
     model: str | None = None,
     max_tokens: int | None = None,
     temperature: float | None = None,
+    config=None,
 ) -> LLMResponse:
-    if settings.ai_provider == "anthropic":
-        body = _build_anthropic_body(messages, model=model, max_tokens=max_tokens, temperature=temperature)
+    provider = _get_provider(config=config)
+    if provider == "anthropic":
+        body = _build_anthropic_body(messages, model=model, max_tokens=max_tokens, temperature=temperature, config=config)
     else:
-        body = _build_openai_body(messages, model=model, max_tokens=max_tokens, temperature=temperature)
+        body = _build_openai_body(messages, model=model, max_tokens=max_tokens, temperature=temperature, config=config)
 
-    headers = {**_build_headers(), **_get_extra_headers()}
-    endpoint = _get_endpoint()
+    headers = {**_build_headers(config=config), **_get_extra_headers(config=config)}
+    endpoint = _get_endpoint(config=config)
 
-    async with httpx.AsyncClient(timeout=settings.ai_timeout_seconds) as client:
+    async with httpx.AsyncClient(timeout=_get_timeout(config=config)) as client:
         resp = await client.post(endpoint, json=body, headers=headers)
         if resp.status_code != 200:
             raise LLMError(f"LLM API error: {resp.status_code} {resp.text[:500]}", resp.status_code)
         data = resp.json()
 
-    if settings.ai_provider == "anthropic":
+    if provider == "anthropic":
         content = ""
         for block in data.get("content", []):
             if block.get("type") == "text":
@@ -157,16 +175,18 @@ async def stream(
     model: str | None = None,
     max_tokens: int | None = None,
     temperature: float | None = None,
+    config=None,
 ) -> AsyncIterator[StreamChunk]:
-    if settings.ai_provider == "anthropic":
-        body = _build_anthropic_body(messages, stream=True, model=model, max_tokens=max_tokens, temperature=temperature)
+    provider = _get_provider(config=config)
+    if provider == "anthropic":
+        body = _build_anthropic_body(messages, stream=True, model=model, max_tokens=max_tokens, temperature=temperature, config=config)
     else:
-        body = _build_openai_body(messages, stream=True, model=model, max_tokens=max_tokens, temperature=temperature)
+        body = _build_openai_body(messages, stream=True, model=model, max_tokens=max_tokens, temperature=temperature, config=config)
 
-    headers = {**_build_headers(), **_get_extra_headers()}
-    endpoint = _get_endpoint()
+    headers = {**_build_headers(config=config), **_get_extra_headers(config=config)}
+    endpoint = _get_endpoint(config=config)
 
-    async with httpx.AsyncClient(timeout=settings.ai_timeout_seconds) as client:
+    async with httpx.AsyncClient(timeout=_get_timeout(config=config)) as client:
         async with client.stream("POST", endpoint, json=body, headers=headers) as resp:
             if resp.status_code != 200:
                 error_body = await resp.aread()
@@ -192,13 +212,14 @@ async def stream(
                         logger.warning("Failed to parse SSE chunk: %s", payload[:200])
                         continue
 
-                    chunk = _parse_stream_chunk(data)
+                    chunk = _parse_stream_chunk(data, provider=provider)
                     if chunk.delta or chunk.finish_reason:
                         yield chunk
 
 
-def _parse_stream_chunk(data: dict) -> StreamChunk:
-    if settings.ai_provider == "anthropic":
+def _parse_stream_chunk(data: dict, *, provider: str | None = None) -> StreamChunk:
+    p = provider or settings.ai_provider
+    if p == "anthropic":
         event_type = data.get("type", "")
         if event_type == "content_block_delta":
             delta = data.get("delta", {})
