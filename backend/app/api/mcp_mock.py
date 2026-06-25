@@ -96,3 +96,88 @@ async def preview_mock_data(tool_name: str):
     if data is None:
         return {"data": None, "error": f"工具 {tool_name} 无模拟数据"}
     return {"data": data}
+
+
+class ToolCallRequest(BaseModel):
+    tool: str
+    arguments: dict = {}
+
+
+@router.post("/call")
+async def call_tool(body: ToolCallRequest):
+    """调用 MCP 工具 — mock 开启时返回模拟数据，关闭时查真实 DB。"""
+    tool_name = body.tool
+
+    if tool_name not in MOCK_DATA:
+        return {"data": None, "error": f"工具 {tool_name} 不存在", "available": list(MOCK_DATA.keys())}
+
+    if _enabled:
+        return {
+            "data": MOCK_DATA[tool_name],
+            "source": "mock",
+            "tool": tool_name,
+            "arguments": body.arguments,
+        }
+
+    # 真实调用
+    from app.mcp.tools import test_cases, api_endpoints, environments
+    from app.mcp.deps import get_mcp_session
+
+    TOOL_MAP = {
+        "tb_list_cases": test_cases.list_cases,
+        "tb_get_case": test_cases.get_case,
+        "tb_create_case": test_cases.create_case,
+        "tb_get_folder_tree": test_cases.get_folder_tree,
+        "tb_list_api_tree": api_endpoints.list_api_tree,
+        "tb_get_api_node": api_endpoints.get_api_node,
+        "tb_list_environments": environments.list_environments,
+        "tb_get_merged_variables": environments.get_merged_variables,
+    }
+
+    func = TOOL_MAP.get(tool_name)
+    if not func:
+        return {"data": None, "error": f"工具 {tool_name} 无法直接调用"}
+
+    try:
+        import inspect
+        sig = inspect.signature(func)
+        has_session = "session" in sig.parameters
+
+        if has_session:
+            async with get_mcp_session() as session:
+                result = await func(session=session, **body.arguments)
+        else:
+            result = await func(**body.arguments)
+
+        return {"data": result, "source": "real", "tool": tool_name, "arguments": body.arguments}
+    except Exception as e:
+        return {"data": None, "error": str(e)[:300], "tool": tool_name}
+
+
+@router.get("/tools")
+async def list_available_tools():
+    """列出所有可调用的 MCP 工具及其参数。"""
+    import inspect
+    from app.mcp.tools import test_cases, api_endpoints, environments
+
+    TOOL_MAP = {
+        "tb_list_cases": (test_cases.list_cases, "列出分支下的测试用例"),
+        "tb_get_case": (test_cases.get_case, "获取单条用例详情"),
+        "tb_create_case": (test_cases.create_case, "创建测试用例"),
+        "tb_get_folder_tree": (test_cases.get_folder_tree, "获取文件夹树"),
+        "tb_list_api_tree": (api_endpoints.list_api_tree, "获取 API 接口树"),
+        "tb_get_api_node": (api_endpoints.get_api_node, "获取 API 节点详情"),
+        "tb_list_environments": (environments.list_environments, "列出测试环境"),
+        "tb_get_merged_variables": (environments.get_merged_variables, "获取合并变量"),
+    }
+
+    tools = []
+    for name, (func, desc) in TOOL_MAP.items():
+        sig = inspect.signature(func)
+        params = {
+            k: str(v.annotation.__name__) if v.annotation != inspect.Parameter.empty else "any"
+            for k, v in sig.parameters.items() if k != "session"
+        }
+        tools.append({"name": name, "description": desc, "params": params})
+
+    return {"data": tools, "mock_enabled": _enabled}
