@@ -24,9 +24,20 @@ from app.api.ai import router as ai_router, config_router as ai_config_router
 from app.api.ai_config import router as ai_provider_router, project_router as project_ai_config_router
 from app.core.middleware import CamelCaseResponse, TokenRefreshMiddleware, TraceIdMiddleware
 
+# --- MCP Server ---
+from app.mcp import mcp
+_mcp_app = mcp.http_app(path="/")
+
+from contextlib import asynccontextmanager
+@asynccontextmanager
+async def lifespan(app):
+    async with _mcp_app.lifespan(app):
+        yield
+
 app = FastAPI(
     title="测试管理平台 API",
     default_response_class=CamelCaseResponse,
+    lifespan=lifespan,
 )
 
 # --- 中间件（注册顺序：后注册先执行） ---
@@ -69,3 +80,6 @@ app.include_router(ai_router)
 app.include_router(ai_config_router)
 app.include_router(ai_provider_router)
 app.include_router(project_ai_config_router)
+
+# --- MCP Server 挂载 ---
+app.mount("/mcp", _mcp_app)
