@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Switch, Card, Tag, Space, Typography, Button, message, Drawer, Input, Radio, Table, Segmented } from 'antd'
+import { Switch, Card, Tag, Space, Typography, Button, message, Drawer, Input, Radio, Table } from 'antd'
 import {
   ApiOutlined, CheckCircleOutlined, CloseCircleOutlined,
   PlayCircleOutlined, LoadingOutlined, EditOutlined,
@@ -100,24 +100,31 @@ export default function McpMock() {
     { title: '说明', dataIndex: 'description' },
     {
       title: '响应',
-      width: 240,
+      width: 260,
       render: (_, record) => (
-        <Segmented
+        <Radio.Group
           size="small"
           value={record.mode}
-          onChange={(val) => {
+          buttonStyle="solid"
+          onChange={(e) => {
+            const val = e.target.value
             if (val === 'custom') {
               openCustomEdit(record.name)
             } else {
               handleModeSwitch(record.name, val)
             }
           }}
-          options={[
-            { value: 'success', label: <span style={{ color: '#52c41a' }}>成功</span> },
-            { value: 'error', label: <span style={{ color: '#ff4d4f' }}>失败</span> },
-            { value: 'custom', label: '自定义' },
-          ]}
-        />
+        >
+          <Radio.Button value="success" style={record.mode === 'success' ? { background: '#52c41a', borderColor: '#52c41a', color: '#fff' } : {}}>
+            成功
+          </Radio.Button>
+          <Radio.Button value="error" style={record.mode === 'error' ? { background: '#ff4d4f', borderColor: '#ff4d4f', color: '#fff' } : {}}>
+            失败
+          </Radio.Button>
+          <Radio.Button value="custom" style={record.mode === 'custom' ? { background: '#1677ff', borderColor: '#1677ff', color: '#fff' } : {}}>
+            自定义
+          </Radio.Button>
+        </Radio.Group>
       ),
     },
     {
