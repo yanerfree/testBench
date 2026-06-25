@@ -592,7 +592,21 @@ export default function CaseManagement() {
                 </Radio.Group>
               </Space>
               <Space>
-                <Button type="primary" ghost icon={<RobotOutlined />} onClick={() => setTestforgeOpen(true)}>AI 生成用例</Button>
+                <Tooltip title="从接口定义自动生成多维度 API 测试用例（手动步骤），支持选择项目中的 API 接口或手动输入">
+                  <Button type="primary" ghost icon={<RobotOutlined />} onClick={() => setTestforgeOpen(true)}>AI 生成用例</Button>
+                </Tooltip>
+                <Tooltip title={selectedRowKeys.length > 0
+                  ? `为选中的 ${selectedRowKeys.length} 条用例生成 pytest + httpx 自动化测试脚本`
+                  : '先勾选用例，再点此按钮为选中用例生成 pytest 自动化脚本'
+                }>
+                  <Button
+                    icon={<CodeOutlined />}
+                    disabled={selectedRowKeys.length === 0}
+                    onClick={() => setScriptModalOpen(true)}
+                  >
+                    AI 生成脚本{selectedRowKeys.length > 0 ? ` (${selectedRowKeys.length})` : ''}
+                  </Button>
+                </Tooltip>
                 <Button icon={<UploadOutlined />} size="small" onClick={() => setImportOpen(true)}>导入</Button>
                 <Button icon={<DownloadOutlined />} size="small" onClick={handleExport} loading={exporting}>导出</Button>
                 <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => {
@@ -648,9 +662,6 @@ export default function CaseManagement() {
                 }}>
                   <Button size="small" type="link" danger>批量删除</Button>
                 </Popconfirm>
-                <Button size="small" type="link" icon={<CodeOutlined />} onClick={() => setScriptModalOpen(true)}>
-                  AI 生成脚本
-                </Button>
                 </>)}
               </div>
             )}
