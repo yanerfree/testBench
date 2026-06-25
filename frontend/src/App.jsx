@@ -27,6 +27,8 @@ import ApiMock from './pages/api-mock/ApiMock'
 import AIProviderConfig from './pages/settings/AIProviderConfig'
 import ProjectAIConfig from './pages/settings/ProjectAIConfig'
 import AICapabilities from './pages/settings/AICapabilities'
+import SkillManage from './pages/settings/SkillManage'
+import MCPTools from './pages/settings/MCPTools'
 
 const { Header, Sider, Content } = Layout
 
@@ -76,6 +78,8 @@ function AppLayout() {
       label: 'AI 智能',
       children: [
         { key: `/projects/${projectId}/settings/ai-capabilities`, icon: <ThunderboltOutlined />, label: '能力总览' },
+        { key: `/projects/${projectId}/settings/skills`, icon: <FileTextOutlined />, label: 'Skill 管理' },
+        { key: `/projects/${projectId}/settings/mcp-tools`, icon: <ApiOutlined />, label: 'MCP 工具' },
         { key: `/projects/${projectId}/settings/ai`, icon: <SettingOutlined />, label: 'AI 配置' },
       ],
     },
@@ -216,6 +220,8 @@ function AppLayout() {
             <Route path="/projects/:projectId/logs" element={<AuditLogs />} />
             <Route path="/projects/:projectId/settings/ai" element={<ProjectAIConfig />} />
             <Route path="/projects/:projectId/settings/ai-capabilities" element={<AICapabilities />} />
+            <Route path="/projects/:projectId/settings/skills" element={<SkillManage />} />
+            <Route path="/projects/:projectId/settings/mcp-tools" element={<MCPTools />} />
             <Route path="/settings/env" element={<EnvConfig />} />
             <Route path="/settings/channels" element={<ChannelConfig />} />
             <Route path="/settings/ai-providers" element={<AIProviderConfig />} />
