@@ -31,6 +31,7 @@ import AICapabilities from './pages/settings/AICapabilities'
 import SkillManage from './pages/settings/SkillManage'
 import MCPTools from './pages/settings/MCPTools'
 import Exploratory from './pages/exploratory/Exploratory'
+import Documents from './pages/documents/Documents'
 
 const { Header, Sider, Content } = Layout
 
@@ -74,6 +75,7 @@ function AppLayout() {
     { key: `/projects/${projectId}/plans`, icon: <UnorderedListOutlined />, label: '测试计划' },
     { key: `/projects/${projectId}/reports`, icon: <BarChartOutlined />, label: '测试报告' },
     { key: `/projects/${projectId}/exploratory`, icon: <BugOutlined />, label: '探索测试' },
+    { key: `/projects/${projectId}/documents`, icon: <FileTextOutlined />, label: '文档管理' },
     { type: 'divider' },
     {
       key: 'ai-group',
@@ -227,6 +229,7 @@ function AppLayout() {
             <Route path="/projects/:projectId/settings/skills" element={<SkillManage />} />
             <Route path="/projects/:projectId/settings/mcp-tools" element={<MCPTools />} />
             <Route path="/projects/:projectId/exploratory" element={<Exploratory />} />
+            <Route path="/projects/:projectId/documents" element={<Documents />} />
             <Route path="/settings/env" element={<EnvConfig />} />
             <Route path="/settings/channels" element={<ChannelConfig />} />
             <Route path="/settings/ai-providers" element={<AIProviderConfig />} />

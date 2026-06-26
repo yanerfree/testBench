@@ -85,16 +85,16 @@ const PHASES = [
   {
     phase: 'Phase 3',
     title: '文档能力',
-    tag: '规划中',
-    tagColor: 'default',
+    tag: '已完成',
+    tagColor: 'success',
     items: [
       {
         title: '文档生成',
         icon: <BookOutlined />,
-        status: 'planned',
-        what: '从用例或截图自动生成操作手册、验收文档、培训教材',
-        where: '计划入口：项目菜单新增「文档管理」',
-        output: 'Markdown / HTML 文档，支持截图内联',
+        status: 'done',
+        what: '从用例自动生成操作手册、验收文档、培训教材（Markdown）',
+        where: '项目菜单「文档管理」→ AI 生成文档',
+        output: 'Markdown 文档，可复制导出',
       },
     ],
   },

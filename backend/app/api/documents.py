@@ -1,0 +1,185 @@
+"""文档管理 API — CRUD + AI 生成"""
+from __future__ import annotations
+
+import json
+import logging
+import uuid
+
+from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
+from pydantic import Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.schemas.common import BaseSchema
+from app.core.exceptions import NotFoundError
+from app.deps.auth import get_current_user, require_project_role
+from app.deps.db import get_db
+from app.models.user import User
+from app.models.document import Document
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/projects/{project_id}/documents", tags=["documents"])
+
+
+class CreateDocRequest(BaseSchema):
+    title: str = Field(..., min_length=1, max_length=200)
+    doc_type: str = Field(default="manual", pattern="^(manual|acceptance|training)$")
+    source_case_ids: list[str] | None = None
+
+
+class GenerateDocRequest(BaseSchema):
+    title: str = Field(..., min_length=1, max_length=200)
+    doc_type: str = Field(default="manual")
+    module: str | None = None
+    additional_info: str | None = None
+
+
+def _doc_to_dict(d: Document) -> dict:
+    return {
+        "id": str(d.id),
+        "title": d.title,
+        "docType": d.doc_type,
+        "content": d.content,
+        "sourceCaseIds": d.source_case_ids,
+        "status": d.status,
+        "createdAt": d.created_at.isoformat() if d.created_at else None,
+        "updatedAt": d.updated_at.isoformat() if d.updated_at else None,
+    }
+
+
+@router.get("")
+async def list_documents(
+    project_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await session.execute(
+        select(Document).where(Document.project_id == project_id).order_by(Document.created_at.desc())
+    )
+    docs = result.scalars().all()
+    return {"data": [_doc_to_dict(d) for d in docs]}
+
+
+@router.get("/{doc_id}")
+async def get_document(
+    project_id: uuid.UUID,
+    doc_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    doc = await session.get(Document, doc_id)
+    if not doc or doc.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="文档不存在")
+    return {"data": _doc_to_dict(doc)}
+
+
+@router.delete("/{doc_id}")
+async def delete_document(
+    project_id: uuid.UUID,
+    doc_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer")),
+):
+    doc = await session.get(Document, doc_id)
+    if not doc or doc.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="文档不存在")
+    await session.delete(doc)
+    await session.commit()
+    return {"data": {"deleted": True}}
+
+
+@router.post("/generate")
+async def generate_document(
+    project_id: uuid.UUID,
+    body: GenerateDocRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    from app.services.ai_config_resolver import resolve_ai_config
+    from app.services.ai import llm_client
+    from app.mcp.tools import test_cases, api_endpoints
+    from app.core.exceptions import AppError
+
+    ai_config = await resolve_ai_config(project_id, session)
+    if not ai_config:
+        raise AppError(code="AI_NOT_CONFIGURED", message="AI 服务未配置", status_code=503)
+
+    # 获取项目默认分支
+    from sqlalchemy import select as sa_select
+    from app.models.project import Branch
+    branch_result = await session.execute(
+        sa_select(Branch).where(Branch.project_id == project_id, Branch.status == "active").limit(1)
+    )
+    branch = branch_result.scalar_one_or_none()
+    branch_id = str(branch.id) if branch else None
+
+    cases_text = "（无用例数据）"
+    if branch_id:
+        cases_result = await test_cases.list_cases(session, branch_id, page_size=50,
+            folder_id=None)
+        cases = cases_result.get("cases", [])
+        if body.module:
+            cases = [c for c in cases if body.module.lower() in (c.get("title", "") + c.get("caseCode", "")).lower()]
+        if cases:
+            lines = []
+            for c in cases[:30]:
+                steps_text = " → ".join(s.get("action", "") for s in c.get("steps", [])[:5])
+                lines.append(f"### {c['title']}\n前置: {c.get('preconditions','无')}\n步骤: {steps_text}\n预期: {c.get('expectedResult','')}")
+            cases_text = "\n\n".join(lines)
+
+    api_tree = await api_endpoints.list_api_tree(session, str(project_id))
+    api_text = "\n".join(f"- {n.get('method','GET')} {n.get('url','')} ({n.get('name','')})" for n in api_tree if n.get("type") == "endpoint")[:15] or "（无 API 接口）"
+
+    DOC_TYPE_LABELS = {"manual": "操作手册", "acceptance": "验收文档", "training": "培训教材"}
+    doc_label = DOC_TYPE_LABELS.get(body.doc_type, "操作手册")
+
+    messages = [
+        {"role": "system", "content": f"你是技术文档专家。根据测试用例生成{doc_label}。输出完整的 Markdown 文档，结构清晰、步骤具体。"},
+        {"role": "user", "content": f"""请根据以下信息生成一份【{doc_label}】：
+
+标题：{body.title}
+{f'补充说明：{body.additional_info}' if body.additional_info else ''}
+
+## 测试用例（参考内容）
+{cases_text}
+
+## API 接口
+{api_text}
+
+请生成完整的 Markdown 文档。"""},
+    ]
+
+    doc = Document(
+        project_id=project_id,
+        title=body.title,
+        doc_type=body.doc_type,
+        status="draft",
+        created_by=current_user.id,
+    )
+    session.add(doc)
+    await session.flush()
+    doc_id = doc.id
+
+    async def event_stream():
+        full = ""
+        try:
+            async for chunk in llm_client.stream(messages, config=ai_config):
+                if chunk.delta:
+                    full += chunk.delta
+                    yield f"data: {json.dumps({'type': 'chunk', 'content': chunk.delta}, ensure_ascii=False)}\n\n"
+
+            doc.content = full
+            doc.status = "published"
+            await session.commit()
+
+            yield f"data: {json.dumps({'type': 'done', 'docId': str(doc_id), 'title': body.title}, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)[:200]}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
