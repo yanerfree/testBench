@@ -1,10 +1,12 @@
-import { Card, Tag, Space, Typography, Divider, Alert, Steps, Collapse } from 'antd'
+import { useState } from 'react'
+import { Card, Tag, Space, Typography, Alert, Steps, Collapse, Button, Drawer, Input, message } from 'antd'
 import {
   ThunderboltOutlined, FileTextOutlined, CodeOutlined, SearchOutlined,
   BugOutlined, FileSearchOutlined, BookOutlined, CheckCircleOutlined,
-  ClockCircleOutlined, RobotOutlined, ApiOutlined,
-  ArrowRightOutlined,
+  ClockCircleOutlined, RobotOutlined, ApiOutlined, EditOutlined,
+  SaveOutlined,
 } from '@ant-design/icons'
+import { api } from '../../utils/request'
 
 const { Text, Paragraph } = Typography
 
@@ -94,6 +96,28 @@ const SKILLS = [
 ]
 
 export default function SkillManage() {
+  const [editSkill, setEditSkill] = useState(null)
+  const [editContent, setEditContent] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const handleEdit = async (skillName) => {
+    try {
+      const res = await api.get(`/skills/${skillName}`)
+      setEditSkill(skillName)
+      setEditContent(res.data.content)
+    } catch { message.error('加载失败') }
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await api.put(`/skills/${editSkill}`, { content: editContent })
+      message.success('Skill 已保存')
+      setEditSkill(null)
+    } catch { message.error('保存失败') }
+    finally { setSaving(false) }
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
@@ -143,10 +167,15 @@ export default function SkillManage() {
                   <div><Text type="secondary" style={{ fontSize: 13 }}>{skill.description}</Text></div>
                 </div>
               </Space>
-              {skill.status === 'available'
-                ? <Tag color="success" icon={<CheckCircleOutlined />}>可用</Tag>
-                : <Tag icon={<ClockCircleOutlined />}>{skill.phase} 规划中</Tag>
-              }
+              <Space>
+                {skill.status === 'available' && (
+                  <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(skill.name)}>编辑</Button>
+                )}
+                {skill.status === 'available'
+                  ? <Tag color="success" icon={<CheckCircleOutlined />}>可用</Tag>
+                  : <Tag icon={<ClockCircleOutlined />}>{skill.phase} 规划中</Tag>
+                }
+              </Space>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', fontSize: 13, lineHeight: 1.8 }}>
@@ -197,6 +226,28 @@ export default function SkillManage() {
           </Card>
         ))}
       </div>
+
+      <Drawer
+        title={<Space><EditOutlined /> 编辑 Skill <Text code>{editSkill}</Text></Space>}
+        open={!!editSkill}
+        onClose={() => setEditSkill(null)}
+        width={700}
+        footer={
+          <div style={{ textAlign: 'right' }}>
+            <Button onClick={() => setEditSkill(null)} style={{ marginRight: 8 }}>取消</Button>
+            <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSave}>保存</Button>
+          </div>
+        }
+      >
+        <Alert type="info" showIcon closable style={{ marginBottom: 12 }}
+          message="编辑 SKILL.md 文件内容。修改后会立即生效，下次执行 Skill 时使用新版本。" />
+        <Input.TextArea
+          value={editContent}
+          onChange={e => setEditContent(e.target.value)}
+          rows={28}
+          style={{ fontFamily: "'SF Mono', Monaco, Menlo, monospace", fontSize: 13, lineHeight: 1.6 }}
+        />
+      </Drawer>
     </div>
   )
 }

@@ -933,6 +933,8 @@ export default function CaseDetail() {
                 />
               </Card>
             )},
+
+            { key: 'casefile', label: '病历', children: <CaseFileTab caseId={caseId} /> },
           ]} />
         </div>
 
@@ -1077,5 +1079,74 @@ export default function CaseDetail() {
         </div>
       </Modal>
     </div>
+  )
+}
+
+
+function CaseFileTab({ caseId }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!caseId) return
+    setLoading(true)
+    api.get(`/cases/${caseId}/file`).then(res => setData(res.data)).catch(() => {}).finally(() => setLoading(false))
+  }, [caseId])
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
+  if (!data) return <Empty description="无法加载病历" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+
+  const EVENT_LABELS = {
+    ai_generated: { label: 'AI 生成', color: '#1677ff', icon: '🔵' },
+    ai_reviewed: { label: 'AI 评审', color: '#722ed1', icon: '🟡' },
+    executed_pass: { label: '执行通过', color: '#52c41a', icon: '🟢' },
+    executed_fail: { label: '执行失败', color: '#ff4d4f', icon: '🔴' },
+    ai_diagnosed: { label: 'AI 诊断', color: '#fa8c16', icon: '🟠' },
+    manual_edit: { label: '手动编辑', color: '#86909c', icon: '⚪' },
+  }
+
+  return (
+    <Card styles={{ body: { padding: '16px 24px' } }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Space>
+          <span style={{ fontWeight: 600 }}>用例病历</span>
+          {data.tags?.map(t => <Tag key={t} color={t === '#不稳定' ? 'error' : t === '#需要关注' ? 'warning' : 'default'}>{t}</Tag>)}
+        </Space>
+        {data.stats && (
+          <Space size={16}>
+            <span style={{ fontSize: 12, color: '#86909c' }}>执行 {data.stats.totalExecutions} 次</span>
+            {data.stats.passRate !== null && (
+              <span style={{ fontSize: 12, color: data.stats.passRate >= 80 ? '#52c41a' : '#ff4d4f' }}>
+                通过率 {data.stats.passRate}%
+              </span>
+            )}
+          </Space>
+        )}
+      </div>
+
+      {data.events.length === 0 ? (
+        <Empty description="暂无病历记录" image={Empty.PRESENTED_IMAGE_SIMPLE}>
+          <span style={{ fontSize: 12, color: '#86909c' }}>用例被 AI 生成、评审、执行或诊断后会自动记录</span>
+        </Empty>
+      ) : (
+        <div style={{ borderLeft: '2px solid #f0f0f0', paddingLeft: 16, marginLeft: 8 }}>
+          {data.events.map(e => {
+            const cfg = EVENT_LABELS[e.eventType] || { label: e.eventType, color: '#86909c', icon: '⚪' }
+            return (
+              <div key={e.id} style={{ position: 'relative', paddingBottom: 16 }}>
+                <div style={{ position: 'absolute', left: -24, top: 2, fontSize: 14 }}>{cfg.icon}</div>
+                <div>
+                  <Space size={8}>
+                    <Tag color={cfg.color} style={{ fontSize: 11 }}>{cfg.label}</Tag>
+                    <span style={{ fontSize: 12, color: '#86909c' }}>{e.createdAt?.slice(0, 16).replace('T', ' ')}</span>
+                  </Space>
+                  {e.summary && <div style={{ fontSize: 13, marginTop: 2 }}>{e.summary}</div>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Card>
   )
 }
