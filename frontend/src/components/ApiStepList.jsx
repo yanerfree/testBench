@@ -894,7 +894,7 @@ function ResponsePanel({ response, onAddAssertion }) {
   })
 
   const copyBody = () => {
-    navigator.clipboard?.writeText(displayBody).then(() => message.success('已复制到剪贴板'))
+    copyToClipboard(displayBody).then(() => message.success('已复制到剪贴板'))
   }
 
   const renderJsonTree = (obj, path = '$') => {
@@ -1010,7 +1010,7 @@ function ResponsePanel({ response, onAddAssertion }) {
             <Tooltip title="复制全部">
               <Button size="small" icon={<CopyOutlined />} onClick={() => {
                 const t = respHeaders.map(h => `${h.key}: ${h.value}`).join('\n')
-                navigator.clipboard?.writeText(t).then(() => message.success('已复制'))
+                copyToClipboard(t).then(() => message.success('已复制'))
               }} />
             </Tooltip>
           </div>
@@ -1139,7 +1139,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
   }
 
   const copyCurl = () => {
-    navigator.clipboard?.writeText(generateCurl()).then(() => message.success('cURL 已复制'))
+    copyToClipboard(generateCurl()).then(() => message.success('cURL 已复制'))
   }
 
   const handleImportCurl = () => {
@@ -1386,7 +1386,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
                 ))}
                 <div style={{ flex: 1 }} />
                 <Tooltip title="复制"><Button size="small" icon={<CopyOutlined />} onClick={() => {
-                  navigator.clipboard?.writeText(code).then(() => message.success('已复制'))
+                  copyToClipboard(code).then(() => message.success('已复制'))
                 }} /></Tooltip>
               </div>
               <pre style={{

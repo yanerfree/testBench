@@ -20,7 +20,7 @@ export default function AIScriptModal({
   }
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(generatedScript || '')
+    copyToClipboard(generatedScript || '')
     message.success('脚本已复制到剪贴板')
   }
 

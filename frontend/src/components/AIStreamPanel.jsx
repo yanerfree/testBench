@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Button, Space, Alert, Spin } from 'antd'
 import { LoadingOutlined, StopOutlined, CheckCircleOutlined, CopyOutlined } from '@ant-design/icons'
 import { api } from '../utils/request'
+import { copyToClipboard } from '../utils/clipboard'
 
 const STATUS = { IDLE: 'idle', STREAMING: 'streaming', DONE: 'done', ERROR: 'error' }
 
@@ -56,7 +57,7 @@ export default function AIStreamPanel({
   }
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(content)
+    copyToClipboard(content)
   }
 
   useEffect(() => {

@@ -9,6 +9,7 @@ import {
   DesktopOutlined, CheckCircleOutlined, StarOutlined, StarFilled, ImportOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
+import { copyToClipboard } from '../../utils/clipboard'
 import ScriptEditor from '../../components/ScriptEditor'
 import ApiStepList, { generateApiCodeFromSteps } from '../../components/ApiStepList'
 
@@ -162,7 +163,7 @@ function ScriptViewer({ scriptData, loading, error, onRetry }) {
           <Tag style={{ fontSize: 11, margin: 0, fontFamily: 'monospace' }}>{scriptData.commitSha?.substring(0, 8)}</Tag>
           <Tooltip title="复制脚本内容">
             <Button type="text" size="small" icon={<CopyOutlined />} onClick={() => {
-              navigator.clipboard.writeText(scriptData.content)
+              copyToClipboard(scriptData.content)
               message.success('已复制到剪贴板')
             }} />
           </Tooltip>

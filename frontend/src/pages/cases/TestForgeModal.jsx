@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Modal, Form, Input, AutoComplete, Button, message, Typography, Space, Steps, Select, Checkbox, Tag, Card, Alert, Tabs, Divider } from 'antd'
 import { RobotOutlined, CopyOutlined, ArrowLeftOutlined, ApiOutlined, FileTextOutlined, ThunderboltOutlined, BulbOutlined } from '@ant-design/icons'
 import { api } from '../../utils/request'
+import { copyToClipboard } from '../../utils/clipboard'
 import AIStreamPanel from '../../components/AIStreamPanel'
 import AICasePreview from '../../components/AICasePreview'
 
@@ -162,7 +163,7 @@ export default function TestForgeModal({ projectId, branchId, folders, open, onC
       if (legacyJson) {
         return [
           <Button key="copy" icon={<CopyOutlined />} onClick={() => {
-            navigator.clipboard.writeText(JSON.stringify(legacyJson, null, 2))
+            copyToClipboard(JSON.stringify(legacyJson, null, 2))
             message.success('已复制')
           }}>复制 JSON</Button>,
           <Button key="back" onClick={() => { setLegacyJson(null); setLegacyMode(false) }}>返回</Button>,

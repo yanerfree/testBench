@@ -202,7 +202,7 @@ export default function ScriptEditor({
           </Tooltip>
           <Tooltip title="复制代码">
             <Button size="small" type="text" icon={<CopyOutlined />} style={{ color: '#aaa' }}
-              onClick={() => { navigator.clipboard.writeText(content); message.success('已复制') }} />
+              onClick={() => { copyToClipboard(content); message.success('已复制') }} />
           </Tooltip>
           <Tooltip title={dirty ? '请先保存' : '运行脚本'}>
             <Button size="small" icon={<PlayCircleOutlined />} loading={running}

@@ -9,6 +9,7 @@ import {
   RobotOutlined, LoadingOutlined, CopyOutlined, DownloadOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
+import { copyToClipboard } from '../../utils/clipboard'
 
 const { Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -77,7 +78,7 @@ export default function Documents() {
   }
 
   const handleCopyContent = (content) => {
-    navigator.clipboard.writeText(content)
+    copyToClipboard(content)
     message.success('已复制 Markdown 内容')
   }
 

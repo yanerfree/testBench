@@ -10,6 +10,7 @@ import {
   ThunderboltOutlined, ClockCircleOutlined, CloseOutlined, SwapOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
+import { copyToClipboard } from '../../utils/clipboard'
 
 const methodColors = {
   GET: { color: '#52c41a', bg: '#f6ffed' },
@@ -28,6 +29,106 @@ const commonHeaders = [
   { value: 'User-Agent', desc: 'testBench/1.0' },
 ]
 const headerOptions = commonHeaders.map(h => ({ value: h.value, label: <span>{h.value} <span style={{ fontSize: 10, color: '#999' }}>{h.desc}</span></span> }))
+
+// =========== Body 片段模板 ===========
+const bodySnippets = [
+  { key: 'login', label: '登录请求', code: JSON.stringify({ username: "admin", password: "admin123" }, null, 2) },
+  { key: 'page', label: '分页查询', code: JSON.stringify({ page: 1, pageSize: 20, keyword: "" }, null, 2) },
+  { key: 'create', label: '创建资源', code: JSON.stringify({ name: "", description: "", status: "active" }, null, 2) },
+  { key: 'update', label: '更新资源', code: '{\n  "id": "{{ID}}",\n  "name": "",\n  "status": ""\n}' },
+  { key: 'batch', label: '批量操作', code: '{\n  "ids": ["{{ID_1}}", "{{ID_2}}"],\n  "action": "delete"\n}' },
+  { key: 'graphql', label: 'GraphQL', code: JSON.stringify({ query: "{ users { id name } }", variables: {} }, null, 2) },
+  { key: 'upload', label: '文件上传元数据', code: JSON.stringify({ fileName: "", fileType: "image/png", size: 0 }, null, 2) },
+]
+
+// =========== Header 预设组 ===========
+const headerPresets = [
+  { key: 'json', label: 'JSON API', headers: [{ key: 'Content-Type', value: 'application/json' }, { key: 'Accept', value: 'application/json' }] },
+  { key: 'form', label: 'Form 提交', headers: [{ key: 'Content-Type', value: 'application/x-www-form-urlencoded' }] },
+  { key: 'multipart', label: '文件上传', headers: [{ key: 'Content-Type', value: 'multipart/form-data' }] },
+  { key: 'bearer', label: '带 Token', headers: [{ key: 'Authorization', value: 'Bearer {{TOKEN}}' }] },
+  { key: 'nocache', label: '缓存控制', headers: [{ key: 'Cache-Control', value: 'no-cache' }, { key: 'Pragma', value: 'no-cache' }] },
+  { key: 'cors', label: 'CORS 调试', headers: [{ key: 'Origin', value: 'http://localhost:5173' }, { key: 'X-Requested-With', value: 'XMLHttpRequest' }] },
+]
+
+// =========== 代码生成 ===========
+function genPythonCode(data, envVars) {
+  const rv = (t) => resolveVars(t, envVars)
+  const method = (data.method || 'GET').toLowerCase()
+  const url = rv(data.url || '')
+  const headers = (data.headers || []).filter(h => h.key && h.enabled !== false)
+  const lines = ['import requests', '']
+  if (headers.length) {
+    lines.push('headers = {')
+    headers.forEach(h => lines.push(`    "${rv(h.key)}": "${rv(h.value)}",`))
+    lines.push('}')
+  }
+  const hasBody = ['post', 'put', 'patch'].includes(method) && data.body?.trim()
+  if (hasBody) {
+    if ((data.bodyType || 'json') === 'json') {
+      lines.push('', 'payload = ' + (rv(data.body) || '{}'))
+    } else {
+      lines.push('', 'payload = """' + rv(data.body) + '"""')
+    }
+  }
+  const args = []
+  if (headers.length) args.push('headers=headers')
+  if (hasBody) args.push((data.bodyType || 'json') === 'json' ? 'json=payload' : 'data=payload')
+  lines.push('', `response = requests.${method}("${url}"${args.length ? ', ' + args.join(', ') : ''})`)
+  lines.push('', 'print(response.status_code)', 'print(response.json())')
+  return lines.join('\n')
+}
+
+function genJavaScriptCode(data, envVars) {
+  const rv = (t) => resolveVars(t, envVars)
+  const method = (data.method || 'GET').toUpperCase()
+  const url = rv(data.url || '')
+  const headers = (data.headers || []).filter(h => h.key && h.enabled !== false)
+  const hasBody = ['POST', 'PUT', 'PATCH'].includes(method) && data.body?.trim()
+  const opts = [`  method: '${method}',`]
+  if (headers.length) {
+    opts.push('  headers: {')
+    headers.forEach(h => opts.push(`    '${rv(h.key)}': '${rv(h.value)}',`))
+    opts.push('  },')
+  }
+  if (hasBody) opts.push(`  body: JSON.stringify(${rv(data.body) || '{}'}),`)
+  const lines = [
+    `const response = await fetch('${url}', {`,
+    ...opts,
+    '});', '',
+    'const data = await response.json();',
+    'console.log(response.status, data);',
+  ]
+  return lines.join('\n')
+}
+
+// =========== 变量插入按钮 ===========
+function VarInsertBtn({ envVars, onInsert }) {
+  if (!envVars?.length) return null
+  return (
+    <Popover trigger="click" placement="bottomRight" arrow={false}
+      content={
+        <div style={{ width: 260, maxHeight: 300, overflow: 'auto' }}>
+          <div style={{ fontSize: 11, color: '#86909c', padding: '4px 8px 6px', fontWeight: 600 }}>点击插入变量</div>
+          {envVars.map(v => (
+            <div key={v.key} onClick={() => onInsert(`{{${v.key}}}`)}
+              style={{ padding: '6px 10px', cursor: 'pointer', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f0f5ff'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#fa8c16', fontWeight: 600 }}>{`{{${v.key}}}`}</span>
+              <span style={{ fontSize: 10, color: '#999', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.value}</span>
+            </div>
+          ))}
+        </div>
+      }>
+      <Tooltip title="插入环境变量">
+        <Button type="text" size="small" style={{ color: '#fa8c16', fontSize: 12, padding: '0 4px' }}>
+          <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{'{x}'}</span>
+        </Button>
+      </Tooltip>
+    </Popover>
+  )
+}
 
 // =========== KvEditor ===========
 function KvEditor({ items = [], onChange, keyPh = 'Key', valPh = 'Value' }) {
@@ -110,7 +211,7 @@ function AuthEditor({ auth, onChange }) {
 }
 
 // =========== ResponsePanel ===========
-function ResponsePanel({ response }) {
+function ResponsePanel({ response, onUseAsBody }) {
   const [viewTab, setViewTab] = useState('body')
   const [bodyMode, setBodyMode] = useState('pretty')
   const [search, setSearch] = useState('')
@@ -139,6 +240,11 @@ function ResponsePanel({ response }) {
           </div>
         ))}
       </div>
+      {sc === 0 && (
+        <div style={{ marginBottom: 8, padding: '8px 12px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 6, fontSize: 12, color: '#cf1322' }}>
+          请求失败，请检查：URL 是否正确、服务是否在运行、环境变量是否配置（如 <code style={{ background: '#fff', padding: '0 4px', borderRadius: 3 }}>{'{{BASE_URL}}'}</code>）
+        </div>
+      )}
       {viewTab === 'body' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -149,14 +255,18 @@ function ResponsePanel({ response }) {
             </div>
             <Space size={4}>
               <Input size="small" prefix={<SearchOutlined style={{ color: '#999' }} />} value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索" allowClear style={{ width: 140, fontSize: 11 }} />
-              <Tooltip title="复制"><Button size="small" icon={<CopyOutlined />} onClick={() => navigator.clipboard?.writeText(displayBody).then(() => message.success('已复制'))} /></Tooltip>
+              <Tooltip title="复制响应体"><Button size="small" icon={<CopyOutlined />} onClick={() => copyToClipboard(displayBody).then(() => message.success('已复制'))} /></Tooltip>
+              {isJson && onUseAsBody && <Tooltip title="填入请求 Body"><Button size="small" icon={<SwapOutlined />} onClick={() => onUseAsBody(prettyBody)}>用作 Body</Button></Tooltip>}
             </Space>
           </div>
-          <pre style={{ margin: 0, padding: 12, background: '#f0f1f3', border: '1px solid #e0e0e0', borderRadius: 6, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{displayBody}</pre>
+          <pre style={{ margin: 0, padding: 12, background: '#f0f1f3', border: '1px solid #e0e0e0', borderRadius: 6, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', cursor: isJson ? 'text' : 'default' }}>{displayBody}</pre>
         </div>
       )}
       {viewTab === 'headers' && respHeaders.map((h, i) => (
-        <div key={i} style={{ display: 'flex', gap: 8, padding: '4px 0', borderBottom: '1px solid #e8e8e8', fontSize: 11 }}>
+        <div key={i} style={{ display: 'flex', gap: 8, padding: '5px 8px', borderBottom: '1px solid #f0f0f0', fontSize: 11, borderRadius: 4, cursor: 'pointer' }}
+          onClick={() => copyToClipboard(`${h.key}: ${h.value}`).then(() => message.success('已复制'))}
+          onMouseEnter={e => e.currentTarget.style.background = '#f5f7fa'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
           <span style={{ fontWeight: 600, color: '#4e5969', width: 200, flexShrink: 0, fontFamily: 'monospace' }}>{h.key}</span>
           <span style={{ color: '#666', fontFamily: 'monospace', wordBreak: 'break-all' }}>{h.value}</span>
         </div>
@@ -335,13 +445,16 @@ function hasVars(text) {
 }
 
 // =========== 右侧编辑器 ===========
-function EndpointEditor({ node, onSave, onSend, sending, response, envVars }) {
+function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDirtyChange, onPreviewChange }) {
   const [data, setData] = useState(node)
   const [activeTab, setActiveTab] = useState('params')
   const [dirty, setDirty] = useState(false)
   const [importCurlOpen, setImportCurlOpen] = useState(false)
   const [curlText, setCurlText] = useState('')
+  const [codeGenOpen, setCodeGenOpen] = useState(false)
+  const [codeGenLang, setCodeGenLang] = useState('python')
   const syncingRef = useRef(false)
+  const bodyRef = useRef(null)
 
   useEffect(() => { setData(node); setDirty(false); setActiveTab('params') }, [node.id])
 
@@ -349,7 +462,11 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars }) {
     if (response && !sending) setActiveTab('response')
   }, [response, sending])
 
-  const up = (f, v) => { setData(prev => ({ ...prev, [f]: v })); setDirty(true) }
+  const up = (f, v) => {
+    setData(prev => ({ ...prev, [f]: v }))
+    setDirty(true); onDirtyChange?.(true)
+    if (f === 'name' || f === 'method') onPreviewChange?.({ [f]: v })
+  }
   const method = data.method || 'GET'
   const mc = methodColors[method] || methodColors.GET
 
@@ -395,14 +512,25 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars }) {
   const headerCount = (data.headers || []).filter(h => h.key && h.enabled !== false).length
   const hasAuth = data.auth?.type && data.auth.type !== 'none'
 
-  const handleSend = () => onSend(data)
+  const handleSend = () => {
+    if (!data.url?.trim()) { message.warning('请输入请求 URL'); return }
+    onSend(data)
+  }
 
   const resolvedUrl = resolveVars(data.url || '', envVars)
   const urlHasVars = hasVars(data.url)
+  const isGet = method === 'GET'
+
+  let jsonError = null
+  if ((data.bodyType || 'json') === 'json' && data.body?.trim()) {
+    try { JSON.parse(data.body) } catch (e) { jsonError = e.message }
+  }
+
+  const generatedCode = codeGenLang === 'python' ? genPythonCode(data, envVars) : genJavaScriptCode(data, envVars)
 
   const tabs = [
     { key: 'params', label: 'Params', count: paramCount },
-    { key: 'body', label: 'Body', count: data.body?.trim() ? 1 : 0 },
+    { key: 'body', label: 'Body', count: data.body?.trim() ? 1 : 0, dim: isGet },
     { key: 'headers', label: 'Headers', count: headerCount },
     { key: 'auth', label: 'Auth', count: hasAuth ? 1 : 0 },
     { key: 'desc', label: '说明', count: data.description?.trim() ? 1 : 0 },
@@ -410,12 +538,15 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars }) {
   ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }} onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleSend() } }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }} onKeyDown={e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleSend() }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (dirty) { onSave(data); setDirty(false); onDirtyChange?.(false) } }
+    }}>
       {/* Name + Save */}
       <div style={{ padding: '8px 16px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #f0f0f0' }}>
         <Input variant="borderless" value={data.name || ''} onChange={e => up('name', e.target.value)}
           placeholder="输入接口名称" style={{ fontSize: 14, fontWeight: 600, color: '#1d2129', flex: 1, padding: '2px 4px' }} />
-        <Button size="small" type={dirty ? 'primary' : 'default'} disabled={!dirty} onClick={() => { onSave(data); setDirty(false) }}
+        <Button size="small" type={dirty ? 'primary' : 'default'} disabled={!dirty} onClick={() => { onSave(data); setDirty(false); onDirtyChange?.(false) }}
           style={dirty ? {} : { color: '#bbb', borderColor: '#e0e0e0' }}>保存</Button>
       </div>
 
@@ -440,11 +571,15 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars }) {
               const parts = [`curl -X ${method}`, `  '${fullUrl}'`]
               ;(data.headers || []).filter(h => h.key && h.enabled !== false).forEach(h => parts.push(`  -H '${resolveVars(h.key, envVars)}: ${resolveVars(h.value, envVars)}'`))
               if (method !== 'GET' && data.body?.trim()) parts.push(`  -d '${resolveVars(data.body, envVars).replace(/'/g, "'\\''")}'`)
-              navigator.clipboard?.writeText(parts.join(' \\\n')).then(() => message.success('cURL 已复制'))
+              copyToClipboard(parts.join(' \\\n')).then(() => message.success('cURL 已复制'))
             }},
+            { type: 'divider' },
+            { key: 'gen-python', icon: <CodeOutlined />, label: '生成 Python 代码', onClick: () => { setCodeGenLang('python'); setCodeGenOpen(true) } },
+            { key: 'gen-js', icon: <CodeOutlined />, label: '生成 JavaScript 代码', onClick: () => { setCodeGenLang('javascript'); setCodeGenOpen(true) } },
           ]}} trigger={['click']}>
             <Button icon={<CodeOutlined />} style={{ color: '#666' }} />
           </Dropdown>
+          <VarInsertBtn envVars={envVars} onInsert={v => { const cur = data.url || ''; up('url', cur + v) }} />
           <Tooltip title="Ctrl+Enter 发送">
             <Button type="primary" icon={sending ? <LoadingOutlined /> : <SendOutlined />} loading={sending} onClick={handleSend}
               style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 600, minWidth: 72, height: 32 }}>发送</Button>
@@ -462,7 +597,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars }) {
         {tabs.map(t => (
           <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
             padding: '8px 14px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
-            color: t.highlight ? '#52c41a' : activeTab === t.key ? '#1890ff' : '#666',
+            color: t.highlight ? '#52c41a' : activeTab === t.key ? '#1890ff' : t.dim ? '#bbb' : '#666',
             fontWeight: activeTab === t.key ? 600 : 400,
             borderBottom: activeTab === t.key ? `2px solid ${t.highlight ? '#52c41a' : '#1890ff'}` : '2px solid transparent',
           }}>{t.label}{t.count > 0 && <span style={{ fontSize: 10, marginLeft: 3, color: '#999' }}>{t.count}</span>}</div>
@@ -472,17 +607,62 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars }) {
       {/* Tab content */}
       <div style={{ padding: '12px 16px', flex: 1, overflow: 'auto' }}>
         {activeTab === 'params' && <KvEditor items={data.params || []} onChange={handleParamsChange} keyPh="参数名" valPh="参数值" />}
-        {activeTab === 'headers' && <KvEditor items={data.headers || []} onChange={v => up('headers', v)} keyPh="Header" valPh="Value" />}
+        {activeTab === 'headers' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6, gap: 4 }}>
+              <Dropdown menu={{ items: headerPresets.map(p => ({
+                key: p.key, label: p.label,
+                onClick: () => {
+                  const cur = data.headers || []
+                  const existKeys = new Set(cur.map(h => h.key.toLowerCase()))
+                  const newHeaders = p.headers.filter(h => !existKeys.has(h.key.toLowerCase())).map(h => ({ ...h, enabled: true, desc: '' }))
+                  if (newHeaders.length) { up('headers', [...cur, ...newHeaders]); message.success(`已添加 ${newHeaders.length} 个 Header`) }
+                  else message.info('Header 已存在，跳过')
+                },
+              })) }} trigger={['click']}>
+                <Button size="small" icon={<ThunderboltOutlined />} style={{ fontSize: 11 }}>快速添加</Button>
+              </Dropdown>
+            </div>
+            <KvEditor items={data.headers || []} onChange={v => up('headers', v)} keyPh="Header" valPh="Value" />
+          </div>
+        )}
         {activeTab === 'body' && (
           <div>
+            {isGet && <div style={{ marginBottom: 8, padding: '4px 10px', background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 4, fontSize: 11, color: '#ad8b00' }}>GET 请求通常不携带 Body，如需要请切换 Method</div>}
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
               <Select size="small" value={data.bodyType || 'json'} onChange={v => up('bodyType', v)} style={{ width: 140 }}
                 options={[{ value: 'json', label: 'JSON' }, { value: 'form', label: 'x-www-form-urlencoded' }, { value: 'form-data', label: 'form-data' }, { value: 'raw', label: 'Raw' }, { value: 'none', label: '无 Body' }]} />
-              {(data.bodyType || 'json') === 'json' && <Tooltip title="格式化"><Button size="small" type="text" icon={<FormatPainterOutlined />} onClick={() => { try { up('body', JSON.stringify(JSON.parse(data.body || '{}'), null, 2)) } catch {} }}>格式化</Button></Tooltip>}
+              {(data.bodyType || 'json') === 'json' && (
+                <>
+                  <Tooltip title="格式化 JSON"><Button size="small" type="text" icon={<FormatPainterOutlined />} onClick={() => { try { up('body', JSON.stringify(JSON.parse(data.body || '{}'), null, 2)) } catch {} }}>格式化</Button></Tooltip>
+                  <Popover trigger="click" placement="bottomLeft" arrow={false}
+                    content={
+                      <div style={{ width: 280, maxHeight: 360, overflow: 'auto' }}>
+                        <div style={{ fontSize: 11, color: '#86909c', padding: '4px 8px 6px', fontWeight: 600 }}>点击插入 Body 模板</div>
+                        {bodySnippets.map(s => (
+                          <div key={s.key} onClick={() => { up('body', s.code); up('bodyType', 'json') }}
+                            style={{ padding: '6px 10px', cursor: 'pointer', borderRadius: 4, marginBottom: 2 }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#f0f5ff'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#1d2129', marginBottom: 2 }}>{s.label}</div>
+                            <pre style={{ margin: 0, fontSize: 10, color: '#666', fontFamily: 'monospace', lineHeight: 1.4, maxHeight: 60, overflow: 'hidden', whiteSpace: 'pre-wrap' }}>{s.code}</pre>
+                          </div>
+                        ))}
+                      </div>
+                    }>
+                    <Button size="small" type="text" icon={<CodeOutlined />} style={{ color: '#1890ff' }}>插入片段</Button>
+                  </Popover>
+                </>
+              )}
+              <div style={{ flex: 1 }} />
+              <VarInsertBtn envVars={envVars} onInsert={v => up('body', (data.body || '') + v)} />
             </div>
             {(data.bodyType || 'json') === 'none' && <div style={{ padding: '12px 0', textAlign: 'center', color: '#999', fontSize: 12 }}>无 Body</div>}
             {((data.bodyType || 'json') === 'json' || data.bodyType === 'raw') && (
-              <Input.TextArea value={data.body || ''} onChange={e => up('body', e.target.value)} placeholder='{"key": "value"}' autoSize={{ minRows: 6, maxRows: 18 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+              <>
+                <Input.TextArea ref={bodyRef} value={data.body || ''} onChange={e => up('body', e.target.value)} placeholder='{"key": "value"}' autoSize={{ minRows: 6, maxRows: 18 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+                {jsonError && <div style={{ marginTop: 4, fontSize: 11, color: '#ff4d4f', padding: '2px 8px', background: '#fff2f0', borderRadius: 4 }}>JSON 语法错误: {jsonError}</div>}
+              </>
             )}
             {data.bodyType === 'form' && <KvEditor items={data.formParams || []} onChange={v => up('formParams', v)} keyPh="字段名" valPh="字段值" />}
             {data.bodyType === 'form-data' && <KvEditor items={data.formDataParams || []} onChange={v => up('formDataParams', v)} keyPh="字段名" valPh="字段值" />}
@@ -490,7 +670,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars }) {
         )}
         {activeTab === 'auth' && <AuthEditor auth={data.auth} onChange={v => up('auth', v)} />}
         {activeTab === 'desc' && <Input.TextArea value={data.description || ''} onChange={e => up('description', e.target.value)} placeholder="接口说明、备注..." autoSize={{ minRows: 4, maxRows: 12 }} style={{ fontSize: 12 }} />}
-        {activeTab === 'response' && (sending ? <div style={{ textAlign: 'center', padding: 40 }}><Spin tip="发送中..." /></div> : <ResponsePanel response={response} />)}
+        {activeTab === 'response' && (sending ? <div style={{ textAlign: 'center', padding: 40 }}><Spin tip="发送中..." /></div> : <ResponsePanel response={response} onUseAsBody={body => { up('body', body); up('bodyType', 'json'); setActiveTab('body'); message.success('已填入 Body') }} />)}
       </div>
 
       {/* cURL Import Modal */}
@@ -500,6 +680,20 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars }) {
         <Input.TextArea value={curlText} onChange={e => setCurlText(e.target.value)}
           placeholder={'curl -X GET \'https://api.example.com/users\' \\\n  -H \'Authorization: Bearer token\' \\\n  -H \'Content-Type: application/json\''}
           autoSize={{ minRows: 6, maxRows: 14 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+      </Modal>
+
+      {/* Code Generation Modal */}
+      <Modal open={codeGenOpen} onCancel={() => setCodeGenOpen(false)} title="生成代码" width={600} footer={null}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          {['python', 'javascript'].map(lang => (
+            <Button key={lang} size="small" type={codeGenLang === lang ? 'primary' : 'default'} onClick={() => setCodeGenLang(lang)}>
+              {lang === 'python' ? 'Python (requests)' : 'JavaScript (fetch)'}
+            </Button>
+          ))}
+          <div style={{ flex: 1 }} />
+          <Tooltip title="复制代码"><Button size="small" icon={<CopyOutlined />} onClick={() => copyToClipboard(generatedCode).then(() => message.success('代码已复制'))}>复制</Button></Tooltip>
+        </div>
+        <pre style={{ margin: 0, padding: 16, background: '#1e1e1e', color: '#d4d4d4', borderRadius: 8, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, maxHeight: 400, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{generatedCode}</pre>
       </Modal>
     </div>
   )
@@ -523,6 +717,7 @@ export default function ApiManagement() {
   const [envVars, setEnvVars] = useState([])
   const [ctxMenu, setCtxMenu] = useState(null)
   const [newNodeId, setNewNodeId] = useState(null)
+  const [dirtyTabs, setDirtyTabs] = useState(new Set())
 
   const loadNodes = async () => {
     try {
@@ -723,9 +918,33 @@ export default function ApiManagement() {
             style={{ flex: 1 }} popupMatchSelectWidth={false}
             options={[{ value: '__none__', label: '无环境' }, ...environments.map(e => ({ value: e.id, label: e.name }))]} />
           {envVars.length > 0 && (
-            <Tooltip title={envVars.map(v => `${v.key} = ${v.value}`).join('\n')} overlayStyle={{ whiteSpace: 'pre-wrap', maxWidth: 360 }}>
-              <span style={{ fontSize: 10, color: '#52c41a', cursor: 'default' }}>{envVars.length} 变量</span>
-            </Tooltip>
+            <Popover trigger="click" placement="rightTop" arrow={false}
+              content={
+                <div style={{ width: 360 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#1d2129', padding: '4px 0 8px', borderBottom: '1px solid #f0f0f0', marginBottom: 8 }}>
+                    环境变量 — {environments.find(e => e.id === runEnv)?.name || ''}
+                  </div>
+                  {envVars.map((v, i) => (
+                    <div key={v.key || i} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#fa8c16', fontWeight: 600, width: 100, flexShrink: 0 }}>{v.key}</span>
+                      <Input size="small" value={v.value} onChange={e => {
+                        const newVars = envVars.map((vv, j) => j === i ? { ...vv, value: e.target.value } : vv)
+                        setEnvVars(newVars)
+                      }} style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} />
+                    </div>
+                  ))}
+                  <Button size="small" type="primary" block style={{ marginTop: 8 }} onClick={async () => {
+                    try {
+                      await api.put(`/environments/${runEnv}/variables`, envVars.map(v => ({ key: v.key, value: v.value, description: v.description })))
+                      const env = environments.find(e => e.id === runEnv)
+                      if (env) env.variables = [...envVars]
+                      message.success('变量已保存')
+                    } catch { message.error('保存失败') }
+                  }}>保存变量</Button>
+                </div>
+              }>
+              <span style={{ fontSize: 10, color: '#52c41a', cursor: 'pointer', textDecoration: 'underline' }}>{envVars.length} 变量</span>
+            </Popover>
           )}
         </div>
 
@@ -769,6 +988,7 @@ export default function ApiManagement() {
                   }}>
                   <Tag style={{ margin: 0, fontWeight: 700, fontSize: 8, background: mc.bg, color: mc.color, border: 'none', padding: '0 3px', lineHeight: '13px' }}>{tn.method || 'GET'}</Tag>
                   <span style={{ color: isActive ? '#1d2129' : '#666', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {dirtyTabs.has(tid) && <span style={{ color: '#fa8c16', marginRight: 2 }}>●</span>}
                     {tn.name || '未命名接口'}
                   </span>
                   <CloseOutlined onClick={e => closeTab(tid, e)} style={{ fontSize: 9, color: '#bbb', marginLeft: 4 }} />
@@ -781,7 +1001,13 @@ export default function ApiManagement() {
         {/* 编辑器内容 */}
         {selected && selected.nodeType === 'endpoint' ? (
           <EndpointEditor key={activeTabId} node={selected} onSave={handleSave} onSend={handleSend}
-            sending={!!sendingMap[activeTabId]} response={responses[activeTabId]} envVars={envVars} />
+            sending={!!sendingMap[activeTabId]} response={responses[activeTabId]} envVars={envVars}
+            onDirtyChange={isDirty => setDirtyTabs(prev => {
+              const next = new Set(prev)
+              isDirty ? next.add(activeTabId) : next.delete(activeTabId)
+              return next
+            })}
+            onPreviewChange={patch => setNodes(prev => prev.map(n => n.id === activeTabId ? { ...n, ...patch } : n))} />
         ) : selected && selected.nodeType === 'folder' ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
