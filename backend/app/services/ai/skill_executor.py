@@ -111,7 +111,23 @@ async def execute_case_generate(
     yield SSEEvent(type="step_progress", data={"step": 1, "message": f"发现 {len(existing_cases)} 条已有用例"})
 
     folder_tree = await test_cases.get_folder_tree(session, str(branch_id))
-    yield SSEEvent(type="step_done", data={"step": 1, "summary": f"API {len(api_tree)} 个, 已有用例 {len(existing_cases)} 条"})
+
+    # 读取项目知识库
+    from sqlalchemy import select as sa_select
+    from app.models.knowledge import KnowledgeEntry
+    knowledge_result = await session.execute(
+        sa_select(KnowledgeEntry)
+        .where(KnowledgeEntry.project_id == project_id)
+        .order_by(KnowledgeEntry.created_at.desc())
+        .limit(10)
+    )
+    knowledge_entries = knowledge_result.scalars().all()
+    knowledge_text = ""
+    if knowledge_entries:
+        knowledge_text = "\n".join(f"- [{e.category}] {e.title}: {e.content[:100]}" for e in knowledge_entries)
+        yield SSEEvent(type="step_progress", data={"step": 1, "message": f"加载了 {len(knowledge_entries)} 条知识库条目"})
+
+    yield SSEEvent(type="step_done", data={"step": 1, "summary": f"API {len(api_tree)} 个, 已有用例 {len(existing_cases)} 条, 知识 {len(knowledge_entries)} 条"})
 
     # ── Step 2-4: LLM 生成 ──
     yield SSEEvent(type="step_start", data={"step": 2, "title": "维度规划 + 用例生成"})
@@ -128,6 +144,9 @@ async def execute_case_generate(
         api_context=api_context,
         existing_context=existing_context,
     )
+
+    if knowledge_text:
+        user_prompt += f"\n\n## 项目知识库（AI 评审/诊断的历史经验）\n{knowledge_text}"
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -436,6 +455,10 @@ async def execute_quality_review(
 
     from app.models.case_file import AIUsageLog
     session.add(AIUsageLog(project_id=project_id, skill_name="tb-quality-review", model=ai_config.model, total_tokens=len(full_content) * 2))
+
+    from app.api.knowledge import add_knowledge_from_review
+    await add_knowledge_from_review(session, project_id, report)
+
     await session.commit()
 
     yield SSEEvent(type="done", data={

@@ -28,6 +28,8 @@ from app.api.exploratory import router as exploratory_router
 from app.api.documents import router as documents_router
 from app.api.case_file import router as case_file_router
 from app.api.skill_manage import router as skill_manage_router
+from app.api.knowledge import router as knowledge_router
+from app.api.screenshots import router as screenshots_router
 from app.core.middleware import CamelCaseResponse, TokenRefreshMiddleware, TraceIdMiddleware
 
 # --- MCP Server ---
@@ -92,6 +94,8 @@ app.include_router(exploratory_router)
 app.include_router(documents_router)
 app.include_router(case_file_router)
 app.include_router(skill_manage_router)
+app.include_router(knowledge_router)
+app.include_router(screenshots_router)
 
 # --- MCP Server 挂载 ---
 app.mount("/mcp", _mcp_app)
