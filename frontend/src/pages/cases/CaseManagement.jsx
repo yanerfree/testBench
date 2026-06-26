@@ -306,7 +306,9 @@ export default function CaseManagement() {
         }
       },
       onDone: (data) => {
-        if (data?.report) setReviewResult(data)
+        if (data && data.report) {
+          setReviewResult(data)
+        }
         setReviewLoading(false)
       },
       onError: (msg) => { message.error(msg); setReviewLoading(false) },
@@ -930,6 +932,11 @@ export default function CaseManagement() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+        {!reviewLoading && !reviewResult && (
+          <div style={{ textAlign: 'center', padding: 40, color: '#86909c' }}>
+            评审结果加载中或解析失败，请重试
           </div>
         )}
       </Modal>

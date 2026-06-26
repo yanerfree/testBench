@@ -192,6 +192,15 @@ async def execute_case_generate(
             logger.warning("Failed to create case '%s': %s", title, e)
             skipped += 1
 
+    # 写入用量记录
+    from app.models.case_file import AIUsageLog
+    session.add(AIUsageLog(
+        project_id=project_id,
+        skill_name="tb-case-generate",
+        model=ai_config.model,
+        total_tokens=len(full_content) * 2,
+    ))
+
     await session.commit()
 
     yield SSEEvent(type="step_done", data={
@@ -424,6 +433,10 @@ async def execute_quality_review(
     level = "优秀" if score >= 90 else "良好" if score >= 75 else "一般" if score >= 60 else "不合格"
 
     yield SSEEvent(type="step_done", data={"step": 3, "summary": f"评审完成: {score} 分 ({level})"})
+
+    from app.models.case_file import AIUsageLog
+    session.add(AIUsageLog(project_id=project_id, skill_name="tb-quality-review", model=ai_config.model, total_tokens=len(full_content) * 2))
+    await session.commit()
 
     yield SSEEvent(type="done", data={
         "report": report,
