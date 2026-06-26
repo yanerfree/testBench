@@ -26,6 +26,13 @@ export default function ProjectAIConfig() {
   const [customModalOpen, setCustomModalOpen] = useState(false)
   const [form] = Form.useForm()
 
+  // 用量统计
+  const [usage, setUsage] = useState(null)
+  useEffect(() => {
+    if (!projectId) return
+    api.get(`/projects/${projectId}/ai-usage`).then(res => setUsage(res.data)).catch(() => {})
+  }, [projectId])
+
   const fetchConfig = useCallback(async () => {
     setLoading(true)
     try {
@@ -300,6 +307,29 @@ export default function ProjectAIConfig() {
             }
           />
         </Card>
+      )}
+
+      {/* 用量统计 */}
+      {usage && usage.totalCalls > 0 && (
+        <>
+          <Divider orientation="left" style={{ margin: '16px 0 12px' }}>AI 用量统计</Divider>
+          <Card size="small">
+            <div style={{ display: 'flex', gap: 24, marginBottom: 8 }}>
+              <div><Text type="secondary">总调用：</Text><Text strong>{usage.totalCalls} 次</Text></div>
+              <div><Text type="secondary">总 Token：</Text><Text strong>{usage.totalTokens.toLocaleString()}</Text></div>
+            </div>
+            {usage.bySkill.length > 0 && (
+              <div>
+                {usage.bySkill.map(s => (
+                  <div key={s.skillName} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #f5f5f5' }}>
+                    <Tag>{s.skillName}</Tag>
+                    <Text type="secondary">{s.calls} 次 · {s.tokens.toLocaleString()} tokens</Text>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </>
       )}
 
       {/* 自建配置弹窗 */}

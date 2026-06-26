@@ -30,7 +30,8 @@ export default function TestForgeModal({ projectId, branchId, folders, open, onC
     api.get(`/projects/${projectId}/api-nodes`).then(res => {
       const nodes = (res.data || []).filter(n => n.type === 'endpoint')
       setApiNodes(nodes)
-    }).catch(() => {})
+      if (nodes.length === 0) setInputMode('manual')
+    }).catch(() => { setInputMode('manual') })
   }, [open, projectId])
 
   const handleGenerate = async () => {

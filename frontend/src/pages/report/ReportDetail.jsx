@@ -356,6 +356,14 @@ function ScenarioExpanded({ scenario }) {
         </div>
       )}
 
+      {isFailed && (
+        <div style={{ padding: '8px 12px', background: '#f0f5ff', borderRadius: 6, border: '1px solid #d6e4ff' }}>
+          <span style={{ fontSize: 12, color: '#1677ff' }}>
+            💡 可在用例管理页使用「AI 评审」分析失败原因，或通过 API 调用失败诊断 Skill
+          </span>
+        </div>
+      )}
+
       {/* 用例步骤（如果有定义） */}
       {caseSteps && caseSteps.length > 0 && (
         <div>

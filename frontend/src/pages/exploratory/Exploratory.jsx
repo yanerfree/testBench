@@ -70,9 +70,13 @@ export default function Exploratory() {
       `/projects/${projectId}/exploratory/sessions/${activeSession.id}/generate-charter`,
       {},
       {
-        onChunk: () => {},
+        onChunk: (data) => {
+          if (data && data.charter) {
+            setActiveSession(prev => ({ ...prev, charter: data.charter, checkpoints: data.charter.checkpoints, totalCheckpoints: data.charter.checkpoints?.length || 0 }))
+          }
+        },
         onDone: (data) => {
-          if (data?.charter) {
+          if (data && data.charter) {
             setActiveSession(prev => ({ ...prev, charter: data.charter, checkpoints: data.charter.checkpoints, totalCheckpoints: data.charter.checkpoints?.length || 0 }))
             message.success('章程已生成')
           }
