@@ -170,22 +170,6 @@ function AppLayout() {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Dropdown
-            menu={{
-              items: [
-                { key: '/tools/llm-mock', icon: <RobotOutlined />, label: 'LLM Mock' },
-                { key: '/tools/api-mock', icon: <CloudServerOutlined />, label: 'API Mock' },
-                { key: '/tools/mcp-mock', icon: <ApiOutlined />, label: 'MCP Mock' },
-                { type: 'divider' },
-                { key: '/settings/ai-providers', icon: <SettingOutlined />, label: 'AI 服务配置' },
-                { key: '/settings/env', icon: <SettingOutlined />, label: '环境配置' },
-              ],
-              onClick: ({ key }) => navigate(key),
-            }}
-            placement="bottomRight"
-          >
-            <Button type="text" icon={<ToolOutlined style={{ color: '#bfc4cd' }} />} size="small" />
-          </Dropdown>
           <Tooltip title="通知">
             <Button type="text" icon={<BellOutlined style={{ color: '#bfc4cd' }} />} size="small" />
           </Tooltip>
