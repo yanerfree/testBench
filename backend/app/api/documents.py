@@ -32,7 +32,7 @@ class CreateDocRequest(BaseSchema):
 class GenerateDocRequest(BaseSchema):
     title: str = Field(..., min_length=1, max_length=200)
     doc_type: str = Field(default="manual")
-    module: str | None = None
+    folder_id: str | None = None
     additional_info: str | None = None
 
 
@@ -117,14 +117,12 @@ async def generate_document(
 
     cases_text = "（无用例数据）"
     if branch_id:
-        cases_result = await test_cases.list_cases(session, branch_id, page_size=50,
-            folder_id=None)
+        cases_result = await test_cases.list_cases(session, branch_id, page_size=100,
+            folder_id=body.folder_id)
         cases = cases_result.get("cases", [])
-        if body.module:
-            cases = [c for c in cases if body.module.lower() in (c.get("title", "") + c.get("caseCode", "")).lower()]
         if cases:
             lines = []
-            for c in cases[:30]:
+            for c in cases[:40]:
                 steps_text = " → ".join(s.get("action", "") for s in c.get("steps", [])[:5])
                 lines.append(f"### {c['title']}\n前置: {c.get('preconditions','无')}\n步骤: {steps_text}\n预期: {c.get('expectedResult','')}")
             cases_text = "\n\n".join(lines)
@@ -135,14 +133,19 @@ async def generate_document(
     DOC_TYPE_LABELS = {"manual": "操作手册", "acceptance": "验收文档", "training": "培训教材"}
     doc_label = DOC_TYPE_LABELS.get(body.doc_type, "操作手册")
 
+    business_context = body.additional_info or ""
+    case_count = len(cases_result.get("cases", [])) if branch_id else 0
+
     messages = [
-        {"role": "system", "content": f"你是技术文档专家。根据测试用例生成{doc_label}。输出完整的 Markdown 文档，结构清晰、步骤具体。"},
+        {"role": "system", "content": f"你是技术文档专家。根据测试用例和业务背景生成{doc_label}。要求：\n- 基于用例步骤整理成操作说明，不要凭空编造功能\n- 每个操作章节对应一组相关用例\n- 步骤要具体到按钮名称、输入内容、预期结果\n- 输出完整 Markdown，结构清晰"},
         {"role": "user", "content": f"""请根据以下信息生成一份【{doc_label}】：
 
 标题：{body.title}
-{f'补充说明：{body.additional_info}' if body.additional_info else ''}
+用例数量：{case_count} 条
 
-## 测试用例（参考内容）
+{f'## 业务背景（用户提供）{chr(10)}{business_context}' if business_context else ''}
+
+## 测试用例（文档素材，共 {case_count} 条）
 {cases_text}
 
 ## API 接口
