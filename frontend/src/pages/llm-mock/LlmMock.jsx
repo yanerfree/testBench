@@ -691,7 +691,7 @@ export default function LlmMock() {
         <Space size={8}>
           {serviceStatus.running && (
             <Button size="small" icon={<CopyOutlined />} onClick={() => {
-              const url = `http://${window.location.hostname}:${serviceStatus.port}/v1/chat/completions`
+              const url = `http://${window.location.hostname}:${serviceStatus.port}`
               copyToClipboard(url)
               message.success('已复制端点地址')
             }}>复制端点</Button>
