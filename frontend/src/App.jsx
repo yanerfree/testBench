@@ -5,7 +5,7 @@ import {
   FolderOutlined, FileTextOutlined, UnorderedListOutlined, BarChartOutlined,
   SettingOutlined, UserOutlined, FileSearchOutlined, ApiOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined, RobotOutlined,
-  CloudServerOutlined, ThunderboltOutlined,
+  CloudServerOutlined, ThunderboltOutlined, BugOutlined,
 } from '@ant-design/icons'
 import { api } from './utils/request'
 import ProjectList from './pages/projects/ProjectList'
@@ -30,6 +30,7 @@ import ProjectAIConfig from './pages/settings/ProjectAIConfig'
 import AICapabilities from './pages/settings/AICapabilities'
 import SkillManage from './pages/settings/SkillManage'
 import MCPTools from './pages/settings/MCPTools'
+import Exploratory from './pages/exploratory/Exploratory'
 
 const { Header, Sider, Content } = Layout
 
@@ -72,6 +73,7 @@ function AppLayout() {
     { key: `/projects/${projectId}/apis`, icon: <ApiOutlined />, label: 'API 接口' },
     { key: `/projects/${projectId}/plans`, icon: <UnorderedListOutlined />, label: '测试计划' },
     { key: `/projects/${projectId}/reports`, icon: <BarChartOutlined />, label: '测试报告' },
+    { key: `/projects/${projectId}/exploratory`, icon: <BugOutlined />, label: '探索测试' },
     { type: 'divider' },
     {
       key: 'ai-group',
@@ -224,6 +226,7 @@ function AppLayout() {
             <Route path="/projects/:projectId/settings/ai-capabilities" element={<AICapabilities />} />
             <Route path="/projects/:projectId/settings/skills" element={<SkillManage />} />
             <Route path="/projects/:projectId/settings/mcp-tools" element={<MCPTools />} />
+            <Route path="/projects/:projectId/exploratory" element={<Exploratory />} />
             <Route path="/settings/env" element={<EnvConfig />} />
             <Route path="/settings/channels" element={<ChannelConfig />} />
             <Route path="/settings/ai-providers" element={<AIProviderConfig />} />
