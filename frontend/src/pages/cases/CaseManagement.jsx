@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin, TreeSelect, Checkbox } from 'antd'
-import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined, CodeOutlined } from '@ant-design/icons'
+import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined, CodeOutlined, LoadingOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 import TestForgeModal from './TestForgeModal'
@@ -280,6 +280,38 @@ export default function CaseManagement() {
   // ---- 导出 ----
   // ---- 导出 Excel（后端生成） ----
   const [exporting, setExporting] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviewResult, setReviewResult] = useState(null)
+  const [reviewSteps, setReviewSteps] = useState([])
+
+  const handleQualityReview = () => {
+    if (!currentBranch) { message.warning('请先选择分支'); return }
+    setReviewOpen(true)
+    setReviewResult(null)
+    setReviewSteps([])
+    setReviewLoading(true)
+
+    const url = `/projects/${projectId}/branches/${currentBranch}/skills/tb-quality-review`
+    const body = { folderId: selectedFolderId || undefined }
+
+    api.stream(url, body, {
+      onChunk: (data) => {
+        if (data.type === 'step_start' || data.type === 'step_done') {
+          setReviewSteps(prev => [...prev, data])
+        }
+        if (data.type === 'error') {
+          message.error(data.message)
+          setReviewLoading(false)
+        }
+      },
+      onDone: (data) => {
+        if (data?.report) setReviewResult(data)
+        setReviewLoading(false)
+      },
+      onError: (msg) => { message.error(msg); setReviewLoading(false) },
+    })
+  }
   const handleExport = async () => {
     if (!currentBranch) { message.warning('请先选择分支'); return }
     setExporting(true)
@@ -607,6 +639,9 @@ export default function CaseManagement() {
                     AI 生成脚本{selectedRowKeys.length > 0 ? ` (${selectedRowKeys.length})` : ''}
                   </Button>
                 </Tooltip>
+                <Tooltip title="AI 从完整性/准确性/有效性/可执行性 4 维度评审当前模块的用例质量，输出评分和改进建议">
+                  <Button icon={<SearchOutlined />} onClick={() => handleQualityReview()}>AI 评审</Button>
+                </Tooltip>
                 <Button icon={<UploadOutlined />} size="small" onClick={() => setImportOpen(true)}>导入</Button>
                 <Button icon={<DownloadOutlined />} size="small" onClick={handleExport} loading={exporting}>导出</Button>
                 <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => {
@@ -838,6 +873,65 @@ export default function CaseManagement() {
             ))}
           </div>
         </div>
+      </Modal>
+
+      {/* AI 质量评审结果 */}
+      <Modal
+        title={<Space><SearchOutlined /> AI 质量评审</Space>}
+        open={reviewOpen}
+        onCancel={() => setReviewOpen(false)}
+        width={700}
+        footer={[<Button key="close" onClick={() => setReviewOpen(false)}>关闭</Button>]}
+      >
+        {reviewLoading && (
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <LoadingOutlined style={{ fontSize: 24 }} />
+            <p style={{ marginTop: 12 }}>AI 正在评审用例质量...</p>
+            {reviewSteps.map((s, i) => (
+              <Tag key={i} style={{ margin: 2 }}>{s.title || s.summary || s.step}</Tag>
+            ))}
+          </div>
+        )}
+        {reviewResult && (
+          <div>
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: 48, fontWeight: 700, color: reviewResult.score >= 75 ? '#52c41a' : reviewResult.score >= 60 ? '#faad14' : '#ff4d4f' }}>
+                {reviewResult.score}
+              </div>
+              <Tag color={reviewResult.score >= 75 ? 'success' : reviewResult.score >= 60 ? 'warning' : 'error'} style={{ fontSize: 14 }}>
+                {reviewResult.level}
+              </Tag>
+              <div style={{ marginTop: 8, color: '#86909c' }}>
+                评审了 {reviewResult.caseCount} 条用例，涉及 {reviewResult.apiCount} 个 API 端点
+              </div>
+            </div>
+
+            {reviewResult.report?.dimensions && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+                {Object.entries(reviewResult.report.dimensions).map(([key, dim]) => (
+                  <div key={key} style={{ padding: '8px 12px', background: '#fafafa', borderRadius: 6, borderLeft: `3px solid ${dim.score >= 80 ? '#52c41a' : dim.score >= 60 ? '#faad14' : '#ff4d4f'}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Text strong>{{completeness:'完整性',accuracy:'准确性',effectiveness:'有效性',executability:'可执行性'}[key] || key}</Text>
+                      <Text strong>{dim.score} 分 ({dim.weight}%)</Text>
+                    </div>
+                    {dim.issues?.length > 0 && dim.issues.map((issue, i) => (
+                      <div key={i} style={{ fontSize: 12, color: '#ff4d4f', marginTop: 2 }}>- {issue}</div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {reviewResult.report?.suggestions?.length > 0 && (
+              <div style={{ padding: '8px 12px', background: '#f6ffed', borderRadius: 6 }}>
+                <Text strong>改进建议：</Text>
+                {reviewResult.report.suggestions.map((s, i) => (
+                  <div key={i} style={{ fontSize: 13, marginTop: 4 }}>• {s}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
 
       <TestForgeModal

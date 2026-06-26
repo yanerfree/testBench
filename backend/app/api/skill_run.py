@@ -73,3 +73,44 @@ async def run_case_generate(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
+
+
+class RunQualityReviewRequest(BaseSchema):
+    folder_id: str | None = None
+    module: str | None = None
+
+
+@router.post("/tb-quality-review")
+async def run_quality_review(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    body: RunQualityReviewRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    ai_config = await resolve_ai_config(project_id, session)
+    if not ai_config:
+        raise AppError(code="AI_NOT_CONFIGURED", message="AI 服务未配置", status_code=503)
+
+    from app.services.ai.skill_executor import execute_quality_review
+
+    async def event_stream():
+        try:
+            async for event in execute_quality_review(
+                project_id=project_id,
+                branch_id=branch_id,
+                folder_id=body.folder_id,
+                module=body.module,
+                ai_config=ai_config,
+                session=session,
+            ):
+                yield f"data: {json.dumps({'type': event.type, **event.data}, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            logger.exception("Quality review failed")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)[:200]}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )

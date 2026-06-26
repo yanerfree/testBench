@@ -319,3 +319,141 @@ def _parse_cases(content: str) -> list[dict]:
 
     logger.warning("Failed to parse AI output as JSON, length=%d", len(content))
     return []
+
+
+# ── 质量评审 Skill ──────────────────────────────────
+
+async def execute_quality_review(
+    *,
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    folder_id: str | None,
+    module: str | None,
+    ai_config: ResolvedAIConfig,
+    session: AsyncSession,
+) -> AsyncIterator[SSEEvent]:
+    """执行 tb-quality-review Skill。"""
+
+    yield SSEEvent(type="skill_start", data={"skill": "tb-quality-review", "totalSteps": 3})
+
+    # Step 1: 收集用例
+    yield SSEEvent(type="step_start", data={"step": 1, "title": "收集用例和接口"})
+
+    cases_result = await test_cases.list_cases(
+        session, str(branch_id), page_size=200, folder_id=folder_id,
+    )
+    cases = cases_result["cases"]
+    if not cases:
+        yield SSEEvent(type="error", data={"message": "该模块下没有用例，无法评审"})
+        return
+
+    api_tree = await api_endpoints.list_api_tree(session, str(project_id))
+    endpoints = [n for n in api_tree if n.get("type") == "endpoint"]
+
+    priority_dist = {}
+    for c in cases:
+        p = c.get("priority", "P2")
+        priority_dist[p] = priority_dist.get(p, 0) + 1
+
+    yield SSEEvent(type="step_done", data={
+        "step": 1,
+        "summary": f"用例 {len(cases)} 条, API 端点 {len(endpoints)} 个, 优先级分布: {priority_dist}",
+    })
+
+    # Step 2: LLM 评审
+    yield SSEEvent(type="step_start", data={"step": 2, "title": "AI 四维度评审"})
+
+    cases_text = "\n".join(
+        f"- [{c['priority']}] {c['title']} (步骤{len(c.get('steps', []))}步)"
+        for c in cases[:50]
+    )
+    api_text = "\n".join(f"- {ep.get('method','GET')} {ep.get('url','')} ({ep.get('name','')})" for ep in endpoints[:20])
+
+    messages = [
+        {"role": "system", "content": """你是一位资深 QA 质量评审专家。请对以下测试用例进行四维度评审。
+
+输出严格 JSON 格式（用 ```json 包裹）：
+{
+  "score": 85,
+  "dimensions": {
+    "completeness": {"score": 80, "weight": 30, "issues": ["缺少安全测试场景"]},
+    "accuracy": {"score": 90, "weight": 25, "issues": []},
+    "effectiveness": {"score": 85, "weight": 25, "issues": ["存在2条重复用例"]},
+    "executability": {"score": 88, "weight": 20, "issues": ["部分前置条件描述不够具体"]}
+  },
+  "issues": [
+    {"dimension": "completeness", "severity": "high", "case": "用例标题", "description": "具体问题"},
+  ],
+  "suggestions": ["建议1", "建议2"],
+  "coverage": {"apisCovered": 3, "apisTotal": 5, "missingApis": ["GET /api/xxx"]}
+}
+
+评分标准：90-100 优秀 / 75-89 良好 / 60-74 一般 / <60 不合格"""},
+        {"role": "user", "content": f"""## 待评审用例（{len(cases)} 条）
+{cases_text}
+
+## 项目 API 端点（{len(endpoints)} 个）
+{api_text}
+
+请从完整性(30%)、准确性(25%)、有效性(25%)、可执行性(20%)四个维度评审，输出 JSON。"""},
+    ]
+
+    full_content = ""
+    try:
+        async for chunk in llm_client.stream(messages, config=ai_config):
+            if chunk.delta:
+                full_content += chunk.delta
+                yield SSEEvent(type="step_progress", data={"step": 2, "chunk": chunk.delta})
+    except Exception as e:
+        logger.error("Quality review LLM call failed: %s", e)
+        yield SSEEvent(type="error", data={"message": f"AI 评审失败: {str(e)[:200]}"})
+        return
+
+    yield SSEEvent(type="step_done", data={"step": 2, "summary": "AI 评审完成"})
+
+    # Step 3: 解析报告
+    yield SSEEvent(type="step_start", data={"step": 3, "title": "解析评审报告"})
+
+    report = _parse_json_object(full_content)
+    if not report:
+        yield SSEEvent(type="error", data={"message": "无法解析 AI 评审结果"})
+        return
+
+    score = report.get("score", 0)
+    level = "优秀" if score >= 90 else "良好" if score >= 75 else "一般" if score >= 60 else "不合格"
+
+    yield SSEEvent(type="step_done", data={"step": 3, "summary": f"评审完成: {score} 分 ({level})"})
+
+    yield SSEEvent(type="done", data={
+        "report": report,
+        "score": score,
+        "level": level,
+        "caseCount": len(cases),
+        "apiCount": len(endpoints),
+    })
+
+
+def _parse_json_object(content: str) -> dict | None:
+    content = content.strip()
+    json_match = re.search(r"```json\s*\n(.*?)(?:\n```|$)", content, re.DOTALL)
+    if json_match:
+        content = json_match.group(1).strip()
+    else:
+        brace_match = re.search(r"\{.*", content, re.DOTALL)
+        if brace_match:
+            content = brace_match.group(0)
+
+    try:
+        data = json.loads(content)
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        last_brace = content.rfind("}")
+        if last_brace > 0:
+            try:
+                return json.loads(content[:last_brace + 1])
+            except json.JSONDecodeError:
+                pass
+
+    logger.warning("Failed to parse review JSON, length=%d", len(content))
+    return None
