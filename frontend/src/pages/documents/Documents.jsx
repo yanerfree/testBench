@@ -178,7 +178,6 @@ export default function Documents() {
             style={{ fontSize: 14, lineHeight: 1.8 }}
             dangerouslySetInnerHTML={{ __html: simpleMarkdown(previewDoc.content || '') }}
           />
-          </div>
         )}
       </Drawer>
     </div>
@@ -187,15 +186,17 @@ export default function Documents() {
 
 function simpleMarkdown(md) {
   if (!md) return ''
-  return md
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/^### (.+)$/gm, '<h4 style="margin:16px 0 8px;font-size:15px">$1</h4>')
-    .replace(/^## (.+)$/gm, '<h3 style="margin:20px 0 10px;font-size:17px;border-bottom:1px solid #f0f0f0;padding-bottom:6px">$1</h3>')
-    .replace(/^# (.+)$/gm, '<h2 style="margin:24px 0 12px;font-size:20px">$1</h2>')
-    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
-    .replace(/`(.+?)`/g, '<code style="background:#f5f5f5;padding:1px 4px;border-radius:3px;font-size:13px">$1</code>')
-    .replace(/^- (.+)$/gm, '<div style="padding-left:16px">• $1</div>')
-    .replace(/^\d+\. (.+)$/gm, '<div style="padding-left:16px">$&</div>')
-    .replace(/\n\n/g, '<br/><br/>')
-    .replace(/\n/g, '<br/>')
+  let html = md
+  html = html.replace(/&/g, '&amp;')
+  html = html.replace(/[<]/g, '&lt;')
+  html = html.replace(/>/g, '&gt;')
+  html = html.replace(/^### (.+)$/gm, '<h4 style="margin:16px 0 8px;font-size:15px">$1</h4>')
+  html = html.replace(/^## (.+)$/gm, '<h3 style="margin:20px 0 10px;font-size:17px;border-bottom:1px solid #f0f0f0;padding-bottom:6px">$1</h3>')
+  html = html.replace(/^# (.+)$/gm, '<h2 style="margin:24px 0 12px;font-size:20px">$1</h2>')
+  html = html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+  html = html.replace(/`(.+?)`/g, '<code style="background:#f5f5f5;padding:1px 4px;border-radius:3px;font-size:13px">$1</code>')
+  html = html.replace(/^- (.+)$/gm, '<div style="padding-left:16px">• $1</div>')
+  html = html.replace(/\n\n/g, '<br/><br/>')
+  html = html.replace(/\n/g, '<br/>')
+  return html
 }
