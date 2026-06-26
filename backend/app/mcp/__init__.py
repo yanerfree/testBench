@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastmcp import FastMCP
 
 from app.mcp.deps import get_mcp_session
-from app.mcp.tools import test_cases, api_endpoints, environments
+from app.mcp.tools import test_cases, api_endpoints, environments, test_reports
 
 mcp = FastMCP(
     name="testBench",
@@ -95,4 +95,19 @@ _register(
     environments.get_merged_variables,
     name="tb_get_merged_variables",
     description="获取合并后的变量（全局变量 + 环境变量，环境优先）。参数: env_id(环境UUID)",
+)
+
+
+# ── 测试报告工具 ──────────────────────────────────
+
+_register(
+    test_reports.get_report_summary,
+    name="tb_get_report_summary",
+    description="获取测试报告摘要（通过/失败/跳过/通过率 + 模块级分布）。参数: plan_id, report_id(可选)",
+)
+
+_register(
+    test_reports.get_failed_scenarios,
+    name="tb_get_failed_scenarios",
+    description="获取报告中失败的用例（含步骤、错误信息）。参数: plan_id, report_id(可选)",
 )

@@ -13,6 +13,7 @@ import yaml
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.mcp.tools import test_cases, api_endpoints
+from app.mcp.tools import test_reports as report_tools
 from app.services.ai import llm_client
 from app.services.ai_config_resolver import ResolvedAIConfig
 
@@ -457,3 +458,107 @@ def _parse_json_object(content: str) -> dict | None:
 
     logger.warning("Failed to parse review JSON, length=%d", len(content))
     return None
+
+
+# ── 失败诊断 Skill ──────────────────────────────────
+
+async def execute_diagnose(
+    *,
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    plan_id: str,
+    report_id: str | None,
+    case_ids: list[str] | None,
+    ai_config: ResolvedAIConfig,
+    session: AsyncSession,
+) -> AsyncIterator[SSEEvent]:
+    """执行 tb-diagnose Skill — 分析失败用例的根因。"""
+
+    yield SSEEvent(type="skill_start", data={"skill": "tb-diagnose", "totalSteps": 3})
+
+    # Step 1: 收集失败信息
+    yield SSEEvent(type="step_start", data={"step": 1, "title": "收集失败信息"})
+
+    failed = await report_tools.get_failed_scenarios(session, plan_id, report_id)
+    if case_ids:
+        failed = [f for f in failed if f["caseId"] in case_ids]
+
+    if not failed:
+        yield SSEEvent(type="error", data={"message": "未找到失败的用例"})
+        return
+
+    yield SSEEvent(type="step_done", data={"step": 1, "summary": f"找到 {len(failed)} 条失败用例"})
+
+    # Step 2: LLM 诊断
+    yield SSEEvent(type="step_start", data={"step": 2, "title": "AI 分析失败原因"})
+
+    failures_text = ""
+    for i, f in enumerate(failed[:10]):
+        failures_text += f"\n### 失败 #{i+1}: {f['caseTitle']}\n"
+        failures_text += f"状态: {f['status']}\n"
+        if f.get("remark"):
+            failures_text += f"错误信息: {f['remark']}\n"
+        if f.get("preconditions"):
+            failures_text += f"前置条件: {f['preconditions']}\n"
+        if f.get("expectedResult"):
+            failures_text += f"预期结果: {f['expectedResult']}\n"
+        if f.get("steps"):
+            failures_text += f"步骤: {json.dumps(f['steps'], ensure_ascii=False)}\n"
+        if f.get("scriptFile"):
+            failures_text += f"脚本: {f['scriptFile']}\n"
+
+    messages = [
+        {"role": "system", "content": """你是一位资深测试诊断专家。分析测试失败原因，进行三分类仲裁。
+
+对每个失败用例判断根因：
+- script_bug: 脚本自身 Bug（定位器/断言/数据）→ 给出修复代码
+- system_bug: 被测系统的真实 Bug → 给出 Bug 报告
+- env_issue: 环境/配置问题 → 给出检查清单
+
+输出严格 JSON（用 ```json 包裹）：
+{
+  "diagnoses": [
+    {
+      "caseTitle": "标题",
+      "verdict": "script_bug|system_bug|env_issue",
+      "confidence": 0.85,
+      "summary": "一句话",
+      "evidence": ["证据"],
+      "fixSuggestion": "修复建议"
+    }
+  ],
+  "summary": {"total": N, "scriptBug": N, "systemBug": N, "envIssue": N}
+}"""},
+        {"role": "user", "content": f"以下是 {len(failed)} 条失败的测试用例，请逐一诊断：\n{failures_text}"},
+    ]
+
+    full_content = ""
+    try:
+        async for chunk in llm_client.stream(messages, config=ai_config):
+            if chunk.delta:
+                full_content += chunk.delta
+                yield SSEEvent(type="step_progress", data={"step": 2, "chunk": chunk.delta})
+    except Exception as e:
+        yield SSEEvent(type="error", data={"message": f"AI 诊断失败: {str(e)[:200]}"})
+        return
+
+    yield SSEEvent(type="step_done", data={"step": 2, "summary": "AI 分析完成"})
+
+    # Step 3: 解析报告
+    yield SSEEvent(type="step_start", data={"step": 3, "title": "解析诊断报告"})
+
+    report = _parse_json_object(full_content)
+    if not report:
+        yield SSEEvent(type="error", data={"message": "无法解析 AI 诊断结果"})
+        return
+
+    summary = report.get("summary", {})
+    yield SSEEvent(type="step_done", data={
+        "step": 3,
+        "summary": f"脚本Bug {summary.get('scriptBug',0)} · 系统Bug {summary.get('systemBug',0)} · 环境问题 {summary.get('envIssue',0)}",
+    })
+
+    yield SSEEvent(type="done", data={
+        "report": report,
+        "failedCount": len(failed),
+    })

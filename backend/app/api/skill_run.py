@@ -114,3 +114,46 @@ async def run_quality_review(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
+
+
+class RunDiagnoseRequest(BaseSchema):
+    plan_id: str = Field(..., min_length=1)
+    report_id: str | None = None
+    case_ids: list[str] | None = None
+
+
+@router.post("/tb-diagnose")
+async def run_diagnose(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    body: RunDiagnoseRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    ai_config = await resolve_ai_config(project_id, session)
+    if not ai_config:
+        raise AppError(code="AI_NOT_CONFIGURED", message="AI 服务未配置", status_code=503)
+
+    from app.services.ai.skill_executor import execute_diagnose
+
+    async def event_stream():
+        try:
+            async for event in execute_diagnose(
+                project_id=project_id,
+                branch_id=branch_id,
+                plan_id=body.plan_id,
+                report_id=body.report_id,
+                case_ids=body.case_ids,
+                ai_config=ai_config,
+                session=session,
+            ):
+                yield f"data: {json.dumps({'type': event.type, **event.data}, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            logger.exception("Diagnose failed")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)[:200]}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )

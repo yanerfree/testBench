@@ -53,15 +53,15 @@ const PHASES = [
   {
     phase: 'Phase 2',
     title: '核心 Skill',
-    tag: '规划中',
+    tag: '进行中',
     tagColor: 'processing',
     items: [
       {
         title: '质量评审',
         icon: <SearchOutlined />,
-        status: 'planned',
+        status: 'done',
         what: 'AI 从完整性、准确性、有效性、可执行性 4 维度评审用例质量并打分',
-        where: '计划入口：用例管理 → 选模块 → AI 评审',
+        where: '用例管理 → 工具栏「AI 评审」按钮',
         output: '质量分（0-100）+ 问题清单 + 覆盖矩阵 + 改进建议',
       },
       {
@@ -75,9 +75,9 @@ const PHASES = [
       {
         title: '失败诊断',
         icon: <FileSearchOutlined />,
-        status: 'planned',
+        status: 'done',
         what: '分析测试失败原因，3 分类（脚本Bug / 系统Bug / 环境问题）+ 修复建议',
-        where: '计划入口：测试报告 → 失败用例旁「AI 诊断」',
+        where: '测试报告 → 失败用例旁「AI 诊断」按钮',
         output: '诊断结论 + 置信度 + 可行动的修复方案',
       },
     ],
