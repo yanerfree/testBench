@@ -82,7 +82,7 @@ export default function Documents() {
   // 平台直接生成（Playwright 截图）
   const handlePlatGenerate = async () => {
     try {
-      const v = await platForm.validateFields()
+      const v = await ccForm.validateFields()
       setPlatGenerating(true); setPlatContent(''); setPlatProgress([])
       api.stream(`/projects/${projectId}/documents/generate-with-screenshots`, {
         systemUrl: v.systemUrl,

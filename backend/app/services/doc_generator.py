@@ -160,18 +160,29 @@ def _take_screenshots(system_url: str, username: str, password: str, modules: st
         except Exception as e:
             logger.warning("Login attempt failed: %s", e)
 
-        # 3. 找导航菜单项，逐个点击截图
+        # 2.5 尝试进入第一个项目（从项目列表页进入项目内页面）
+        try:
+            project_card = page.locator('.ant-card').first
+            if project_card.count() > 0:
+                project_card.click()
+                page.wait_for_timeout(2000)
+                fname = "03_project_home.png"
+                page.screenshot(path=str(shot_path / fname))
+                screenshots.append({"page": "项目首页", "file": fname, "pageUrl": page.url})
+        except Exception:
+            pass
+
+        # 3. 逐个点击菜单项截图
         menu_items = page.locator('.ant-menu-item, nav a, [role="menuitem"]').all()
         visited_texts = set()
-        idx = 3
+        idx = 4
 
         for item in menu_items:
             try:
                 text = item.text_content().strip()
-                if not text or text in visited_texts or len(text) > 20:
+                if not text or text in visited_texts or len(text) > 30:
                     continue
-                # 如果指定了模块范围，只截相关的
-                if modules and not any(m.strip() in text for m in modules.split('、')):
+                if text in ('返回项目列表',):
                     continue
 
                 visited_texts.add(text)
