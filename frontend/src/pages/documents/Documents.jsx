@@ -140,10 +140,15 @@ ${v.businessContext ? `\n## 业务背景\n${v.businessContext}` : ''}
     { title: '状态', dataIndex: 'status', width: 80, render: (s) => s === 'published' ? <Tag color="success">已生成</Tag> : <Tag>草稿</Tag> },
     { title: '创建时间', dataIndex: 'createdAt', width: 160, render: (t) => t?.slice(0, 16).replace('T', ' ') },
     {
-      title: '操作', width: 120,
+      title: '操作', width: 200,
       render: (_, r) => (
         <Space size={4}>
           <Button size="small" icon={<EyeOutlined />} onClick={() => api.get(`/projects/${projectId}/documents/${r.id}`).then(res => setPreviewDoc(res.data))}>查看</Button>
+          <Button size="small" icon={<FileTextOutlined />} onClick={() => {
+            api.get(`/projects/${projectId}/documents/${r.id}`).then(res => {
+              if (res.data?.content) downloadHtml(res.data.title, res.data.content)
+            })
+          }}>导出</Button>
           <Popconfirm title="确认删除？" onConfirm={() => handleDelete(r.id)}>
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
@@ -314,10 +319,16 @@ ${v.businessContext ? `\n## 业务背景\n${v.businessContext}` : ''}
         )}
       </Modal>
 
-      {/* 预览 */}
+      {/* 预览 + 导出 */}
       <Drawer
         title={previewDoc ? previewDoc.title : ''} open={!!previewDoc} onClose={() => setPreviewDoc(null)} width={700}
-        extra={previewDoc?.content && <Button icon={<CopyOutlined />} onClick={() => { copyToClipboard(previewDoc.content); message.success('已复制') }}>复制 Markdown</Button>}
+        extra={previewDoc?.content && (
+          <Space>
+            <Button icon={<CopyOutlined />} onClick={() => { copyToClipboard(previewDoc.content); message.success('已复制 Markdown') }}>复制</Button>
+            <Button icon={<FileTextOutlined />} onClick={() => downloadFile(previewDoc.title + '.md', previewDoc.content)}>下载 .md</Button>
+            <Button type="primary" icon={<FileTextOutlined />} onClick={() => downloadHtml(previewDoc.title, previewDoc.content)}>导出 HTML</Button>
+          </Space>
+        )}
       >
         {previewDoc && <div style={{ fontSize: 14, lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: simpleMarkdown(previewDoc.content || '') }} />}
       </Drawer>
@@ -352,4 +363,48 @@ function simpleMarkdown(md) {
   html = html.replace(/\n\n/g, '<br/><br/>')
   html = html.replace(/\n/g, '<br/>')
   return html
+}
+
+function downloadFile(filename, content) {
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function downloadHtml(title, mdContent) {
+  const body = simpleMarkdown(mdContent)
+  const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title}</title>
+<style>
+  body { max-width: 800px; margin: 40px auto; padding: 0 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #333; line-height: 1.8; }
+  h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+  h2 { border-bottom: 1px solid #eee; padding-bottom: 6px; margin-top: 30px; }
+  h3 { margin-top: 24px; }
+  code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-size: 14px; }
+  pre { background: #f5f5f5; padding: 16px; border-radius: 6px; overflow-x: auto; }
+  b { color: #1d2129; }
+  img { max-width: 100%; border: 1px solid #eee; border-radius: 6px; margin: 8px 0; }
+</style>
+</head>
+<body>
+${body}
+<hr style="margin-top:40px;border:none;border-top:1px solid #eee">
+<p style="font-size:12px;color:#999">由 testBench 测试管理平台生成</p>
+</body>
+</html>`
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = title + '.html'
+  a.click()
+  URL.revokeObjectURL(url)
 }
