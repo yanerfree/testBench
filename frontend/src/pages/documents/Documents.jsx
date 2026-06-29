@@ -140,34 +140,40 @@ export default function Documents() {
       {docs.length === 0 && !loading ? (
         <Card>
           <Empty description={null} image={Empty.PRESENTED_IMAGE_SIMPLE}>
-            <div style={{ textAlign: 'left', maxWidth: 640, margin: '0 auto' }}>
+            <div style={{ textAlign: 'left', maxWidth: 700, margin: '0 auto' }}>
               <Text strong style={{ fontSize: 15, display: 'block', marginBottom: 12 }}>如何生成文档？</Text>
 
-              <Card size="small" style={{ marginBottom: 10, background: '#f0f5ff', border: '1px solid #d6e4ff' }}>
-                <Text strong><DesktopOutlined /> 方式一：Web 生成（纯文字初稿）</Text>
-                <div style={{ fontSize: 13, lineHeight: 1.8, marginTop: 6 }}>
+              <Card size="small" style={{ marginBottom: 12, background: '#f0f5ff', border: '1px solid #d6e4ff' }}>
+                <Text strong style={{ fontSize: 14 }}><DesktopOutlined /> 方式一：Web 生成（纯文字初稿）</Text>
+                <div style={{ fontSize: 13, lineHeight: 2, marginTop: 8 }}>
                   <div>1. 点击右上角 <Tag color="green">生成文档</Tag></div>
-                  <div>2. 选择一个 <b>用例模块</b>（比如"用户管理"），AI 只读取该模块的用例</div>
-                  <div>3. 粘贴 <b>业务背景</b>（系统介绍、需求文档摘要等），让 AI 理解上下文</div>
-                  <div>4. AI 根据用例步骤整理成结构化文档</div>
-                  <div style={{ color: '#fa8c16', marginTop: 4 }}>限制：无法自动截图，适合快速产出文字初稿</div>
+                  <div>2. 选择<b>用例范围</b> — 选一个模块文件夹，AI 只读取该模块的用例作为素材</div>
+                  <div>3. 填写<b>业务背景</b> — 系统是做什么的、面向谁、主要功能</div>
+                  <div>4. 点击生成，AI 根据选中用例的步骤整理成文档</div>
+                  <div>5. 生成完成后在<b>本页面列表</b>中查看，支持复制 Markdown</div>
+                  <div style={{ color: '#fa8c16', marginTop: 4 }}>
+                    限制：无法自动截图，生成的是纯文字版本，适合快速出初稿后手动补截图
+                  </div>
                 </div>
               </Card>
 
               <Card size="small" style={{ background: '#f6ffed', border: '1px solid #b7eb8f' }}>
-                <Text strong><CodeOutlined /> 方式二：Claude Code 生成（推荐，带截图）</Text>
-                <div style={{ fontSize: 13, lineHeight: 1.8, marginTop: 6 }}>
-                  <div><b>前提：</b>需要有被测系统的代码和运行环境</div>
-                  <div style={{ marginTop: 6 }}><b>操作步骤：</b></div>
+                <Text strong style={{ fontSize: 14 }}><CodeOutlined /> 方式二：Claude Code 生成（推荐，自动截图）</Text>
+                <div style={{ fontSize: 13, lineHeight: 2, marginTop: 8 }}>
+                  <div style={{ marginBottom: 8 }}><b>你需要准备以下信息：</b></div>
+                  <div style={{ padding: '8px 12px', background: '#fff', borderRadius: 6, marginBottom: 10, border: '1px solid #e8e8e8' }}>
+                    <div>• <b>被测系统地址</b> — 例如 <code>http://192.168.51.108:5173</code></div>
+                    <div>• <b>登录账号 / 密码</b> — 例如 admin / admin123</div>
+                    <div>• <b>文档范围</b> — 要生成哪些功能模块的文档（例如 "用户管理" 或 "全部功能"）</div>
+                    <div>• <b>输出目录</b> — 文档和截图保存到哪个目录（例如 <code>docs/操作手册/</code>）</div>
+                  </div>
+                  <div style={{ marginBottom: 6 }}><b>操作步骤：</b></div>
                   <div>1. 在被测系统的项目目录下打开终端</div>
                   <div>2. 运行 <Tag>claude</Tag> 启动 Claude Code</div>
-                  <div>3. 告诉 AI：<i>"根据这个系统生成操作手册，截图保存到 docs/ 目录"</i></div>
-                  <div>4. AI 会自动读代码 → 理解功能 → 操作页面 → 截图 → 写文档</div>
-                  <div>5. 文档和截图直接生成在项目目录中</div>
-                  <div style={{ marginTop: 6 }}>
-                    <Text type="secondary">MCP Server 地址（如需连接平台数据）：</Text>
-                    <Tag>{mcpUrl}</Tag>
-                  </div>
+                  <div>3. 把准备好的信息告诉 AI，例如：</div>
+                  <pre style={{ padding: '10px 14px', background: '#fff', borderRadius: 6, margin: '6px 0 10px', fontSize: 12, lineHeight: 1.8, border: '1px solid #d9d9d9', whiteSpace: 'pre-wrap' }}>{'请为本系统生成【用户管理】模块的操作手册：\n- 系统地址：http://192.168.51.108:5173\n- 登录账号：admin，密码：admin123\n- 请逐个功能操作页面并截图\n- 文档输出到 docs/用户管理/ 目录\n- 截图保存到 docs/用户管理/images/ 目录'}</pre>
+                  <div>4. AI 会自动：打开浏览器 → 登录系统 → 逐步操作 → 截图 → 写文档</div>
+                  <div>5. 完成后在你指定的<b>输出目录</b>中查看生成的 Markdown 文件和截图</div>
                 </div>
               </Card>
             </div>
