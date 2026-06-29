@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   Button, Card, Tag, Space, Typography, Modal, Form, Input, Select,
-  message, Empty, Popconfirm, Divider, Steps, Tree, Tabs,
+  message, Empty, Popconfirm, Divider,
 } from 'antd'
 import {
   PlusOutlined, FileTextOutlined, DeleteOutlined,
@@ -225,109 +225,55 @@ ${v.businessContext ? `\n## 业务背景\n${v.businessContext}` : ''}
         )}
       </div>
 
-      {/* 生成弹窗 */}
+      {/* 生成弹窗 — 一个表单，底部两个操作按钮 */}
       <Modal
         title={<Space><FileTextOutlined /> 生成操作文档</Space>}
         open={genOpen}
         onCancel={() => { if (!platGenerating) setGenOpen(false) }}
-        width={750}
+        width={720}
         footer={null}
       >
         {!generatedPrompt && !platGenerating ? (
           <div>
-            <Tabs
-              activeKey={genMethod}
-              onChange={setGenMethod}
-              items={[
-                {
-                  key: 'claude-code',
-                  label: <span><CodeOutlined /> Claude Code（带截图）</span>,
-                  children: (
-                    <div>
-                      <div style={{ fontSize: 13, color: '#86909c', marginBottom: 12 }}>
-                        填写系统信息 → 生成提示词 → 复制到 Claude Code 执行 → AI 自动操作截图并生成文档
-                      </div>
-                      <Form form={ccForm} layout="vertical" size="small">
-                        <Divider orientation="left" plain style={{ margin: '4px 0 8px', fontSize: 12 }}>被测系统</Divider>
-                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
-                          <Form.Item name="systemUrl" label="地址" rules={[{ required: true }]}>
-                            <Input placeholder="http://192.168.51.108:5173" />
-                          </Form.Item>
-                          <Form.Item name="username" label="账号" rules={[{ required: true }]}>
-                            <Input placeholder="admin" />
-                          </Form.Item>
-                          <Form.Item name="password" label="密码" rules={[{ required: true }]}>
-                            <Input.Password placeholder="admin123" />
-                          </Form.Item>
-                        </div>
-                        <Divider orientation="left" plain style={{ margin: '4px 0 8px', fontSize: 12 }}>文档信息</Divider>
-                        <Form.Item name="title" label="标题" rules={[{ required: true }]}>
-                          <Input placeholder="测试管理平台操作手册" />
-                        </Form.Item>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                          <Form.Item name="docType" label="类型" initialValue="manual">
-                            <Select options={Object.entries(DOC_TYPE_LABELS).map(([k, v]) => ({ value: k, label: v }))} />
-                          </Form.Item>
-                          <Form.Item name="modules" label="范围"><Input placeholder="用户管理、项目管理" /></Form.Item>
-                          <Form.Item name="audience" label="读者"><Input placeholder="新入职测试工程师" /></Form.Item>
-                        </div>
-                        <Form.Item name="outputDir" label="输出目录"><Input placeholder="docs/操作手册/" /></Form.Item>
-                        <Form.Item name="businessContext" label="业务背景（可选）">
-                          <TextArea rows={2} placeholder="系统介绍、PRD 摘要" />
-                        </Form.Item>
-                      </Form>
-                      <div style={{ textAlign: 'right' }}>
-                        <Button onClick={() => setGenOpen(false)} style={{ marginRight: 8 }}>取消</Button>
-                        <Button type="primary" onClick={handleCCGenerate}>生成提示词</Button>
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  key: 'platform',
-                  label: <span><DesktopOutlined /> 平台直接生成（自动截图）</span>,
-                  children: (
-                    <div>
-                      <div style={{ fontSize: 13, color: '#86909c', marginBottom: 12 }}>
-                        平台后端自动打开浏览器 → 登录系统 → 逐页截图 → AI 写文档。生成后在左侧目录查看。
-                      </div>
-                      <Form form={platForm} layout="vertical" size="small">
-                        <Divider orientation="left" plain style={{ margin: '4px 0 8px', fontSize: 12 }}>被测系统</Divider>
-                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
-                          <Form.Item name="systemUrl" label="地址" rules={[{ required: true, message: '请输入系统地址' }]}>
-                            <Input placeholder="http://192.168.51.108:5173" />
-                          </Form.Item>
-                          <Form.Item name="username" label="账号" rules={[{ required: true }]}>
-                            <Input placeholder="admin" />
-                          </Form.Item>
-                          <Form.Item name="password" label="密码" rules={[{ required: true }]}>
-                            <Input.Password placeholder="admin123" />
-                          </Form.Item>
-                        </div>
-                        <Divider orientation="left" plain style={{ margin: '4px 0 8px', fontSize: 12 }}>文档信息</Divider>
-                        <Form.Item name="title" label="标题" rules={[{ required: true }]}>
-                          <Input placeholder="测试管理平台操作手册" />
-                        </Form.Item>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                          <Form.Item name="docType" label="类型" initialValue="manual">
-                            <Select options={Object.entries(DOC_TYPE_LABELS).map(([k, v]) => ({ value: k, label: v }))} />
-                          </Form.Item>
-                          <Form.Item name="modules" label="范围"><Input placeholder="用户管理、项目管理" /></Form.Item>
-                          <Form.Item name="audience" label="读者"><Input placeholder="新入职测试工程师" /></Form.Item>
-                        </div>
-                        <Form.Item name="businessContext" label="业务背景（可选）">
-                          <TextArea rows={2} placeholder="系统介绍、PRD 摘要" />
-                        </Form.Item>
-                      </Form>
-                      <div style={{ textAlign: 'right' }}>
-                        <Button onClick={() => setGenOpen(false)} style={{ marginRight: 8 }}>取消</Button>
-                        <Button type="primary" icon={<RobotOutlined />} onClick={handlePlatGenerate}>开始生成</Button>
-                      </div>
-                    </div>
-                  ),
-                },
-              ]}
-            />
+            <Form form={ccForm} layout="vertical" size="small">
+              <Divider orientation="left" plain style={{ margin: '4px 0 8px', fontSize: 12 }}>被测系统</Divider>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
+                <Form.Item name="systemUrl" label="地址" rules={[{ required: true, message: '请输入系统地址' }]}>
+                  <Input placeholder="http://192.168.51.108:5173" />
+                </Form.Item>
+                <Form.Item name="username" label="账号" rules={[{ required: true }]}>
+                  <Input placeholder="admin" />
+                </Form.Item>
+                <Form.Item name="password" label="密码" rules={[{ required: true }]}>
+                  <Input.Password placeholder="admin123" />
+                </Form.Item>
+              </div>
+              <Divider orientation="left" plain style={{ margin: '4px 0 8px', fontSize: 12 }}>文档信息</Divider>
+              <Form.Item name="title" label="标题" rules={[{ required: true }]}>
+                <Input placeholder="测试管理平台操作手册" />
+              </Form.Item>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                <Form.Item name="docType" label="类型" initialValue="manual">
+                  <Select options={Object.entries(DOC_TYPE_LABELS).map(([k, v]) => ({ value: k, label: v }))} />
+                </Form.Item>
+                <Form.Item name="modules" label="范围"><Input placeholder="用户管理、项目管理" /></Form.Item>
+                <Form.Item name="audience" label="读者"><Input placeholder="新入职测试工程师" /></Form.Item>
+              </div>
+              <Form.Item name="outputDir" label="输出目录（Claude Code 用）">
+                <Input placeholder="docs/操作手册/" />
+              </Form.Item>
+              <Form.Item name="businessContext" label="业务背景（可选）">
+                <TextArea rows={2} placeholder="系统介绍、PRD 摘要" />
+              </Form.Item>
+            </Form>
+            <Divider style={{ margin: '12px 0' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Button onClick={() => setGenOpen(false)}>取消</Button>
+              <Space>
+                <Button icon={<CodeOutlined />} onClick={handleCCGenerate}>生成 Claude Code 提示词</Button>
+                <Button type="primary" icon={<DesktopOutlined />} onClick={handlePlatGenerate}>平台直接生成</Button>
+              </Space>
+            </div>
           </div>
         ) : generatedPrompt ? (
           <div>
