@@ -186,3 +186,77 @@ async def generate_document(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
+
+
+class GenerateWithScreenshotsRequest(BaseSchema):
+    system_url: str = Field(..., min_length=1)
+    username: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+    title: str = Field(..., min_length=1, max_length=200)
+    doc_type: str = Field(default="manual")
+    modules: str | None = None
+    audience: str | None = None
+    output_dir: str | None = None
+    business_context: str | None = None
+
+
+@router.post("/generate-with-screenshots")
+async def generate_with_screenshots(
+    project_id: uuid.UUID,
+    body: GenerateWithScreenshotsRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    from app.services.ai_config_resolver import resolve_ai_config
+    from app.core.exceptions import AppError
+
+    ai_config = await resolve_ai_config(project_id, session)
+    if not ai_config:
+        raise AppError(code="AI_NOT_CONFIGURED", message="AI 服务未配置", status_code=503)
+
+    doc = Document(
+        project_id=project_id,
+        title=body.title,
+        doc_type=body.doc_type,
+        status="draft",
+        created_by=current_user.id,
+    )
+    session.add(doc)
+    await session.flush()
+    doc_id = doc.id
+
+    from app.services.doc_generator import generate_doc_with_screenshots
+
+    async def event_stream():
+        full_content = ""
+        try:
+            async for event in generate_doc_with_screenshots(
+                system_url=body.system_url,
+                username=body.username,
+                password=body.password,
+                title=body.title,
+                doc_type=body.doc_type,
+                modules=body.modules,
+                audience=body.audience,
+                business_context=body.business_context,
+                ai_config=ai_config,
+                project_id=project_id,
+            ):
+                if event.type == "chunk":
+                    full_content += event.data.get("content", "")
+                yield f"data: {json.dumps({'type': event.type, **event.data}, ensure_ascii=False)}\n\n"
+
+            if full_content:
+                doc.content = full_content
+                doc.status = "published"
+                await session.commit()
+
+            yield f"data: {json.dumps({'type': 'complete', 'docId': str(doc_id)}, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)[:200]}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )

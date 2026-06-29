@@ -79,18 +79,26 @@ export default function Documents() {
     } catch { setFolderCaseCount(null) }
   }
 
-  // 平台生成
+  // 平台直接生成（Playwright 截图）
   const handlePlatGenerate = async () => {
     try {
       const v = await platForm.validateFields()
       setPlatGenerating(true); setPlatContent(''); setPlatProgress([])
-      api.stream(`/projects/${projectId}/documents/generate`, {
-        title: v.title, docType: v.docType || 'manual',
-        folderId: selectedFolder || undefined, additionalInfo: v.additionalInfo || undefined,
+      api.stream(`/projects/${projectId}/documents/generate-with-screenshots`, {
+        systemUrl: v.systemUrl,
+        username: v.username,
+        password: v.password,
+        title: v.title,
+        docType: v.docType || 'manual',
+        modules: v.modules || undefined,
+        audience: v.audience || undefined,
+        businessContext: v.businessContext || undefined,
       }, {
         onChunk: (data) => {
-          if (data.content) setPlatContent(prev => prev + data.content)
-          if (data.type === 'step_start' || data.type === 'step_done') setPlatProgress(prev => [...prev, data])
+          if (data.type === 'progress') setPlatProgress(prev => [...prev, data.message])
+          if (data.type === 'screenshot') setPlatProgress(prev => [...prev, `📸 ${data.page}`])
+          if (data.type === 'chunk' && data.content) setPlatContent(prev => prev + data.content)
+          if (data.type === 'error') { message.error(data.message); setPlatGenerating(false) }
         },
         onDone: (data) => {
           message.success('文档已生成')
@@ -277,34 +285,43 @@ ${v.businessContext ? `\n## 业务背景\n${v.businessContext}` : ''}
                 },
                 {
                   key: 'platform',
-                  label: <span><DesktopOutlined /> 平台生成（纯文字）</span>,
+                  label: <span><DesktopOutlined /> 平台直接生成（自动截图）</span>,
                   children: (
                     <div>
                       <div style={{ fontSize: 13, color: '#86909c', marginBottom: 12 }}>
-                        基于项目中的测试用例生成纯文字文档（无截图），适合快速出初稿。生成后在左侧目录中查看。
+                        平台后端自动打开浏览器 → 登录系统 → 逐页截图 → AI 写文档。生成后在左侧目录查看。
                       </div>
                       <Form form={platForm} layout="vertical" size="small">
-                        <Form.Item name="title" label="文档标题" rules={[{ required: true }]}>
-                          <Input placeholder="认证模块操作手册" />
+                        <Divider orientation="left" plain style={{ margin: '4px 0 8px', fontSize: 12 }}>被测系统</Divider>
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
+                          <Form.Item name="systemUrl" label="地址" rules={[{ required: true, message: '请输入系统地址' }]}>
+                            <Input placeholder="http://192.168.51.108:5173" />
+                          </Form.Item>
+                          <Form.Item name="username" label="账号" rules={[{ required: true }]}>
+                            <Input placeholder="admin" />
+                          </Form.Item>
+                          <Form.Item name="password" label="密码" rules={[{ required: true }]}>
+                            <Input.Password placeholder="admin123" />
+                          </Form.Item>
+                        </div>
+                        <Divider orientation="left" plain style={{ margin: '4px 0 8px', fontSize: 12 }}>文档信息</Divider>
+                        <Form.Item name="title" label="标题" rules={[{ required: true }]}>
+                          <Input placeholder="测试管理平台操作手册" />
                         </Form.Item>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                           <Form.Item name="docType" label="类型" initialValue="manual">
                             <Select options={Object.entries(DOC_TYPE_LABELS).map(([k, v]) => ({ value: k, label: v }))} />
                           </Form.Item>
-                          <Form.Item label={<span>用例范围 {folderCaseCount != null && <Tag color="blue">{folderCaseCount} 条</Tag>}</span>}>
-                            <Select placeholder="选择模块" options={folders} value={selectedFolder}
-                              onChange={handleFolderChange} allowClear />
-                          </Form.Item>
+                          <Form.Item name="modules" label="范围"><Input placeholder="用户管理、项目管理" /></Form.Item>
+                          <Form.Item name="audience" label="读者"><Input placeholder="新入职测试工程师" /></Form.Item>
                         </div>
-                        <Form.Item name="additionalInfo" label="业务背景">
-                          <TextArea rows={3} placeholder="系统介绍，帮助 AI 生成更准确的文档" />
+                        <Form.Item name="businessContext" label="业务背景（可选）">
+                          <TextArea rows={2} placeholder="系统介绍、PRD 摘要" />
                         </Form.Item>
                       </Form>
                       <div style={{ textAlign: 'right' }}>
                         <Button onClick={() => setGenOpen(false)} style={{ marginRight: 8 }}>取消</Button>
-                        <Button type="primary" icon={<RobotOutlined />} onClick={handlePlatGenerate}>
-                          开始生成{folderCaseCount != null ? `（${folderCaseCount} 条用例）` : ''}
-                        </Button>
+                        <Button type="primary" icon={<RobotOutlined />} onClick={handlePlatGenerate}>开始生成</Button>
                       </div>
                     </div>
                   ),
@@ -326,12 +343,27 @@ ${v.businessContext ? `\n## 业务背景\n${v.businessContext}` : ''}
             </div>
           </div>
         ) : (
-          <div style={{ textAlign: 'center', padding: 40 }}>
-            <LoadingOutlined style={{ fontSize: 24 }} />
-            <div style={{ marginTop: 12 }}>AI 正在生成文档...</div>
-            <div style={{ background: '#fafafa', padding: 12, borderRadius: 8, maxHeight: 200, overflow: 'auto', marginTop: 16, textAlign: 'left', whiteSpace: 'pre-wrap', fontSize: 12 }}>
-              {platContent || '等待响应...'}
+          <div>
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <LoadingOutlined style={{ fontSize: 24 }} />
+              <div style={{ marginTop: 8, fontSize: 14, fontWeight: 500 }}>正在生成文档...</div>
             </div>
+            {/* 进度列表 */}
+            {platProgress.length > 0 && (
+              <div style={{ marginBottom: 12, padding: '8px 12px', background: '#f6f7f9', borderRadius: 6, maxHeight: 120, overflow: 'auto' }}>
+                {platProgress.map((p, i) => (
+                  <div key={i} style={{ fontSize: 12, color: '#595959', padding: '2px 0' }}>
+                    {typeof p === 'string' ? p : p.message || JSON.stringify(p)}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* AI 文档内容流 */}
+            {platContent && (
+              <div style={{ background: '#fafafa', padding: 12, borderRadius: 8, maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.6 }}>
+                {platContent}
+              </div>
+            )}
           </div>
         )}
       </Modal>
