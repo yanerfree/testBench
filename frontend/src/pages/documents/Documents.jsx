@@ -63,7 +63,7 @@ export default function Documents() {
       const branch = (branches.data || []).find(b => b.status === 'active') || branches.data?.[0]
       if (branch) {
         const res = await api.get(`/projects/${projectId}/branches/${branch.id}/cases?folderId=${folderId}&pageSize=1`)
-        setFolderCaseCount(res.data?.length > 0 ? (res.pagination?.total || res.data.length) : 0)
+        setFolderCaseCount(res.pagination?.total ?? res.data?.length ?? 0)
       }
     } catch { setFolderCaseCount(null) }
   }
