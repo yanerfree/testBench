@@ -251,7 +251,7 @@ async def generate_with_screenshots(
                 doc.status = "published"
                 await session.commit()
 
-            yield f"data: {json.dumps({'type': 'complete', 'docId': str(doc_id)}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'docId': str(doc_id)}, ensure_ascii=False)}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)[:200]}, ensure_ascii=False)}\n\n"
 

@@ -101,9 +101,8 @@ export default function Documents() {
           if (data.type === 'error') { message.error(data.message); setPlatGenerating(false) }
         },
         onDone: (data) => {
-          message.success('文档已生成')
-          setPlatGenerating(false); setGenOpen(false); platForm.resetFields()
-          setSelectedFolder(null); setFolderCaseCount(null)
+          message.success('文档已生成，请在左侧目录查看')
+          setPlatGenerating(false); setGenOpen(false); ccForm.resetFields()
           fetchDocs()
           if (data?.docId) loadDoc(data.docId)
         },
@@ -259,7 +258,7 @@ ${v.businessContext ? `\n## 业务背景\n${v.businessContext}` : ''}
                 <Form.Item name="modules" label="范围"><Input placeholder="用户管理、项目管理" /></Form.Item>
                 <Form.Item name="audience" label="读者"><Input placeholder="新入职测试工程师" /></Form.Item>
               </div>
-              <Form.Item name="outputDir" label="输出目录（Claude Code 用）">
+              <Form.Item name="outputDir" label="输出目录" extra="仅 Claude Code 使用。平台直接生成的文档保存在本页面，可在线查看和导出。">
                 <Input placeholder="docs/操作手册/" />
               </Form.Item>
               <Form.Item name="businessContext" label="业务背景（可选）">
