@@ -34,6 +34,7 @@ async def generate_doc_with_screenshots(
     modules: str | None,
     audience: str | None,
     business_context: str | None,
+    feedback: str | None = None,
     ai_config: ResolvedAIConfig,
     project_id: uuid.UUID,
     language: str = "zh",
@@ -119,6 +120,7 @@ async def generate_doc_with_screenshots(
 文档范围：{modules or '全部功能'}（只详细写这个范围，不要展开其他功能）
 目标读者：{audience or '测试工程师'}
 {f'业务背景：{business_context}' if business_context else ''}
+{f'修改意见（请在生成时重点关注）：{feedback}' if feedback else ''}
 
 以下是系统截图（⭐标记的是目标模块，要详细写操作步骤）：
 

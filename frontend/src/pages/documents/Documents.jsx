@@ -73,9 +73,8 @@ export default function Documents() {
 
   // 优化已有文档（不重新截图）
   const handleOptimize = async () => {
-    if (!regenFeedback.trim()) { message.warning('请输入修改意见'); return }
     setPlatGenerating(true); setPlatContent(''); setPlatProgress([])
-    setPlatProgress([`📝 正在根据修改意见优化文档...`])
+    setPlatProgress([`📝 正在优化文档...`])
     api.stream(`/projects/${projectId}/documents/${regenDocId}/optimize`, {
       feedback: regenFeedback,
     }, {
@@ -105,6 +104,7 @@ export default function Documents() {
         languages: v.languages || ['zh'],
         modules: v.modules || undefined, audience: v.audience || undefined,
         businessContext: v.businessContext || undefined,
+        feedback: regenFeedback || undefined,
         docId: regenDocId || undefined,
       }, {
         onChunk: (data) => {
@@ -212,12 +212,12 @@ export default function Documents() {
           <div>
             {regenDocId && (
               <>
-                <Form.Item label="修改意见" style={{ marginBottom: 12 }} extra="填写后点「优化内容」只改文档不重新截图；留空点「重新截图+生成」走完整流程">
+                <Form.Item label="修改意见（可选）" style={{ marginBottom: 12 }}>
                   <TextArea
                     rows={3}
                     value={regenFeedback}
                     onChange={(e) => setRegenFeedback(e.target.value)}
-                    placeholder={"例如：截图引用搞错了 / 操作步骤不够详细 / 缺少注意事项"}
+                    placeholder={"描述需要改进的部分，两种操作都会参考此意见"}
                   />
                 </Form.Item>
                 <Divider style={{ margin: '8px 0' }} />
@@ -262,7 +262,7 @@ export default function Documents() {
               <Button onClick={() => setGenOpen(false)}>取消</Button>
               {regenDocId ? (
                 <Space>
-                  <Button icon={<EditOutlined />} onClick={handleOptimize} disabled={!regenFeedback.trim()}>
+                  <Button icon={<EditOutlined />} onClick={handleOptimize}>
                     优化内容
                   </Button>
                   <Button type="primary" icon={<ReloadOutlined />} onClick={handlePlatGenerate}>

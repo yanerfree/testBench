@@ -201,6 +201,7 @@ class GenerateWithScreenshotsRequest(BaseSchema):
     audience: str | None = None
     output_dir: str | None = None
     business_context: str | None = None
+    feedback: str | None = None
     doc_id: str | None = None
 
 
@@ -247,6 +248,7 @@ async def generate_with_screenshots(
                 modules=body.modules,
                 audience=body.audience,
                 business_context=body.business_context,
+                feedback=body.feedback,
                 ai_config=ai_config,
                 project_id=project_id,
                 language=languages[0],
@@ -340,7 +342,7 @@ async def generate_with_screenshots(
 
 
 class OptimizeDocRequest(BaseSchema):
-    feedback: str = Field(..., min_length=1, max_length=2000)
+    feedback: str = Field(default="", max_length=2000)
 
 
 @router.post("/{doc_id}/optimize")
@@ -387,7 +389,7 @@ async def optimize_document(
 ---
 
 ## 用户的修改意见
-{body.feedback}
+{body.feedback or '请根据格式模板优化文档质量，确保每张截图都被引用，操作步骤详细具体。'}
 
 ---
 
