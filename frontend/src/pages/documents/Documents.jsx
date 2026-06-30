@@ -341,7 +341,7 @@ export default function Documents() {
         title={previewDoc?.title || ''}
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        width={800}
+        width={1100}
         extra={previewDoc?.content && (
           <Space>
             <Button size="small" icon={<RobotOutlined />} onClick={() => {
@@ -355,11 +355,7 @@ export default function Documents() {
         )}
       >
         {previewDoc?.content && (
-          <div
-            className="markdown-body"
-            style={{ fontSize: 14, lineHeight: 1.8 }}
-            dangerouslySetInnerHTML={{ __html: marked.parse(previewDoc.content) }}
-          />
+          <DocPreviewWithToc content={previewDoc.content} />
         )}
         <style>{`
           .markdown-body {
@@ -478,6 +474,61 @@ export default function Documents() {
           .markdown-body a:hover { text-decoration: underline; }
         `}</style>
       </Drawer>
+    </div>
+  )
+}
+
+function DocPreviewWithToc({ content }) {
+  const html = marked.parse(content)
+  const headings = []
+  const htmlWithIds = html.replace(/<h([1-3])([^>]*)>(.*?)<\/h[1-3]>/gi, (match, level, attrs, text) => {
+    const id = `heading-${headings.length}`
+    const plainText = text.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    headings.push({ id, level: parseInt(level), text: plainText })
+    return `<h${level}${attrs} id="${id}">${text}</h${level}>`
+  })
+
+  const scrollTo = (id) => {
+    const el = document.getElementById(id)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 0, height: '100%', margin: '-24px', overflow: 'hidden' }}>
+      {headings.length > 0 && (
+        <div className="doc-toc" style={{
+          width: 220, minWidth: 220, borderRight: '1px solid #e8e8e8',
+          padding: '16px 0', overflowY: 'auto', fontSize: 13, background: '#fafafa',
+        }}>
+          <div style={{ padding: '0 16px 8px', fontWeight: 600, fontSize: 12, color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            目录
+          </div>
+          {headings.map((h) => (
+            <div
+              key={h.id}
+              onClick={() => scrollTo(h.id)}
+              style={{
+                padding: '4px 16px', paddingLeft: 16 + (h.level - 1) * 14,
+                cursor: 'pointer', color: '#333', lineHeight: 1.6,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                fontWeight: h.level === 1 ? 600 : 400,
+                fontSize: h.level === 1 ? 13 : 12,
+              }}
+              onMouseEnter={(e) => { e.target.style.background = '#e6f4ff'; e.target.style.color = '#1677ff' }}
+              onMouseLeave={(e) => { e.target.style.background = ''; e.target.style.color = '#333' }}
+            >
+              {h.text}
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        <div
+          className="markdown-body"
+          style={{ fontSize: 14, lineHeight: 1.8 }}
+          dangerouslySetInnerHTML={{ __html: htmlWithIds }}
+        />
+      </div>
     </div>
   )
 }

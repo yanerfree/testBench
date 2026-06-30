@@ -108,8 +108,9 @@ async def generate_doc_with_screenshots(
 3. **术语表要完整**：术语名称后面加英文括号注释（如有），解释要详细
 4. **操作步骤格式统一**：每个子功能必须有「适用场景」「前置条件」「操作步骤」三部分
 5. **截图引用**：用 `![](url)` 引用，下一行用 `*图：说明*` 格式
-6. **只写文档范围内的功能**：范围是「{modules or '全部功能'}」
-7. **⭐标记的截图要详细展开**，其他截图只简要提及用于导航
+6. **必须引用每一张截图** — 每张截图至少在文档中引用一次，不要遗漏任何截图
+7. **只写文档范围内的功能**：范围是「{modules or '全部功能'}」
+8. **⭐标记的截图要详细展开**，其他截图作为辅助说明配图
 {lang_instruction}"""},
         {"role": "user", "content": f"""请生成【{doc_label}】：
 
@@ -230,44 +231,106 @@ def _take_screenshots(system_url: str, username: str, password: str, modules: st
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1400, "height": 900})
 
-        # Step 1: 打开系统
         page.goto(system_url, timeout=15000)
         page.wait_for_timeout(2000)
         _save_shot(page, shot_path, screenshots, "登录页面", system_url)
 
-        # Step 2: 尝试登录（通用：找输入框和提交按钮）
         _try_login(page, username, password)
         page.wait_for_timeout(3000)
         _save_shot(page, shot_path, screenshots, "登录后首页", page.url)
 
-        # Step 3: 找导航菜单并逐个截图
-        nav_items = _find_nav_items(page)
-        logger.info("Found %d nav items", len(nav_items))
+        visited_urls = {page.url}
+        nav_texts = _collect_nav_texts(page)
+        logger.info("Found %d nav texts: %s", len(nav_texts), nav_texts)
 
-        for text, element in nav_items:
-            if not text or len(text) > 30:
-                continue
+        for nav_text in nav_texts:
+            if len(screenshots) >= 20:
+                break
 
-            is_target = not module_keywords or any(kw in text for kw in module_keywords)
+            is_target = not module_keywords or any(kw in nav_text for kw in module_keywords)
 
             try:
-                element.click(timeout=3000)
+                clicked = _click_nav_by_text(page, nav_text)
+                if not clicked:
+                    continue
                 page.wait_for_timeout(2000)
             except Exception:
                 continue
 
-            _save_shot(page, shot_path, screenshots, text, page.url, is_target=is_target)
+            if page.url in visited_urls:
+                continue
+            visited_urls.add(page.url)
 
-            # 目标模块：深度截图
+            page_title = _get_page_title(page) or nav_text
+            _save_shot(page, shot_path, screenshots, page_title, page.url, is_target=is_target)
+
             if is_target:
-                _deep_screenshots(page, shot_path, screenshots, text)
-
-            if len(screenshots) >= 20:
-                break
+                _deep_screenshots(page, shot_path, screenshots, page_title)
 
         browser.close()
 
     return screenshots
+
+
+def _collect_nav_texts(page) -> list[str]:
+    """收集所有可见导航菜单的文本（只收文本，不持有元素引用）。"""
+    selectors = ['.ant-menu-item', '[role="menuitem"]', 'nav a', 'aside a',
+                 'li[class*="menu"] > a', '[class*="sidebar"] a']
+    visited = set()
+    texts = []
+    for sel in selectors:
+        try:
+            for el in page.locator(sel).all():
+                try:
+                    t = el.text_content().strip()
+                    if t and t not in visited and 2 <= len(t) <= 30:
+                        # 跳过子菜单父项（有展开箭头的）
+                        parent_cls = el.evaluate("e => e.closest('[class*=\"submenu\"]')?.className || ''")
+                        if 'submenu-title' in parent_cls:
+                            continue
+                        visited.add(t)
+                        texts.append(t)
+                except Exception:
+                    continue
+            if len(texts) >= 5:
+                break
+        except Exception:
+            continue
+    return texts
+
+
+def _click_nav_by_text(page, text: str) -> bool:
+    """按文本重新定位并点击导航项（避免持有过期元素引用）。"""
+    selectors = ['.ant-menu-item', '[role="menuitem"]', 'nav a', 'aside a',
+                 'li[class*="menu"] > a', '[class*="sidebar"] a']
+    for sel in selectors:
+        try:
+            items = page.locator(sel).all()
+            for el in items:
+                try:
+                    if el.text_content().strip() == text and el.is_visible():
+                        el.click(timeout=3000)
+                        return True
+                except Exception:
+                    continue
+        except Exception:
+            continue
+    return False
+
+
+def _get_page_title(page) -> str | None:
+    """从页面主内容区读取当前页面标题。"""
+    for sel in ['main h1', 'main h2', '[class*="content"] h1', '[class*="content"] h2',
+                '[class*="main"] h2', '#root h2']:
+        try:
+            el = page.locator(sel).first
+            if el.count() > 0:
+                t = el.text_content().strip()
+                if t and 2 <= len(t) <= 30:
+                    return t
+        except Exception:
+            continue
+    return None
 
 
 def _try_login(page, username: str, password: str):
@@ -305,45 +368,6 @@ def _try_login(page, username: str, password: str):
                 return
     except Exception as e:
         logger.warning("Login failed: %s", e)
-
-
-def _find_nav_items(page) -> list[tuple[str, any]]:
-    """通用导航发现：按优先级查找侧边栏/顶部导航。"""
-    selectors = [
-        # 语义化导航
-        'nav a', 'aside a',
-        # 常见 UI 框架
-        '[role="menuitem"]',
-        'li[class*="menu"] > a', 'li[class*="menu"] > span',
-        'li[class*="nav"] > a',
-        # Ant Design
-        '.ant-menu-item',
-        # Element UI
-        '.el-menu-item',
-        # 通用
-        '[class*="sidebar"] a', '[class*="side-nav"] a',
-    ]
-
-    visited = set()
-    items = []
-
-    for sel in selectors:
-        try:
-            elements = page.locator(sel).all()
-            for el in elements:
-                try:
-                    text = el.text_content().strip()
-                    if text and text not in visited and 2 <= len(text) <= 30:
-                        visited.add(text)
-                        items.append((text, el))
-                except Exception:
-                    continue
-            if len(items) >= 5:
-                break
-        except Exception:
-            continue
-
-    return items
 
 
 def _deep_screenshots(page, shot_path, screenshots, parent_name):
