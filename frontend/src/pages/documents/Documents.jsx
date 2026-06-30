@@ -142,6 +142,24 @@ export default function Documents() {
     } catch { /* */ }
   }
 
+  const openRegen = async (docRecord) => {
+    setGenOpen(true); setTaskResult(null); setRegenDocId(docRecord.id)
+    setRegenMode('choose'); setRegenFeedback('')
+    // 回填基本信息
+    ccForm.setFieldsValue({ title: docRecord.title, docType: docRecord.docType, languages: [docRecord.language || 'zh'] })
+    // 加载详情拿 genConfig 回填表单
+    try {
+      const res = await api.get(`/projects/${projectId}/documents/${docRecord.id}`)
+      const cfg = res.data?.genConfig
+      if (cfg) {
+        ccForm.setFieldsValue({
+          systemUrl: cfg.systemUrl, username: cfg.username, password: cfg.password,
+          modules: cfg.modules, audience: cfg.audience, businessContext: cfg.businessContext,
+        })
+      }
+    } catch { /* */ }
+  }
+
   const columns = [
     { title: '标题', dataIndex: 'title', ellipsis: true, render: (t, r) => <a onClick={() => loadDoc(r.id)}>{t}</a> },
     { title: '类型', dataIndex: 'docType', width: 90, render: (t) => <Tag color={DOC_TYPE_COLORS[t]}>{DOC_TYPE_LABELS[t] || t}</Tag> },
@@ -153,11 +171,7 @@ export default function Documents() {
       render: (_, r) => (
         <Space size={4}>
           <Button size="small" icon={<EyeOutlined />} onClick={() => loadDoc(r.id)}>查看</Button>
-          <Button size="small" icon={<RobotOutlined />} onClick={() => {
-            setGenOpen(true); setTaskResult(null); setRegenDocId(r.id)
-            setRegenMode('choose'); setRegenFeedback('')
-            ccForm.setFieldsValue({ title: r.title, docType: r.docType })
-          }}>重新生成</Button>
+          <Button size="small" icon={<RobotOutlined />} onClick={() => openRegen(r)}>重新生成</Button>
           <Popconfirm title="确认删除？" onConfirm={() => handleDelete(r.id)}>
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
@@ -332,9 +346,7 @@ export default function Documents() {
           <Space>
             <Button size="small" icon={<RobotOutlined />} onClick={() => {
               setPreviewOpen(false)
-              setGenOpen(true); setTaskResult(null); setRegenDocId(previewDoc.id)
-              setRegenMode('choose'); setRegenFeedback('')
-              ccForm.setFieldsValue({ title: previewDoc.title, docType: previewDoc.docType })
+              openRegen(previewDoc)
             }}>重新生成</Button>
             <Button size="small" icon={<CopyOutlined />} onClick={() => { copyToClipboard(previewDoc.content); message.success('已复制') }}>复制</Button>
             <Button size="small" icon={<DownloadOutlined />} onClick={() => downloadFromApi(`/projects/${projectId}/documents/${previewDoc.id}/export-zip`, `${previewDoc.title}.zip`)}>下载</Button>

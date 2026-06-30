@@ -4,8 +4,12 @@ from __future__ import annotations
 import copy
 import json
 import logging
+import time
+import uuid
+from collections import deque
+from datetime import datetime, timezone
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -68,6 +72,7 @@ class ToolMockConfig:
             }
 
 _config = ToolMockConfig()
+_call_logs: deque[dict] = deque(maxlen=500)
 
 
 def is_enabled() -> bool:
@@ -158,6 +163,7 @@ async def call_tool(body: dict):
     """调用 MCP 工具 — mock 开启时返回配置的响应，关闭时查真实 DB。"""
     tool_name = body.get("tool", "")
     arguments = body.get("arguments", {})
+    t0 = time.perf_counter()
 
     if tool_name not in TOOL_DESCRIPTIONS:
         return {"data": None, "error": f"工具 {tool_name} 不存在", "available": list(TOOL_DESCRIPTIONS.keys())}
@@ -165,6 +171,8 @@ async def call_tool(body: dict):
     if _config.enabled:
         response = get_mock_response(tool_name)
         mode = _config.tools[tool_name]["mode"]
+        is_error = mode == "error" or (_config.tools[tool_name].get("customIsError") and mode == "custom")
+        _log_call(tool_name, arguments, response, "mock", mode, is_error, t0)
         return {"data": response, "source": "mock", "mode": mode, "tool": tool_name}
 
     from app.mcp.tools import test_cases, api_endpoints, environments
@@ -193,6 +201,51 @@ async def call_tool(body: dict):
                 result = await func(session=session, **arguments)
         else:
             result = await func(**arguments)
+        _log_call(tool_name, arguments, result, "real", "real", False, t0)
         return {"data": result, "source": "real", "tool": tool_name}
     except Exception as e:
+        _log_call(tool_name, arguments, {"error": str(e)[:300]}, "real", "real", True, t0)
         return {"data": None, "error": str(e)[:300], "tool": tool_name}
+
+
+def _log_call(tool_name, arguments, response, source, mode, is_error, t0):
+    elapsed = round((time.perf_counter() - t0) * 1000, 1)
+    resp_str = json.dumps(response, ensure_ascii=False, default=str)
+    _call_logs.appendleft({
+        "id": str(uuid.uuid4())[:8],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "tool": tool_name,
+        "arguments": arguments,
+        "response": resp_str[:5000],
+        "source": source,
+        "mode": mode,
+        "isError": is_error,
+        "elapsedMs": elapsed,
+    })
+
+
+# ── 日志查询 ──
+
+@router.get("/logs")
+async def get_logs(
+    tool: str | None = Query(None),
+    status: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    logs = list(_call_logs)
+    if tool:
+        logs = [l for l in logs if l["tool"] == tool]
+    if status == "ok":
+        logs = [l for l in logs if not l["isError"]]
+    elif status == "error":
+        logs = [l for l in logs if l["isError"]]
+    total = len(logs)
+    return {"data": logs[offset:offset + limit], "total": total}
+
+
+@router.delete("/logs")
+async def clear_logs():
+    count = len(_call_logs)
+    _call_logs.clear()
+    return {"ok": True, "deleted": count}

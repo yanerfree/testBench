@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Switch, Card, Tag, Space, Typography, Button, message, Drawer, Input, Radio, Table } from 'antd'
+import { useState, useEffect, useCallback, Fragment } from 'react'
+import { Switch, Tag, Space, Typography, Button, message, Drawer, Input, Radio, Table, Pagination, Popconfirm } from 'antd'
 import {
-  ApiOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  PlayCircleOutlined, LoadingOutlined, EditOutlined,
+  ApiOutlined, PlayCircleOutlined, LoadingOutlined, EditOutlined,
+  ReloadOutlined, ClearOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 
 const { Text } = Typography
 const { TextArea } = Input
+const MONO = "'SF Mono', Monaco, Menlo, Consolas, monospace"
 
 export default function McpMock() {
   const [enabled, setEnabled] = useState(false)
@@ -20,6 +21,10 @@ export default function McpMock() {
   const [callArgs, setCallArgs] = useState('{}')
   const [callResult, setCallResult] = useState(null)
   const [calling, setCalling] = useState(false)
+  const [logs, setLogs] = useState([])
+  const [logsTotal, setLogsTotal] = useState(0)
+  const [logPage, setLogPage] = useState(1)
+  const [expandedLogId, setExpandedLogId] = useState(null)
 
   const fetchConfig = useCallback(async () => {
     setLoading(true)
@@ -30,7 +35,7 @@ export default function McpMock() {
     } catch { /* */ } finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { fetchConfig() }, [fetchConfig])
+  useEffect(() => { fetchConfig(); fetchLogs() }, [fetchConfig])
 
   const handleToggle = async (checked) => {
     try {
@@ -88,9 +93,25 @@ export default function McpMock() {
       try { args = JSON.parse(callArgs) } catch { message.error('参数 JSON 格式错误'); setCalling(false); return }
       const res = await api.post('/mcp-mock/call', { tool: callTool, arguments: args })
       setCallResult(res)
+      fetchLogs()
     } catch (e) {
       setCallResult({ error: e.message })
     } finally { setCalling(false) }
+  }
+
+  const fetchLogs = async (page) => {
+    try {
+      const p = page || logPage
+      const params = new URLSearchParams({ limit: '50', offset: String((p - 1) * 50) })
+      const r = await api.get(`/mcp-mock/logs?${params}`)
+      const d = r.data || r
+      setLogs(d.data || [])
+      setLogsTotal(d.total ?? 0)
+    } catch {}
+  }
+
+  const handleClearLogs = async () => {
+    try { await api.delete('/mcp-mock/logs'); message.success('日志已清空'); setLogs([]); setLogsTotal(0); setLogPage(1) } catch {}
   }
 
   const mcpUrl = `http://${window.location.hostname}:8000/mcp/`
@@ -139,45 +160,138 @@ export default function McpMock() {
   ]
 
   return (
-    <div>
-      <div style={{ marginBottom: 12 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#1d2129' }}>
-          <ApiOutlined style={{ marginRight: 8 }} />
-          MCP Mock
-        </h2>
-        <span style={{ fontSize: 13, color: '#86909c' }}>
-          配置 MCP 工具的模拟响应。开启后外部 MCP 客户端调用工具时，按你的配置返回成功或失败。
-        </span>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', background: '#f0f2f5' }}>
+
+      {/* ━━━ 顶栏 ━━━ */}
+      <div style={{
+        padding: '10px 20px', background: '#fff', borderBottom: '1px solid #e8e8e8',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ApiOutlined style={{ fontSize: 18, color: '#722ed1' }} />
+            <span style={{ fontWeight: 600, fontSize: 16 }}>MCP Mock</span>
+          </div>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '2px 10px', borderRadius: 12,
+            background: enabled ? '#f6ffed' : '#f5f5f5',
+            border: `1px solid ${enabled ? '#b7eb8f' : '#d9d9d9'}`,
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: enabled ? '#52c41a' : '#bfbfbf' }} />
+            <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: enabled ? '#389e0d' : '#999' }}>
+              {enabled ? 'MOCK 模式' : '正常模式'}
+            </span>
+          </div>
+          <Text code copyable style={{ fontSize: 12 }}>{mcpUrl}</Text>
+        </div>
+        <Switch checked={enabled} onChange={handleToggle} checkedChildren="Mock 开" unCheckedChildren="Mock 关" />
       </div>
 
-      <Card size="small" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <Text strong style={{ fontSize: 15 }}>MCP Mock 服务</Text>
-            <div>
-              {enabled
-                ? <Tag color="success" icon={<CheckCircleOutlined />}>已开启 — 按下方配置返回响应</Tag>
-                : <Tag icon={<CloseCircleOutlined />}>已关闭 — 查询真实数据库</Tag>
-              }
+      {/* ━━━ 主体 — 上下分区 ━━━ */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#fff', margin: '0' }}>
+
+        {/* 上：工具配置表格 */}
+        <div style={{ flexShrink: 0, borderBottom: '1px solid #f0f0f0' }}>
+          <Table rowKey="name" columns={columns} dataSource={tools} pagination={false} size="small"
+            style={{ margin: '0' }} />
+        </div>
+
+        {/* 下：调用日志 — 占满剩余高度 */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{
+            padding: '8px 16px', borderBottom: '1px solid #f0f0f0', flexShrink: 0,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: '#262626' }}>调用日志 <Tag style={{ marginLeft: 4 }}>{logsTotal}</Tag></span>
+            <Space size={4}>
+              <Button icon={<ReloadOutlined />} size="small" type="text" onClick={() => fetchLogs()} />
+              <Popconfirm title="确认清空？" onConfirm={handleClearLogs}>
+                <Button icon={<ClearOutlined />} size="small" type="text" danger />
+              </Popconfirm>
+            </Space>
+          </div>
+
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#fafafa', position: 'sticky', top: 0, zIndex: 1 }}>
+                  {['时间', '工具', '来源', '模式', '状态', '耗时', ''].map((h, i) => (
+                    <th key={h || 'op'} style={{
+                      padding: '6px 10px', textAlign: i >= 5 ? 'right' : 'left',
+                      fontWeight: 500, fontSize: 11, color: '#8c8c8c', borderBottom: '1px solid #f0f0f0',
+                      whiteSpace: 'nowrap',
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map(l => (
+                  <Fragment key={l.id}>
+                    <tr onClick={() => setExpandedLogId(expandedLogId === l.id ? null : l.id)} style={{
+                      cursor: 'pointer', borderBottom: '1px solid #fafafa',
+                      background: expandedLogId === l.id ? '#e6f4ff' : 'transparent',
+                    }}>
+                      <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', fontSize: 11, color: '#8c8c8c' }}>
+                        {new Date(l.timestamp).toLocaleTimeString('zh-CN', { hour12: false })}
+                      </td>
+                      <td style={{ padding: '5px 10px' }}>
+                        <Text code style={{ fontSize: 11 }}>{l.tool}</Text>
+                      </td>
+                      <td style={{ padding: '5px 10px' }}>
+                        <Tag color={l.source === 'mock' ? 'orange' : 'green'} style={{ margin: 0, fontSize: 10 }}>{l.source}</Tag>
+                      </td>
+                      <td style={{ padding: '5px 10px', fontSize: 11, color: '#8c8c8c' }}>{l.mode}</td>
+                      <td style={{ padding: '5px 10px' }}>
+                        <Tag color={l.isError ? 'red' : 'green'} style={{ margin: 0, fontSize: 10 }}>{l.isError ? '失败' : '成功'}</Tag>
+                      </td>
+                      <td style={{ padding: '5px 10px', textAlign: 'right', fontSize: 11, color: '#8c8c8c', whiteSpace: 'nowrap' }}>{l.elapsedMs}ms</td>
+                      <td style={{ padding: '5px 10px', textAlign: 'right' }}>
+                        <Button size="small" type="text" icon={<PlayCircleOutlined />} onClick={e => { e.stopPropagation(); openCall(l.tool) }} />
+                      </td>
+                    </tr>
+                    {expandedLogId === l.id && (
+                      <tr>
+                        <td colSpan={7} style={{ padding: '10px 16px', background: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+                          <div style={{ display: 'flex', gap: 24, fontSize: 12 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>请求参数</div>
+                              <pre style={{
+                                maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 4,
+                                background: '#fff', border: '1px solid #f0f0f0', fontSize: 11, fontFamily: MONO,
+                                whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                              }}>{JSON.stringify(l.arguments, null, 2)}</pre>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应结果</div>
+                              <pre style={{
+                                maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 4,
+                                background: '#fff', border: '1px solid #f0f0f0', fontSize: 11, fontFamily: MONO,
+                                whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                              }}>{(() => { try { return JSON.stringify(JSON.parse(l.response), null, 2) } catch { return l.response } })()}</pre>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+                {logs.length === 0 && (
+                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#bfbfbf', fontSize: 12 }}>暂无调用日志</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {logsTotal > 50 && (
+            <div style={{ padding: '8px 16px', borderTop: '1px solid #f0f0f0', flexShrink: 0, textAlign: 'right' }}>
+              <Pagination size="small" current={logPage} pageSize={50} total={logsTotal}
+                showTotal={t => `共 ${t} 条`} showSizeChanger={false}
+                onChange={p => { setLogPage(p); setExpandedLogId(null); fetchLogs(p) }} />
             </div>
-          </div>
-          <Switch checked={enabled} onChange={handleToggle} checkedChildren="Mock 开" unCheckedChildren="Mock 关" style={{ transform: 'scale(1.2)' }} />
+          )}
         </div>
-      </Card>
-
-      <Card size="small" style={{ marginBottom: 16, background: '#f6f7f9' }}>
-        <div style={{ fontSize: 13 }}>
-          <Text strong>MCP Server 地址：</Text>
-          <Text code copyable style={{ marginLeft: 8 }}>{mcpUrl}</Text>
-          <Tag style={{ marginLeft: 8 }} color={enabled ? 'orange' : 'green'}>{enabled ? 'Mock' : '正常'}</Tag>
-          <div style={{ marginTop: 4, color: '#86909c' }}>
-            每行直接切换<b>成功</b>/<b>失败</b>，需要自定义响应体时点<b>自定义</b>打开编辑。
-            MCP 协议标准格式：成功 → <Text code>isError:false</Text>，失败 → <Text code>isError:true</Text>
-          </div>
-        </div>
-      </Card>
-
-      <Table rowKey="name" columns={columns} dataSource={tools} pagination={false} size="small" />
+      </div>
 
       {/* 自定义编辑抽屉 */}
       <Drawer

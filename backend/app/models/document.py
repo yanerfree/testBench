@@ -18,6 +18,7 @@ class Document(Base):
     doc_type: Mapped[str] = mapped_column(String(20), default="manual")  # manual | acceptance | training
     language: Mapped[str] = mapped_column(String(10), default="zh")  # zh | en
     content: Mapped[str | None] = mapped_column(Text, nullable=True)  # Markdown
+    gen_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # 生成时的配置（地址/账号/范围等）
     source_case_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="draft")  # draft | published
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)

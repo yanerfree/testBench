@@ -43,6 +43,7 @@ def _doc_to_dict(d: Document) -> dict:
         "docType": d.doc_type,
         "language": d.language,
         "content": d.content,
+        "genConfig": d.gen_config,
         "sourceCaseIds": d.source_case_ids,
         "status": d.status,
         "createdAt": d.created_at.isoformat() if d.created_at else None,
@@ -222,6 +223,15 @@ async def generate_with_screenshots(
 
     from app.services.doc_generator import generate_doc_with_screenshots, generate_doc_content
 
+    saved_config = {
+        "systemUrl": body.system_url,
+        "username": body.username,
+        "password": body.password,
+        "modules": body.modules,
+        "audience": body.audience,
+        "businessContext": body.business_context,
+    }
+
     async def event_stream():
         screenshots = None
         created_doc_ids = []
@@ -255,6 +265,7 @@ async def generate_with_screenshots(
                             doc.doc_type = body.doc_type
                             doc.language = lang
                             doc.content = first_content
+                            doc.gen_config = saved_config
                             doc.status = "published"
                             created_doc_ids.append(str(doc.id))
                     else:
@@ -265,6 +276,7 @@ async def generate_with_screenshots(
                             language=lang,
                             status="published",
                             content=first_content,
+                            gen_config=saved_config,
                             created_by=current_user.id,
                         )
                         session.add(doc)
@@ -305,6 +317,7 @@ async def generate_with_screenshots(
                         language=lang,
                         status="published",
                         content=lang_content,
+                        gen_config=saved_config,
                         created_by=current_user.id,
                     )
                     session.add(doc2)
