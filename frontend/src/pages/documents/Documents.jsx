@@ -257,20 +257,120 @@ export default function Documents() {
           />
         )}
         <style>{`
-          .markdown-body h1 { font-size: 22px; border-bottom: 2px solid #eee; padding-bottom: 8px; margin: 24px 0 16px; }
-          .markdown-body h2 { font-size: 18px; border-bottom: 1px solid #f0f0f0; padding-bottom: 6px; margin: 20px 0 12px; color: #1d2129; }
-          .markdown-body h3 { font-size: 15px; margin: 16px 0 8px; color: #333; }
-          .markdown-body table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-          .markdown-body th, .markdown-body td { border: 1px solid #e5e6eb; padding: 8px 12px; font-size: 13px; }
-          .markdown-body th { background: #f7f8fa; font-weight: 600; }
-          .markdown-body blockquote { border-left: 3px solid #00b96b; padding: 8px 16px; margin: 12px 0; background: #f6ffed; color: #595959; font-size: 13px; }
-          .markdown-body code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
-          .markdown-body img { max-width: 100%; border: 1px solid #e5e6eb; border-radius: 6px; margin: 8px 0; }
-          .markdown-body em { color: #86909c; font-style: italic; }
-          .markdown-body strong { color: #1d2129; }
-          .markdown-body hr { border: none; border-top: 1px solid #e5e6eb; margin: 20px 0; }
-          .markdown-body ul, .markdown-body ol { padding-left: 20px; }
-          .markdown-body li { margin: 4px 0; }
+          .markdown-body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+            color: #1f2328;
+            word-wrap: break-word;
+          }
+          .markdown-body > *:first-child { margin-top: 0 !important; }
+
+          /* Headings */
+          .markdown-body h1 {
+            font-size: 1.75em; font-weight: 700; line-height: 1.3;
+            margin: 32px 0 16px; padding-bottom: 10px;
+            border-bottom: 2px solid #d1d9e0;
+          }
+          .markdown-body h2 {
+            font-size: 1.35em; font-weight: 600; line-height: 1.35;
+            margin: 28px 0 14px; padding-bottom: 8px;
+            border-bottom: 1px solid #d8dee4;
+            color: #1f2328;
+          }
+          .markdown-body h3 {
+            font-size: 1.15em; font-weight: 600; line-height: 1.4;
+            margin: 22px 0 10px; color: #25292e;
+          }
+          .markdown-body h4 {
+            font-size: 1em; font-weight: 600; line-height: 1.4;
+            margin: 18px 0 8px; color: #32383f;
+          }
+
+          /* Paragraph */
+          .markdown-body p { margin: 8px 0 12px; }
+
+          /* Bold / Emphasis */
+          .markdown-body strong { font-weight: 600; color: #1f2328; }
+          .markdown-body em { color: #656d76; font-style: italic; }
+          /* Image caption: em right after img (Typora pattern: *图：xxx*) */
+          .markdown-body img + br + em,
+          .markdown-body p > em:only-child {
+            display: block; text-align: center; font-size: 0.85em;
+            color: #656d76; margin: -4px 0 16px;
+          }
+
+          /* HR */
+          .markdown-body hr {
+            border: none; height: 2px;
+            background: #d8dee4; margin: 28px 0;
+          }
+
+          /* Table */
+          .markdown-body table {
+            border-collapse: collapse; width: 100%;
+            margin: 16px 0; overflow-x: auto; display: block;
+            font-variant-numeric: tabular-nums;
+          }
+          .markdown-body thead { background: #f6f8fa; }
+          .markdown-body th {
+            font-weight: 600; text-align: left;
+            padding: 10px 14px; font-size: 13px;
+            border: 1px solid #d0d7de; background: #f6f8fa;
+          }
+          .markdown-body td {
+            padding: 8px 14px; font-size: 13px;
+            border: 1px solid #d0d7de; vertical-align: top;
+          }
+          .markdown-body tbody tr:nth-child(even) { background: #f6f8fa; }
+
+          /* Blockquote */
+          .markdown-body blockquote {
+            border-left: 4px solid #1a7f37; padding: 12px 20px;
+            margin: 16px 0; background: #dafbe1;
+            color: #1f2328; border-radius: 0 6px 6px 0;
+          }
+          .markdown-body blockquote p { margin: 4px 0; }
+          .markdown-body blockquote strong { color: #1a7f37; }
+
+          /* Inline code */
+          .markdown-body code {
+            background: #eff1f3; padding: 2px 7px;
+            border-radius: 4px; font-size: 0.9em;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+          }
+          /* Code block */
+          .markdown-body pre {
+            background: #161b22; color: #e6edf3;
+            border-radius: 8px; padding: 16px 20px;
+            margin: 16px 0; overflow-x: auto;
+            line-height: 1.5;
+          }
+          .markdown-body pre code {
+            background: none; padding: 0; border-radius: 0;
+            font-size: 13px; color: inherit;
+          }
+
+          /* Image */
+          .markdown-body img {
+            max-width: 100%; border-radius: 8px;
+            border: 1px solid #d0d7de;
+            margin: 12px 0 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+          }
+
+          /* Lists */
+          .markdown-body ul, .markdown-body ol {
+            padding-left: 24px; margin: 8px 0;
+          }
+          .markdown-body li { margin: 4px 0; line-height: 1.7; }
+          .markdown-body li > p { margin: 2px 0; }
+          .markdown-body ul ul, .markdown-body ol ul,
+          .markdown-body ul ol, .markdown-body ol ol {
+            margin: 2px 0;
+          }
+
+          /* Links */
+          .markdown-body a { color: #0969da; text-decoration: none; }
+          .markdown-body a:hover { text-decoration: underline; }
         `}</style>
       </Drawer>
     </div>
