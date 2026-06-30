@@ -260,3 +260,121 @@ async def generate_with_screenshots(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/{doc_id}/export-html")
+async def export_html(
+    project_id: uuid.UUID,
+    doc_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """导出 HTML — 图片转 base64 内嵌，单文件可离线查看"""
+    import re, base64
+    from pathlib import Path
+    from fastapi.responses import Response
+
+    doc = await session.get(Document, doc_id)
+    if not doc or doc.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="文档不存在")
+
+    content = doc.content or ""
+    SCREENSHOT_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "screenshots"
+
+    def replace_img(match):
+        img_path = match.group(2)
+        relative = img_path.replace("/api/screenshots/files/", "")
+        full_path = SCREENSHOT_DIR / relative
+        if full_path.exists():
+            b64 = base64.b64encode(full_path.read_bytes()).decode()
+            ext = full_path.suffix.lstrip(".")
+            return f"data:image/{ext};base64,{b64}"
+        return img_path
+
+    # 先逐个替换图片为 base64 img 标签
+    html_body = content
+    for m in re.finditer(r'!\[([^\]]*)\]\(([^)]+)\)', content):
+        alt = m.group(1)
+        img_path = m.group(2)
+        relative = img_path.replace("/api/screenshots/files/", "")
+        full_path = SCREENSHOT_DIR / relative
+        if full_path.exists():
+            b64 = base64.b64encode(full_path.read_bytes()).decode()
+            ext = full_path.suffix.lstrip(".")
+            src = f"data:image/{ext};base64,{b64}"
+        else:
+            src = img_path
+        img_tag = f'<img src="{src}" alt="{alt}" style="max-width:100%;border:1px solid #eee;border-radius:6px;margin:8px 0">'
+        html_body = html_body.replace(m.group(0), img_tag, 1)
+
+    # 文本格式转换
+    html_body = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html_body, flags=re.MULTILINE)
+    html_body = re.sub(r'^## (.+)$', r'<h2 style="border-bottom:1px solid #eee;padding-bottom:6px;margin-top:30px">\1</h2>', html_body, flags=re.MULTILINE)
+    html_body = re.sub(r'^# (.+)$', r'<h1 style="border-bottom:2px solid #eee;padding-bottom:10px">\1</h1>', html_body, flags=re.MULTILINE)
+    html_body = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', html_body)
+    html_body = re.sub(r'^- (.+)$', r'<div style="padding-left:16px">• \1</div>', html_body, flags=re.MULTILINE)
+    html_body = html_body.replace("\n\n", "<br/><br/>").replace("\n", "<br/>")
+
+    full_html = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>{doc.title}</title>
+<style>
+body {{ max-width:900px; margin:40px auto; padding:0 20px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#333; line-height:1.8; }}
+img {{ max-width:100%; border:1px solid #eee; border-radius:6px; margin:8px 0; }}
+</style></head>
+<body>{html_body}
+<hr style="margin-top:40px;border:none;border-top:1px solid #eee">
+<p style="font-size:12px;color:#999">由 testBench 测试管理平台生成</p>
+</body></html>"""
+
+    from urllib.parse import quote
+    return Response(
+        content=full_html.encode("utf-8"),
+        media_type="text/html",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(doc.title)}.html"},
+    )
+
+
+@router.get("/{doc_id}/export-zip")
+async def export_zip(
+    project_id: uuid.UUID,
+    doc_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """打包下载 — Markdown + 截图文件夹"""
+    import re, zipfile, io
+    from pathlib import Path
+    from fastapi.responses import StreamingResponse as ZipResponse
+
+    doc = await session.get(Document, doc_id)
+    if not doc or doc.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="文档不存在")
+
+    content = doc.content or ""
+    SCREENSHOT_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "screenshots"
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        # 替换图片路径为相对路径，同时收集文件
+        def fix_path(match):
+            alt = match.group(1)
+            img_path = match.group(2)
+            relative = img_path.replace("/api/screenshots/files/", "")
+            full_path = SCREENSHOT_DIR / relative
+            filename = Path(relative).name
+            local_path = f"images/{filename}"
+            if full_path.exists():
+                zf.writestr(local_path, full_path.read_bytes())
+            return f"![{alt}]({local_path})"
+
+        fixed_content = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', fix_path, content)
+        zf.writestr(f"{doc.title}.md", fixed_content.encode("utf-8"))
+
+    buf.seek(0)
+    from urllib.parse import quote
+    return ZipResponse(
+        content=buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(doc.title)}.zip"},
+    )

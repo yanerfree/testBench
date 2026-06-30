@@ -206,8 +206,12 @@ ${v.businessContext ? `\n## 业务背景\n${v.businessContext}` : ''}
               </Space>
               <Space>
                 <Button size="small" icon={<CopyOutlined />} onClick={() => { copyToClipboard(selectedDoc.content); message.success('已复制') }}>复制</Button>
-                <Button size="small" icon={<DownloadOutlined />} onClick={() => downloadFile(selectedDoc.title + '.md', selectedDoc.content)}>下载 .md</Button>
-                <Button size="small" type="primary" icon={<DownloadOutlined />} onClick={() => downloadHtml(selectedDoc.title, selectedDoc.content)}>导出 HTML</Button>
+                <Button size="small" icon={<DownloadOutlined />} onClick={() => downloadFromApi(`/projects/${projectId}/documents/${selectedDocId}/export-zip`, `${selectedDoc.title}.zip`)}>
+                  下载 .md + 图片
+                </Button>
+                <Button size="small" type="primary" icon={<DownloadOutlined />} onClick={() => downloadFromApi(`/projects/${projectId}/documents/${selectedDocId}/export-html`, `${selectedDoc.title}.html`)}>
+                  导出 HTML
+                </Button>
                 <Popconfirm title="确认删除？" onConfirm={() => handleDelete(selectedDoc.id)}>
                   <Button size="small" danger icon={<DeleteOutlined />} />
                 </Popconfirm>
@@ -314,6 +318,20 @@ ${v.businessContext ? `\n## 业务背景\n${v.businessContext}` : ''}
       </Modal>
     </div>
   )
+}
+
+async function downloadFromApi(url, filename) {
+  const token = localStorage.getItem('token')
+  const res = await fetch(`/api${url}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) { message.error('下载失败'); return }
+  const blob = await res.blob()
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
 
 function buildTreeData(folders) {
