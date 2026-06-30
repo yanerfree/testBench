@@ -167,7 +167,7 @@ export default function Documents() {
     { title: '状态', dataIndex: 'status', width: 70, render: (s) => s === 'published' ? <Tag color="success">已生成</Tag> : <Tag>草稿</Tag> },
     { title: '时间', dataIndex: 'createdAt', width: 140, render: (t) => t?.slice(0, 16).replace('T', ' ') },
     {
-      title: '操作', width: 160,
+      title: '操作', width: 200,
       render: (_, r) => (
         <Space size={4}>
           <Button size="small" icon={<EyeOutlined />} onClick={() => loadDoc(r.id)}>查看</Button>
@@ -271,15 +271,15 @@ export default function Documents() {
                 <Form.Item name="systemUrl" label="地址" rules={[{ required: true, message: '请输入系统地址' }]}>
                   <Input placeholder="http://192.168.51.108:5173" />
                 </Form.Item>
-                <Form.Item name="username" label="账号" rules={[{ required: true }]}>
+                <Form.Item name="username" label="账号" rules={[{ required: true, message: '请输入账号' }]}>
                   <Input placeholder="admin" />
                 </Form.Item>
-                <Form.Item name="password" label="密码" rules={[{ required: true }]}>
+                <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}>
                   <Input.Password placeholder="admin123" />
                 </Form.Item>
               </div>
               <Divider orientation="left" plain style={{ margin: '4px 0 8px', fontSize: 12 }}>文档信息</Divider>
-              <Form.Item name="title" label="标题" rules={[{ required: true }]}>
+              <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入文档标题' }]}>
                 <Input placeholder="测试管理平台操作手册" />
               </Form.Item>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
