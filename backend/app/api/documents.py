@@ -198,6 +198,7 @@ class GenerateWithScreenshotsRequest(BaseSchema):
     audience: str | None = None
     output_dir: str | None = None
     business_context: str | None = None
+    doc_id: str | None = None  # 传了则更新已有文档，不传则新建
 
 
 @router.post("/generate-with-screenshots")
@@ -214,14 +215,23 @@ async def generate_with_screenshots(
     if not ai_config:
         raise AppError(code="AI_NOT_CONFIGURED", message="AI 服务未配置", status_code=503)
 
-    doc = Document(
-        project_id=project_id,
-        title=body.title,
-        doc_type=body.doc_type,
-        status="draft",
-        created_by=current_user.id,
-    )
-    session.add(doc)
+    if body.doc_id:
+        doc = await session.get(Document, uuid.UUID(body.doc_id))
+        if not doc or doc.project_id != project_id:
+            raise NotFoundError(code="NOT_FOUND", message="文档不存在")
+        doc.title = body.title
+        doc.doc_type = body.doc_type
+        doc.status = "draft"
+        doc.content = None
+    else:
+        doc = Document(
+            project_id=project_id,
+            title=body.title,
+            doc_type=body.doc_type,
+            status="draft",
+            created_by=current_user.id,
+        )
+        session.add(doc)
     await session.flush()
     doc_id = doc.id
 

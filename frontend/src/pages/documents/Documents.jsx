@@ -27,6 +27,7 @@ export default function Documents() {
   const [genOpen, setGenOpen] = useState(false)
   const [genMethod, setGenMethod] = useState('claude-code') // 'claude-code' | 'platform'
   const [ccForm] = Form.useForm()
+  const [regenDocId, setRegenDocId] = useState(null)
 
   // 平台生成
   const [platGenerating, setPlatGenerating] = useState(false)
@@ -92,6 +93,7 @@ export default function Documents() {
         modules: v.modules || undefined,
         audience: v.audience || undefined,
         businessContext: v.businessContext || undefined,
+        docId: regenDocId || undefined,
       }, {
         onChunk: (data) => {
           if (data.type === 'skill_start') setPlatProgress(prev => [...prev, `🚀 Skill: ${data.skill}`])
@@ -104,6 +106,7 @@ export default function Documents() {
         onDone: (data) => {
           message.success('文档已生成，请在左侧目录查看')
           setPlatGenerating(false); setGenOpen(false); ccForm.resetFields()
+          setRegenDocId(null)
           fetchDocs()
           if (data?.docId) loadDoc(data.docId)
         },
@@ -156,7 +159,7 @@ export default function Documents() {
       <div style={{ width: 260, flexShrink: 0, background: '#fff', borderRadius: 8, border: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text strong><FolderOutlined style={{ marginRight: 6 }} />文档目录</Text>
-          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => { setGenOpen(true); setTaskResult(null); setGenMethod('claude-code') }}>
+          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => { setGenOpen(true); setTaskResult(null); setRegenDocId(null); setGenMethod('claude-code') }}>
             生成
           </Button>
         </div>
@@ -197,9 +200,15 @@ export default function Documents() {
                 <Tag color={DOC_TYPE_COLORS[selectedDoc.docType]}>{DOC_TYPE_LABELS[selectedDoc.docType]}</Tag>
               </Space>
               <Space>
+                <Button size="small" icon={<RobotOutlined />} onClick={() => {
+                  setGenOpen(true)
+                  setTaskResult(null)
+                  ccForm.setFieldsValue({ title: selectedDoc.title, docType: selectedDoc.docType })
+                  setRegenDocId(selectedDocId)
+                }}>重新生成</Button>
                 <Button size="small" icon={<CopyOutlined />} onClick={() => { copyToClipboard(selectedDoc.content); message.success('已复制') }}>复制</Button>
                 <Button size="small" icon={<DownloadOutlined />} onClick={() => downloadFromApi(`/projects/${projectId}/documents/${selectedDocId}/export-zip`, `${selectedDoc.title}.zip`)}>
-                  下载 .md + 图片
+                  下载
                 </Button>
                 <Button size="small" type="primary" icon={<DownloadOutlined />} onClick={() => downloadFromApi(`/projects/${projectId}/documents/${selectedDocId}/export-html`, `${selectedDoc.title}.html`)}>
                   导出 HTML
