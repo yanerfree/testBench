@@ -27,7 +27,6 @@ export default function Documents() {
   const [genOpen, setGenOpen] = useState(false)
   const [genMethod, setGenMethod] = useState('claude-code') // 'claude-code' | 'platform'
   const [ccForm] = Form.useForm()
-  const [generatedPrompt, setGeneratedPrompt] = useState('')
 
   // 平台生成
   const [platGenerating, setPlatGenerating] = useState(false)
@@ -112,33 +111,26 @@ export default function Documents() {
   }
 
   // Claude Code 提示词
+  const [taskResult, setTaskResult] = useState(null)
+
   const handleCCGenerate = async () => {
     try {
       const v = await ccForm.validateFields()
-      const docLabel = DOC_TYPE_LABELS[v.docType] || '操作手册'
-      setGeneratedPrompt(`请为以下系统生成【${docLabel}】：
-
-## 被测系统
-- 地址：${v.systemUrl}
-- 账号：${v.username}
-- 密码：${v.password}
-
-## 文档要求
-- 标题：${v.title}
-- 范围：${v.modules || '全部功能'}
-- 读者：${v.audience || '测试工程师'}
-${v.businessContext ? `\n## 业务背景\n${v.businessContext}` : ''}
-
-## 输出
-- 文档：${v.outputDir || 'docs/'}${v.title}.md
-- 截图：${v.outputDir || 'docs/'}images/
-- 格式：Markdown，每步配截图
-
-## 执行
-1. 打开 ${v.systemUrl}，用 ${v.username} 登录
-2. 按范围逐个功能操作并截图
-3. 每个功能一个章节（操作步骤 + 截图 + 预期结果）
-4. 保存到指定目录`)
+      const res = await api.post(`/projects/${projectId}/documents/tasks`, {
+        _host: window.location.hostname + ':8000',
+        systemUrl: v.systemUrl,
+        username: v.username,
+        password: v.password,
+        title: v.title,
+        docType: v.docType || 'manual',
+        modules: v.modules || undefined,
+        audience: v.audience || undefined,
+        outputDir: v.outputDir || 'docs/',
+        businessContext: v.businessContext || undefined,
+      })
+      setTaskResult(res.data)
+    } catch { /* */ }
+  }
     } catch { /* */ }
   }
 
@@ -164,7 +156,7 @@ ${v.businessContext ? `\n## 业务背景\n${v.businessContext}` : ''}
       <div style={{ width: 260, flexShrink: 0, background: '#fff', borderRadius: 8, border: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text strong><FolderOutlined style={{ marginRight: 6 }} />文档目录</Text>
-          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => { setGenOpen(true); setGeneratedPrompt(''); setGenMethod('claude-code') }}>
+          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => { setGenOpen(true); setTaskResult(null); setGenMethod('claude-code') }}>
             生成
           </Button>
         </div>
@@ -236,7 +228,7 @@ ${v.businessContext ? `\n## 业务背景\n${v.businessContext}` : ''}
         width={720}
         footer={null}
       >
-        {!generatedPrompt && !platGenerating ? (
+        {!taskResult && !platGenerating ? (
           <div>
             <Form form={ccForm} layout="vertical" size="small">
               <Divider orientation="left" plain style={{ margin: '4px 0 8px', fontSize: 12 }}>被测系统</Divider>
@@ -273,22 +265,36 @@ ${v.businessContext ? `\n## 业务背景\n${v.businessContext}` : ''}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Button onClick={() => setGenOpen(false)}>取消</Button>
               <Space>
-                <Button icon={<CodeOutlined />} onClick={handleCCGenerate}>生成 Claude Code 提示词</Button>
+                <Button icon={<CodeOutlined />} onClick={handleCCGenerate}>生成 Claude Code 命令</Button>
                 <Button type="primary" icon={<DesktopOutlined />} onClick={handlePlatGenerate}>平台直接生成</Button>
               </Space>
             </div>
           </div>
-        ) : generatedPrompt ? (
+        ) : taskResult ? (
           <div>
-            <div style={{ marginBottom: 12, fontSize: 13, color: '#52c41a' }}>
-              ✅ 提示词已生成。复制到 Claude Code 终端粘贴执行。
+            <div style={{ marginBottom: 16, fontSize: 13, color: '#52c41a' }}>
+              ✅ 任务已保存。按以下步骤在 Claude Code 中执行：
             </div>
-            <pre style={{ background: '#1e1e1e', color: '#d4d4d4', padding: 16, borderRadius: 8, maxHeight: 350, overflow: 'auto', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-              {generatedPrompt}
-            </pre>
-            <div style={{ textAlign: 'right', marginTop: 12 }}>
-              <Button onClick={() => setGeneratedPrompt('')} style={{ marginRight: 8 }}>返回修改</Button>
-              <Button type="primary" icon={<CopyOutlined />} onClick={() => { copyToClipboard(generatedPrompt); message.success('已复制') }}>复制提示词</Button>
+
+            <div style={{ fontSize: 13, lineHeight: 2 }}>
+              {taskResult.instructions?.map((step, i) => (
+                <div key={i}>{step}</div>
+              ))}
+            </div>
+
+            <div style={{ margin: '16px 0', padding: '12px 16px', background: '#1e1e1e', borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>复制这一行到 Claude Code：</div>
+              <div style={{ color: '#d4d4d4', fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all' }}>
+                {taskResult.command}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Button onClick={() => setTaskResult(null)}>返回修改</Button>
+              <Button type="primary" icon={<CopyOutlined />} onClick={() => {
+                copyToClipboard(taskResult.command)
+                message.success('已复制，粘贴到 Claude Code 终端执行')
+              }}>复制命令</Button>
             </div>
           </div>
         ) : (

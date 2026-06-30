@@ -378,3 +378,55 @@ async def export_zip(
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(doc.title)}.zip"},
     )
+
+
+# ── 任务配置保存 + 获取（供 Claude Code 使用）──
+
+@router.post("/tasks")
+async def create_doc_task(
+    project_id: uuid.UUID,
+    body: dict,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """保存文档生成任务配置，返回任务 ID 和一行命令"""
+    import uuid as uuid_mod
+    task_id = uuid_mod.uuid4().hex[:12]
+
+    # 保存到内存（生产环境应存 DB 或 Redis）
+    if not hasattr(create_doc_task, '_tasks'):
+        create_doc_task._tasks = {}
+    create_doc_task._tasks[task_id] = {
+        "projectId": str(project_id),
+        "config": body,
+        "createdBy": str(current_user.id),
+    }
+
+    host = body.get("_host", "localhost:8000")
+    task_url = f"http://{host}/api/projects/{project_id}/documents/tasks/{task_id}"
+
+    return {"data": {
+        "taskId": task_id,
+        "taskUrl": task_url,
+        "command": f'请根据以下任务配置生成操作文档：{task_url}',
+        "instructions": [
+            "1. 在被测系统的项目目录下打开终端",
+            "2. 运行 claude 启动 Claude Code",
+            f"3. 粘贴这一行：请根据以下任务配置生成操作文档：{task_url}",
+            "4. AI 会自动读取配置 → 打开系统 → 截图 → 写文档",
+            f"5. 文档保存在 {body.get('outputDir', 'docs/')} 目录",
+        ],
+    }}
+
+
+@router.get("/tasks/{task_id}")
+async def get_doc_task(
+    project_id: uuid.UUID,
+    task_id: str,
+):
+    """获取任务配置（Claude Code 通过 URL 读取）"""
+    tasks = getattr(create_doc_task, '_tasks', {})
+    task = tasks.get(task_id)
+    if not task:
+        raise NotFoundError(code="NOT_FOUND", message="任务不存在或已过期")
+    return {"data": task["config"]}

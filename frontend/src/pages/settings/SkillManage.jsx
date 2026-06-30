@@ -84,14 +84,13 @@ const SKILLS = [
   {
     name: 'tb-doc-generate',
     title: '文档生成',
-    icon: <BookOutlined style={{ fontSize: 20, color: '#bfbfbf' }} />,
-    status: 'planned',
-    phase: 'Phase 3',
-    description: '从用例或截图自动生成操作手册、验收文档、培训教材',
-    input: '测试用例 + 截图（可选）',
-    output: 'Markdown / HTML 操作手册',
-    where: '计划入口：项目菜单新增「文档管理」',
-    mcpTools: ['tb_list_cases', 'tb_get_case'],
+    icon: <BookOutlined style={{ fontSize: 20, color: '#52c41a' }} />,
+    status: 'available',
+    description: '自动操作系统截图 + AI 写文档，支持平台直接生成和 Claude Code 两种方式',
+    input: '被测系统地址 + 账号密码 + 文档范围 + 目标读者',
+    output: '带截图的 Markdown 操作手册，可导出 HTML / ZIP',
+    where: '项目菜单「文档管理」→ 生成按钮',
+    mcpTools: [],
   },
 ]
 
