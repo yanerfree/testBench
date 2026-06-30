@@ -272,6 +272,85 @@ async def generate_with_screenshots(
     )
 
 
+class OptimizeDocRequest(BaseSchema):
+    feedback: str = Field(..., min_length=1, max_length=2000)
+
+
+@router.post("/{doc_id}/optimize")
+async def optimize_document(
+    project_id: uuid.UUID,
+    doc_id: uuid.UUID,
+    body: OptimizeDocRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """基于修改意见优化已有文档 — 保留截图，AI 重写内容"""
+    from app.services.ai_config_resolver import resolve_ai_config
+    from app.services.ai import llm_client
+    from app.core.exceptions import AppError
+
+    doc = await session.get(Document, doc_id)
+    if not doc or doc.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="文档不存在")
+
+    ai_config = await resolve_ai_config(project_id, session)
+    if not ai_config:
+        raise AppError(code="AI_NOT_CONFIGURED", message="AI 服务未配置", status_code=503)
+
+    original_content = doc.content or ""
+    from app.services.doc_generator import _load_format_template
+    format_template = _load_format_template(doc.doc_type or "manual")
+
+    messages = [
+        {"role": "system", "content": f"""你是技术文档专家。用户对已生成的文档提出了修改意见，请根据修改意见优化文档。
+
+## 重要规则：
+1. **保留所有截图引用** — 不要删除或修改 `![](...)` 图片链接
+2. **按照修改意见修改** — 只修改用户指出的问题部分
+3. **保持整体结构** — 不要大幅改变章节结构，除非用户明确要求
+4. **保持格式一致** — 输出完整的 Markdown 文档
+
+## 格式模板参考：
+```
+{format_template}
+```"""},
+        {"role": "user", "content": f"""## 原始文档内容
+{original_content}
+
+---
+
+## 用户的修改意见
+{body.feedback}
+
+---
+
+请根据修改意见优化上面的文档，输出完整的优化后 Markdown 文档。"""},
+    ]
+
+    async def event_stream():
+        full_content = ""
+        try:
+            async for chunk in llm_client.stream(messages, config=ai_config):
+                if chunk.delta:
+                    full_content += chunk.delta
+                    yield f"data: {json.dumps({'type': 'chunk', 'content': chunk.delta}, ensure_ascii=False)}\n\n"
+
+            if full_content:
+                doc.content = full_content
+                doc.status = "published"
+                await session.commit()
+
+            yield f"data: {json.dumps({'type': 'done', 'docId': str(doc_id)}, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)[:200]}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.get("/{doc_id}/export-html")
 async def export_html(
     project_id: uuid.UUID,
