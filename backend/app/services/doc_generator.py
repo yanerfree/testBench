@@ -184,25 +184,26 @@ __演示话术__：一句话总结。""",
 {format_template}
 ```
 
-要求：
-- 图片引用用 ![](url) 格式，url 用提供的截图路径
-- 每个步骤必须有截图
-- 操作步骤要具体到按钮名称、输入内容
-- 预期结果要明确
+## 重要约束：
+- 文档范围是「{modules or '全部功能'}」，只写这个范围内的功能操作，不要把所有截图都写成独立章节
+- 与文档范围无关的截图只作为导航说明的配图，不展开详细操作步骤
+- 每个功能要写到具体的操作级别：打开弹窗→填写表单→点击按钮→看到结果
+- 图片引用用 ![](url) 格式
+- 操作步骤要具体到按钮名称、输入内容、预期结果
 """},
         {"role": "user", "content": f"""请生成【{doc_label}】：
 
 标题：{title}
 系统地址：{system_url}
-文档范围：{modules or '全部功能'}
+文档范围：{modules or '全部功能'}（只写这个范围的功能，其他截图仅用于导航说明）
 目标读者：{audience or '测试工程师'}
 {f'业务背景：{business_context}' if business_context else ''}
 
-以下是系统各页面的截图，请根据每张截图写操作步骤：
+以下是系统各页面的截图：
 
 {screenshots_desc}
 
-请严格按照上面定义的格式输出完整文档。"""},
+请严格按照格式模板输出，重点写「{modules or '全部功能'}」的详细操作。"""},
     ]
 
     full_content = ""
@@ -266,19 +267,25 @@ def _take_screenshots(system_url: str, username: str, password: str, modules: st
         except Exception as e:
             logger.warning("Login attempt failed: %s", e)
 
-        # 2.5 尝试进入第一个项目（从项目列表页进入项目内页面）
-        try:
-            project_card = page.locator('.ant-card').first
-            if project_card.count() > 0:
-                project_card.click()
-                page.wait_for_timeout(2000)
-                fname = "03_project_home.png"
-                page.screenshot(path=str(shot_path / fname))
-                screenshots.append({"page": "项目首页", "file": fname, "pageUrl": page.url})
-        except Exception:
-            pass
+        # 2.5 判断是在系统级还是项目级截图
+        system_level_modules = {'用户管理', '环境配置', '通知渠道', 'AI 服务配置', 'Users', 'Environments'}
+        is_system_level = modules and any(m.strip() in system_level_modules for m in modules.split('、'))
+
+        if not is_system_level:
+            # 进入第一个项目
+            try:
+                project_card = page.locator('.ant-card').first
+                if project_card.count() > 0:
+                    project_card.click()
+                    page.wait_for_timeout(2000)
+                    fname = "03_project_home.png"
+                    page.screenshot(path=str(shot_path / fname))
+                    screenshots.append({"page": "项目首页", "file": fname, "pageUrl": page.url})
+            except Exception:
+                pass
 
         # 3. 逐个点击菜单项截图
+        module_keywords = [m.strip() for m in modules.split('、')] if modules else []
         menu_items = page.locator('.ant-menu-item, nav a, [role="menuitem"]').all()
         visited_texts = set()
         idx = 4
@@ -288,19 +295,26 @@ def _take_screenshots(system_url: str, username: str, password: str, modules: st
                 text = item.text_content().strip()
                 if not text or text in visited_texts or len(text) > 30:
                     continue
-                if text in ('返回项目列表',):
+                if text in ('返回项目列表', 'Back to Projects'):
                     continue
 
                 visited_texts.add(text)
+                is_target = not module_keywords or any(kw in text for kw in module_keywords)
+
                 item.click()
                 page.wait_for_timeout(2000)
 
                 fname = f"{idx:02d}_{text.replace('/', '_')[:20]}.png"
                 page.screenshot(path=str(shot_path / fname))
-                screenshots.append({"page": text, "file": fname, "pageUrl": page.url})
+                screenshots.append({"page": text, "file": fname, "pageUrl": page.url, "isTarget": is_target})
                 idx += 1
 
-                if idx > 15:  # 最多 15 张截图
+                # 对目标模块做深度截图：找页面上的操作按钮并点击
+                if is_target:
+                    _deep_screenshot(page, shot_path, screenshots, idx, text)
+                    idx = len(screenshots) + 1
+
+                if idx > 20:
                     break
             except Exception:
                 continue
@@ -308,3 +322,45 @@ def _take_screenshots(system_url: str, username: str, password: str, modules: st
         browser.close()
 
     return screenshots
+
+
+def _deep_screenshot(page, shot_path, screenshots, start_idx, parent_name):
+    """对目标模块页面做深度截图：找按钮→点击→截弹窗/新页面。"""
+    idx = start_idx
+    action_buttons = page.locator('button').all()
+
+    for btn in action_buttons:
+        try:
+            btn_text = btn.text_content().strip()
+            if not btn_text or len(btn_text) > 15:
+                continue
+            # 只点"新增/创建/添加/编辑"类按钮
+            if not any(kw in btn_text for kw in ('新增', '创建', '添加', '新建', 'Add', 'Create', 'New')):
+                continue
+
+            btn.click()
+            page.wait_for_timeout(1500)
+
+            # 检查是否打开了弹窗
+            modal = page.locator('.ant-modal-content, .ant-drawer-content')
+            if modal.count() > 0:
+                fname = f"{idx:02d}_{parent_name}_{btn_text}.png"
+                page.screenshot(path=str(shot_path / fname))
+                screenshots.append({
+                    "page": f"{parent_name} - {btn_text}弹窗",
+                    "file": fname,
+                    "pageUrl": page.url,
+                    "isTarget": True,
+                })
+                idx += 1
+
+                # 关闭弹窗
+                close = page.locator('.ant-modal-close, .ant-drawer-close').first
+                if close.count() > 0:
+                    close.click()
+                    page.wait_for_timeout(500)
+
+            if idx >= start_idx + 3:  # 每个模块最多深度截 3 张
+                break
+        except Exception:
+            continue
