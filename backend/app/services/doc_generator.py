@@ -68,12 +68,6 @@ async def generate_doc_with_screenshots(
         return
 
     # AI 根据截图信息生成文档
-    screenshots_desc = "\n".join(
-        f"### 截图 {i+1}: {s['page']}\n![{s['page']}]({s['url']})\n页面地址: {s.get('pageUrl', '')}"
-        for i, s in enumerate(screenshots)
-        if 'url' not in s or True  # 给每个截图加 url
-    )
-    # 补上 url
     for s in screenshots:
         s['url'] = f"/api/screenshots/files/{project_id}/{session_id}/{s['file']}"
 
