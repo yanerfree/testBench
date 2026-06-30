@@ -31,7 +31,14 @@ class MockServerManager:
 
     @property
     def running(self) -> bool:
-        return self._server is not None and getattr(self._server, 'started', False)
+        if self._server is None:
+            return False
+        if self._task is not None and self._task.done():
+            logger.warning("Mock 服务 task 已意外退出，清理状态")
+            self._server = None
+            self._task = None
+            return False
+        return getattr(self._server, 'started', False)
 
     async def start(self) -> None:
         if self.running:
@@ -41,6 +48,7 @@ class MockServerManager:
         config = uvicorn.Config(self._app, host=self.host, port=self.port, log_level="warning")
         server = uvicorn.Server(config)
         self._task = asyncio.create_task(server.serve())
+        self._task.add_done_callback(self._on_task_done)
         self._server = server
         # 等待服务启动
         for _ in range(50):
@@ -60,6 +68,15 @@ class MockServerManager:
             self._server = None
             self._task = None
             logger.info("Mock 服务已停止")
+
+    def _on_task_done(self, task: asyncio.Task) -> None:
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc:
+            logger.error("Mock 服务异常退出: %s", exc)
+        self._server = None
+        self._task = None
 
     def _create_app(self) -> FastAPI:
         app = FastAPI(title="LLM Mock Server")
@@ -114,6 +131,16 @@ class MockServerManager:
         return {"object": "list", "data": data}
 
     async def _handle_request(self, request: Request, path: str) -> JSONResponse | StreamingResponse:
+        try:
+            return await self._do_handle_request(request, path)
+        except Exception:
+            logger.exception("Mock 请求处理异常: %s %s", request.method, path)
+            return JSONResponse(
+                {"error": {"message": "Internal mock server error", "type": "server_error", "param": None, "code": None}},
+                status_code=500,
+            )
+
+    async def _do_handle_request(self, request: Request, path: str) -> JSONResponse | StreamingResponse:
         t0 = time.perf_counter()
         method = request.method
         body_bytes = await request.body()

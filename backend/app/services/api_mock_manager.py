@@ -31,7 +31,14 @@ class ApiMockServerManager:
 
     @property
     def running(self) -> bool:
-        return self._server is not None and getattr(self._server, 'started', False)
+        if self._server is None:
+            return False
+        if self._task is not None and self._task.done():
+            logger.warning("API Mock 服务 task 已意外退出，清理状态")
+            self._server = None
+            self._task = None
+            return False
+        return getattr(self._server, 'started', False)
 
     async def start(self) -> None:
         if self.running:
@@ -41,6 +48,7 @@ class ApiMockServerManager:
         config = uvicorn.Config(self._app, host=self.host, port=self.port, log_level="warning")
         server = uvicorn.Server(config)
         self._task = asyncio.create_task(server.serve())
+        self._task.add_done_callback(self._on_task_done)
         self._server = server
         for _ in range(50):
             if server.started:
@@ -60,6 +68,15 @@ class ApiMockServerManager:
             self._task = None
             logger.info("API Mock 服务已停止")
 
+    def _on_task_done(self, task: asyncio.Task) -> None:
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc:
+            logger.error("API Mock 服务异常退出: %s", exc)
+        self._server = None
+        self._task = None
+
     def _create_app(self) -> FastAPI:
         app = FastAPI(title="API Mock Server")
         app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -73,6 +90,16 @@ class ApiMockServerManager:
         return app
 
     async def _handle_request(self, request: Request, path: str) -> Response:
+        try:
+            return await self._do_handle_request(request, path)
+        except Exception:
+            logger.exception("API Mock 请求处理异常: %s %s", request.method, path)
+            return JSONResponse(
+                {"error": "Internal mock server error"},
+                status_code=500,
+            )
+
+    async def _do_handle_request(self, request: Request, path: str) -> Response:
         t0 = time.perf_counter()
         method = request.method
 
