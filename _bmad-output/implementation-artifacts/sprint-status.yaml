@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-15
-last_updated: 2026-04-17
+last_updated: 2026-05-08
 project: testBench
 project_key: NOKEY
 tracking_system: file-system
@@ -72,7 +72,7 @@ development_status:
   epic-3-retrospective: optional
 
   # Epic 4: 测试计划与执行引擎
-  epic-4: in-progress
+  epic-4: done
   4-1-test-plan-crud: done
   4-2-execution-engine-sandbox-and-pytest: done
   4-3-automated-plan-execution-flow: done
@@ -83,11 +83,11 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: 报告与通知
-  epic-5: in-progress
+  epic-5: done
   5-1-report-dashboard-l1-l2: done
-  5-2-report-drilldown-l3-l4: backlog
-  5-3-failure-detail-three-layer-display: backlog
-  5-4-html-excel-export-and-dingtalk-notification: backlog
+  5-2-report-drilldown-l3-l4: done
+  5-3-failure-detail-three-layer-display: done
+  5-4-html-excel-export-and-dingtalk-notification: done
   epic-5-retrospective: optional
 
   # Epic 6: 审计与运维
