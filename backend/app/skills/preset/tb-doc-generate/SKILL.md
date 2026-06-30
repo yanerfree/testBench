@@ -14,7 +14,7 @@ inputs:
   - business_context: 业务背景（可选）
 ---
 
-# 文档生成 Skill (v3)
+# 文档生成 Skill (v4)
 
 通用 Web 系统文档生成器，不依赖特定 UI 框架。
 
@@ -44,14 +44,20 @@ inputs:
 ## Step 3 — 深度截图（目标模块）
 
 对 `isTarget` 模块执行：
-1. 在页面上查找操作按钮：
-   - 关键词匹配：新增/创建/添加/新建/Add/Create/New
-2. 点击按钮，等待 1.5 秒
-3. 检测是否出现弹窗/对话框/抽屉：
+1. **限定搜索范围**：只在主内容区域找按钮，排除侧边栏/导航
+   - 优先选择器：`main button` → `[class*="content"] button` → `[class*="main"] button`
+   - 兜底：全页面 `button`
+2. **关键词匹配**：新增/创建/添加/新建/Add/Create/New
+3. **过滤无关按钮**：
+   - 检查按钮可见性（`is_visible()`）
+   - 排除按钮文字包含其他模块关键词（AI/Mock/MCP/LLM 等），除非目标模块本身是这些
+   - 跳过已点击过的同名按钮
+4. 点击按钮，等待 1.5 秒
+5. 检测弹窗/对话框/抽屉：
    - 通用选择器：`[role="dialog"]` / `[class*="modal"]` / `[class*="drawer"]` / `[class*="dialog"]`
-4. 截图弹窗状态
-5. 关闭弹窗：
-   - 找关闭按钮：`[class*="close"]` / `text=取消/Cancel`
+6. 截图弹窗状态
+7. 关闭弹窗：
+   - 找关闭按钮：`[class*="close"]` / `text=取消/Cancel/关闭/Close`
    - 兜底：按 Escape
 6. 每个目标模块最多深度截 3 张
 
@@ -69,8 +75,10 @@ inputs:
 
 ## Step 5 — 保存文档
 
-- 平台模式：保存到 documents 表 + screenshots 目录
-- Claude Code 模式：保存到 output_dir
+1. **截图质量检查**：跳过空名称/None 的截图
+2. **平台模式**：保存到 documents 表 + screenshots 目录
+3. **Claude Code 模式**：保存到 output_dir
+4. **导出支持**：HTML（图片 base64 内嵌）/ ZIP（md + images/）/ 复制 Markdown
 
 ## 格式模板
 
