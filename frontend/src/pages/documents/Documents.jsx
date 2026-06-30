@@ -144,7 +144,7 @@ export default function Documents() {
 
   const openRegen = async (docRecord) => {
     setGenOpen(true); setTaskResult(null); setRegenDocId(docRecord.id)
-    setRegenMode('choose'); setRegenFeedback('')
+    setRegenFeedback('')
     // 回填基本信息
     ccForm.setFieldsValue({ title: docRecord.title, docType: docRecord.docType, languages: [docRecord.language || 'zh'] })
     // 加载详情拿 genConfig 回填表单
@@ -202,69 +202,27 @@ export default function Documents() {
 
       {/* 生成弹窗 */}
       <Modal
-        title={<Space><FileTextOutlined /> {regenDocId && regenMode !== 'full' ? '重新生成文档' : '生成文档'}</Space>}
+        title={<Space><FileTextOutlined /> {regenDocId ? '重新生成文档' : '生成文档'}</Space>}
         open={genOpen}
         onCancel={() => { if (!platGenerating) { setGenOpen(false); setRegenMode(null); setRegenFeedback('') } }}
         width={720}
         footer={null}
       >
-        {/* 重新生成 — 选择模式 */}
-        {regenDocId && regenMode === 'choose' && !taskResult && !platGenerating ? (
+        {!taskResult && !platGenerating ? (
           <div>
-            <div style={{ marginBottom: 16, fontSize: 13, color: '#595959' }}>
-              选择重新生成方式：
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <Card
-                hoverable
-                style={{ textAlign: 'center', cursor: 'pointer' }}
-                onClick={() => setRegenMode('optimize')}
-              >
-                <EditOutlined style={{ fontSize: 28, color: '#1677ff', marginBottom: 8 }} />
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>优化内容</div>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  保留已有截图，根据你的修改意见重新写文档内容
-                </Text>
-              </Card>
-              <Card
-                hoverable
-                style={{ textAlign: 'center', cursor: 'pointer' }}
-                onClick={() => setRegenMode('full')}
-              >
-                <ReloadOutlined style={{ fontSize: 28, color: '#52c41a', marginBottom: 8 }} />
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>重新截图+生成</div>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  重新打开系统截图并从头生成全新文档
-                </Text>
-              </Card>
-            </div>
-          </div>
-        ) : regenDocId && regenMode === 'optimize' && !platGenerating ? (
-          /* 优化模式 — 输入修改意见 */
-          <div>
-            <div style={{ marginBottom: 12 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>基于现有文档内容和截图，根据修改意见进行优化</Text>
-            </div>
-            <div style={{ marginBottom: 12, fontSize: 13 }}>
-              <strong>修改意见：</strong>
-              <span style={{ color: '#ff4d4f', fontSize: 12 }}> *必填</span>
-            </div>
-            <TextArea
-              rows={5}
-              value={regenFeedback}
-              onChange={(e) => setRegenFeedback(e.target.value)}
-              placeholder={"描述需要改进的部分，例如：\n• 截图引用搞错了，用户管理的截图应该是用户列表页面\n• 操作步骤不够详细，新增用户要写清楚每个字段\n• 缺少注意事项和常见问题说明\n• 2.3 节内容太简单，需要扩充"}
-              style={{ marginBottom: 16 }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Button onClick={() => setRegenMode('choose')}>返回</Button>
-              <Button type="primary" icon={<RobotOutlined />} onClick={handleOptimize}>
-                开始优化
-              </Button>
-            </div>
-          </div>
-        ) : !taskResult && !platGenerating ? (
-          <div>
+            {regenDocId && (
+              <>
+                <Form.Item label="修改意见" style={{ marginBottom: 12 }} extra="填写后点「优化内容」只改文档不重新截图；留空点「重新截图+生成」走完整流程">
+                  <TextArea
+                    rows={3}
+                    value={regenFeedback}
+                    onChange={(e) => setRegenFeedback(e.target.value)}
+                    placeholder={"例如：截图引用搞错了 / 操作步骤不够详细 / 缺少注意事项"}
+                  />
+                </Form.Item>
+                <Divider style={{ margin: '8px 0' }} />
+              </>
+            )}
             <Form form={ccForm} layout="vertical" size="small">
               <Divider orientation="left" plain style={{ margin: '4px 0 8px', fontSize: 12 }}>被测系统</Divider>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
@@ -302,10 +260,21 @@ export default function Documents() {
             <Divider style={{ margin: '12px 0' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <Button onClick={() => setGenOpen(false)}>取消</Button>
-              <Space>
-                <Button icon={<CodeOutlined />} onClick={handleCCGenerate}>生成 Claude Code 命令</Button>
-                <Button type="primary" icon={<DesktopOutlined />} onClick={handlePlatGenerate}>平台直接生成</Button>
-              </Space>
+              {regenDocId ? (
+                <Space>
+                  <Button icon={<EditOutlined />} onClick={handleOptimize} disabled={!regenFeedback.trim()}>
+                    优化内容
+                  </Button>
+                  <Button type="primary" icon={<ReloadOutlined />} onClick={handlePlatGenerate}>
+                    重新截图+生成
+                  </Button>
+                </Space>
+              ) : (
+                <Space>
+                  <Button icon={<CodeOutlined />} onClick={handleCCGenerate}>生成 Claude Code 命令</Button>
+                  <Button type="primary" icon={<DesktopOutlined />} onClick={handlePlatGenerate}>平台直接生成</Button>
+                </Space>
+              )}
             </div>
           </div>
         ) : taskResult ? (
