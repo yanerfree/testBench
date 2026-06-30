@@ -8,6 +8,7 @@ import {
   CloudServerOutlined, ThunderboltOutlined, BugOutlined, ToolOutlined,
 } from '@ant-design/icons'
 import { api } from './utils/request'
+import { useLang } from './utils/i18n.jsx'
 import ProjectList from './pages/projects/ProjectList'
 import CaseManagement from './pages/cases/CaseManagement'
 import CaseDetail from './pages/cases/CaseDetail'
@@ -49,6 +50,7 @@ function AppLayout() {
   const [pwdForm] = Form.useForm()
   const navigate = useNavigate()
   const location = useLocation()
+  const { t, lang, setLang } = useLang()
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
@@ -67,50 +69,48 @@ function AppLayout() {
   }, [projectId])
 
   const menuItems = isProjectPage ? [
-    // ---- 项目内菜单 ----
-    { key: '/projects', icon: <FolderOutlined />, label: '返回项目列表' },
+    { key: '/projects', icon: <FolderOutlined />, label: t('menu.back') },
     { type: 'divider' },
-    { key: `/projects/${projectId}/cases`, icon: <FileTextOutlined />, label: '用例管理' },
-    { key: `/projects/${projectId}/apis`, icon: <ApiOutlined />, label: 'API 接口' },
-    { key: `/projects/${projectId}/plans`, icon: <UnorderedListOutlined />, label: '测试计划' },
-    { key: `/projects/${projectId}/reports`, icon: <BarChartOutlined />, label: '测试报告' },
-    { key: `/projects/${projectId}/exploratory`, icon: <BugOutlined />, label: '探索测试' },
-    { key: `/projects/${projectId}/documents`, icon: <FileTextOutlined />, label: '文档管理' },
+    { key: `/projects/${projectId}/cases`, icon: <FileTextOutlined />, label: t('menu.cases') },
+    { key: `/projects/${projectId}/apis`, icon: <ApiOutlined />, label: t('menu.apis') },
+    { key: `/projects/${projectId}/plans`, icon: <UnorderedListOutlined />, label: t('menu.plans') },
+    { key: `/projects/${projectId}/reports`, icon: <BarChartOutlined />, label: t('menu.reports') },
+    { key: `/projects/${projectId}/exploratory`, icon: <BugOutlined />, label: t('menu.exploratory') },
+    { key: `/projects/${projectId}/documents`, icon: <FileTextOutlined />, label: t('menu.documents') },
     { type: 'divider' },
     {
       key: 'ai-group',
       icon: <RobotOutlined />,
-      label: 'AI 智能',
+      label: t('menu.ai'),
       children: [
-        { key: `/projects/${projectId}/settings/ai-capabilities`, icon: <ThunderboltOutlined />, label: '能力总览' },
-        { key: `/projects/${projectId}/settings/skills`, icon: <FileTextOutlined />, label: 'Skill 管理' },
-        { key: `/projects/${projectId}/settings/mcp-tools`, icon: <ApiOutlined />, label: 'MCP 工具' },
-        { key: `/projects/${projectId}/settings/ai`, icon: <SettingOutlined />, label: 'AI 配置' },
+        { key: `/projects/${projectId}/settings/ai-capabilities`, icon: <ThunderboltOutlined />, label: t('menu.ai.capabilities') },
+        { key: `/projects/${projectId}/settings/skills`, icon: <FileTextOutlined />, label: t('menu.ai.skills') },
+        { key: `/projects/${projectId}/settings/mcp-tools`, icon: <ApiOutlined />, label: t('menu.ai.mcp') },
+        { key: `/projects/${projectId}/settings/ai`, icon: <SettingOutlined />, label: t('menu.ai.config') },
       ],
     },
-    { key: `/projects/${projectId}/logs`, icon: <FileSearchOutlined />, label: '操作日志' },
+    { key: `/projects/${projectId}/logs`, icon: <FileSearchOutlined />, label: t('menu.logs') },
   ] : [
-    // ---- 系统级菜单 ----
-    { key: '/projects', icon: <FolderOutlined />, label: '项目列表' },
+    { key: '/projects', icon: <FolderOutlined />, label: t('menu.projects') },
     { type: 'divider' },
-    { key: '/settings/env', icon: <SettingOutlined />, label: '环境配置' },
-    { key: '/settings/channels', icon: <BellOutlined />, label: '通知渠道' },
+    { key: '/settings/env', icon: <SettingOutlined />, label: t('menu.envConfig') },
+    { key: '/settings/channels', icon: <BellOutlined />, label: t('menu.channels') },
     {
       key: 'system-ai-group',
       icon: <RobotOutlined />,
-      label: 'AI 管理',
+      label: t('menu.ai'),
       children: [
-        { key: '/settings/ai-providers', icon: <SettingOutlined />, label: 'AI 服务配置' },
+        { key: '/settings/ai-providers', icon: <SettingOutlined />, label: t('menu.aiProviders') },
       ],
     },
     ...(user.role === 'admin' ? [
-      { key: '/settings/users', icon: <UserOutlined />, label: '用户管理' },
+      { key: '/settings/users', icon: <UserOutlined />, label: t('menu.users') },
     ] : []),
-    { key: '/settings/logs', icon: <FileSearchOutlined />, label: '操作日志' },
+    { key: '/settings/logs', icon: <FileSearchOutlined />, label: t('menu.logs') },
     { type: 'divider' },
-    { key: '/tools/llm-mock', icon: <RobotOutlined />, label: 'LLM Mock' },
-    { key: '/tools/api-mock', icon: <CloudServerOutlined />, label: 'API Mock' },
-    { key: '/tools/mcp-mock', icon: <ApiOutlined />, label: 'MCP Mock' },
+    { key: '/tools/llm-mock', icon: <RobotOutlined />, label: t('menu.llmMock') },
+    { key: '/tools/api-mock', icon: <CloudServerOutlined />, label: t('menu.apiMock') },
+    { key: '/tools/mcp-mock', icon: <ApiOutlined />, label: t('menu.mcpMock') },
   ]
 
   const handleLogout = async () => {
@@ -161,7 +161,7 @@ function AppLayout() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#fff', fontWeight: 700, fontSize: 13,
           }}>T</div>
-          <span style={{ color: '#2e3138', fontSize: 14, fontWeight: 600 }}>测试管理平台</span>
+          <span style={{ color: '#2e3138', fontSize: 14, fontWeight: 600 }}>{t('header.platformName')}</span>
           {isProjectPage && projectName && (
             <>
               <span style={{ color: '#e0e0e3', margin: '0 4px' }}>/</span>
@@ -170,7 +170,11 @@ function AppLayout() {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Tooltip title="通知">
+          <Button type="text" size="small" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
+            style={{ color: '#bfc4cd', fontSize: 12 }}>
+            {lang === 'zh' ? 'EN' : '中文'}
+          </Button>
+          <Tooltip title={lang === 'zh' ? '通知' : 'Notifications'}>
             <Button type="text" icon={<BellOutlined style={{ color: '#bfc4cd' }} />} size="small" />
           </Tooltip>
           <Dropdown menu={userMenu} placement="bottomRight">

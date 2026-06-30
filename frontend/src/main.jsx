@@ -2,7 +2,9 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
+import enUS from 'antd/locale/en_US'
 import App from './App.jsx'
+import { LangProvider, useLang } from './utils/i18n.jsx'
 import './styles/global.css'
 
 const theme = {
@@ -23,10 +25,19 @@ const theme = {
   },
 }
 
-createRoot(document.getElementById('root')).render(
-  <BrowserRouter>
-    <ConfigProvider locale={zhCN} theme={theme}>
+function Root() {
+  const { lang } = useLang()
+  return (
+    <ConfigProvider locale={lang === 'en' ? enUS : zhCN} theme={theme}>
       <App />
     </ConfigProvider>
+  )
+}
+
+createRoot(document.getElementById('root')).render(
+  <BrowserRouter>
+    <LangProvider>
+      <Root />
+    </LangProvider>
   </BrowserRouter>,
 )

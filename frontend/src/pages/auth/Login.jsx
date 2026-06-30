@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { Form, Input, Button, message } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { api } from '../../utils/request'
+import { useLang } from '../../utils/i18n.jsx'
 
 export default function Login() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const { t, lang, setLang } = useLang()
 
   const onFinish = async (values) => {
     setLoading(true)
@@ -18,7 +20,7 @@ export default function Login() {
       const { token, user } = res.data
       localStorage.setItem('token', token)
       localStorage.setItem('user', JSON.stringify(user))
-      message.success('登录成功')
+      message.success(t('login.success'))
       navigate('/', { replace: true })
     } catch {
       // api.post 内部已通过 message.error 展示了后端错误信息
@@ -50,23 +52,28 @@ export default function Login() {
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             color: '#fff', fontWeight: 700, fontSize: 22, marginBottom: 16,
           }}>T</div>
-          <div style={{ fontSize: 20, fontWeight: 600, color: '#1d2129' }}>测试管理平台</div>
-          <div style={{ fontSize: 13, color: '#86909c', marginTop: 6 }}>TestBench - 统一测试管理与执行</div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: '#1d2129' }}>{t('login.title')}</div>
+          <div style={{ fontSize: 13, color: '#86909c', marginTop: 6 }}>{t('login.subtitle')}</div>
         </div>
 
         <Form onFinish={onFinish} size="large" autoComplete="off">
-          <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
-            <Input prefix={<UserOutlined style={{ color: '#c9cdd4' }} />} placeholder="用户名" />
+          <Form.Item name="username" rules={[{ required: true, message: t('login.username') }]}>
+            <Input prefix={<UserOutlined style={{ color: '#c9cdd4' }} />} placeholder={t('login.username')} id="username" />
           </Form.Item>
-          <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
-            <Input.Password prefix={<LockOutlined style={{ color: '#c9cdd4' }} />} placeholder="密码" />
+          <Form.Item name="password" rules={[{ required: true, message: t('login.password') }]}>
+            <Input.Password prefix={<LockOutlined style={{ color: '#c9cdd4' }} />} placeholder={t('login.password')} id="password" />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
             <Button type="primary" htmlType="submit" loading={loading} block style={{ height: 42 }}>
-              登录
+              {t('login.submit')}
             </Button>
           </Form.Item>
         </Form>
+        <div style={{ textAlign: 'center', marginTop: 12 }}>
+          <Button type="link" size="small" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}>
+            {lang === 'zh' ? 'English' : '中文'}
+          </Button>
+        </div>
       </div>
     </div>
   )

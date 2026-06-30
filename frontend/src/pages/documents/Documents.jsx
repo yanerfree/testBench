@@ -133,8 +133,6 @@ export default function Documents() {
       setTaskResult(res.data)
     } catch { /* */ }
   }
-    } catch { /* */ }
-  }
 
   const handleDelete = async (id) => {
     await api.del(`/projects/${projectId}/documents/${id}`).catch(() => {})
