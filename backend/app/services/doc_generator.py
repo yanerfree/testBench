@@ -36,6 +36,7 @@ async def generate_doc_with_screenshots(
     business_context: str | None,
     ai_config: ResolvedAIConfig,
     project_id: uuid.UUID,
+    language: str = "zh",
 ) -> AsyncIterator[DocGenEvent]:
     """执行 tb-doc-generate Skill：通用 Web 截图 + AI 写文档。"""
 
@@ -83,6 +84,11 @@ async def generate_doc_with_screenshots(
     )
 
     doc_label = {"manual": "操作手册", "acceptance": "验收文档", "demo": "演示文档"}.get(doc_type, "演示文档")
+    lang_instruction = ""
+    if language == "en":
+        doc_label_en = {"manual": "Operation Manual", "acceptance": "Acceptance Document", "demo": "Demo Document"}.get(doc_type, "Document")
+        lang_instruction = f"\n\n## 语言要求：\n请使用**英文**撰写整篇文档。文档类型：{doc_label_en}。"
+        doc_label = doc_label_en
 
     # 从 SKILL.md 读取格式模板
     format_template = _load_format_template(doc_type)
@@ -104,7 +110,7 @@ async def generate_doc_with_screenshots(
 5. **截图引用**：用 `![](url)` 引用，下一行用 `*图：说明*` 格式
 6. **只写文档范围内的功能**：范围是「{modules or '全部功能'}」
 7. **⭐标记的截图要详细展开**，其他截图只简要提及用于导航
-"""},
+{lang_instruction}"""},
         {"role": "user", "content": f"""请生成【{doc_label}】：
 
 标题：{title}
@@ -145,17 +151,71 @@ def _load_format_template(doc_type: str) -> str:
     if not skill_path.exists():
         return "按标准 Markdown 格式输出"
 
-    content = skill_path.read_text(encoding="utf-8")
-    import re
 
-    type_labels = {"demo": "演示文档（demo）", "manual": "操作手册（manual）", "acceptance": "验收文档（acceptance）"}
-    label = type_labels.get(doc_type, "演示文档（demo）")
+async def generate_doc_content(
+    *,
+    title: str,
+    doc_type: str,
+    modules: str | None,
+    audience: str | None,
+    business_context: str | None,
+    ai_config: ResolvedAIConfig,
+    screenshots: list[dict],
+    language: str = "zh",
+) -> AsyncIterator[DocGenEvent]:
+    """复用已有截图，只调 AI 生成指定语种的文档内容。"""
 
-    pattern = rf"#### {re.escape(label)}\s*\n```markdown\n(.*?)```"
-    match = re.search(pattern, content, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    return "按标准 Markdown 格式输出"
+    screenshots_desc = "\n".join(
+        f"### Screenshot {i+1}: {s['page']}{' ⭐TARGET' if s.get('isTarget') else ''}\n![{s['page']}]({s['url']})"
+        for i, s in enumerate(screenshots)
+    )
+
+    doc_label = {"manual": "操作手册", "acceptance": "验收文档", "demo": "演示文档"}.get(doc_type, "文档")
+    format_template = _load_format_template(doc_type)
+
+    lang_instruction = ""
+    if language == "en":
+        doc_label_en = {"manual": "Operation Manual", "acceptance": "Acceptance Document", "demo": "Demo Document"}.get(doc_type, "Document")
+        lang_instruction = f"\n\n## Language requirement:\nWrite the entire document in **English**. Document type: {doc_label_en}."
+        doc_label = doc_label_en
+
+    messages = [
+        {"role": "system", "content": f"""You are a technical documentation expert. Generate a {doc_label} based on system screenshots.
+
+## Follow this format:
+
+```
+{format_template}
+```
+
+## Quality requirements:
+1. Detailed overview (2-3 paragraphs)
+2. Specific feature descriptions (2-3 sentences each)
+3. Each sub-function must have: Applicable Scenario, Prerequisites, Steps
+4. Reference screenshots with `![](url)`, followed by `*Figure: description*`
+5. Only write about: {modules or 'all features'}
+6. ⭐ marked screenshots should be expanded in detail
+{lang_instruction}"""},
+        {"role": "user", "content": f"""Generate a [{doc_label}]:
+
+Title: {title}
+Scope: {modules or 'all features'}
+Target audience: {audience or 'test engineers'}
+{f'Business context: {business_context}' if business_context else ''}
+
+Screenshots (⭐ = target module, write detailed steps):
+
+{screenshots_desc}
+
+Output the complete document."""},
+    ]
+
+    try:
+        async for chunk in llm_client.stream(messages, config=ai_config):
+            if chunk.delta:
+                yield DocGenEvent(type="chunk", data={"content": chunk.delta})
+    except Exception as e:
+        yield DocGenEvent(type="error", data={"message": f"AI generation failed: {str(e)[:200]}"})
 
 
 def _take_screenshots(system_url: str, username: str, password: str, modules: str | None, shot_dir: str) -> list[dict]:

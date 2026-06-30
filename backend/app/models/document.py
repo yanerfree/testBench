@@ -16,6 +16,7 @@ class Document(Base):
     project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     doc_type: Mapped[str] = mapped_column(String(20), default="manual")  # manual | acceptance | training
+    language: Mapped[str] = mapped_column(String(10), default="zh")  # zh | en
     content: Mapped[str | None] = mapped_column(Text, nullable=True)  # Markdown
     source_case_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="draft")  # draft | published

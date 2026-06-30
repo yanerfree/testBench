@@ -18,6 +18,11 @@ const { TextArea } = Input
 
 const DOC_TYPE_LABELS = { manual: '操作手册', acceptance: '验收文档', demo: '演示文档' }
 const DOC_TYPE_COLORS = { manual: 'blue', acceptance: 'green', demo: 'purple' }
+const LANG_OPTIONS = [
+  { value: 'zh', label: '中文' },
+  { value: 'en', label: 'English' },
+]
+const LANG_LABELS = { zh: '中文', en: 'EN' }
 
 // marked 配置
 marked.setOptions({ breaks: true, gfm: true })
@@ -97,6 +102,7 @@ export default function Documents() {
       api.stream(`/projects/${projectId}/documents/generate-with-screenshots`, {
         systemUrl: v.systemUrl, username: v.username, password: v.password,
         title: v.title, docType: v.docType || 'manual',
+        languages: v.languages || ['zh'],
         modules: v.modules || undefined, audience: v.audience || undefined,
         businessContext: v.businessContext || undefined,
         docId: regenDocId || undefined,
@@ -139,6 +145,7 @@ export default function Documents() {
   const columns = [
     { title: '标题', dataIndex: 'title', ellipsis: true, render: (t, r) => <a onClick={() => loadDoc(r.id)}>{t}</a> },
     { title: '类型', dataIndex: 'docType', width: 90, render: (t) => <Tag color={DOC_TYPE_COLORS[t]}>{DOC_TYPE_LABELS[t] || t}</Tag> },
+    { title: '语种', dataIndex: 'language', width: 50, render: (l) => <Tag>{LANG_LABELS[l] || l}</Tag> },
     { title: '状态', dataIndex: 'status', width: 70, render: (s) => s === 'published' ? <Tag color="success">已生成</Tag> : <Tag>草稿</Tag> },
     { title: '时间', dataIndex: 'createdAt', width: 140, render: (t) => t?.slice(0, 16).replace('T', ' ') },
     {
@@ -261,9 +268,12 @@ export default function Documents() {
               <Form.Item name="title" label="标题" rules={[{ required: true }]}>
                 <Input placeholder="测试管理平台操作手册" />
               </Form.Item>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
                 <Form.Item name="docType" label="类型" initialValue="manual">
                   <Select options={Object.entries(DOC_TYPE_LABELS).map(([k, v]) => ({ value: k, label: v }))} />
+                </Form.Item>
+                <Form.Item name="languages" label="语种" initialValue={['zh']}>
+                  <Select mode="multiple" options={LANG_OPTIONS} placeholder="选择语种" />
                 </Form.Item>
                 <Form.Item name="modules" label="范围"><Input placeholder="用户管理、项目管理" /></Form.Item>
                 <Form.Item name="audience" label="读者"><Input placeholder="新入职测试工程师" /></Form.Item>

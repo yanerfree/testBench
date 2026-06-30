@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react'
 import {
-  Button, Space, Input, Select, Tag, Radio, Popconfirm, Tooltip, Badge,
+  Button, Space, Input, Select, Tag, Radio, Popconfirm, Tooltip, Badge, Pagination,
   Empty, Typography, InputNumber, Switch, message, Drawer, Alert, Modal
 } from 'antd'
 import {
@@ -45,7 +45,10 @@ export default function LlmMock() {
   const [savePresetName, setSavePresetName] = useState('')
   const [logs, setLogs] = useState([])
   const [logsTotal, setLogsTotal] = useState(0)
-  const [selectedLog, setSelectedLog] = useState(null)
+  const [logPage, setLogPage] = useState(1)
+  const [logPageSize] = useState(50)
+  const [expandedLogId, setExpandedLogId] = useState(null)
+  const [expandedLogDetail, setExpandedLogDetail] = useState(null)
   const [logFilter, setLogFilter] = useState('all')
   const [serviceStatus, setServiceStatus] = useState({ running: false, port: 9100, captureEnabled: true, routesCount: 0, routesEnabled: 0, totalRequests: 0 })
   const [saving, setSaving] = useState(false)
@@ -60,7 +63,7 @@ export default function LlmMock() {
     fetchCustomPresets()
     fetchStatus()
     fetchLogs()
-    pollRef.current = setInterval(() => { fetchStatus(); fetchLogs() }, 5000)
+    pollRef.current = setInterval(() => { fetchStatus() }, 5000)
     return () => clearInterval(pollRef.current)
   }, [])
 
@@ -68,18 +71,19 @@ export default function LlmMock() {
   const fetchPresets = async () => { try { const r = await api.get('/llm-mock/presets'); setPresets(r.data?.data || r.data || []) } catch {} }
   const fetchCustomPresets = async () => { try { const r = await api.get('/llm-mock/custom-presets'); setCustomPresets(r.data?.data || r.data || []) } catch {} }
   const fetchStatus = async () => { try { const r = await api.get('/llm-mock/status'); setServiceStatus(r.data || r) } catch {} }
-  const fetchLogs = async () => {
+  const fetchLogs = async (page) => {
     try {
-      const params = new URLSearchParams({ limit: '200', offset: '0' })
+      const p = page || logPage
+      const params = new URLSearchParams({ limit: String(logPageSize), offset: String((p - 1) * logPageSize) })
       if (logFilter !== 'all') params.set('status', logFilter)
       const r = await api.get(`/llm-mock/logs?${params}`)
       const d = r.data || r
       setLogs(d.data || d || [])
-      setLogsTotal(d.total || 0)
+      setLogsTotal(d.total ?? (d.data || d || []).length)
     } catch {}
   }
 
-  useEffect(() => { fetchLogs() }, [logFilter])
+  useEffect(() => { setLogPage(1); fetchLogs(1) }, [logFilter])
 
   const selectRoute = useCallback((route) => {
     setSelectedRouteId(route.id)
@@ -230,7 +234,7 @@ export default function LlmMock() {
   }
 
   const handleClearLogs = async () => {
-    try { await api.delete('/llm-mock/logs'); message.success('日志已清空'); setSelectedLog(null); setLogs([]); setLogsTotal(0); fetchLogs() } catch {}
+    try { await api.delete('/llm-mock/logs'); message.success('日志已清空'); setExpandedLogId(null); setExpandedLogDetail(null); setLogs([]); setLogsTotal(0); setLogPage(1); fetchLogs(1) } catch {}
   }
 
   const handleReplay = async (logId) => {
@@ -239,8 +243,13 @@ export default function LlmMock() {
 
   const handleExportLogs = () => window.open('/api/llm-mock/logs/export', '_blank')
 
-  const handleViewLogDetail = async (logId) => {
-    try { const r = await api.get(`/llm-mock/logs/${logId}`); setSelectedLog(r.data || r) } catch {}
+  const handleToggleLogDetail = async (logId) => {
+    if (expandedLogId === logId) { setExpandedLogId(null); setExpandedLogDetail(null); return }
+    try {
+      const r = await api.get(`/llm-mock/logs/${logId}`)
+      setExpandedLogDetail(r.data || r)
+      setExpandedLogId(logId)
+    } catch {}
   }
 
   const handleCopyPreview = () => {
@@ -554,7 +563,7 @@ export default function LlmMock() {
             <Radio.Button value="ok">OK</Radio.Button>
             <Radio.Button value="error">Error</Radio.Button>
           </Radio.Group>
-          <Button icon={<ReloadOutlined />} size="small" type="text" onClick={fetchLogs} />
+          <Button icon={<ReloadOutlined />} size="small" type="text" onClick={() => fetchLogs()} />
           <Button icon={<ExportOutlined />} size="small" type="text" onClick={handleExportLogs} />
           <Popconfirm title="确认清空？" onConfirm={handleClearLogs}>
             <Button icon={<ClearOutlined />} size="small" type="text" danger />
@@ -562,87 +571,96 @@ export default function LlmMock() {
         </Space>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', gap: 0, minHeight: 0 }}>
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#fafafa', position: 'sticky', top: 0, zIndex: 1 }}>
-                {['时间', '状态', '方法', '路径', '模型', '耗时'].map((h, i) => (
-                  <th key={h} style={{
-                    padding: '6px 10px', textAlign: i === 5 ? 'right' : 'left',
-                    fontWeight: 500, fontSize: 11, color: '#8c8c8c', borderBottom: '1px solid #f0f0f0',
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map(l => (
-                <tr key={l.id} onClick={() => handleViewLogDetail(l.id)} style={{
-                  cursor: 'pointer', borderBottom: '1px solid #fafafa',
-                  background: selectedLog?.id === l.id ? '#e6f4ff' : 'transparent',
-                }}>
-                  <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', fontSize: 11, color: '#8c8c8c' }}>
-                    {new Date(l.timestamp).toLocaleTimeString('zh-CN', { hour12: false, fractionalSecondDigits: 3 })}
-                  </td>
-                  <td style={{ padding: '5px 10px' }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: STATUS_COLOR(l.statusCode) }}>{l.statusCode}</span>
-                  </td>
-                  <td style={{ padding: '5px 10px', fontSize: 11 }}>{l.method}</td>
-                  <td style={{ padding: '5px 10px', fontFamily: MONO, fontSize: 11, color: '#595959' }}>{l.path}</td>
-                  <td style={{ padding: '5px 10px', fontSize: 11, color: '#8c8c8c' }}>{l.requestModel || '-'}</td>
-                  <td style={{ padding: '5px 10px', textAlign: 'right', fontSize: 11, color: '#8c8c8c' }}>{Math.round(l.totalMs ?? 0)}ms</td>
-                </tr>
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: '#fafafa', position: 'sticky', top: 0, zIndex: 1 }}>
+              {['时间', '状态', '方法', '路径', '请求模型', '响应模型', 'Tokens', '耗时', ''].map((h, i) => (
+                <th key={h || 'op'} style={{
+                  padding: '6px 10px', textAlign: i >= 6 ? 'right' : 'left',
+                  fontWeight: 500, fontSize: 11, color: '#8c8c8c', borderBottom: '1px solid #f0f0f0',
+                  whiteSpace: 'nowrap',
+                }}>{h}</th>
               ))}
-              {logs.length === 0 && (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#bfbfbf', fontSize: 12 }}>暂无请求日志</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div style={{ width: 340, flexShrink: 0, borderLeft: '1px solid #f0f0f0', overflow: 'auto', padding: '12px 14px' }}>
-          {selectedLog ? (
-            <div style={{ fontSize: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <Space size={6}>
-                  <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>{selectedLog.method}</Tag>
-                  <span style={{ fontFamily: MONO, fontSize: 11, color: '#595959' }}>{selectedLog.path}</span>
-                </Space>
-                <span style={{ fontWeight: 600, fontSize: 13, color: STATUS_COLOR(selectedLog.statusCode) }}>{selectedLog.statusCode}</span>
-              </div>
-              <div style={{ fontSize: 12, lineHeight: 2, padding: '8px 0', borderTop: '1px solid #f5f5f5', borderBottom: '1px solid #f5f5f5' }}>
-                <div><Text type="secondary">时间</Text><span style={{ marginLeft: 12 }}>{new Date(selectedLog.timestamp).toLocaleString('zh-CN')}</span></div>
-                <div><Text type="secondary">模型</Text><span style={{ marginLeft: 12 }}>{selectedLog.requestModel || '-'} → {selectedLog.responseModel || '-'}</span></div>
-                <div><Text type="secondary">Token</Text><span style={{ marginLeft: 12 }}>{selectedLog.promptTokens} + {selectedLog.completionTokens} = {selectedLog.totalTokens}</span></div>
-                <div><Text type="secondary">耗时</Text><span style={{ marginLeft: 12 }}>{(selectedLog.totalMs ?? 0).toFixed(1)}ms</span></div>
-              </div>
-              {selectedLog.requestBody?.messages && (
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>请求消息</div>
-                  <div style={{ maxHeight: 80, overflow: 'auto' }}>
-                    {selectedLog.requestBody.messages.map((m, i) => (
-                      <div key={i} style={{
-                        marginBottom: 2, padding: '3px 8px', borderRadius: 4, fontSize: 11,
-                        background: m.role === 'user' ? '#fff7e6' : '#f6ffed',
-                      }}>
-                        <span style={{ color: '#8c8c8c', fontSize: 10 }}>{m.role}</span>{' '}
-                        {typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}
+            </tr>
+          </thead>
+          <tbody>
+            {logs.map(l => (
+              <Fragment key={l.id}>
+              <tr key={l.id} onClick={() => handleToggleLogDetail(l.id)} style={{
+                cursor: 'pointer', borderBottom: '1px solid #fafafa',
+                background: expandedLogId === l.id ? '#e6f4ff' : 'transparent',
+              }}>
+                <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', fontSize: 11, color: '#8c8c8c' }}>
+                  {new Date(l.timestamp).toLocaleTimeString('zh-CN', { hour12: false })}
+                </td>
+                <td style={{ padding: '5px 10px' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: STATUS_COLOR(l.statusCode) }}>{l.statusCode}</span>
+                </td>
+                <td style={{ padding: '5px 10px', fontSize: 11 }}>{l.method}</td>
+                <td style={{ padding: '5px 10px', fontFamily: MONO, fontSize: 11, color: '#595959', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.path}</td>
+                <td style={{ padding: '5px 10px', fontSize: 11, color: '#8c8c8c' }}>{l.requestModel || '-'}</td>
+                <td style={{ padding: '5px 10px', fontSize: 11, color: '#8c8c8c' }}>{l.responseModel || '-'}</td>
+                <td style={{ padding: '5px 10px', textAlign: 'right', fontSize: 11, color: '#8c8c8c', whiteSpace: 'nowrap' }}>
+                  {(l.promptTokens || 0) + (l.completionTokens || 0) > 0
+                    ? `${l.promptTokens || 0}+${l.completionTokens || 0}=${l.totalTokens || 0}`
+                    : '-'}
+                </td>
+                <td style={{ padding: '5px 10px', textAlign: 'right', fontSize: 11, color: '#8c8c8c', whiteSpace: 'nowrap' }}>{Math.round(l.totalMs ?? 0)}ms</td>
+                <td style={{ padding: '5px 10px', textAlign: 'right' }}>
+                  <Button size="small" type="text" icon={<SendOutlined />} onClick={e => { e.stopPropagation(); handleReplay(l.id) }} />
+                </td>
+              </tr>
+              {expandedLogId === l.id && expandedLogDetail && (
+                <tr key={`${l.id}-detail`}>
+                  <td colSpan={9} style={{ padding: '10px 16px', background: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+                    <div style={{ display: 'flex', gap: 24, fontSize: 12 }}>
+                      {expandedLogDetail.requestBody?.messages && (
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>请求消息</div>
+                          <div style={{ maxHeight: 120, overflow: 'auto' }}>
+                            {expandedLogDetail.requestBody.messages.map((m, i) => (
+                              <div key={i} style={{
+                                marginBottom: 2, padding: '3px 8px', borderRadius: 4, fontSize: 11,
+                                background: m.role === 'user' ? '#fff7e6' : m.role === 'system' ? '#f0f0f0' : '#f6ffed',
+                                overflow: 'hidden', textOverflow: 'ellipsis',
+                              }}>
+                                <span style={{ color: '#8c8c8c', fontSize: 10 }}>{m.role}</span>{' '}
+                                {typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应内容</div>
+                        <pre style={{
+                          maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 4,
+                          background: '#fff', border: '1px solid #f0f0f0', fontSize: 11, fontFamily: MONO,
+                          whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                        }}>
+                          {(() => { try { return JSON.stringify(JSON.parse(expandedLogDetail.responseBody), null, 2) } catch { return expandedLogDetail.responseBody || '-' } })()}
+                        </pre>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                  </td>
+                </tr>
               )}
-              <div style={{ marginTop: 12 }}>
-                <Button size="small" icon={<PlayCircleOutlined />} onClick={() => handleReplay(selectedLog.id)}>回放</Button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#bfbfbf', fontSize: 12 }}>
-              点击左侧日志查看详情
-            </div>
-          )}
-        </div>
+            </Fragment>))}
+            {logs.length === 0 && (
+              <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: '#bfbfbf', fontSize: 12 }}>暂无请求日志</td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
+
+      {logsTotal > logPageSize && (
+        <div style={{ padding: '8px 16px', borderTop: '1px solid #f0f0f0', flexShrink: 0, textAlign: 'right' }}>
+          <Pagination size="small" current={logPage} pageSize={logPageSize} total={logsTotal}
+            showTotal={t => `共 ${t} 条`} showSizeChanger={false}
+            onChange={p => { setLogPage(p); setExpandedLogId(null); fetchLogs(p) }} />
+        </div>
+      )}
     </div>
   )
 
@@ -757,7 +775,7 @@ export default function LlmMock() {
             <div style={{ display: 'flex', gap: 0 }}>
               {[
                 { key: 'config', label: '路由配置' },
-                { key: 'logs', label: <>请求日志 <Tag style={{ margin: '0 0 0 4px', fontSize: 11, borderRadius: 10, lineHeight: '18px', padding: '0 6px' }}>{logsTotal}</Tag></> },
+                { key: 'logs', label: <>请求日志 <Tag style={{ margin: '0 0 0 4px', fontSize: 11, borderRadius: 10, lineHeight: '18px', padding: '0 6px' }}>{serviceStatus.totalRequests}</Tag></> },
               ].map(t => (
                 <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
                   padding: '10px 16px', cursor: 'pointer', fontSize: 14, position: 'relative',

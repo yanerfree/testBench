@@ -41,6 +41,7 @@ def _doc_to_dict(d: Document) -> dict:
         "id": str(d.id),
         "title": d.title,
         "docType": d.doc_type,
+        "language": d.language,
         "content": d.content,
         "sourceCaseIds": d.source_case_ids,
         "status": d.status,
@@ -194,11 +195,12 @@ class GenerateWithScreenshotsRequest(BaseSchema):
     password: str = Field(..., min_length=1)
     title: str = Field(..., min_length=1, max_length=200)
     doc_type: str = Field(default="manual")
+    languages: list[str] = Field(default=["zh"])
     modules: str | None = None
     audience: str | None = None
     output_dir: str | None = None
     business_context: str | None = None
-    doc_id: str | None = None  # 传了则更新已有文档，不传则新建
+    doc_id: str | None = None
 
 
 @router.post("/generate-with-screenshots")
@@ -215,31 +217,17 @@ async def generate_with_screenshots(
     if not ai_config:
         raise AppError(code="AI_NOT_CONFIGURED", message="AI 服务未配置", status_code=503)
 
-    if body.doc_id:
-        doc = await session.get(Document, uuid.UUID(body.doc_id))
-        if not doc or doc.project_id != project_id:
-            raise NotFoundError(code="NOT_FOUND", message="文档不存在")
-        doc.title = body.title
-        doc.doc_type = body.doc_type
-        doc.status = "draft"
-        doc.content = None
-    else:
-        doc = Document(
-            project_id=project_id,
-            title=body.title,
-            doc_type=body.doc_type,
-            status="draft",
-            created_by=current_user.id,
-        )
-        session.add(doc)
-    await session.flush()
-    doc_id = doc.id
+    languages = body.languages or ["zh"]
+    LANG_NAMES = {"zh": "中文", "en": "English"}
 
-    from app.services.doc_generator import generate_doc_with_screenshots
+    from app.services.doc_generator import generate_doc_with_screenshots, generate_doc_content
 
     async def event_stream():
-        full_content = ""
+        screenshots = None
+        created_doc_ids = []
+
         try:
+            # Step 1: 截图只做一次
             async for event in generate_doc_with_screenshots(
                 system_url=body.system_url,
                 username=body.username,
@@ -251,18 +239,84 @@ async def generate_with_screenshots(
                 business_context=body.business_context,
                 ai_config=ai_config,
                 project_id=project_id,
+                language=languages[0],
             ):
-                if event.type == "chunk":
-                    full_content += event.data.get("content", "")
-                yield f"data: {json.dumps({'type': event.type, **event.data}, ensure_ascii=False)}\n\n"
+                if event.type == "done":
+                    screenshots = event.data.get("screenshots", [])
+                    first_content = event.data.get("content", "")
 
-            if full_content:
-                doc.content = full_content
-                doc.status = "published"
-                await session.commit()
+                    # 保存第一份文档
+                    lang = languages[0]
+                    title_suffix = f" ({lang.upper()})" if len(languages) > 1 else ""
+                    if body.doc_id and len(languages) == 1:
+                        doc = await session.get(Document, uuid.UUID(body.doc_id))
+                        if doc and doc.project_id == project_id:
+                            doc.title = body.title
+                            doc.doc_type = body.doc_type
+                            doc.language = lang
+                            doc.content = first_content
+                            doc.status = "published"
+                            created_doc_ids.append(str(doc.id))
+                    else:
+                        doc = Document(
+                            project_id=project_id,
+                            title=body.title + title_suffix,
+                            doc_type=body.doc_type,
+                            language=lang,
+                            status="published",
+                            content=first_content,
+                            created_by=current_user.id,
+                        )
+                        session.add(doc)
+                        await session.flush()
+                        created_doc_ids.append(str(doc.id))
+                    await session.commit()
+                else:
+                    if event.type == "chunk":
+                        pass
+                    yield f"data: {json.dumps({'type': event.type, **event.data}, ensure_ascii=False)}\n\n"
 
-            yield f"data: {json.dumps({'type': 'done', 'docId': str(doc_id)}, ensure_ascii=False)}\n\n"
+            # Step 2: 其他语种 — 复用截图，只调 AI 写文档
+            for lang in languages[1:]:
+                lang_name = LANG_NAMES.get(lang, lang)
+                yield f"data: {json.dumps({'type': 'step_start', 'step': 'lang', 'title': f'生成{lang_name}版本'}, ensure_ascii=False)}\n\n"
+
+                title_suffix = f" ({lang.upper()})"
+                lang_content = ""
+                async for event in generate_doc_content(
+                    title=body.title + title_suffix,
+                    doc_type=body.doc_type,
+                    modules=body.modules,
+                    audience=body.audience,
+                    business_context=body.business_context,
+                    ai_config=ai_config,
+                    screenshots=screenshots,
+                    language=lang,
+                ):
+                    if event.type == "chunk":
+                        lang_content += event.data.get("content", "")
+                    yield f"data: {json.dumps({'type': event.type, **event.data}, ensure_ascii=False)}\n\n"
+
+                if lang_content:
+                    doc2 = Document(
+                        project_id=project_id,
+                        title=body.title + title_suffix,
+                        doc_type=body.doc_type,
+                        language=lang,
+                        status="published",
+                        content=lang_content,
+                        created_by=current_user.id,
+                    )
+                    session.add(doc2)
+                    await session.flush()
+                    created_doc_ids.append(str(doc2.id))
+                    await session.commit()
+
+                yield f"data: {json.dumps({'type': 'step_done', 'step': 'lang', 'summary': f'{lang_name}版本已生成'}, ensure_ascii=False)}\n\n"
+
+            yield f"data: {json.dumps({'type': 'done', 'docId': created_doc_ids[0] if created_doc_ids else None, 'docIds': created_doc_ids}, ensure_ascii=False)}\n\n"
         except Exception as e:
+            logger.exception("generate_with_screenshots failed")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)[:200]}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(

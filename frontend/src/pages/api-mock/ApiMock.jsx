@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react'
 import {
-  Button, Space, Input, Select, Tag, Radio, Popconfirm, Tooltip, Badge,
-  Empty, Typography, InputNumber, Switch, Collapse, message, Drawer, Alert, Modal
+  Button, Space, Input, Select, Tag, Radio, Popconfirm, Tooltip, Badge, Pagination,
+  Empty, Typography, InputNumber, Switch, message, Drawer, Alert, Modal
 } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, SaveOutlined, PlayCircleOutlined, PauseCircleOutlined,
@@ -78,7 +78,10 @@ export default function ApiMock() {
   const [savePresetName, setSavePresetName] = useState('')
   const [logs, setLogs] = useState([])
   const [logsTotal, setLogsTotal] = useState(0)
-  const [selectedLog, setSelectedLog] = useState(null)
+  const [logPage, setLogPage] = useState(1)
+  const [logPageSize] = useState(50)
+  const [expandedLogId, setExpandedLogId] = useState(null)
+  const [expandedLogDetail, setExpandedLogDetail] = useState(null)
   const [logFilter, setLogFilter] = useState('all')
   const [serviceStatus, setServiceStatus] = useState({ running: false, port: 9200, captureEnabled: true, routesCount: 0, routesEnabled: 0, totalRequests: 0 })
   const [saving, setSaving] = useState(false)
@@ -93,7 +96,7 @@ export default function ApiMock() {
     fetchCustomPresets()
     fetchStatus()
     fetchLogs()
-    pollRef.current = setInterval(() => { fetchStatus(); fetchLogs() }, 5000)
+    pollRef.current = setInterval(() => { fetchStatus() }, 5000)
     return () => clearInterval(pollRef.current)
   }, [])
 
@@ -101,18 +104,19 @@ export default function ApiMock() {
   const fetchPresets = async () => { try { const r = await api.get('/api-mock/presets'); setPresets(r.data?.data || r.data || []) } catch {} }
   const fetchCustomPresets = async () => { try { const r = await api.get('/api-mock/custom-presets'); setCustomPresets(r.data?.data || r.data || []) } catch {} }
   const fetchStatus = async () => { try { const r = await api.get('/api-mock/status'); setServiceStatus(r.data || r) } catch {} }
-  const fetchLogs = async () => {
+  const fetchLogs = async (page) => {
     try {
-      const params = new URLSearchParams({ limit: '200', offset: '0' })
+      const p = page || logPage
+      const params = new URLSearchParams({ limit: String(logPageSize), offset: String((p - 1) * logPageSize) })
       if (logFilter !== 'all') params.set('status', logFilter)
       const r = await api.get(`/api-mock/logs?${params}`)
       const d = r.data || r
       setLogs(d.data || d || [])
-      setLogsTotal(d.total || 0)
+      setLogsTotal(d.total ?? (d.data || d || []).length)
     } catch {}
   }
 
-  useEffect(() => { fetchLogs() }, [logFilter])
+  useEffect(() => { setLogPage(1); fetchLogs(1) }, [logFilter])
 
   const selectRoute = useCallback((route) => {
     const formData = { ...route }
@@ -265,10 +269,12 @@ export default function ApiMock() {
     try {
       await api.delete('/api-mock/logs')
       message.success('日志已清空')
-      setSelectedLog(null)
+      setExpandedLogId(null)
+      setExpandedLogDetail(null)
       setLogs([])
       setLogsTotal(0)
-      fetchLogs()
+      setLogPage(1)
+      fetchLogs(1)
     } catch {}
   }
 
@@ -282,8 +288,13 @@ export default function ApiMock() {
 
   const handleExportLogs = () => window.open('/api/api-mock/logs/export', '_blank')
 
-  const handleViewLogDetail = async (logId) => {
-    try { const r = await api.get(`/api-mock/logs/${logId}`); setSelectedLog(r.data || r) } catch {}
+  const handleToggleLogDetail = async (logId) => {
+    if (expandedLogId === logId) { setExpandedLogId(null); setExpandedLogDetail(null); return }
+    try {
+      const r = await api.get(`/api-mock/logs/${logId}`)
+      setExpandedLogDetail(r.data || r)
+      setExpandedLogId(logId)
+    } catch {}
   }
 
   const handleCopyPreview = () => {
@@ -545,21 +556,18 @@ export default function ApiMock() {
   // ─── 渲染：请求日志 Tab ───
   const renderLogsTab = () => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* 日志工具栏 */}
       <div style={{
         padding: '8px 16px', borderBottom: '1px solid #f0f0f0',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#262626' }}>共 {logsTotal} 条</span>
-        </div>
+        <span style={{ fontSize: 13, fontWeight: 500, color: '#262626' }}>共 {logsTotal} 条</span>
         <Space size={4}>
           <Radio.Group value={logFilter} onChange={e => setLogFilter(e.target.value)} size="small">
             <Radio.Button value="all">全部</Radio.Button>
             <Radio.Button value="ok">OK</Radio.Button>
             <Radio.Button value="error">Error</Radio.Button>
           </Radio.Group>
-          <Button icon={<ReloadOutlined />} size="small" type="text" onClick={fetchLogs} />
+          <Button icon={<ReloadOutlined />} size="small" type="text" onClick={() => fetchLogs()} />
           <Button icon={<ExportOutlined />} size="small" type="text" onClick={handleExportLogs} />
           <Popconfirm title="确认清空所有日志？" onConfirm={handleClearLogs}>
             <Button icon={<ClearOutlined />} size="small" type="text" danger />
@@ -567,28 +575,28 @@ export default function ApiMock() {
         </Space>
       </div>
 
-      {/* 日志内容 — 左表右详情 */}
-      <div style={{ flex: 1, display: 'flex', gap: 0, minHeight: 0 }}>
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#fafafa', position: 'sticky', top: 0, zIndex: 1 }}>
-                {['时间', '状态', '方法', '路径', '类型', '耗时'].map((h, i) => (
-                  <th key={h} style={{
-                    padding: '6px 10px', textAlign: i === 5 ? 'right' : 'left',
-                    fontWeight: 500, fontSize: 11, color: '#8c8c8c', borderBottom: '1px solid #f0f0f0',
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map(l => (
-                <tr key={l.id} onClick={() => handleViewLogDetail(l.id)} style={{
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: '#fafafa', position: 'sticky', top: 0, zIndex: 1 }}>
+              {['时间', '状态', '方法', '路径', '类型', '耗时', ''].map((h, i) => (
+                <th key={h || 'op'} style={{
+                  padding: '6px 10px', textAlign: i >= 5 ? 'right' : 'left',
+                  fontWeight: 500, fontSize: 11, color: '#8c8c8c', borderBottom: '1px solid #f0f0f0',
+                  whiteSpace: 'nowrap',
+                }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {logs.map(l => (
+              <Fragment key={l.id}>
+                <tr onClick={() => handleToggleLogDetail(l.id)} style={{
                   cursor: 'pointer', borderBottom: '1px solid #fafafa',
-                  background: selectedLog?.id === l.id ? '#f9f0ff' : 'transparent',
+                  background: expandedLogId === l.id ? '#f9f0ff' : 'transparent',
                 }}>
                   <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', fontSize: 11, color: '#8c8c8c' }}>
-                    {new Date(l.timestamp).toLocaleTimeString('zh-CN', { hour12: false, fractionalSecondDigits: 3 })}
+                    {new Date(l.timestamp).toLocaleTimeString('zh-CN', { hour12: false })}
                   </td>
                   <td style={{ padding: '5px 10px' }}>
                     <span style={{ fontSize: 11, fontWeight: 600, color: STATUS_COLOR(l.statusCode) }}>{l.statusCode}</span>
@@ -596,73 +604,56 @@ export default function ApiMock() {
                   <td style={{ padding: '5px 10px' }}>
                     <span style={{ fontSize: 11, fontWeight: 600, color: METHOD_COLOR(l.method) }}>{l.method}</span>
                   </td>
-                  <td style={{ padding: '5px 10px', fontFamily: MONO, fontSize: 11, color: '#595959' }}>{l.path}</td>
+                  <td style={{ padding: '5px 10px', fontFamily: MONO, fontSize: 11, color: '#595959', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.path}</td>
                   <td style={{ padding: '5px 10px', fontSize: 11, color: '#8c8c8c' }}>{CT_SHORT(l.contentType)}</td>
-                  <td style={{ padding: '5px 10px', textAlign: 'right', fontSize: 11, color: '#8c8c8c' }}>{Math.round(l.totalMs ?? 0)}ms</td>
+                  <td style={{ padding: '5px 10px', textAlign: 'right', fontSize: 11, color: '#8c8c8c', whiteSpace: 'nowrap' }}>{Math.round(l.totalMs ?? 0)}ms</td>
+                  <td style={{ padding: '5px 10px', textAlign: 'right' }}>
+                    <Button size="small" type="text" icon={<SendOutlined />} onClick={e => { e.stopPropagation(); handleReplay(l.id) }} />
+                  </td>
                 </tr>
-              ))}
-              {logs.length === 0 && (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#bfbfbf', fontSize: 12 }}>暂无请求日志</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 日志详情面板 */}
-        <div style={{ width: 340, flexShrink: 0, borderLeft: '1px solid #f0f0f0', overflow: 'auto', padding: '12px 14px' }}>
-          {selectedLog ? (
-            <div style={{ fontSize: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <Space size={6}>
-                  <Tag style={{ margin: 0, fontSize: 11, fontWeight: 600, color: METHOD_COLOR(selectedLog.method), borderColor: METHOD_COLOR(selectedLog.method), background: 'transparent' }}>{selectedLog.method}</Tag>
-                  <span style={{ fontFamily: MONO, fontSize: 11, color: '#595959' }}>{selectedLog.path}</span>
-                </Space>
-                <span style={{ fontWeight: 600, fontSize: 13, color: STATUS_COLOR(selectedLog.statusCode) }}>{selectedLog.statusCode}</span>
-              </div>
-              <div style={{
-                fontSize: 12, lineHeight: 2, padding: '8px 0',
-                borderTop: '1px solid #f5f5f5', borderBottom: '1px solid #f5f5f5',
-              }}>
-                <div><Text type="secondary">时间</Text><span style={{ marginLeft: 12 }}>{new Date(selectedLog.timestamp).toLocaleString('zh-CN')}</span></div>
-                <div><Text type="secondary">类型</Text><span style={{ marginLeft: 12 }}>{selectedLog.contentType || '-'}</span></div>
-                <div><Text type="secondary">耗时</Text><span style={{ marginLeft: 12 }}>{(selectedLog.totalMs ?? 0).toFixed(1)}ms (匹配 {(selectedLog.matchMs ?? 0).toFixed(1)}ms)</span></div>
-                <div><Text type="secondary">来源</Text><span style={{ marginLeft: 12 }}>{selectedLog.ip || '-'}</span></div>
-                <div><Text type="secondary">UA</Text><span style={{ marginLeft: 12, fontSize: 11, color: '#8c8c8c' }}>{selectedLog.caller ? selectedLog.caller.substring(0, 60) : '-'}</span></div>
-              </div>
-
-              {selectedLog.requestBody && (
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>请求体</div>
-                  <pre style={{
-                    maxHeight: 120, overflow: 'auto', margin: 0, padding: '8px 10px',
-                    background: '#fafafa', borderRadius: 6, border: '1px solid #f0f0f0',
-                    fontSize: 11, fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-                  }}>{selectedLog.requestBody}</pre>
-                </div>
-              )}
-
-              {selectedLog.responseBody && (
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应体</div>
-                  <pre style={{
-                    maxHeight: 160, overflow: 'auto', margin: 0, padding: '8px 10px',
-                    background: '#1e1e2e', color: '#cdd6f4', borderRadius: 6,
-                    fontSize: 11, fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-                  }}>{formatBody(selectedLog.responseBody, selectedLog.contentType)}</pre>
-                </div>
-              )}
-
-              <div style={{ marginTop: 12 }}>
-                <Button size="small" icon={<PlayCircleOutlined />} onClick={() => handleReplay(selectedLog.id)}>回放</Button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#bfbfbf', fontSize: 12 }}>
-              点击左侧日志查看详情
-            </div>
-          )}
-        </div>
+                {expandedLogId === l.id && expandedLogDetail && (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '10px 16px', background: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+                      <div style={{ display: 'flex', gap: 24, fontSize: 12 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>请求体</div>
+                          <pre style={{
+                            maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 4,
+                            background: '#fff', border: '1px solid #f0f0f0', fontSize: 11, fontFamily: MONO,
+                            whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                          }}>{expandedLogDetail.requestBody || '-'}</pre>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应体</div>
+                          <pre style={{
+                            maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 4,
+                            background: '#fff', border: '1px solid #f0f0f0', fontSize: 11, fontFamily: MONO,
+                            whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                          }}>{formatBody(expandedLogDetail.responseBody, expandedLogDetail.contentType)}</pre>
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 8, fontSize: 11, color: '#8c8c8c' }}>
+                        来源: {expandedLogDetail.ip || '-'} · 匹配耗时: {(expandedLogDetail.matchMs ?? 0).toFixed(1)}ms
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+            {logs.length === 0 && (
+              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#bfbfbf', fontSize: 12 }}>暂无请求日志</td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
+
+      {logsTotal > logPageSize && (
+        <div style={{ padding: '8px 16px', borderTop: '1px solid #f0f0f0', flexShrink: 0, textAlign: 'right' }}>
+          <Pagination size="small" current={logPage} pageSize={logPageSize} total={logsTotal}
+            showTotal={t => `共 ${t} 条`} showSizeChanger={false}
+            onChange={p => { setLogPage(p); setExpandedLogId(null); fetchLogs(p) }} />
+        </div>
+      )}
     </div>
   )
 
@@ -786,7 +777,7 @@ export default function ApiMock() {
             <div style={{ display: 'flex', gap: 0 }}>
               {[
                 { key: 'config', label: '路由配置' },
-                { key: 'logs', label: <>请求日志 <Tag style={{ margin: '0 0 0 4px', fontSize: 11, borderRadius: 10, lineHeight: '18px', padding: '0 6px' }}>{logsTotal}</Tag></> },
+                { key: 'logs', label: <>请求日志 <Tag style={{ margin: '0 0 0 4px', fontSize: 11, borderRadius: 10, lineHeight: '18px', padding: '0 6px' }}>{serviceStatus.totalRequests}</Tag></> },
               ].map(t => (
                 <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
                   padding: '10px 16px', cursor: 'pointer', fontSize: 14, position: 'relative',
