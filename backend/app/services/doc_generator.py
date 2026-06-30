@@ -285,15 +285,30 @@ def _find_nav_items(page) -> list[tuple[str, any]]:
 
 
 def _deep_screenshots(page, shot_path, screenshots, parent_name):
-    """通用深度截图：找操作按钮→点击→截弹窗/对话框。"""
+    """通用深度截图：只在主内容区域找操作按钮。"""
     action_keywords = [
         '新增', '创建', '添加', '新建',
         'Add', 'Create', 'New',
     ]
 
-    buttons = page.locator('button').all()
-    deep_count = 0
+    # 限定在主内容区域找按钮，排除侧边栏/导航
+    content_selectors = [
+        'main button', '[class*="content"] button',
+        '[class*="main"] button', '[class*="body"] button',
+        '#root > div > div:last-child button',  # 通常最后一个 div 是内容区
+    ]
 
+    buttons = []
+    for sel in content_selectors:
+        found = page.locator(sel).all()
+        if found:
+            buttons = found
+            break
+    if not buttons:
+        buttons = page.locator('button').all()
+
+    deep_count = 0
+    clicked_texts = set()
     for btn in buttons:
         if deep_count >= 3:
             break
@@ -301,6 +316,15 @@ def _deep_screenshots(page, shot_path, screenshots, parent_name):
             text = btn.text_content().strip()
             if not text or not any(kw in text for kw in action_keywords):
                 continue
+            if not btn.is_visible():
+                continue
+            # 排除明显不属于当前模块的按钮（按钮文字包含其他模块名）
+            skip_keywords = ['AI', 'Mock', 'MCP', 'LLM', 'API', 'Skill']
+            if any(sk in text for sk in skip_keywords) and not any(sk in parent_name for sk in skip_keywords):
+                continue
+            if text in clicked_texts:
+                continue
+            clicked_texts.add(text)
 
             btn.click(timeout=2000)
             page.wait_for_timeout(1500)
@@ -344,7 +368,9 @@ def _deep_screenshots(page, shot_path, screenshots, parent_name):
 
 
 def _save_shot(page, shot_path, screenshots, name, url, is_target=False):
-    """保存截图。"""
+    """保存截图，跳过空名称。"""
+    if not name or name == 'None':
+        return
     idx = len(screenshots) + 1
     safe_name = name.replace('/', '_').replace(' ', '_')[:20]
     fname = f"{idx:02d}_{safe_name}.png"
