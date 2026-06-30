@@ -37,21 +37,29 @@ async def generate_doc_with_screenshots(
     ai_config: ResolvedAIConfig,
     project_id: uuid.UUID,
 ) -> AsyncIterator[DocGenEvent]:
-    """平台直接生成文档：Playwright 截图 + AI 写文档。"""
+    """平台直接生成文档：执行 tb-doc-generate Skill。"""
 
     session_id = uuid.uuid4().hex[:12]
     shot_dir = SCREENSHOT_DIR / str(project_id) / session_id
     shot_dir.mkdir(parents=True, exist_ok=True)
 
-    yield DocGenEvent(type="progress", data={"step": "init", "message": "正在启动浏览器..."})
+    # Skill 开始
+    yield DocGenEvent(type="skill_start", data={"skill": "tb-doc-generate", "totalSteps": 5})
+
+    # Step 1: 启动浏览器并登录
+    yield DocGenEvent(type="step_start", data={"step": 1, "title": "启动浏览器并登录"})
 
     screenshots = []
 
     try:
-        # Playwright 是同步 API，在线程池中运行
         loop = asyncio.get_event_loop()
         screenshots = await loop.run_in_executor(None, _take_screenshots,
             system_url, username, password, modules, str(shot_dir))
+
+        yield DocGenEvent(type="step_done", data={"step": 1, "summary": f"登录成功，进入系统"})
+
+        # Step 2-3: 逐菜单截图（已在 _take_screenshots 中完成）
+        yield DocGenEvent(type="step_start", data={"step": 2, "title": "逐页截图"})
 
         for shot in screenshots:
             yield DocGenEvent(type="screenshot", data={
@@ -60,14 +68,16 @@ async def generate_doc_with_screenshots(
                 "url": f"/api/screenshots/files/{project_id}/{session_id}/{shot['file']}",
             })
 
-        yield DocGenEvent(type="progress", data={"step": "ai", "message": f"已截图 {len(screenshots)} 张，AI 正在写文档..."})
+        yield DocGenEvent(type="step_done", data={"step": 2, "summary": f"截图 {len(screenshots)} 张"})
 
     except Exception as e:
         logger.error("Playwright screenshot failed: %s", e)
         yield DocGenEvent(type="error", data={"message": f"浏览器截图失败: {str(e)[:200]}"})
         return
 
-    # AI 根据截图信息生成文档
+    # Step 4: AI 写文档
+    yield DocGenEvent(type="step_start", data={"step": 3, "title": "AI 写文档"})
+
     for s in screenshots:
         s['url'] = f"/api/screenshots/files/{project_id}/{session_id}/{s['file']}"
 
@@ -107,6 +117,11 @@ async def generate_doc_with_screenshots(
     except Exception as e:
         yield DocGenEvent(type="error", data={"message": f"AI 生成失败: {str(e)[:200]}"})
         return
+
+    yield DocGenEvent(type="step_done", data={"step": 3, "summary": f"文档 {len(full_content)} 字符"})
+
+    # Step 5: 保存文档
+    yield DocGenEvent(type="step_start", data={"step": 4, "title": "保存文档"})
 
     yield DocGenEvent(type="done", data={
         "content": full_content,

@@ -94,7 +94,9 @@ export default function Documents() {
         businessContext: v.businessContext || undefined,
       }, {
         onChunk: (data) => {
-          if (data.type === 'progress') setPlatProgress(prev => [...prev, data.message])
+          if (data.type === 'skill_start') setPlatProgress(prev => [...prev, `🚀 Skill: ${data.skill}`])
+          if (data.type === 'step_start') setPlatProgress(prev => [...prev, `⏳ Step ${data.step}: ${data.title}`])
+          if (data.type === 'step_done') setPlatProgress(prev => [...prev, `✅ Step ${data.step}: ${data.summary}`])
           if (data.type === 'screenshot') setPlatProgress(prev => [...prev, `📸 ${data.page}`])
           if (data.type === 'chunk' && data.content) setPlatContent(prev => prev + data.content)
           if (data.type === 'error') { message.error(data.message); setPlatGenerating(false) }
