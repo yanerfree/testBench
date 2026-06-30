@@ -96,7 +96,7 @@ async def generate_doc_with_screenshots(
     messages = [
         {"role": "system", "content": f"""你是技术文档专家。根据系统截图信息生成{doc_label}。
 
-## 严格按照以下格式输出：
+## 严格按照以下格式输出（章节编号、层级、顺序必须一致）：
 
 ```
 {format_template}
