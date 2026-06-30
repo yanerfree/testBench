@@ -15,8 +15,8 @@ import { copyToClipboard } from '../../utils/clipboard'
 const { Text } = Typography
 const { TextArea } = Input
 
-const DOC_TYPE_LABELS = { manual: '操作手册', acceptance: '验收文档', training: '培训教材' }
-const DOC_TYPE_COLORS = { manual: 'blue', acceptance: 'green', training: 'purple' }
+const DOC_TYPE_LABELS = { manual: '操作手册', acceptance: '验收文档', demo: '演示文档' }
+const DOC_TYPE_COLORS = { manual: 'blue', acceptance: 'green', demo: 'purple' }
 
 export default function Documents() {
   const { projectId } = useParams()

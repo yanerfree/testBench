@@ -86,9 +86,55 @@ async def generate_doc_with_screenshots(
         for i, s in enumerate(screenshots)
     )
 
-    doc_label = {"manual": "操作手册", "acceptance": "验收文档", "training": "培训教材"}.get(doc_type, "操作手册")
+    doc_label = {"manual": "操作手册", "acceptance": "验收文档", "demo": "演示文档"}.get(doc_type, "演示文档")
     messages = [
-        {"role": "system", "content": f"你是技术文档专家。根据系统截图信息生成{doc_label}。每个截图对应一个操作步骤章节，用 Markdown 格式，图片用 ![](url) 引用。"},
+        {"role": "system", "content": f"""你是技术文档专家。根据系统截图信息生成{doc_label}。
+
+## 严格按照以下格式输出：
+
+```
+# 标题 — 简短描述
+
+演示什么功能，完成什么工作流。
+
+涉及模块：模块A、模块B
+
+__演示耗时__：约 N 分钟
+
+## 场景概述
+
+这个功能做什么，为什么有用。
+
+## 前置条件
+
+使用什么角色登录，需要什么前提
+
+> **操作提示：** 文档中的名称等均为示例值...
+
+## 操作步骤
+
+### 步骤一：动作名称
+
+1. 具体操作（点击哪里、输入什么）
+2. 下一步操作
+3. 点击【按钮名称】
+    - 预期：提示「xxx成功」，列表中出现xxx
+
+![](截图路径)
+
+截图说明文字
+
+### 步骤二：...
+
+__演示话术__：一句话总结核心价值。
+```
+
+要求：
+- 图片引用用 ![](url) 格式，url 用提供的截图路径
+- 每个步骤必须有截图
+- 操作步骤要具体到按钮名称、输入内容
+- 预期结果要明确
+"""},
         {"role": "user", "content": f"""请生成【{doc_label}】：
 
 标题：{title}
@@ -97,15 +143,11 @@ async def generate_doc_with_screenshots(
 目标读者：{audience or '测试工程师'}
 {f'业务背景：{business_context}' if business_context else ''}
 
-以下是系统各页面的截图，请根据每张截图写操作说明：
+以下是系统各页面的截图，请根据每张截图写操作步骤：
 
 {screenshots_desc}
 
-要求：
-- 每个截图一个章节
-- 说明这个页面是干什么的、怎么操作
-- 用 ![截图名](url) 引用截图
-- 输出完整 Markdown"""},
+请严格按照上面定义的格式输出完整文档。"""},
     ]
 
     full_content = ""
