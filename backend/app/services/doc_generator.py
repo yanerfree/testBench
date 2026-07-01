@@ -112,6 +112,8 @@ async def generate_doc_with_screenshots(
 6. **必须引用每一张截图** — 每张截图至少在文档中引用一次，不要遗漏任何截图
 7. **只写文档范围内的功能**：范围是「{modules or '全部功能'}」
 8. **⭐标记的截图要详细展开**，其他截图作为辅助说明配图
+9. **禁止出现具体系统地址/URL** — 不要写 http://xxx 等具体地址，用「系统登录页」「平台首页」等通用描述代替，因为不同用户的环境地址不同
+10. **语种一致** — 中文文档只写中文菜单名，不要出现「用户管理」或「User Management」这种双语写法；英文文档同理只写英文
 {lang_instruction}"""},
         {"role": "user", "content": f"""请生成【{doc_label}】：
 
@@ -456,11 +458,67 @@ def _deep_screenshots(page, shot_path, screenshots, parent_name):
 
 
 def _save_shot(page, shot_path, screenshots, name, url, is_target=False):
-    """保存截图，跳过空名称。"""
+    """保存截图并标注关键操作区域（红框）。"""
     if not name or name == 'None':
         return
     idx = len(screenshots) + 1
     safe_name = name.replace('/', '_').replace(' ', '_')[:20]
     fname = f"{idx:02d}_{safe_name}.png"
-    page.screenshot(path=str(shot_path / fname))
+    filepath = str(shot_path / fname)
+    page.screenshot(path=filepath)
+
+    annotations = _detect_annotations(page)
+    if annotations:
+        _draw_annotations(filepath, annotations)
+
     screenshots.append({"page": name, "file": fname, "pageUrl": url, "isTarget": is_target})
+
+
+def _detect_annotations(page) -> list[dict]:
+    """检测页面上需要标注的关键元素：活跃菜单、主要按钮、弹窗输入框。"""
+    rects = []
+    try:
+        # 当前高亮的菜单项
+        for sel in ['.ant-menu-item-selected', '.ant-menu-item-active', '[class*="menu"][class*="active"]']:
+            el = page.locator(sel).first
+            if el.count() > 0 and el.is_visible():
+                box = el.bounding_box()
+                if box:
+                    rects.append({**box, 'color': (24, 144, 255), 'width': 2})
+                break
+
+        # 主要操作按钮（Primary 按钮）
+        for btn in page.locator('.ant-btn-primary:visible').all()[:2]:
+            box = btn.bounding_box()
+            if box:
+                rects.append({**box, 'color': (255, 77, 79), 'width': 3})
+
+        # 弹窗中的输入框（如果有弹窗打开）
+        dialog = page.locator('[role="dialog"]:visible, [class*="modal"]:visible, [class*="drawer"]:visible').first
+        if dialog.count() > 0:
+            for inp in page.locator('[role="dialog"] input:visible, [class*="modal"] input:visible').all()[:3]:
+                box = inp.bounding_box()
+                if box and box['width'] > 50:
+                    rects.append({**box, 'color': (82, 196, 26), 'width': 2})
+    except Exception:
+        pass
+    return rects
+
+
+def _draw_annotations(filepath: str, annotations: list[dict]):
+    """在截图上画标注框。"""
+    try:
+        from PIL import Image, ImageDraw
+        img = Image.open(filepath)
+        draw = ImageDraw.Draw(img)
+        pad = 3
+        for a in annotations:
+            x1, y1 = int(a['x']) - pad, int(a['y']) - pad
+            x2, y2 = int(a['x'] + a['width']) + pad, int(a['y'] + a['height']) + pad
+            color = a.get('color', (255, 77, 79))
+            width = a.get('width', 2)
+            for i in range(width):
+                draw.rectangle([x1 - i, y1 - i, x2 + i, y2 + i], outline=color)
+        img.save(filepath)
+    except Exception as e:
+        logger.warning("Failed to draw annotations: %s", e)

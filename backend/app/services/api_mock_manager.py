@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import time
+from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Request
@@ -19,6 +20,9 @@ from app.services import api_mock_service as svc
 logger = logging.getLogger("api_mock")
 
 
+_STATE_FILE = Path(__file__).resolve().parent.parent.parent / ".mock_state" / "api_mock.json"
+
+
 class ApiMockServerManager:
     def __init__(self):
         self.port: int = 9200
@@ -28,6 +32,19 @@ class ApiMockServerManager:
         self._server = None
         self._app: FastAPI | None = None
         self._task: asyncio.Task | None = None
+
+    def _save_state(self, running: bool):
+        try:
+            _STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+            _STATE_FILE.write_text(json.dumps({"running": running, "port": self.port}))
+        except Exception:
+            pass
+
+    def _load_state(self) -> bool:
+        try:
+            return json.loads(_STATE_FILE.read_text()).get("running", False)
+        except Exception:
+            return False
 
     @property
     def running(self) -> bool:
@@ -55,6 +72,7 @@ class ApiMockServerManager:
                 break
             await asyncio.sleep(0.1)
         logger.info("API Mock 服务已启动 %s:%d", self.host, self.port)
+        self._save_state(True)
 
     async def stop(self) -> None:
         if self._server is not None:
@@ -67,6 +85,7 @@ class ApiMockServerManager:
             self._server = None
             self._task = None
             logger.info("API Mock 服务已停止")
+            self._save_state(False)
 
     def _on_task_done(self, task: asyncio.Task) -> None:
         if task.cancelled():

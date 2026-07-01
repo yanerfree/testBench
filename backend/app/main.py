@@ -37,10 +37,32 @@ from app.mcp import mcp
 _mcp_app = mcp.http_app(path="/")
 
 from contextlib import asynccontextmanager
+import logging
+
+_startup_logger = logging.getLogger("mock_startup")
+
 @asynccontextmanager
 async def lifespan(app):
     async with _mcp_app.lifespan(app):
+        await _restore_mock_services()
         yield
+
+
+async def _restore_mock_services():
+    from app.services.llm_mock_manager import mock_server
+    from app.services.api_mock_manager import api_mock_server
+    try:
+        if mock_server._load_state():
+            _startup_logger.info("自动恢复 LLM Mock 服务 (端口 %d)", mock_server.port)
+            await mock_server.start()
+    except Exception as e:
+        _startup_logger.warning("LLM Mock 自动恢复失败: %s", e)
+    try:
+        if api_mock_server._load_state():
+            _startup_logger.info("自动恢复 API Mock 服务 (端口 %d)", api_mock_server.port)
+            await api_mock_server.start()
+    except Exception as e:
+        _startup_logger.warning("API Mock 自动恢复失败: %s", e)
 
 app = FastAPI(
     title="测试管理平台 API",
