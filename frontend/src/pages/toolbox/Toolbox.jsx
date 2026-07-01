@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Input, Button, Space, Tag, message, Radio, Switch, InputNumber } from 'antd'
+import { Input, Button, Space, Tag, message, Radio, Switch, InputNumber, Tooltip } from 'antd'
 import {
   ToolOutlined, FormatPainterOutlined, SwapOutlined, ClockCircleOutlined,
   FileSearchOutlined, DatabaseOutlined, DiffOutlined, CopyOutlined,
-  ReloadOutlined
+  ReloadOutlined, ThunderboltOutlined, LoadingOutlined
 } from '@ant-design/icons'
+import { api } from '../../utils/request'
 
 const { TextArea } = Input
 const MONO = "'SF Mono', Monaco, Menlo, Consolas, monospace"
@@ -266,6 +267,9 @@ function RegexTool() {
   const [pattern, setPattern] = useState('')
   const [flags, setFlags] = useState('g')
   const [text, setText] = useState('')
+  const [aiInput, setAiInput] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiExplanation, setAiExplanation] = useState('')
 
   const { highlighted, matchCount, groups } = useMemo(() => {
     if (!pattern || !text) return { highlighted: null, matchCount: 0, groups: [] }
@@ -289,6 +293,19 @@ function RegexTool() {
     } catch { return { highlighted: null, matchCount: 0, groups: [] } }
   }, [pattern, flags, text])
 
+  const handleAiGenerate = async () => {
+    if (!aiInput.trim()) return
+    setAiLoading(true)
+    setAiExplanation('')
+    try {
+      const res = await api.post('/toolbox/generate-regex', { description: aiInput.trim() })
+      const d = res.data?.data || res.data || res
+      if (d.error) { message.error(d.error); return }
+      if (d.regex) { setPattern(d.regex); if (d.flags) setFlags(d.flags) }
+      if (d.explanation) setAiExplanation(d.explanation)
+    } catch (e) { message.error('生成失败') } finally { setAiLoading(false) }
+  }
+
   const COMMON = [
     { label: '手机号', re: '1[3-9]\\d{9}' },
     { label: '邮箱', re: '[\\w.-]+@[\\w.-]+\\.\\w+' },
@@ -301,27 +318,44 @@ function RegexTool() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 20 }}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
-        <div style={{ flex: 1 }}>
-          <Input value={pattern} onChange={e => setPattern(e.target.value)}
-            addonBefore="/" addonAfter={
-              <Input value={flags} onChange={e => setFlags(e.target.value)}
-                style={{ width: 40, border: 'none', padding: 0, textAlign: 'center' }} />
-            }
-            style={{ fontFamily: MONO }} placeholder="输入正则表达式..." />
-        </div>
+      {/* 正则输入行 */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+        <span style={{ fontSize: 14, color: '#8c8c8c', flexShrink: 0 }}>/</span>
+        <Input value={pattern} onChange={e => setPattern(e.target.value)}
+          style={{ flex: 1, fontFamily: MONO }} placeholder="输入正则表达式..." />
+        <span style={{ fontSize: 14, color: '#8c8c8c', flexShrink: 0 }}>/</span>
+        <Input value={flags} onChange={e => setFlags(e.target.value)}
+          style={{ width: 50, fontFamily: MONO, textAlign: 'center' }} placeholder="g" />
         {matchCount > 0 && <Tag color="green">{matchCount} 个匹配</Tag>}
         {pattern && matchCount === 0 && text && <Tag color="orange">无匹配</Tag>}
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <Space size={4} wrap>
-          <span style={{ fontSize: 11, color: '#bfbfbf' }}>常用：</span>
-          {COMMON.map(c => (
-            <Tag key={c.label} style={{ cursor: 'pointer', fontSize: 11 }}
-              onClick={() => setPattern(c.re)}>{c.label}</Tag>
-          ))}
-        </Space>
+
+      {/* AI 生成 + 常用正则 */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+        <Input value={aiInput} onChange={e => setAiInput(e.target.value)}
+          placeholder="用自然语言描述，AI 帮你生成正则..."
+          style={{ width: 280 }} size="small"
+          onPressEnter={handleAiGenerate}
+          suffix={
+            <Button type="text" size="small" loading={aiLoading}
+              icon={aiLoading ? <LoadingOutlined /> : <ThunderboltOutlined style={{ color: '#722ed1' }} />}
+              onClick={handleAiGenerate} style={{ margin: '-4px -7px' }} />
+          }
+        />
+        <span style={{ fontSize: 11, color: '#d9d9d9' }}>|</span>
+        <span style={{ fontSize: 11, color: '#bfbfbf' }}>常用:</span>
+        {COMMON.map(c => (
+          <Tag key={c.label} style={{ cursor: 'pointer', fontSize: 11 }}
+            onClick={() => setPattern(c.re)}>{c.label}</Tag>
+        ))}
       </div>
+      {aiExplanation && (
+        <div style={{ fontSize: 12, color: '#722ed1', marginBottom: 8, padding: '4px 8px', background: '#f9f0ff', borderRadius: 4 }}>
+          {aiExplanation}
+        </div>
+      )}
+
+      {/* 测试文本 + 匹配结果 */}
       <div style={{ flex: 1, display: 'flex', gap: 12, minHeight: 0 }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>测试文本</div>
