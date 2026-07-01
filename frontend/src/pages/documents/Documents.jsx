@@ -6,7 +6,7 @@ import {
 } from 'antd'
 import {
   PlusOutlined, FileTextOutlined, DeleteOutlined, EyeOutlined,
-  RobotOutlined, LoadingOutlined, CopyOutlined, DownloadOutlined,
+  RobotOutlined, LoadingOutlined, CopyOutlined, DownloadOutlined, CodeOutlined,
 } from '@ant-design/icons'
 import { marked } from 'marked'
 import { api } from '../../utils/request'
@@ -123,6 +123,20 @@ export default function Documents() {
     } catch { /* */ }
   }
 
+  const handleCCGenerate = async () => {
+    try {
+      const v = await ccForm.validateFields()
+      const res = await api.post(`/projects/${projectId}/documents/tasks`, {
+        _host: window.location.hostname + ':8000',
+        systemUrl: v.systemUrl, username: v.username, password: v.password,
+        title: v.title, docType: v.docType || 'manual',
+        modules: v.modules || undefined, audience: v.audience || undefined,
+        businessContext: v.businessContext || undefined,
+      })
+      setTaskResult(res.data)
+    } catch { /* */ }
+  }
+
   const columns = [
     {
       title: '文档标题', dataIndex: 'title', ellipsis: true,
@@ -188,18 +202,19 @@ export default function Documents() {
         title={regenDocId ? '重新生成文档' : '生成文档'}
         open={genOpen}
         onCancel={() => { if (!platGenerating) { setGenOpen(false); setRegenFeedback('') } }}
-        width={600}
+        width={560}
         footer={!taskResult && !platGenerating ? [
           <Button key="cancel" onClick={() => setGenOpen(false)}>取消</Button>,
+          <Button key="cc" icon={<CodeOutlined />} onClick={handleCCGenerate}>Claude Code 命令</Button>,
           <Button key="gen" type="primary" icon={<RobotOutlined />} onClick={handlePlatGenerate}>
-            {regenDocId ? '重新生成' : '开始生成'}
+            {regenDocId ? '重新生成' : '平台直接生成'}
           </Button>,
         ] : null}
       >
         {!taskResult && !platGenerating ? (
-          <Form form={ccForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form form={ccForm} layout="vertical" style={{ marginTop: 12 }}>
             {regenDocId && (
-              <Form.Item label="修改意见" style={{ marginBottom: 20 }}>
+              <Form.Item label="修改意见" style={{ marginBottom: 16 }}>
                 <TextArea
                   rows={2}
                   value={regenFeedback}
@@ -208,12 +223,15 @@ export default function Documents() {
                 />
               </Form.Item>
             )}
+            <Form.Item name="title" label="文档标题" rules={[{ required: true, message: '请输入' }]} style={{ marginBottom: 20 }}>
+              <Input placeholder="测试管理平台操作手册" style={{ fontSize: 16, fontFamily: '"Comic Sans MS", "Noto Sans SC", "PingFang SC", cursive', fontWeight: 600, height: 42 }} />
+            </Form.Item>
             <div style={{ background: '#f6f7f9', borderRadius: 8, padding: '16px 16px 4px', marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#595959', marginBottom: 12 }}>被测系统</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 10 }}>
-                <Form.Item name="systemUrl" label="地址" rules={[{ required: true, message: '请输入' }]}>
-                  <Input placeholder="http://192.168.51.108:5173" />
-                </Form.Item>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#595959', marginBottom: 12 }}>操作环境</div>
+              <Form.Item name="systemUrl" label="系统地址" rules={[{ required: true, message: '请输入' }]}>
+                <Input placeholder="http://192.168.51.108:5173" />
+              </Form.Item>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <Form.Item name="username" label="账号" rules={[{ required: true, message: '请输入' }]}>
                   <Input placeholder="admin" />
                 </Form.Item>
@@ -222,25 +240,22 @@ export default function Documents() {
                 </Form.Item>
               </div>
             </div>
-            <Form.Item name="title" label="文档标题" rules={[{ required: true, message: '请输入' }]}>
-              <Input placeholder="测试管理平台操作手册" />
-            </Form.Item>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
-              <Form.Item name="docType" label="类型" initialValue="manual">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Form.Item name="docType" label="文档类型" initialValue="manual">
                 <Select options={Object.entries(DOC_TYPE_LABELS).map(([k, v]) => ({ value: k, label: v }))} />
               </Form.Item>
               <Form.Item name="languages" label="语种" initialValue={['zh']}>
-                <Select mode="multiple" options={LANG_OPTIONS} placeholder="选择" />
-              </Form.Item>
-              <Form.Item name="modules" label="范围">
-                <Input placeholder="用户管理" />
-              </Form.Item>
-              <Form.Item name="audience" label="读者">
-                <Input placeholder="测试工程师" />
+                <Select mode="multiple" options={LANG_OPTIONS} placeholder="选择语种" />
               </Form.Item>
             </div>
-            <Form.Item name="businessContext" label="业务背景">
-              <TextArea rows={2} placeholder="可选，系统介绍或 PRD 摘要" />
+            <Form.Item name="modules" label="文档范围">
+              <TextArea rows={2} placeholder="用户管理、项目管理&#10;不填则生成全部功能" />
+            </Form.Item>
+            <Form.Item name="audience" label="目标读者">
+              <Input placeholder="新入职测试工程师" />
+            </Form.Item>
+            <Form.Item name="businessContext" label="业务说明">
+              <TextArea rows={3} placeholder="可选，系统介绍或 PRD 摘要" />
             </Form.Item>
           </Form>
         ) : taskResult ? (
