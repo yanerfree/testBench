@@ -203,13 +203,16 @@ export default function Documents() {
         open={genOpen}
         onCancel={() => { if (!platGenerating) { setGenOpen(false); setRegenFeedback('') } }}
         width={560}
-        footer={!taskResult && !platGenerating ? [
-          <Button key="cancel" onClick={() => setGenOpen(false)}>取消</Button>,
-          <Button key="cc" icon={<CodeOutlined />} onClick={handleCCGenerate}>Claude Code 命令</Button>,
-          <Button key="gen" type="primary" icon={<RobotOutlined />} onClick={handlePlatGenerate}>
-            {regenDocId ? '重新生成' : '平台直接生成'}
-          </Button>,
-        ] : null}
+        footer={!taskResult && !platGenerating ? (
+          regenDocId ? [
+            <Button key="cancel" onClick={() => setGenOpen(false)}>取消</Button>,
+            <Button key="gen" type="primary" icon={<RobotOutlined />} onClick={handlePlatGenerate}>重新生成</Button>,
+          ] : [
+            <Button key="cancel" onClick={() => setGenOpen(false)}>取消</Button>,
+            <Button key="cc" icon={<CodeOutlined />} onClick={handleCCGenerate}>Claude Code 命令</Button>,
+            <Button key="gen" type="primary" icon={<RobotOutlined />} onClick={handlePlatGenerate}>平台直接生成</Button>,
+          ]
+        ) : null}
       >
         {!taskResult && !platGenerating ? (
           <Form form={ccForm} layout="vertical" style={{ marginTop: 12 }}>
