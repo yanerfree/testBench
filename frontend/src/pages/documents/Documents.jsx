@@ -188,13 +188,18 @@ export default function Documents() {
         title={regenDocId ? '重新生成文档' : '生成文档'}
         open={genOpen}
         onCancel={() => { if (!platGenerating) { setGenOpen(false); setRegenFeedback('') } }}
-        width={640}
-        footer={null}
+        width={600}
+        footer={!taskResult && !platGenerating ? [
+          <Button key="cancel" onClick={() => setGenOpen(false)}>取消</Button>,
+          <Button key="gen" type="primary" icon={<RobotOutlined />} onClick={handlePlatGenerate}>
+            {regenDocId ? '重新生成' : '开始生成'}
+          </Button>,
+        ] : null}
       >
         {!taskResult && !platGenerating ? (
-          <Form form={ccForm} layout="vertical" size="small" style={{ marginTop: 8 }}>
+          <Form form={ccForm} layout="vertical" style={{ marginTop: 16 }}>
             {regenDocId && (
-              <Form.Item label="修改意见" style={{ marginBottom: 16 }}>
+              <Form.Item label="修改意见" style={{ marginBottom: 20 }}>
                 <TextArea
                   rows={2}
                   value={regenFeedback}
@@ -203,23 +208,24 @@ export default function Documents() {
                 />
               </Form.Item>
             )}
-            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 8, fontWeight: 500 }}>被测系统</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
-              <Form.Item name="systemUrl" label="地址" rules={[{ required: true, message: '请输入' }]}>
-                <Input placeholder="http://192.168.51.108:5173" />
-              </Form.Item>
-              <Form.Item name="username" label="账号" rules={[{ required: true, message: '请输入' }]}>
-                <Input placeholder="admin" />
-              </Form.Item>
-              <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入' }]}>
-                <Input.Password placeholder="admin123" />
-              </Form.Item>
+            <div style={{ background: '#f6f7f9', borderRadius: 8, padding: '16px 16px 4px', marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#595959', marginBottom: 12 }}>被测系统</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 10 }}>
+                <Form.Item name="systemUrl" label="地址" rules={[{ required: true, message: '请输入' }]}>
+                  <Input placeholder="http://192.168.51.108:5173" />
+                </Form.Item>
+                <Form.Item name="username" label="账号" rules={[{ required: true, message: '请输入' }]}>
+                  <Input placeholder="admin" />
+                </Form.Item>
+                <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入' }]}>
+                  <Input.Password placeholder="admin123" />
+                </Form.Item>
+              </div>
             </div>
-            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 8, fontWeight: 500 }}>文档设置</div>
-            <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入' }]}>
+            <Form.Item name="title" label="文档标题" rules={[{ required: true, message: '请输入' }]}>
               <Input placeholder="测试管理平台操作手册" />
             </Form.Item>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
               <Form.Item name="docType" label="类型" initialValue="manual">
                 <Select options={Object.entries(DOC_TYPE_LABELS).map(([k, v]) => ({ value: k, label: v }))} />
               </Form.Item>
@@ -233,15 +239,9 @@ export default function Documents() {
                 <Input placeholder="测试工程师" />
               </Form.Item>
             </div>
-            <Form.Item name="businessContext" label="业务背景" style={{ marginBottom: 4 }}>
+            <Form.Item name="businessContext" label="业务背景">
               <TextArea rows={2} placeholder="可选，系统介绍或 PRD 摘要" />
             </Form.Item>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <Button onClick={() => setGenOpen(false)}>取消</Button>
-              <Button type="primary" icon={<RobotOutlined />} onClick={handlePlatGenerate}>
-                {regenDocId ? '重新生成' : '开始生成'}
-              </Button>
-            </div>
           </Form>
         ) : taskResult ? (
           <div>
