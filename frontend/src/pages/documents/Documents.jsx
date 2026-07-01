@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   Button, Card, Table, Tag, Space, Typography, Modal, Form, Input, Select,
-  message, Empty, Drawer, Popconfirm, Divider,
+  message, Drawer, Popconfirm,
 } from 'antd'
 import {
   PlusOutlined, FileTextOutlined, DeleteOutlined, EyeOutlined,
@@ -124,19 +124,27 @@ export default function Documents() {
   }
 
   const columns = [
-    { title: '标题', dataIndex: 'title', ellipsis: true, render: (t, r) => <a onClick={() => loadDoc(r.id)}>{t}</a> },
-    { title: '类型', dataIndex: 'docType', width: 90, render: (t) => <Tag color={DOC_TYPE_COLORS[t]}>{DOC_TYPE_LABELS[t] || t}</Tag> },
-    { title: '语种', dataIndex: 'language', width: 50, render: (l) => <Tag>{LANG_LABELS[l] || l}</Tag> },
-    { title: '状态', dataIndex: 'status', width: 70, render: (s) => s === 'published' ? <Tag color="success">已生成</Tag> : <Tag>草稿</Tag> },
-    { title: '时间', dataIndex: 'createdAt', width: 140, render: (t) => t?.slice(0, 16).replace('T', ' ') },
     {
-      title: '操作', width: 200,
+      title: '文档标题', dataIndex: 'title', ellipsis: true,
+      render: (t, r) => (
+        <Space>
+          <FileTextOutlined style={{ color: DOC_TYPE_COLORS[r.docType] === 'blue' ? '#1677ff' : DOC_TYPE_COLORS[r.docType] === 'green' ? '#52c41a' : '#722ed1' }} />
+          <a onClick={() => loadDoc(r.id)} style={{ fontWeight: 500 }}>{t}</a>
+        </Space>
+      ),
+    },
+    { title: '类型', dataIndex: 'docType', width: 100, render: (t) => <Tag color={DOC_TYPE_COLORS[t]}>{DOC_TYPE_LABELS[t] || t}</Tag> },
+    { title: '语种', dataIndex: 'language', width: 60, render: (l) => LANG_LABELS[l] || l },
+    { title: '状态', dataIndex: 'status', width: 70, render: (s) => s === 'published' ? <Tag color="success">已生成</Tag> : <Tag>草稿</Tag> },
+    { title: '生成时间', dataIndex: 'createdAt', width: 150, render: (t) => <Text type="secondary">{t?.slice(0, 16).replace('T', ' ')}</Text> },
+    {
+      title: '操作', width: 180,
       render: (_, r) => (
         <Space size={4}>
-          <Button size="small" icon={<EyeOutlined />} onClick={() => loadDoc(r.id)}>查看</Button>
-          <Button size="small" icon={<RobotOutlined />} onClick={() => openRegen(r)}>重新生成</Button>
-          <Popconfirm title="确认删除？" onConfirm={() => handleDelete(r.id)}>
-            <Button size="small" danger icon={<DeleteOutlined />} />
+          <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => loadDoc(r.id)}>查看</Button>
+          <Button type="text" size="small" icon={<RobotOutlined />} onClick={() => openRegen(r)}>重新生成</Button>
+          <Popconfirm title="确认删除此文档？" onConfirm={() => handleDelete(r.id)}>
+            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
       ),
@@ -145,22 +153,34 @@ export default function Documents() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}><FileTextOutlined style={{ marginRight: 8 }} />文档管理</h2>
-          <Text type="secondary" style={{ fontSize: 13 }}>生成带截图的操作手册、演示文档、验收文档</Text>
+      <div style={{ marginBottom: 12 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#1d2129' }}>文档管理</h2>
+        <span style={{ fontSize: 13, color: '#86909c' }}>
+          自动截图 + AI 生成操作手册、演示文档、验收文档，支持多语种
+        </span>
+      </div>
+
+      <Card size="small" style={{ marginBottom: 12, background: '#f6f7f9' }}>
+        <div style={{ fontSize: 13, lineHeight: 2 }}>
+          <b>文档生成流程：</b>
+          <span style={{ marginLeft: 12 }}>① 填写系统地址和账号 → ② 自动打开系统截图 → ③ AI 根据截图写文档 → ④ 预览/导出</span>
         </div>
+      </Card>
+
+      <div style={{ marginBottom: 12 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => { setGenOpen(true); setTaskResult(null); setRegenDocId(null); setRegenFeedback(''); ccForm.resetFields() }}>
           生成文档
         </Button>
       </div>
 
       {docs.length === 0 && !loading ? (
-        <Card>
-          <Empty description="暂无文档，点击右上角生成" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        <Card style={{ textAlign: 'center', padding: '40px 0' }}>
+          <FileTextOutlined style={{ fontSize: 40, color: '#d9d9d9' }} />
+          <div style={{ marginTop: 12, color: '#8c8c8c' }}>暂无文档</div>
+          <div style={{ marginTop: 4, color: '#bfbfbf', fontSize: 12 }}>点击上方「生成文档」按钮，填写系统信息即可自动生成</div>
         </Card>
       ) : (
-        <Table rowKey="id" columns={columns} dataSource={docs} loading={loading} pagination={false} size="small" />
+        <Table rowKey="id" columns={columns} dataSource={docs} loading={loading} pagination={false} size="middle" />
       )}
 
       {/* 生成弹窗 */}
@@ -183,8 +203,9 @@ export default function Documents() {
                 />
               </Form.Item>
             )}
+            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 8, fontWeight: 500 }}>被测系统</div>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
-              <Form.Item name="systemUrl" label="系统地址" rules={[{ required: true, message: '请输入' }]}>
+              <Form.Item name="systemUrl" label="地址" rules={[{ required: true, message: '请输入' }]}>
                 <Input placeholder="http://192.168.51.108:5173" />
               </Form.Item>
               <Form.Item name="username" label="账号" rules={[{ required: true, message: '请输入' }]}>
@@ -194,7 +215,8 @@ export default function Documents() {
                 <Input.Password placeholder="admin123" />
               </Form.Item>
             </div>
-            <Form.Item name="title" label="文档标题" rules={[{ required: true, message: '请输入' }]}>
+            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 8, fontWeight: 500 }}>文档设置</div>
+            <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入' }]}>
               <Input placeholder="测试管理平台操作手册" />
             </Form.Item>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
@@ -211,7 +233,7 @@ export default function Documents() {
                 <Input placeholder="测试工程师" />
               </Form.Item>
             </div>
-            <Form.Item name="businessContext" label="业务背景" style={{ marginBottom: 8 }}>
+            <Form.Item name="businessContext" label="业务背景" style={{ marginBottom: 4 }}>
               <TextArea rows={2} placeholder="可选，系统介绍或 PRD 摘要" />
             </Form.Item>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
