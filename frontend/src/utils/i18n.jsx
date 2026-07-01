@@ -26,6 +26,7 @@ const MESSAGES = {
     'menu.llmMock': 'LLM Mock',
     'menu.apiMock': 'API Mock',
     'menu.mcpMock': 'MCP Mock',
+    'menu.toolbox': '工具箱',
 
     // 通用
     'common.save': '保存',
@@ -90,6 +91,7 @@ const MESSAGES = {
     'menu.llmMock': 'LLM Mock',
     'menu.apiMock': 'API Mock',
     'menu.mcpMock': 'MCP Mock',
+    'menu.toolbox': '工具箱',
 
     'common.save': 'Save',
     'common.cancel': 'Cancel',

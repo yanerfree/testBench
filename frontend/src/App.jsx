@@ -26,6 +26,7 @@ import ApiManagement from './pages/apis/ApiManagement'
 import LlmMock from './pages/llm-mock/LlmMock'
 import ApiMock from './pages/api-mock/ApiMock'
 import McpMock from './pages/mcp-mock/McpMock'
+import Toolbox from './pages/toolbox/Toolbox'
 import AIProviderConfig from './pages/settings/AIProviderConfig'
 import ProjectAIConfig from './pages/settings/ProjectAIConfig'
 import AICapabilities from './pages/settings/AICapabilities'
@@ -111,6 +112,7 @@ function AppLayout() {
     { key: '/tools/llm-mock', icon: <RobotOutlined />, label: t('menu.llmMock') },
     { key: '/tools/api-mock', icon: <CloudServerOutlined />, label: t('menu.apiMock') },
     { key: '/tools/mcp-mock', icon: <ApiOutlined />, label: t('menu.mcpMock') },
+    { key: '/tools/toolbox', icon: <ToolOutlined />, label: t('menu.toolbox') },
   ]
 
   const handleLogout = async () => {
@@ -242,6 +244,7 @@ function AppLayout() {
             <Route path="/tools/llm-mock" element={<LlmMock />} />
             <Route path="/tools/api-mock" element={<ApiMock />} />
             <Route path="/tools/mcp-mock" element={<McpMock />} />
+            <Route path="/tools/toolbox" element={<Toolbox />} />
           </Routes>
         </Content>
       </Layout>
