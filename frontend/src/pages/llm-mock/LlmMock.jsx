@@ -755,9 +755,6 @@ export default function LlmMock() {
                         color: STATUS_COLOR(r.statusCode), borderColor: STATUS_COLOR(r.statusCode),
                         background: 'transparent', borderRadius: 3,
                       }}>{r.statusCode}</Tag>
-                      {(r.hitCount ?? 0) > 0 && (
-                        <span style={{ fontSize: 10, color: '#bfbfbf' }}>{r.hitCount}</span>
-                      )}
                     </div>
                   </div>
                 </div>

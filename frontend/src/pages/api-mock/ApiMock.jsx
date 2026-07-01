@@ -757,9 +757,6 @@ export default function ApiMock() {
                       <Tag color={CT_COLOR(r.contentType)} style={{ margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 3 }}>
                         {CT_SHORT(r.contentType)}
                       </Tag>
-                      {(r.hitCount ?? 0) > 0 && (
-                        <span style={{ fontSize: 10, color: '#bfbfbf' }}>{r.hitCount}</span>
-                      )}
                     </div>
                   </div>
                 </div>

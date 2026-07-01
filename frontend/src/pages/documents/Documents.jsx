@@ -226,19 +226,16 @@ export default function Documents() {
             <Form.Item name="title" label="文档标题" rules={[{ required: true, message: '请输入' }]} style={{ marginBottom: 20 }}>
               <Input placeholder="测试管理平台操作手册" style={{ fontSize: 16, fontFamily: '"Comic Sans MS", "Noto Sans SC", "PingFang SC", cursive', fontWeight: 600, height: 42 }} />
             </Form.Item>
-            <div style={{ background: '#f6f7f9', borderRadius: 8, padding: '16px 16px 4px', marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#595959', marginBottom: 12 }}>操作环境</div>
-              <Form.Item name="systemUrl" label="系统地址" rules={[{ required: true, message: '请输入' }]}>
-                <Input placeholder="http://192.168.51.108:5173" />
+            <Form.Item name="systemUrl" label="系统地址" rules={[{ required: true, message: '请输入' }]}>
+              <Input placeholder="http://192.168.51.108:5173" />
+            </Form.Item>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Form.Item name="username" label="账号" rules={[{ required: true, message: '请输入' }]}>
+                <Input placeholder="admin" />
               </Form.Item>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Form.Item name="username" label="账号" rules={[{ required: true, message: '请输入' }]}>
-                  <Input placeholder="admin" />
-                </Form.Item>
-                <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入' }]}>
-                  <Input.Password placeholder="admin123" />
-                </Form.Item>
-              </div>
+              <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入' }]}>
+                <Input.Password placeholder="admin123" />
+              </Form.Item>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Form.Item name="docType" label="文档类型" initialValue="manual">
