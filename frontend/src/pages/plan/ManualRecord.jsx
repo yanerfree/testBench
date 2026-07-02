@@ -117,7 +117,7 @@ export default function ManualRecord() {
   const isLastPending = selectedEdit.result && pendingCount === 0
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#fafafa' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f9fafb' }}>
       {/* 顶栏 */}
       <div style={{ height: 54, background: '#fff', borderBottom: '1px solid #f2f3f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

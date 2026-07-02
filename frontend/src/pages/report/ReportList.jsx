@@ -99,7 +99,7 @@ export default function ReportList() {
       {loading ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spin /></div> :
         filtered.length === 0 ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Empty description="暂无报告" /></div> : <>
         {/* Table */}
-        <div style={{ background: '#fff', border: '1px solid #e5e6eb', borderRadius: 8, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ background: '#fff', border: '1px solid #e5e6eb', borderRadius: 12, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', height: 36, background: '#f7f8fa', borderBottom: '1px solid #e5e6eb', flexShrink: 0 }}>
             <div style={{ flex: 3, ...th }}>关联计划</div>

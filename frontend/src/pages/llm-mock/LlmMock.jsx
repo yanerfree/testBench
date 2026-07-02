@@ -308,7 +308,7 @@ export default function LlmMock() {
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         {/* 路由头部 */}
         <div style={{
-          padding: '10px 16px', borderBottom: '1px solid #f0f0f0', flexShrink: 0,
+          padding: '10px 16px', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0,
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -336,7 +336,7 @@ export default function LlmMock() {
           {/* URL 栏 */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 0, marginBottom: 8,
-            border: '1px solid #d9d9d9', borderRadius: 6, overflow: 'hidden', background: '#fafafa',
+            border: '1px solid #d9d9d9', borderRadius: 10, overflow: 'hidden', background: '#f9fafb',
           }}>
             <Select value={routeForm.method} onChange={v => setRouteForm(f => ({ ...f, method: v }))}
               variant="borderless" style={{ width: 100, flexShrink: 0 }} popupMatchSelectWidth={100}>
@@ -355,7 +355,7 @@ export default function LlmMock() {
           {serviceStatus.running && fullUrl && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16,
-              padding: '6px 12px', background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 6,
+              padding: '6px 12px', background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 10,
             }}>
               <LinkOutlined style={{ color: '#52c41a', fontSize: 12 }} />
               <span style={{ fontSize: 12, fontFamily: MONO, color: '#389e0d', flex: 1, userSelect: 'all' }}>{fullUrl}</span>
@@ -508,7 +508,7 @@ export default function LlmMock() {
                       : '输入 AI 回复文本...\n支持: ${request.model}  ${request.messages[-1].content}  ${timestamp}'}
                   />
                 ) : (
-                  <div style={{ padding: '14px', background: '#fafafa', borderRadius: 6, border: '1px solid #f0f0f0', fontSize: 12, color: '#8c8c8c' }}>
+                  <div style={{ padding: '14px', background: '#f9fafb', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', fontSize: 12, color: '#8c8c8c' }}>
                     Tool Calls 函数在右侧「高级设置」中配置
                   </div>
                 )}
@@ -537,7 +537,7 @@ export default function LlmMock() {
                   margin: 0, padding: 14, flex: 1, minHeight: 200, overflow: 'auto',
                   fontSize: 12, lineHeight: 1.6, fontFamily: MONO,
                   background: '#1e1e2e', color: '#cdd6f4',
-                  whiteSpace: 'pre-wrap', wordBreak: 'break-all', borderRadius: 6,
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-all', borderRadius: 10,
                 }}>
                   {previewJson}
                 </pre>
@@ -553,7 +553,7 @@ export default function LlmMock() {
   const renderLogsTab = () => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{
-        padding: '8px 16px', borderBottom: '1px solid #f0f0f0', flexShrink: 0,
+        padding: '8px 16px', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
         <span style={{ fontSize: 13, fontWeight: 500, color: '#262626' }}>共 {logsTotal} 条</span>
@@ -574,11 +574,11 @@ export default function LlmMock() {
       <div style={{ flex: 1, overflow: 'auto' }}>
         <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ background: '#fafafa', position: 'sticky', top: 0, zIndex: 1 }}>
+            <tr style={{ background: '#f9fafb', position: 'sticky', top: 0, zIndex: 1 }}>
               {['时间', '状态', '方法', '路径', '请求模型', '响应模型', 'Tokens', '耗时', ''].map((h, i) => (
                 <th key={h || 'op'} style={{
                   padding: '6px 10px', textAlign: i >= 6 ? 'right' : 'left',
-                  fontWeight: 500, fontSize: 11, color: '#8c8c8c', borderBottom: '1px solid #f0f0f0',
+                  fontWeight: 500, fontSize: 11, color: '#8c8c8c', borderBottom: '1px solid rgba(0,0,0,0.04)',
                   whiteSpace: 'nowrap',
                 }}>{h}</th>
               ))}
@@ -613,7 +613,7 @@ export default function LlmMock() {
               </tr>
               {expandedLogId === l.id && expandedLogDetail && (
                 <tr key={`${l.id}-detail`}>
-                  <td colSpan={9} style={{ padding: '10px 16px', background: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+                  <td colSpan={9} style={{ padding: '10px 16px', background: '#f9fafb', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                     <div style={{ display: 'flex', gap: 24, fontSize: 12 }}>
                       {expandedLogDetail.requestBody?.messages && (
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -621,7 +621,7 @@ export default function LlmMock() {
                           <div style={{ maxHeight: 120, overflow: 'auto' }}>
                             {expandedLogDetail.requestBody.messages.map((m, i) => (
                               <div key={i} style={{
-                                marginBottom: 2, padding: '3px 8px', borderRadius: 4, fontSize: 11,
+                                marginBottom: 2, padding: '3px 8px', borderRadius: 12, fontSize: 11,
                                 background: m.role === 'user' ? '#fff7e6' : m.role === 'system' ? '#f0f0f0' : '#f6ffed',
                                 overflow: 'hidden', textOverflow: 'ellipsis',
                               }}>
@@ -635,8 +635,8 @@ export default function LlmMock() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应内容</div>
                         <pre style={{
-                          maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 4,
-                          background: '#fff', border: '1px solid #f0f0f0', fontSize: 11, fontFamily: MONO,
+                          maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
+                          background: '#fff', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                           whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                         }}>
                           {(() => { try { return JSON.stringify(JSON.parse(expandedLogDetail.responseBody), null, 2) } catch { return expandedLogDetail.responseBody || '-' } })()}
@@ -665,11 +665,11 @@ export default function LlmMock() {
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', background: '#f0f2f5' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', background: '#f8f9fb' }}>
 
       {/* ━━━ 顶栏 ━━━ */}
       <div style={{
-        padding: '10px 20px', background: '#fff', borderBottom: '1px solid #e8e8e8',
+        padding: '10px 20px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.05)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -713,11 +713,11 @@ export default function LlmMock() {
 
         {/* 左栏：路由列表 */}
         <div style={{
-          width: 260, flexShrink: 0, background: '#fff', borderRight: '1px solid #e8e8e8',
+          width: 260, flexShrink: 0, background: '#fff', borderRight: '1px solid rgba(0,0,0,0.05)',
           display: 'flex', flexDirection: 'column',
         }}>
           <div style={{
-            padding: '10px 14px', borderBottom: '1px solid #f0f0f0',
+            padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.04)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}>
             <span style={{ fontWeight: 600, fontSize: 13, color: '#262626' }}>路由</span>
@@ -732,7 +732,7 @@ export default function LlmMock() {
               const mode = r.responseMode || 'default'
               return (
                 <div key={r.id} onClick={() => selectRoute(r)} style={{
-                  padding: '10px 12px', marginBottom: 4, borderRadius: 6, cursor: 'pointer',
+                  padding: '10px 12px', marginBottom: 4, borderRadius: 10, cursor: 'pointer',
                   background: sel ? '#e6f4ff' : 'transparent',
                   borderLeft: `3px solid ${sel ? '#1677ff' : r.enabled ? '#52c41a' : '#d9d9d9'}`,
                   transition: 'all .15s',
@@ -768,7 +768,7 @@ export default function LlmMock() {
 
         {/* 右栏：Tab(配置/日志) */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#fff' }}>
-          <div style={{ borderBottom: '1px solid #f0f0f0', paddingLeft: 16, flexShrink: 0 }}>
+          <div style={{ borderBottom: '1px solid rgba(0,0,0,0.04)', paddingLeft: 16, flexShrink: 0 }}>
             <div style={{ display: 'flex', gap: 0 }}>
               {[
                 { key: 'config', label: '路由配置' },

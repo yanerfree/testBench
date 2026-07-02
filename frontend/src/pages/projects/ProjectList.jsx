@@ -391,7 +391,7 @@ export default function ProjectList() {
             <Input prefix={<FolderOpenOutlined style={{ color: '#c9cdd4' }} />} placeholder="/workspace/repos/project-name（不填则不支持脚本同步）" />
           </Form.Item>
           {!editingProject && (
-            <div style={{ padding: '8px 12px', background: '#f6ffed', borderRadius: 8, fontSize: 12, color: '#00b96b' }}>
+            <div style={{ padding: '8px 12px', background: '#f6ffed', borderRadius: 12, fontSize: 12, color: '#00b96b' }}>
               创建后系统将自动生成默认分支配置（名称: default，分支: main）
             </div>
           )}

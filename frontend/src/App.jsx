@@ -152,20 +152,22 @@ function AppLayout() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      {/* 浅色顶栏 - Apifox 风格 */}
+      {/* 顶栏 */}
       <Header style={{
-        background: '#fff', height: 46, lineHeight: '46px', padding: '0 16px',
+        background: 'rgba(255,255,255,0.85)', height: 46, lineHeight: '46px', padding: '0 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        borderBottom: '1px solid #f0f0f3',
+        borderBottom: '1px solid rgba(0,0,0,0.04)',
+        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
-            width: 26, height: 26, borderRadius: 7,
-            background: '#00b96b',
+            width: 28, height: 28, borderRadius: 9,
+            background: 'linear-gradient(135deg, #00b96b, #00b96bcc)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#fff', fontWeight: 700, fontSize: 13,
+            boxShadow: '0 2px 8px rgba(0,185,107,0.25)',
           }}>T</div>
-          <span style={{ color: '#2e3138', fontSize: 14, fontWeight: 600 }}>{t('header.platformName')}</span>
+          <span style={{ color: '#2e3138', fontSize: 14, fontWeight: 600, letterSpacing: 0.5 }}>{t('header.platformName')}</span>
           {isProjectPage && projectName && (
             <>
               <span style={{ color: '#e0e0e3', margin: '0 4px' }}>/</span>
@@ -183,7 +185,7 @@ function AppLayout() {
           </Tooltip>
           <Dropdown menu={userMenu} placement="bottomRight">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <Avatar size={24} style={{ background: '#00b96b', fontSize: 11 }}>{displayName[0]}</Avatar>
+              <Avatar size={24} style={{ background: 'linear-gradient(135deg, #00b96b, #00b96bcc)', fontSize: 11 }}>{displayName[0]}</Avatar>
               <span style={{ color: '#8c919e', fontSize: 13 }}>{displayName}</span>
             </div>
           </Dropdown>
@@ -196,7 +198,7 @@ function AppLayout() {
           collapsedWidth={52}
           collapsed={collapsed}
           theme="light"
-          style={{ background: '#fff', borderRight: '1px solid #f0f0f3', display: 'flex', flexDirection: 'column' }}
+          style={{ background: 'rgba(255,255,255,0.75)', borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}
         >
           <div style={{ flex: 1, overflow: 'auto' }}>
             <Menu
@@ -204,10 +206,10 @@ function AppLayout() {
               selectedKeys={[location.pathname]}
               items={menuItems}
               onClick={({ key }) => navigate(key)}
-              style={{ border: 'none', fontSize: 13, paddingTop: 8 }}
+              style={{ border: 'none', fontSize: 13, paddingTop: 8, background: 'transparent' }}
             />
           </div>
-          <div style={{ padding: '8px 6px', borderTop: '1px solid #f0f0f3' }}>
+          <div style={{ padding: '8px 6px', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
             <Button
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
@@ -218,8 +220,7 @@ function AppLayout() {
           </div>
         </Sider>
 
-        {/* 内容区：紧凑间距 */}
-        <Content style={{ padding: '12px 16px', background: '#fafafa', overflow: 'auto', minHeight: 'calc(100vh - 46px)' }}>
+        <Content style={{ padding: '12px 16px', background: 'linear-gradient(160deg, #f0f9f4 0%, #f5f0ff 40%, #f0f5f8 70%, #faf8f5 100%)', overflow: 'auto', minHeight: 'calc(100vh - 46px)' }}>
           <Routes>
             <Route path="/" element={<Navigate to="/projects" replace />} />
             <Route path="/projects" element={<ProjectList />} />

@@ -225,7 +225,7 @@ export default function AuditLogs() {
               <div>
                 <div style={{ fontSize: 12, color: '#86909c', marginBottom: 6 }}>变更摘要</div>
                 <pre style={{
-                  margin: 0, padding: '12px 14px', background: '#fafafa', borderRadius: 6,
+                  margin: 0, padding: '12px 14px', background: '#f9fafb', borderRadius: 10,
                   fontSize: 12, lineHeight: 1.8, overflow: 'auto', maxHeight: 400,
                   whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                   fontFamily: "Menlo, Monaco, 'Courier New', monospace",

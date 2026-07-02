@@ -328,7 +328,7 @@ export default function ApiMock() {
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         {/* 路由头部 */}
         <div style={{
-          padding: '10px 16px', borderBottom: '1px solid #f0f0f0',
+          padding: '10px 16px', borderBottom: '1px solid rgba(0,0,0,0.04)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -364,7 +364,7 @@ export default function ApiMock() {
           {/* URL 栏 */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 0, marginBottom: 16,
-            border: '1px solid #d9d9d9', borderRadius: 6, overflow: 'hidden', background: '#fafafa',
+            border: '1px solid #d9d9d9', borderRadius: 10, overflow: 'hidden', background: '#f9fafb',
           }}>
             <Select
               value={routeForm.method}
@@ -541,7 +541,7 @@ export default function ApiMock() {
                   margin: 0, padding: 14, flex: 1, minHeight: 200, overflow: 'auto',
                   fontSize: 12, lineHeight: 1.6, fontFamily: MONO,
                   background: '#1e1e2e', color: '#cdd6f4',
-                  whiteSpace: 'pre-wrap', wordBreak: 'break-all', borderRadius: 6,
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-all', borderRadius: 10,
                 }}>
                   {formatBody(routeForm.responseBody, routeForm.contentType)}
                 </pre>
@@ -557,7 +557,7 @@ export default function ApiMock() {
   const renderLogsTab = () => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{
-        padding: '8px 16px', borderBottom: '1px solid #f0f0f0',
+        padding: '8px 16px', borderBottom: '1px solid rgba(0,0,0,0.04)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0,
       }}>
         <span style={{ fontSize: 13, fontWeight: 500, color: '#262626' }}>共 {logsTotal} 条</span>
@@ -578,11 +578,11 @@ export default function ApiMock() {
       <div style={{ flex: 1, overflow: 'auto' }}>
         <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ background: '#fafafa', position: 'sticky', top: 0, zIndex: 1 }}>
+            <tr style={{ background: '#f9fafb', position: 'sticky', top: 0, zIndex: 1 }}>
               {['时间', '状态', '方法', '路径', '类型', '耗时', ''].map((h, i) => (
                 <th key={h || 'op'} style={{
                   padding: '6px 10px', textAlign: i >= 5 ? 'right' : 'left',
-                  fontWeight: 500, fontSize: 11, color: '#8c8c8c', borderBottom: '1px solid #f0f0f0',
+                  fontWeight: 500, fontSize: 11, color: '#8c8c8c', borderBottom: '1px solid rgba(0,0,0,0.04)',
                   whiteSpace: 'nowrap',
                 }}>{h}</th>
               ))}
@@ -613,21 +613,21 @@ export default function ApiMock() {
                 </tr>
                 {expandedLogId === l.id && expandedLogDetail && (
                   <tr>
-                    <td colSpan={7} style={{ padding: '10px 16px', background: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+                    <td colSpan={7} style={{ padding: '10px 16px', background: '#f9fafb', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                       <div style={{ display: 'flex', gap: 24, fontSize: 12 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>请求体</div>
                           <pre style={{
-                            maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 4,
-                            background: '#fff', border: '1px solid #f0f0f0', fontSize: 11, fontFamily: MONO,
+                            maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
+                            background: '#fff', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                             whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                           }}>{expandedLogDetail.requestBody || '-'}</pre>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应体</div>
                           <pre style={{
-                            maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 4,
-                            background: '#fff', border: '1px solid #f0f0f0', fontSize: 11, fontFamily: MONO,
+                            maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
+                            background: '#fff', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                             whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                           }}>{formatBody(expandedLogDetail.responseBody, expandedLogDetail.contentType)}</pre>
                         </div>
@@ -658,11 +658,11 @@ export default function ApiMock() {
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', background: '#f0f2f5' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', background: '#f8f9fb' }}>
 
       {/* ━━━ 顶栏 ━━━ */}
       <div style={{
-        padding: '10px 20px', background: '#fff', borderBottom: '1px solid #e8e8e8',
+        padding: '10px 20px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.05)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -711,11 +711,11 @@ export default function ApiMock() {
 
         {/* ── 左栏：路由列表 ── */}
         <div style={{
-          width: 260, flexShrink: 0, background: '#fff', borderRight: '1px solid #e8e8e8',
+          width: 260, flexShrink: 0, background: '#fff', borderRight: '1px solid rgba(0,0,0,0.05)',
           display: 'flex', flexDirection: 'column',
         }}>
           <div style={{
-            padding: '10px 14px', borderBottom: '1px solid #f0f0f0',
+            padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.04)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}>
             <span style={{ fontWeight: 600, fontSize: 13, color: '#262626' }}>路由</span>
@@ -729,7 +729,7 @@ export default function ApiMock() {
               const isDef = r.id === defaultRouteId
               return (
                 <div key={r.id} onClick={() => selectRoute(r)} style={{
-                  padding: '10px 12px', marginBottom: 4, borderRadius: 6, cursor: 'pointer',
+                  padding: '10px 12px', marginBottom: 4, borderRadius: 10, cursor: 'pointer',
                   background: sel ? '#f9f0ff' : 'transparent',
                   borderLeft: `3px solid ${sel ? '#722ed1' : r.enabled ? '#52c41a' : '#d9d9d9'}`,
                   transition: 'all .15s',
@@ -770,7 +770,7 @@ export default function ApiMock() {
 
         {/* ── 右栏：Tab 切换（路由配置 / 请求日志） ── */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#fff' }}>
-          <div style={{ borderBottom: '1px solid #f0f0f0', paddingLeft: 16, flexShrink: 0 }}>
+          <div style={{ borderBottom: '1px solid rgba(0,0,0,0.04)', paddingLeft: 16, flexShrink: 0 }}>
             <div style={{ display: 'flex', gap: 0 }}>
               {[
                 { key: 'config', label: '路由配置' },

@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import {
-  Button, Card, Tag, Space, Typography, Modal, Form, Input, Select, Tabs,
-  message, Popconfirm, Spin, Tree, Empty, Tooltip,
+  Button, Tag, Space, Typography, Modal, Form, Input, Select, Tabs,
+  message, Popconfirm, Spin, Tree, Tooltip,
 } from 'antd'
 import {
   PlusOutlined, ThunderboltOutlined, DeleteOutlined, RobotOutlined,
   LoadingOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  PlayCircleOutlined, FolderOutlined, CaretRightOutlined, SendOutlined,
+  PlayCircleOutlined, FileTextOutlined, CaretRightOutlined, SendOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 
@@ -101,7 +101,7 @@ export default function ApiTest() {
     } finally { setRunning(false) }
   }
 
-  // 构建目录树：按标题前缀（"-"前的部分）自动分组成文件夹
+  // 构建目录树：文件夹 + 场景叶子节点（带编号图标）
   const buildTreeData = () => {
     const groups = {}
     for (const s of scenarios) {
@@ -113,10 +113,12 @@ export default function ApiTest() {
     return Object.entries(groups).map(([folder, items]) => ({
       key: `folder-${folder}`,
       title: `${folder} (${items.length})`,
+      selectable: false,
       children: items.map(s => ({
         key: s.id,
-        title: s.title.slice(folder.length + 1) || s.title,
+        title: `${s.code}-${s.title.slice(folder.length + 1) || s.title}`,
         isLeaf: true,
+        icon: <FileTextOutlined style={{ color: '#8c8c8c' }} />,
         scenario: s,
       })),
     }))
@@ -125,57 +127,59 @@ export default function ApiTest() {
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
-      {/* 左栏：目录树 — 和用例管理一致 */}
-      <Card
-        style={{ width: 220, flexShrink: 0, overflow: 'auto', borderRadius: 0, borderRight: '1px solid #f0f0f0', borderTop: 0, borderBottom: 0, borderLeft: 0 }}
-        styles={{ body: { padding: '8px 4px' }, header: { padding: '0 12px', minHeight: 36, borderBottom: '1px solid #f2f3f5' } }}
-        title={<span style={{ fontSize: 13, fontWeight: 600 }}>测试场景</span>}
-        extra={<Button type="text" size="small" icon={<PlusOutlined />} onClick={() => { setGenOpen(true); form.resetFields() }} style={{ color: '#00b96b' }} />}
-      >
-        {loading ? <Spin style={{ display: 'block', margin: '40px auto' }} /> :
-          treeData.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 20, color: '#86909c', fontSize: 12 }}>暂无场景</div>
-          ) : (
-            <Tree
-              treeData={treeData}
-              defaultExpandAll
-              blockNode
-              style={{ fontSize: 13 }}
-              selectedKeys={selectedScenario ? [selectedScenario.id] : []}
-              onSelect={(keys, { node }) => {
-                if (node.isLeaf && node.scenario) loadScenario(node.scenario.id)
-              }}
-              titleRender={(node) => (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                  <span>{node.title}</span>
-                  {node.isLeaf && node.scenario && (
-                    <Popconfirm
-                      title="确定删除此场景？"
-                      onConfirm={async (e) => {
-                        e?.stopPropagation()
-                        handleDelete(node.scenario.id)
-                      }}
-                      onCancel={e => e?.stopPropagation()}
-                    >
-                      <Button type="text" size="small" icon={<DeleteOutlined />}
-                        onClick={e => e.stopPropagation()}
-                        style={{ color: '#c9cdd4', opacity: 0.5, fontSize: 11 }}
-                        onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                        onMouseLeave={e => e.currentTarget.style.opacity = 0.5} />
-                    </Popconfirm>
-                  )}
-                </div>
-              )}
-            />
-          )
-        }
-      </Card>
+      {/* 左栏：目录树 */}
+      <div style={{ width: 250, flexShrink: 0, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ padding: '8px 12px', borderBottom: '1px solid #f2f3f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>测试场景</span>
+          <Space size={4}>
+            <Tooltip title="搜索"><Button type="text" size="small" icon={<ThunderboltOutlined />} style={{ color: '#8c8c8c' }} /></Tooltip>
+            <Tooltip title="生成测试"><Button type="text" size="small" icon={<PlusOutlined />} onClick={() => { setGenOpen(true); form.resetFields() }} style={{ color: '#00b96b' }} /></Tooltip>
+          </Space>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
+          {loading ? <Spin style={{ display: 'block', margin: '40px auto' }} /> :
+            treeData.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 20, color: '#86909c', fontSize: 12 }}>暂无场景</div>
+            ) : (
+              <Tree
+                treeData={treeData}
+                defaultExpandAll
+                showIcon
+                blockNode
+                style={{ fontSize: 12 }}
+                selectedKeys={selectedScenario ? [selectedScenario.id] : []}
+                onSelect={(keys, { node }) => {
+                  if (node.isLeaf && node.scenario) loadScenario(node.scenario.id)
+                }}
+                titleRender={(node) => (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', overflow: 'hidden' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{node.title}</span>
+                    {node.isLeaf && node.scenario && (
+                      <Popconfirm
+                        title="确定删除？"
+                        onConfirm={async (e) => { e?.stopPropagation(); handleDelete(node.scenario.id) }}
+                        onCancel={e => e?.stopPropagation()}
+                      >
+                        <Button type="text" size="small" icon={<DeleteOutlined />}
+                          onClick={e => e.stopPropagation()}
+                          style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }}
+                          className="tree-delete-btn" />
+                      </Popconfirm>
+                    )}
+                  </div>
+                )}
+              />
+            )
+          }
+        </div>
+        <style>{`.ant-tree-treenode:hover .tree-delete-btn { opacity: 0.6 !important; } .ant-tree-treenode:hover .tree-delete-btn:hover { opacity: 1 !important; }`}</style>
+      </div>
 
       {/* 中栏：步骤列表 */}
       <div style={{ width: 260, minWidth: 260, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
         {selectedScenario ? (
           <>
-            <div style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0', background: '#fff' }}>
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', background: '#fff' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedScenario.code}</span>
                 <Space size={4}>
@@ -216,7 +220,7 @@ export default function ApiTest() {
                     >
                       {step.lastStatus === 'pass' ? <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 12 }} /> :
                        step.lastStatus === 'fail' ? <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 12 }} /> :
-                       <span style={{ width: 12, height: 12, borderRadius: 6, border: '1.5px solid #d9d9d9', display: 'inline-block', flexShrink: 0 }} />}
+                       <span style={{ width: 12, height: 12, borderRadius: 10, border: '1.5px solid #d9d9d9', display: 'inline-block', flexShrink: 0 }} />}
                       <Tag color={METHOD_COLORS[step.method]} style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '18px' }}>
                         {step.method}
                       </Tag>
@@ -243,11 +247,11 @@ export default function ApiTest() {
       </div>
 
       {/* 右栏：请求编辑器 */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fafafa' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f9fafb' }}>
         {selectedStep ? (
           <>
             {/* 顶部：步骤名 + 运行按钮 */}
-            <div style={{ padding: '10px 20px', background: '#fff', borderBottom: '1px solid #e8e8e8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '10px 20px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 600, fontSize: 14 }}>{selectedStep.name}</span>
               <Button
                 type="primary"
@@ -261,8 +265,8 @@ export default function ApiTest() {
             </div>
 
             {/* URL 栏 */}
-            <div style={{ padding: '10px 20px', background: '#fff', borderBottom: '1px solid #e8e8e8', display: 'flex', gap: 8, alignItems: 'center' }}>
-              <div style={{ background: METHOD_COLORS[selectedStep.method], color: '#fff', padding: '4px 12px', borderRadius: 4, fontWeight: 600, fontSize: 12, minWidth: 56, textAlign: 'center' }}>
+            <div style={{ padding: '10px 20px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ background: METHOD_COLORS[selectedStep.method], color: '#fff', padding: '4px 12px', borderRadius: 12, fontWeight: 600, fontSize: 12, minWidth: 56, textAlign: 'center' }}>
                 {selectedStep.method}
               </div>
               <Input
@@ -285,8 +289,8 @@ export default function ApiTest() {
                     key: 'body',
                     label: <span>Body {selectedStep.body && <span style={{ color: '#52c41a' }}>●</span>}</span>,
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
-                        <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid #e8e8e8', fontSize: 11, color: '#8c8c8c' }}>
+                      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                        <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.05)', fontSize: 11, color: '#8c8c8c' }}>
                           JSON
                         </div>
                         <pre style={{
@@ -302,19 +306,19 @@ export default function ApiTest() {
                     key: 'headers',
                     label: <span>Headers {selectedStep.headers && Object.keys(selectedStep.headers).length > 0 && <Tag style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{Object.keys(selectedStep.headers).length}</Tag>}</span>,
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
+                      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>Key</th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>Value</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>Key</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>Value</th>
                             </tr>
                           </thead>
                           <tbody>
                             {selectedStep.headers && Object.entries(selectedStep.headers).map(([k, v]) => (
                               <tr key={k}>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontWeight: 500, color: '#333' }}>{k}</td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontFamily: 'monospace', color: '#595959', wordBreak: 'break-all' }}>{v}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontWeight: 500, color: '#333' }}>{k}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontFamily: 'monospace', color: '#595959', wordBreak: 'break-all' }}>{v}</td>
                               </tr>
                             ))}
                             {(!selectedStep.headers || Object.keys(selectedStep.headers).length === 0) && (
@@ -329,25 +333,25 @@ export default function ApiTest() {
                     key: 'assertions',
                     label: <span>断言 {selectedStep.assertions?.length > 0 && <Tag color="green" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{selectedStep.assertions.length}</Tag>}</span>,
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
+                      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8', width: 30 }}></th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>类型</th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>字段</th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>操作</th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>期望值</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.05)', width: 30 }}></th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>类型</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>字段</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>操作</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>期望值</th>
                             </tr>
                           </thead>
                           <tbody>
                             {(selectedStep.assertions || []).map((a, j) => (
                               <tr key={j}>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0' }}><CheckCircleOutlined style={{ color: '#52c41a' }} /></td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontWeight: 500 }}>{a.type}</td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontFamily: 'monospace', color: '#595959' }}>{a.field || '-'}</td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', color: '#1677ff' }}>{a.operator}</td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0' }}>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}><CheckCircleOutlined style={{ color: '#52c41a' }} /></td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontWeight: 500 }}>{a.type}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontFamily: 'monospace', color: '#595959' }}>{a.field || '-'}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', color: '#1677ff' }}>{a.operator}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                                   <code style={{ background: '#f0f5ff', padding: '2px 8px', borderRadius: 3, color: '#1d39c4' }}>{JSON.stringify(a.value)}</code>
                                 </td>
                               </tr>
@@ -364,7 +368,7 @@ export default function ApiTest() {
                     key: 'variables',
                     label: '变量提取',
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', padding: 16 }}>
+                      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', padding: 16 }}>
                         {selectedStep.variablesExtract && Object.keys(selectedStep.variablesExtract).length > 0 ? (
                           Object.entries(selectedStep.variablesExtract).map(([k, v]) => (
                             <div key={k} style={{ padding: '4px 0', fontSize: 13 }}>
@@ -381,13 +385,13 @@ export default function ApiTest() {
                     key: 'response',
                     label: <span>响应 {runResponse && <span style={{ color: runResponse.error ? '#ff4d4f' : '#52c41a' }}>●</span>}</span>,
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
+                      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         {runResponse ? (
                           runResponse.error ? (
                             <div style={{ padding: 16, color: '#ff4d4f' }}>{runResponse.error}</div>
                           ) : (
                             <>
-                              <div style={{ padding: '8px 12px', background: '#f6f7f9', borderBottom: '1px solid #e8e8e8', display: 'flex', gap: 12, fontSize: 12 }}>
+                              <div style={{ padding: '8px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 12, fontSize: 12 }}>
                                 <Tag color={runResponse.statusCode < 400 ? 'success' : 'error'}>{runResponse.statusCode}</Tag>
                                 <span style={{ color: '#8c8c8c' }}>{runResponse.duration}ms</span>
                               </div>
@@ -444,7 +448,7 @@ export default function ApiTest() {
               <LoadingOutlined style={{ fontSize: 24 }} />
               <div style={{ marginTop: 8, fontWeight: 500 }}>正在生成...</div>
             </div>
-            <div style={{ padding: '8px 12px', background: '#f6f7f9', borderRadius: 6, maxHeight: 200, overflow: 'auto' }}>
+            <div style={{ padding: '8px 12px', background: '#f6f7f9', borderRadius: 10, maxHeight: 200, overflow: 'auto' }}>
               {genProgress.map((p, i) => <div key={i} style={{ fontSize: 12, color: '#595959', padding: '2px 0' }}>{p}</div>)}
             </div>
           </div>

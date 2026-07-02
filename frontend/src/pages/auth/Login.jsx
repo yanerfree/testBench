@@ -35,25 +35,26 @@ export default function Login() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #f0f9f4 0%, #e8f5e9 50%, #f0f9f4 100%)',
+      background: 'linear-gradient(160deg, #e8f5e9 0%, #f0ecfb 40%, #edf5f0 70%, #fff3e0 100%)',
     }}>
       <div style={{
         width: 380,
         padding: '40px 36px 32px',
-        background: '#fff',
-        borderRadius: 16,
-        boxShadow: '0 4px 24px rgba(0, 185, 107, 0.08)',
+        background: 'rgba(255,255,255,0.75)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderRadius: 20,
+        boxShadow: '0 8px 40px rgba(0, 185, 107, 0.08)',
       }}>
-        {/* Logo + 标题 */}
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <div style={{
-            width: 48, height: 48, borderRadius: 14,
-            background: '#00b96b',
+            width: 48, height: 48, borderRadius: 16,
+            background: 'linear-gradient(135deg, #00b96b, #00b96bcc)',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             color: '#fff', fontWeight: 700, fontSize: 22, marginBottom: 16,
+            boxShadow: '0 4px 16px rgba(0,185,107,0.25)',
           }}>T</div>
-          <div style={{ fontSize: 20, fontWeight: 600, color: '#1d2129' }}>{t('login.title')}</div>
-          <div style={{ fontSize: 13, color: '#86909c', marginTop: 6 }}>{t('login.subtitle')}</div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: '#1d2129', letterSpacing: 1 }}>{t('login.title')}</div>
+          <div style={{ fontSize: 13, color: '#86909c', marginTop: 6, letterSpacing: 0.5 }}>{t('login.subtitle')}</div>
         </div>
 
         <Form onFinish={onFinish} size="large" autoComplete="off">

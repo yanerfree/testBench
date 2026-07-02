@@ -112,7 +112,7 @@ function VarInsertBtn({ envVars, onInsert }) {
           <div style={{ fontSize: 11, color: '#86909c', padding: '4px 8px 6px', fontWeight: 600 }}>点击插入变量</div>
           {envVars.map(v => (
             <div key={v.key} onClick={() => onInsert(`{{${v.key}}}`)}
-              style={{ padding: '6px 10px', cursor: 'pointer', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              style={{ padding: '6px 10px', cursor: 'pointer', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               onMouseEnter={e => e.currentTarget.style.background = '#f0f5ff'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#fa8c16', fontWeight: 600 }}>{`{{${v.key}}}`}</span>
@@ -230,7 +230,7 @@ function ResponsePanel({ response, onUseAsBody }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', marginBottom: 8, borderBottom: '1px solid #e5e6e8' }}>
-        <span style={{ fontWeight: 700, fontSize: 14, color: statusColor, background: statusColor + '10', padding: '2px 8px', borderRadius: 4 }}>{sc} {r.statusText || ''}</span>
+        <span style={{ fontWeight: 700, fontSize: 14, color: statusColor, background: statusColor + '10', padding: '2px 8px', borderRadius: 12 }}>{sc} {r.statusText || ''}</span>
         <span style={{ fontSize: 11, color: durationColor, fontWeight: 600 }}>{durationMs} ms</span>
         <span style={{ fontSize: 11, color: '#666' }}>{sizeStr}</span>
         <div style={{ flex: 1 }} />
@@ -241,7 +241,7 @@ function ResponsePanel({ response, onUseAsBody }) {
         ))}
       </div>
       {sc === 0 && (
-        <div style={{ marginBottom: 8, padding: '8px 12px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 6, fontSize: 12, color: '#cf1322' }}>
+        <div style={{ marginBottom: 8, padding: '8px 12px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 10, fontSize: 12, color: '#cf1322' }}>
           请求失败，请检查：URL 是否正确、服务是否在运行、环境变量是否配置（如 <code style={{ background: '#fff', padding: '0 4px', borderRadius: 3 }}>{'{{BASE_URL}}'}</code>）
         </div>
       )}
@@ -259,11 +259,11 @@ function ResponsePanel({ response, onUseAsBody }) {
               {isJson && onUseAsBody && <Tooltip title="填入请求 Body"><Button size="small" icon={<SwapOutlined />} onClick={() => onUseAsBody(prettyBody)}>用作 Body</Button></Tooltip>}
             </Space>
           </div>
-          <pre style={{ margin: 0, padding: 12, background: '#f0f1f3', border: '1px solid #e0e0e0', borderRadius: 6, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', cursor: isJson ? 'text' : 'default' }}>{displayBody}</pre>
+          <pre style={{ margin: 0, padding: 12, background: '#f5f6f8', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 10, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', cursor: isJson ? 'text' : 'default' }}>{displayBody}</pre>
         </div>
       )}
       {viewTab === 'headers' && respHeaders.map((h, i) => (
-        <div key={i} style={{ display: 'flex', gap: 8, padding: '5px 8px', borderBottom: '1px solid #f0f0f0', fontSize: 11, borderRadius: 4, cursor: 'pointer' }}
+        <div key={i} style={{ display: 'flex', gap: 8, padding: '5px 8px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 11, borderRadius: 12, cursor: 'pointer' }}
           onClick={() => copyToClipboard(`${h.key}: ${h.value}`).then(() => message.success('已复制'))}
           onMouseEnter={e => e.currentTarget.style.background = '#f5f7fa'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -543,7 +543,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
       if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (dirty) { onSave(data); setDirty(false); onDirtyChange?.(false) } }
     }}>
       {/* Name + Save */}
-      <div style={{ padding: '8px 16px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #f0f0f0' }}>
+      <div style={{ padding: '8px 16px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
         <Input variant="borderless" value={data.name || ''} onChange={e => up('name', e.target.value)}
           placeholder="输入接口名称" style={{ fontSize: 14, fontWeight: 600, color: '#1d2129', flex: 1, padding: '2px 4px' }} />
         <Button size="small" type={dirty ? 'primary' : 'default'} disabled={!dirty} onClick={() => { onSave(data); setDirty(false); onDirtyChange?.(false) }}
@@ -593,7 +593,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #e5e6e8', background: '#fafafa', flexShrink: 0, paddingLeft: 8, overflowX: 'auto' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid #e5e6e8', background: '#f9fafb', flexShrink: 0, paddingLeft: 8, overflowX: 'auto' }}>
         {tabs.map(t => (
           <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
             padding: '8px 14px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
@@ -628,7 +628,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
         )}
         {activeTab === 'body' && (
           <div>
-            {isGet && <div style={{ marginBottom: 8, padding: '4px 10px', background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 4, fontSize: 11, color: '#ad8b00' }}>GET 请求通常不携带 Body，如需要请切换 Method</div>}
+            {isGet && <div style={{ marginBottom: 8, padding: '4px 10px', background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 12, fontSize: 11, color: '#ad8b00' }}>GET 请求通常不携带 Body，如需要请切换 Method</div>}
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
               <Select size="small" value={data.bodyType || 'json'} onChange={v => up('bodyType', v)} style={{ width: 140 }}
                 options={[{ value: 'json', label: 'JSON' }, { value: 'form', label: 'x-www-form-urlencoded' }, { value: 'form-data', label: 'form-data' }, { value: 'raw', label: 'Raw' }, { value: 'none', label: '无 Body' }]} />
@@ -641,7 +641,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
                         <div style={{ fontSize: 11, color: '#86909c', padding: '4px 8px 6px', fontWeight: 600 }}>点击插入 Body 模板</div>
                         {bodySnippets.map(s => (
                           <div key={s.key} onClick={() => { up('body', s.code); up('bodyType', 'json') }}
-                            style={{ padding: '6px 10px', cursor: 'pointer', borderRadius: 4, marginBottom: 2 }}
+                            style={{ padding: '6px 10px', cursor: 'pointer', borderRadius: 12, marginBottom: 2 }}
                             onMouseEnter={e => e.currentTarget.style.background = '#f0f5ff'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                             <div style={{ fontSize: 12, fontWeight: 600, color: '#1d2129', marginBottom: 2 }}>{s.label}</div>
@@ -661,7 +661,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
             {((data.bodyType || 'json') === 'json' || data.bodyType === 'raw') && (
               <>
                 <Input.TextArea ref={bodyRef} value={data.body || ''} onChange={e => up('body', e.target.value)} placeholder='{"key": "value"}' autoSize={{ minRows: 6, maxRows: 18 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
-                {jsonError && <div style={{ marginTop: 4, fontSize: 11, color: '#ff4d4f', padding: '2px 8px', background: '#fff2f0', borderRadius: 4 }}>JSON 语法错误: {jsonError}</div>}
+                {jsonError && <div style={{ marginTop: 4, fontSize: 11, color: '#ff4d4f', padding: '2px 8px', background: '#fff2f0', borderRadius: 12 }}>JSON 语法错误: {jsonError}</div>}
               </>
             )}
             {data.bodyType === 'form' && <KvEditor items={data.formParams || []} onChange={v => up('formParams', v)} keyPh="字段名" valPh="字段值" />}
@@ -693,7 +693,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
           <div style={{ flex: 1 }} />
           <Tooltip title="复制代码"><Button size="small" icon={<CopyOutlined />} onClick={() => copyToClipboard(generatedCode).then(() => message.success('代码已复制'))}>复制</Button></Tooltip>
         </div>
-        <pre style={{ margin: 0, padding: 16, background: '#1e1e1e', color: '#d4d4d4', borderRadius: 8, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, maxHeight: 400, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{generatedCode}</pre>
+        <pre style={{ margin: 0, padding: 16, background: '#1e1e1e', color: '#d4d4d4', borderRadius: 12, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, maxHeight: 400, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{generatedCode}</pre>
       </Modal>
     </div>
   )
@@ -894,11 +894,11 @@ export default function ApiManagement() {
   if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
 
   return (
-    <div style={{ display: 'flex', border: '1px solid #e0e0e0', borderRadius: 8, overflow: 'hidden', height: 'calc(100vh - 80px)', background: '#fff' }}>
+    <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden', height: 'calc(100vh - 80px)', background: '#fff' }}>
       {/* 左侧：接口树 */}
-      <div style={{ width: 300, borderRight: '1px solid #e0e0e0', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div style={{ width: 300, borderRight: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         {/* 工具栏 */}
-        <div style={{ padding: '8px 10px', borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: 6, background: '#f0f1f3' }}>
+        <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 6, background: '#f5f6f8' }}>
           <Input size="small" prefix={<SearchOutlined style={{ color: '#999' }} />} placeholder="搜索接口..."
             value={search} onChange={e => setSearch(e.target.value)} allowClear style={{ flex: 1, fontSize: 11 }} />
           <Dropdown menu={{ items: [
@@ -912,7 +912,7 @@ export default function ApiManagement() {
         </div>
 
         {/* 全局环境选择器 */}
-        <div style={{ padding: '6px 10px', borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: 6, background: '#fafafa' }}>
+        <div style={{ padding: '6px 10px', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 6, background: '#f9fafb' }}>
           <GlobalOutlined style={{ fontSize: 12, color: '#52c41a' }} />
           <Select size="small" value={runEnv || '__none__'} onChange={v => handleEnvChange(v === '__none__' ? null : v)}
             style={{ flex: 1 }} popupMatchSelectWidth={false}
@@ -921,7 +921,7 @@ export default function ApiManagement() {
             <Popover trigger="click" placement="rightTop" arrow={false}
               content={
                 <div style={{ width: 360 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#1d2129', padding: '4px 0 8px', borderBottom: '1px solid #f0f0f0', marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#1d2129', padding: '4px 0 8px', borderBottom: '1px solid rgba(0,0,0,0.04)', marginBottom: 8 }}>
                     环境变量 — {environments.find(e => e.id === runEnv)?.name || ''}
                   </div>
                   {envVars.map((v, i) => (
@@ -972,7 +972,7 @@ export default function ApiManagement() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* 多标签栏 */}
         {openTabs.length > 0 && (
-          <div style={{ display: 'flex', borderBottom: '1px solid #e0e0e0', background: '#fafafa', overflowX: 'auto', flexShrink: 0 }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,0,0,0.05)', background: '#f9fafb', overflowX: 'auto', flexShrink: 0 }}>
             {openTabs.map(tid => {
               const tn = nodes.find(n => n.id === tid)
               if (!tn) return null
@@ -1042,7 +1042,7 @@ export default function ApiManagement() {
       {/* 右键菜单 */}
       {ctxMenu && (
         <div style={{ position: 'fixed', left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000 }} onClick={() => setCtxMenu(null)}>
-          <div style={{ background: '#fff', borderRadius: 8, boxShadow: '0 6px 16px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 160 }}>
+          <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 6px 16px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 160 }}>
             {ctxMenu.items.map((item, i) => item.type === 'divider'
               ? <div key={i} style={{ height: 1, background: '#e0e0e0', margin: '4px 0' }} />
               : <div key={item.key} onClick={item.onClick} style={{

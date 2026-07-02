@@ -292,7 +292,7 @@ const COMMON_VARS = [
 
 function CommonVarHint() {
   return (
-    <div style={{ marginTop: 16, padding: '12px 16px', background: '#fafafa', borderRadius: 8, border: '1px solid #f2f3f5' }}>
+    <div style={{ marginTop: 16, padding: '12px 16px', background: '#f9fafb', borderRadius: 12, border: '1px solid #f2f3f5' }}>
       <div style={{ fontSize: 12, fontWeight: 600, color: '#86909c', marginBottom: 8 }}>常用变量参考</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {COMMON_VARS.map(v => (

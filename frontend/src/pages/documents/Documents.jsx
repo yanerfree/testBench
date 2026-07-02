@@ -262,7 +262,7 @@ export default function Documents() {
           <div>
             <div style={{ marginBottom: 16, fontSize: 13, color: '#52c41a' }}>任务已保存</div>
             {taskResult.instructions?.map((step, i) => <div key={i} style={{ fontSize: 13, lineHeight: 2 }}>{step}</div>)}
-            <div style={{ margin: '16px 0', padding: '12px 16px', background: '#1e1e1e', borderRadius: 8 }}>
+            <div style={{ margin: '16px 0', padding: '12px 16px', background: '#1e1e1e', borderRadius: 12 }}>
               <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>复制到 Claude Code：</div>
               <div style={{ color: '#d4d4d4', fontFamily: 'monospace', fontSize: 13 }}>{taskResult.command}</div>
             </div>
@@ -278,7 +278,7 @@ export default function Documents() {
               <div style={{ marginTop: 8, fontWeight: 500 }}>正在生成文档...</div>
             </div>
             {platProgress.length > 0 && (
-              <div style={{ padding: '8px 12px', background: '#f6f7f9', borderRadius: 6, maxHeight: 150, overflow: 'auto', marginBottom: 12 }}>
+              <div style={{ padding: '8px 12px', background: '#f6f7f9', borderRadius: 10, maxHeight: 150, overflow: 'auto', marginBottom: 12 }}>
                 {platProgress.map((p, i) => <div key={i} style={{ fontSize: 12, color: '#595959', padding: '2px 0' }}>{p}</div>)}
               </div>
             )}
@@ -447,8 +447,8 @@ function DocPreviewWithToc({ content }) {
     <div style={{ display: 'flex', gap: 0, height: '100%', margin: '-24px', overflow: 'hidden' }}>
       {headings.length > 0 && (
         <div className="doc-toc" style={{
-          width: 220, minWidth: 220, borderRight: '1px solid #e8e8e8',
-          padding: '16px 0', overflowY: 'auto', fontSize: 13, background: '#fafafa',
+          width: 220, minWidth: 220, borderRight: '1px solid rgba(0,0,0,0.05)',
+          padding: '16px 0', overflowY: 'auto', fontSize: 13, background: '#f9fafb',
         }}>
           <div style={{ padding: '0 16px 8px', fontWeight: 600, fontSize: 12, color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             目录

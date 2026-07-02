@@ -108,11 +108,11 @@ export default function McpMock() {
   const mcpUrl = `http://${window.location.hostname}:8000/mcp/`
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', background: '#f0f2f5' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', background: '#f8f9fb' }}>
 
       {/* ━━━ 顶栏 ━━━ */}
       <div style={{
-        padding: '10px 20px', background: '#fff', borderBottom: '1px solid #e8e8e8',
+        padding: '10px 20px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.05)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -145,7 +145,7 @@ export default function McpMock() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#fff' }}>
 
         {/* Tab 栏 */}
-        <div style={{ borderBottom: '1px solid #f0f0f0', paddingLeft: 16, flexShrink: 0 }}>
+        <div style={{ borderBottom: '1px solid rgba(0,0,0,0.04)', paddingLeft: 16, flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: 0 }}>
             {[
               { key: 'config', label: `工具配置 (${tools.length})` },
@@ -173,11 +173,11 @@ export default function McpMock() {
             <div style={{ height: '100%', overflow: 'auto' }}>
               <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ background: '#fafafa', position: 'sticky', top: 0, zIndex: 1 }}>
+                  <tr style={{ background: '#f9fafb', position: 'sticky', top: 0, zIndex: 1 }}>
                     {['工具名称', '说明', '响应模式', ''].map((h, i) => (
                       <th key={h || 'op'} style={{
                         padding: '8px 16px', textAlign: 'left',
-                        fontWeight: 500, fontSize: 12, color: '#8c8c8c', borderBottom: '1px solid #f0f0f0',
+                        fontWeight: 500, fontSize: 12, color: '#8c8c8c', borderBottom: '1px solid rgba(0,0,0,0.04)',
                       }}>{h}</th>
                     ))}
                   </tr>
@@ -214,7 +214,7 @@ export default function McpMock() {
             /* ─── 调用日志 Tab ─── */
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
               <div style={{
-                padding: '8px 16px', borderBottom: '1px solid #f0f0f0', flexShrink: 0,
+                padding: '8px 16px', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0,
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               }}>
                 <span style={{ fontSize: 13, fontWeight: 500, color: '#262626' }}>共 {logsTotal} 条</span>
@@ -229,11 +229,11 @@ export default function McpMock() {
               <div style={{ flex: 1, overflow: 'auto' }}>
                 <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ background: '#fafafa', position: 'sticky', top: 0, zIndex: 1 }}>
+                    <tr style={{ background: '#f9fafb', position: 'sticky', top: 0, zIndex: 1 }}>
                       {['时间', '工具', '来源', '模式', '状态', '耗时', ''].map((h, i) => (
                         <th key={h || 'op'} style={{
                           padding: '6px 10px', textAlign: i >= 5 ? 'right' : 'left',
-                          fontWeight: 500, fontSize: 11, color: '#8c8c8c', borderBottom: '1px solid #f0f0f0',
+                          fontWeight: 500, fontSize: 11, color: '#8c8c8c', borderBottom: '1px solid rgba(0,0,0,0.04)',
                           whiteSpace: 'nowrap',
                         }}>{h}</th>
                       ))}
@@ -267,21 +267,21 @@ export default function McpMock() {
                         </tr>
                         {expandedLogId === l.id && (
                           <tr>
-                            <td colSpan={7} style={{ padding: '10px 16px', background: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+                            <td colSpan={7} style={{ padding: '10px 16px', background: '#f9fafb', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                               <div style={{ display: 'flex', gap: 24, fontSize: 12 }}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>请求参数</div>
                                   <pre style={{
-                                    maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 4,
-                                    background: '#fff', border: '1px solid #f0f0f0', fontSize: 11, fontFamily: MONO,
+                                    maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
+                                    background: '#fff', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                                     whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                                   }}>{JSON.stringify(l.arguments, null, 2)}</pre>
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应结果</div>
                                   <pre style={{
-                                    maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 4,
-                                    background: '#fff', border: '1px solid #f0f0f0', fontSize: 11, fontFamily: MONO,
+                                    maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
+                                    background: '#fff', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                                     whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                                   }}>{(() => { try { return JSON.stringify(JSON.parse(l.response), null, 2) } catch { return l.response } })()}</pre>
                                 </div>
@@ -354,7 +354,7 @@ export default function McpMock() {
               {callResult.source && <Tag color={callResult.source === 'mock' ? 'orange' : 'green'}>{callResult.source === 'mock' ? 'Mock' : '真实'}</Tag>}
             </Space>
             <pre style={{
-              background: '#1e1e2e', color: '#cdd6f4', padding: 16, borderRadius: 8,
+              background: '#1e1e2e', color: '#cdd6f4', padding: 16, borderRadius: 12,
               overflow: 'auto', fontSize: 12, lineHeight: 1.6, maxHeight: 'calc(100vh - 350px)',
               fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
             }}>{JSON.stringify(callResult.data || callResult.error || callResult, null, 2)}</pre>

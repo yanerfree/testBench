@@ -35,7 +35,7 @@ function InlineProp({ icon, value, color, bg, children }) {
       arrow={false} styles={{ body: { padding: 8 } }}>
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px 2px 6px',
-        borderRadius: 6, fontSize: 12, cursor: 'pointer', transition: 'all 0.15s',
+        borderRadius: 10, fontSize: 12, cursor: 'pointer', transition: 'all 0.15s',
         background: bg || '#f7f8fa', color: color || '#4e5969', border: '1px solid transparent',
         userSelect: 'none', lineHeight: '22px',
       }}
@@ -53,7 +53,7 @@ function ReadonlyProp({ icon, label, value, bg }) {
     <Tooltip title={label}>
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px 2px 6px',
-        borderRadius: 6, fontSize: 12, background: bg || '#f7f8fa', lineHeight: '22px',
+        borderRadius: 10, fontSize: 12, background: bg || '#f7f8fa', lineHeight: '22px',
       }}>
         {icon && <span style={{ fontSize: 11, color: '#86909c', display: 'flex' }}>{icon}</span>}
         {label && <span style={{ color: '#86909c' }}>{label}</span>}
@@ -68,7 +68,7 @@ function DropdownList({ items, activeKey, onSelect }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {items.map(item => (
         <div key={item.key} onClick={() => onSelect(item.key)} style={{
-          padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 13,
+          padding: '6px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 13,
           display: 'flex', alignItems: 'center', gap: 8,
           background: activeKey === item.key ? '#e6f7ff' : 'transparent',
           fontWeight: activeKey === item.key ? 600 : 400,
@@ -116,13 +116,13 @@ function ScenarioStepsView({ steps, extraCol, extraColLabel, extraPlaceholder, e
           borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none', alignItems: 'center',
         }}>
           <span style={{
-            width: 28, height: 24, borderRadius: 6, background: '#e6f7ff', color: '#1890ff',
+            width: 28, height: 24, borderRadius: 10, background: '#e6f7ff', color: '#1890ff',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
           }}>{s.seq || i + 1}</span>
           {s.phase ? (
             <span style={{
               width: 52, flexShrink: 0, fontSize: 11, fontWeight: 500, textAlign: 'center',
-              padding: '2px 0', borderRadius: 4,
+              padding: '2px 0', borderRadius: 12,
               background: `${phaseColor[s.phase] || '#86909c'}15`, color: phaseColor[s.phase] || '#86909c',
             }}>{phaseLabel[s.phase] || s.phase}</span>
           ) : <span style={{ width: 52, flexShrink: 0 }} />}
@@ -210,7 +210,7 @@ function ScenarioCard({ scenario, type, accentColor, icon, scriptContent, script
     <Card styles={{ body: { padding: '16px 20px' } }}>
       {/* 脚本引用 */}
       {scenario.scriptRefFile && (
-        <div style={{ marginBottom: 16, padding: '8px 12px', background: '#f7f8fa', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ marginBottom: 16, padding: '8px 12px', background: '#f7f8fa', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
           <CodeOutlined style={{ color: '#86909c' }} />
           <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#4e5969' }}>{scenario.scriptRefFile}</span>
           {scenario.scriptRefFunc && <Tag color={accentColor} style={{ fontSize: 11, margin: 0 }}>{scenario.scriptRefFunc}</Tag>}
@@ -229,7 +229,7 @@ function ScenarioCard({ scenario, type, accentColor, icon, scriptContent, script
           <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>依赖参数</h4>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {scenario.variablesUsed.map((v, i) => (
-              <Tag key={i} style={{ fontFamily: 'monospace', fontSize: 12, background: '#f0f5ff', border: '1px solid #adc6ff', color: '#1d39c4', borderRadius: 4, padding: '2px 8px' }}>{v}</Tag>
+              <Tag key={i} style={{ fontFamily: 'monospace', fontSize: 12, background: '#f0f5ff', border: '1px solid #adc6ff', color: '#1d39c4', borderRadius: 12, padding: '2px 8px' }}>{v}</Tag>
             ))}
           </div>
         </div>
@@ -244,7 +244,7 @@ function ScenarioCard({ scenario, type, accentColor, icon, scriptContent, script
               <Button size="small" type="link" icon={<CodeOutlined />} onClick={onLoadScript}>加载脚本</Button>
             )}
           </div>
-          <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #f2f3f5' }}>
+          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #f2f3f5' }}>
             <ScriptViewer scriptData={scriptContent} loading={scriptLoading} error={scriptError} onRetry={onLoadScript} />
           </div>
         </div>
@@ -340,7 +340,7 @@ function ScenarioEditor({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <Space size={8}>
           {/* 视图切换 */}
-          <div style={{ display: 'inline-flex', borderRadius: 6, border: '1px solid #e5e6eb', overflow: 'hidden' }}>
+          <div style={{ display: 'inline-flex', borderRadius: 10, border: '1px solid #e5e6eb', overflow: 'hidden' }}>
             <div onClick={() => setViewMode('steps')} style={{
               padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 500,
               background: viewMode === 'steps' ? accentColor : '#fff',
@@ -410,7 +410,7 @@ function ScenarioEditor({
                   }}>
                     <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', flexShrink: 0 }} />
                     <span style={{
-                      width: 28, height: 24, borderRadius: 6, background: '#e6f7ff', color: '#1890ff',
+                      width: 28, height: 24, borderRadius: 10, background: '#e6f7ff', color: '#1890ff',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
                     }}>{s.seq}</span>
                     <Input value={s.action || ''} onChange={e => updateStepField(i, 'action', e.target.value)}
@@ -426,7 +426,7 @@ function ScenarioEditor({
                   </div>
                 ))}
               </div>
-              <Button type="dashed" block style={{ marginTop: 8, borderRadius: 8 }} icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
+              <Button type="dashed" block style={{ marginTop: 8, borderRadius: 12 }} icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
             </div>
           )}
         </>
@@ -481,7 +481,7 @@ function TemplateModal({ open, onClose, projectId, branchId, scenarioType, onSel
               const sc = t[scenario]
               return (
                 <div key={t.id} style={{
-                  padding: '12px 16px', borderRadius: 8, border: '1px solid #f2f3f5',
+                  padding: '12px 16px', borderRadius: 12, border: '1px solid #f2f3f5',
                   marginBottom: 8, cursor: 'pointer', transition: 'all 0.15s',
                 }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = '#91d5ff'}
@@ -765,14 +765,14 @@ export default function CaseDetail() {
             <Tooltip title="手动测试步骤">
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
-                borderRadius: 4, fontSize: 11, fontWeight: 500,
+                borderRadius: 12, fontSize: 11, fontWeight: 500,
                 background: '#f6ffed', color: '#00b96b', border: '1px solid #b7eb8f',
               }}><CheckCircleOutlined style={{ fontSize: 10 }} /> 手动 ({steps.length}步)</span>
             </Tooltip>
             <Tooltip title={hasApi ? `接口场景 · ${(scenarioStatusMap[apiScenarioStatus] || {}).label || '草稿'}${isApiTemplate ? ' · 模板' : ''}` : '暂无接口测试场景，点击接口测试 Tab 创建'}>
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
-                borderRadius: 4, fontSize: 11, fontWeight: 500,
+                borderRadius: 12, fontSize: 11, fontWeight: 500,
                 background: hasApi ? '#e6f7ff' : '#f7f8fa',
                 color: hasApi ? (scenarioStatusMap[apiScenarioStatus] || {}).color || '#1890ff' : '#c9cdd4',
                 border: `1px solid ${hasApi ? '#91d5ff' : '#e5e6eb'}`,
@@ -785,7 +785,7 @@ export default function CaseDetail() {
             <Tooltip title={hasUi ? `UI 场景 · ${(scenarioStatusMap[uiScenarioStatus] || {}).label || '草稿'}${isUiTemplate ? ' · 模板' : ''}` : '暂无 UI 测试场景，点击 UI 测试 Tab 创建'}>
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
-                borderRadius: 4, fontSize: 11, fontWeight: 500,
+                borderRadius: 12, fontSize: 11, fontWeight: 500,
                 background: hasUi ? '#f0f5ff' : '#f7f8fa',
                 color: hasUi ? (scenarioStatusMap[uiScenarioStatus] || {}).color || '#722ed1' : '#c9cdd4',
                 border: `1px solid ${hasUi ? '#d3adf7' : '#e5e6eb'}`,
@@ -834,7 +834,7 @@ export default function CaseDetail() {
                       }}>
                         <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', flexShrink: 0 }} />
                         <span style={{
-                          width: 28, height: 24, borderRadius: 6, background: '#e6f7ff', color: '#1890ff',
+                          width: 28, height: 24, borderRadius: 10, background: '#e6f7ff', color: '#1890ff',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
                         }}>{s.seq}</span>
                         <Input value={s.action} onChange={e => updateStep(i, 'action', e.target.value)}
@@ -853,7 +853,7 @@ export default function CaseDetail() {
                       </div>
                     ))}
                   </div>
-                  <Button type="dashed" block style={{ marginTop: 8, borderRadius: 8 }} icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
+                  <Button type="dashed" block style={{ marginTop: 8, borderRadius: 12 }} icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
                 </div>
 
                 <div style={{ marginBottom: 20 }}>
@@ -909,7 +909,7 @@ export default function CaseDetail() {
                   locale={{ emptyText: '暂无执行记录' }}
                   expandable={{
                     expandedRowRender: r => r.stdout ? (
-                      <pre style={{ margin: 0, padding: 12, background: '#1e1e1e', color: '#d4d4d4', borderRadius: 6, fontSize: 12, fontFamily: 'monospace', maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{r.stdout}</pre>
+                      <pre style={{ margin: 0, padding: 12, background: '#1e1e1e', color: '#d4d4d4', borderRadius: 10, fontSize: 12, fontFamily: 'monospace', maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{r.stdout}</pre>
                     ) : <span style={{ color: '#c9cdd4' }}>无输出日志</span>,
                     rowExpandable: () => true,
                   }}
@@ -971,7 +971,7 @@ export default function CaseDetail() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
               {variablesUsed.map((v, i) => (
                 <Tag key={i} closable onClose={() => setVariablesUsed(prev => prev.filter((_, j) => j !== i))}
-                  style={{ fontFamily: 'monospace', fontSize: 11, background: '#f0f5ff', border: '1px solid #adc6ff', color: '#1d39c4', borderRadius: 4, padding: '1px 6px' }}>
+                  style={{ fontFamily: 'monospace', fontSize: 11, background: '#f0f5ff', border: '1px solid #adc6ff', color: '#1d39c4', borderRadius: 12, padding: '1px 6px' }}>
                   {v}
                 </Tag>
               ))}
@@ -1056,7 +1056,7 @@ export default function CaseDetail() {
                   </div>
 
                   {runResult.errorSummary && (
-                    <div style={{ padding: '10px 14px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 8, marginBottom: 12 }}>
+                    <div style={{ padding: '10px 14px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 12, marginBottom: 12 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#ff4d4f', marginBottom: 4 }}>错误信息</div>
                       <pre style={{ margin: 0, fontSize: 12, color: '#434343', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 150, overflow: 'auto' }}>{runResult.errorSummary}</pre>
                     </div>
@@ -1065,7 +1065,7 @@ export default function CaseDetail() {
                   {runResult.stdout && (
                     <details>
                       <summary style={{ cursor: 'pointer', fontSize: 12, color: '#86909c', marginBottom: 6, userSelect: 'none' }}>执行日志</summary>
-                      <pre style={{ margin: 0, padding: 12, background: '#1e1e1e', color: '#d4d4d4', borderRadius: 8, fontSize: 11, fontFamily: 'monospace', maxHeight: 250, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{runResult.stdout}</pre>
+                      <pre style={{ margin: 0, padding: 12, background: '#1e1e1e', color: '#d4d4d4', borderRadius: 12, fontSize: 11, fontFamily: 'monospace', maxHeight: 250, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{runResult.stdout}</pre>
                     </details>
                   )}
                 </div>

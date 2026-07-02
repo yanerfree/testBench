@@ -102,7 +102,7 @@ function JsonBlock({ data, maxHeight = 500 }) {
   }
   const lines = raw.split('\n')
   return (
-    <div style={{ background: '#fafafa', borderRadius: 4, overflow: 'hidden' }}>
+    <div style={{ background: '#f9fafb', borderRadius: 12, overflow: 'hidden' }}>
       <div style={{ overflow: 'auto', maxHeight, padding: '10px 0',
         fontFamily: "Menlo, Monaco, 'Courier New', monospace", fontSize: 12, lineHeight: 1.9, color: '#383a42',
       }}>
@@ -124,7 +124,7 @@ function HeadersTable({ headers }) {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
       <thead>
-        <tr style={{ borderBottom: '1px solid #e8e8e8' }}>
+        <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
           <th style={{ textAlign: 'left', padding: '8px 0', fontWeight: 500, color: '#1d2129', width: 200 }}>名称</th>
           <th style={{ textAlign: 'left', padding: '8px 0', fontWeight: 500, color: '#1d2129' }}>值</th>
         </tr>
@@ -166,7 +166,7 @@ function StepDetailDrawer({ step, open, onClose }) {
       styles={{ header: { display: 'none' }, body: { padding: 0 } }}
     >
       {/* Step name */}
-      <div style={{ padding: '16px 24px 0', borderBottom: '1px solid #f0f0f0' }}>
+      <div style={{ padding: '16px 24px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           {step.stepPhase && (
             <span style={{
@@ -197,7 +197,7 @@ function StepDetailDrawer({ step, open, onClose }) {
         {isFailed && step.errorSummary && (
           <div style={{
             display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 14px', marginBottom: 14,
-            background: '#fff2f0', borderRadius: 6, border: '1px solid #ffccc7',
+            background: '#fff2f0', borderRadius: 10, border: '1px solid #ffccc7',
           }}>
             <CloseCircleFilled style={{ color: '#ff4d4f', fontSize: 14, marginTop: 2, flexShrink: 0 }} />
             <span style={{ fontSize: 12, color: '#4e5969', lineHeight: 1.6 }}>{step.errorSummary}</span>
@@ -223,7 +223,7 @@ function StepDetailDrawer({ step, open, onClose }) {
 
       {/* Request URL (only when HTTP data exists) */}
       {step.httpMethod && step.url && (
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#1d2129', marginBottom: 8 }}>请求 URL:</div>
           <div style={{ fontSize: 13, fontFamily: "Menlo, Monaco, monospace", lineHeight: 1.6 }}>
             <span style={{ color: mc, fontWeight: 700 }}>{step.httpMethod}</span>
@@ -308,7 +308,7 @@ function ScenarioExpanded({ scenario }) {
   return (
     <div style={{ padding: '16px 20px 16px 48px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* 执行信息卡片 */}
-      <div style={{ padding: '12px 16px', background: isPassed ? '#f6ffed' : isFailed ? '#fff2f0' : '#f7f8fa', borderRadius: 8, border: `1px solid ${isPassed ? '#d4edda' : isFailed ? '#fde2e4' : '#f2f3f5'}` }}>
+      <div style={{ padding: '12px 16px', background: isPassed ? '#f6ffed' : isFailed ? '#fff2f0' : '#f7f8fa', borderRadius: 12, border: `1px solid ${isPassed ? '#d4edda' : isFailed ? '#fde2e4' : '#f2f3f5'}` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <StatusIcon status={status} size={18} />
@@ -341,14 +341,14 @@ function ScenarioExpanded({ scenario }) {
         <div>
           <div style={{ fontSize: 12, color: '#ff4d4f', marginBottom: 6, fontWeight: 600 }}>失败原因</div>
           {errorSummary && (
-            <div style={{ fontSize: 13, color: '#ff4d4f', padding: '10px 14px', background: '#fff2f0', borderRadius: 6, border: '1px solid #fde2e4', marginBottom: parsed.errorLines.length > 0 ? 8 : 0, lineHeight: 1.6 }}>
+            <div style={{ fontSize: 13, color: '#ff4d4f', padding: '10px 14px', background: '#fff2f0', borderRadius: 10, border: '1px solid #fde2e4', marginBottom: parsed.errorLines.length > 0 ? 8 : 0, lineHeight: 1.6 }}>
               {errorSummary}
             </div>
           )}
           {parsed.errorLines.length > 0 && (
             <pre style={{
               margin: 0, padding: '10px 14px', background: '#f7f8fa', color: '#ff4d4f',
-              borderRadius: 6, fontSize: 12, lineHeight: 1.5, overflow: 'auto', maxHeight: 200,
+              borderRadius: 10, fontSize: 12, lineHeight: 1.5, overflow: 'auto', maxHeight: 200,
               whiteSpace: 'pre-wrap', wordBreak: 'break-all', border: '1px solid #f2f3f5',
               fontFamily: "'SF Mono', 'Menlo', 'Monaco', monospace",
             }}>{parsed.errorLines.join('\n')}</pre>
@@ -357,7 +357,7 @@ function ScenarioExpanded({ scenario }) {
       )}
 
       {isFailed && (
-        <div style={{ padding: '8px 12px', background: '#f0f5ff', borderRadius: 6, border: '1px solid #d6e4ff' }}>
+        <div style={{ padding: '8px 12px', background: '#f0f5ff', borderRadius: 10, border: '1px solid #d6e4ff' }}>
           <span style={{ fontSize: 12, color: '#1677ff' }}>
             💡 可在用例管理页使用「AI 评审」分析失败原因，或通过 API 调用失败诊断 Skill
           </span>
@@ -372,7 +372,7 @@ function ScenarioExpanded({ scenario }) {
             {caseSteps.map((step, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 12px',
-                background: '#fff', borderRadius: 6, border: '1px solid #f2f3f5',
+                background: '#fff', borderRadius: 10, border: '1px solid #f2f3f5',
               }}>
                 <span style={{
                   width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
@@ -405,7 +405,7 @@ function ScenarioExpanded({ scenario }) {
           <div style={{ fontSize: 12, color: '#86909c', marginBottom: 6, fontWeight: 600 }}>执行日志</div>
           <pre style={{
             margin: 0, padding: '12px 14px', background: '#f7f8fa', color: '#4e5969',
-            borderRadius: 6, fontSize: 12, lineHeight: 1.6, overflow: 'auto', maxHeight: 300,
+            borderRadius: 10, fontSize: 12, lineHeight: 1.6, overflow: 'auto', maxHeight: 300,
             whiteSpace: 'pre-wrap', wordBreak: 'break-all', border: '1px solid #f2f3f5',
             fontFamily: "'SF Mono', 'Menlo', 'Monaco', monospace",
           }}>{executionLog}</pre>
@@ -416,7 +416,7 @@ function ScenarioExpanded({ scenario }) {
       {expectedResult && (
         <div>
           <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4, fontWeight: 600 }}>预期结果</div>
-          <div style={{ fontSize: 13, color: '#4e5969', padding: '8px 14px', background: '#f6ffed', borderRadius: 6, border: '1px solid #d4edda', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, color: '#4e5969', padding: '8px 14px', background: '#f6ffed', borderRadius: 10, border: '1px solid #d4edda', lineHeight: 1.5 }}>
             {expectedResult}
           </div>
         </div>
