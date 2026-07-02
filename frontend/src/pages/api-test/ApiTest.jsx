@@ -147,7 +147,7 @@ export default function ApiTest() {
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return
     try {
-      await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/folders?name=${encodeURIComponent(newFolderName.trim())}${newFolderParent ? `&parentId=${newFolderParent}` : ''}`)
+      await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/folders?name=${encodeURIComponent(newFolderName.trim())}${newFolderParent ? `&parent_id=${newFolderParent}` : ''}`)
       message.success('文件夹已创建')
       setFolderModalOpen(false)
       setNewFolderName('')
