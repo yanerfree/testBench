@@ -235,7 +235,7 @@ export default function ApiTest() {
           </div>
           {(() => {
             const filtered = selectedFolderId ? scenarios.filter(s => s.folderId === selectedFolderId) : scenarios
-            return filtered.length > 0 ? (
+            return (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#f6f7f9' }}>
@@ -246,7 +246,7 @@ export default function ApiTest() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(s => (
+                {filtered.length > 0 ? filtered.map(s => (
                   <tr key={s.id}
                     style={{ cursor: 'pointer' }}
                     onClick={() => loadScenario(s.id)}
@@ -258,13 +258,18 @@ export default function ApiTest() {
                     <td style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}><Tag color={PRIORITY_COLORS[s.priority]}>{s.priority}</Tag></td>
                     <td style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}><Tag color={s.status === 'completed' ? 'success' : 'default'}>{s.status === 'completed' ? '已完成' : '草稿'}</Tag></td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan={4} style={{ padding: '60px 0', textAlign: 'center' }}>
+                      <div style={{ color: '#bfbfbf' }}>
+                        <FileTextOutlined style={{ fontSize: 40, marginBottom: 8, display: 'block' }} />
+                        暂无用例
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
-            ) : (
-              <div style={{ textAlign: 'center', padding: 40, color: '#bfbfbf', fontSize: 13 }}>
-                {selectedFolderId ? '该文件夹下暂无测试场景' : '暂无测试场景'}
-              </div>
             )
           })()}
         </div>

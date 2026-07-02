@@ -300,7 +300,7 @@ export default function ProjectList() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 10,
-                    background: 'linear-gradient(135deg, #e8f4fd 0%, #d6e8ff 100%)',
+                    background: 'linear-gradient(135deg, #e3fcef 0%, #d4f5e2 100%)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 16,
                   }}>
