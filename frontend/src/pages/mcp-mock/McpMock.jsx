@@ -124,12 +124,12 @@ export default function McpMock() {
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '2px 10px', borderRadius: 12,
-            background: enabled ? '#fff7e6' : '#f6ffed',
-            border: `1px solid ${enabled ? '#ffd591' : '#b7eb8f'}`,
+            background: enabled ? '#f6ffed' : '#f5f5f5',
+            border: `1px solid ${enabled ? '#b7eb8f' : '#d9d9d9'}`,
           }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: enabled ? '#fa8c16' : '#52c41a' }} />
-            <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: enabled ? '#d46b08' : '#389e0d' }}>
-              {enabled ? 'MOCK' : 'REAL'}
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: enabled ? '#52c41a' : '#bfbfbf' }} />
+            <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: enabled ? '#389e0d' : '#999' }}>
+              {enabled ? 'LIVE' : 'STOPPED'}
             </span>
           </div>
           <span style={{ fontSize: 12, color: '#8c8c8c' }}>{tools.length} 个工具</span>
@@ -138,7 +138,7 @@ export default function McpMock() {
           <Button size="small" icon={<CopyOutlined />} onClick={() => {
             copyToClipboard(mcpUrl).then(() => message.success('已复制 MCP 地址'))
           }}>复制地址</Button>
-          <Switch checked={enabled} onChange={handleToggle} checkedChildren="Mock" unCheckedChildren="Real" />
+          <Switch checked={enabled} onChange={handleToggle} checkedChildren="启用" unCheckedChildren="停用" />
         </Space>
       </div>
 

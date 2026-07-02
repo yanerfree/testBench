@@ -6,6 +6,7 @@ import {
   SettingOutlined, UserOutlined, FileSearchOutlined, ApiOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined, RobotOutlined,
   CloudServerOutlined, ThunderboltOutlined, BugOutlined, ToolOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons'
 import { api } from './utils/request'
 import { useLang } from './utils/i18n.jsx'
@@ -152,6 +153,35 @@ function AppLayout() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
+      <style>{`
+        button.ant-btn[class*="color-primary"][class*="variant-solid"] {
+          border-radius: 20px !important;
+          background: linear-gradient(135deg, #36b37e, #2d9e6f) !important;
+          border: none !important;
+          box-shadow: 0 2px 8px rgba(54,179,126,0.25) !important;
+          color: #fff !important;
+        }
+        button.ant-btn[class*="color-primary"][class*="variant-solid"]:hover {
+          background: linear-gradient(135deg, #2d9e6f, #259060) !important;
+          box-shadow: 0 4px 14px rgba(54,179,126,0.35) !important;
+          transform: translateY(-1px);
+        }
+        button.ant-btn[class*="color-default"][class*="variant-outlined"] {
+          background: rgba(54,179,126,0.08) !important;
+          border: none !important;
+          color: #36b37e !important;
+          border-radius: 20px !important;
+        }
+        button.ant-btn[class*="color-default"][class*="variant-outlined"]:hover {
+          background: rgba(54,179,126,0.15) !important;
+          color: #2d9e6f !important;
+        }
+        button.ant-btn[class*="variant-dashed"] {
+          color: #36b37e !important;
+          border-color: #a8e6c3 !important;
+          border-radius: 20px !important;
+        }
+      `}</style>
       {/* 顶栏 */}
       <Header style={{
         background: 'linear-gradient(90deg, #edf7f1 0%, #f0edf8 50%, #edf2f8 100%)', height: 46, lineHeight: '46px', padding: '0 16px',
@@ -175,10 +205,10 @@ function AppLayout() {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Button type="text" size="small" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
-            style={{ color: '#bfc4cd', fontSize: 12 }}>
-            {lang === 'zh' ? 'EN' : '中文'}
-          </Button>
+          <Tooltip title={lang === 'zh' ? '简体中文 → English' : 'English → 简体中文'}>
+            <Button type="text" size="small" icon={<GlobalOutlined style={{ color: '#bfc4cd' }} />}
+              onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} />
+          </Tooltip>
           <Tooltip title={lang === 'zh' ? '通知' : 'Notifications'}>
             <Button type="text" icon={<BellOutlined style={{ color: '#bfc4cd' }} />} size="small" />
           </Tooltip>
