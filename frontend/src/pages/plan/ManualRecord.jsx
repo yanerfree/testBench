@@ -119,7 +119,7 @@ export default function ManualRecord() {
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f9fafb' }}>
       {/* 顶栏 */}
-      <div style={{ height: 54, background: '#fff', borderBottom: '1px solid #f2f3f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0 }}>
+      <div style={{ height: 54, background: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} />
           <span style={{ fontSize: 15, fontWeight: 600, color: '#1d2129' }}>{plan?.name || '手动录入'}</span>
@@ -137,14 +137,14 @@ export default function ManualRecord() {
       {/* 主内容 */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* 左侧列表 */}
-        <div style={{ width: 320, background: '#fff', borderRight: '1px solid #f2f3f5', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-          <div style={{ padding: '12px 14px', borderBottom: '1px solid #f2f3f5' }}>
+        <div style={{ width: 320, background: 'rgba(255,255,255,0.7)', borderRight: '1px solid #f2f3f5', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+          <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
             <Radio.Group value={filter} onChange={e => setFilter(e.target.value)} optionType="button" buttonStyle="solid" size="small" options={FILTER_OPTIONS} />
           </div>
           <div style={{ flex: 1, overflow: 'auto' }}>
             {filteredCases.map(s => (
               <div key={s.id} onClick={() => setSelectedId(s.id)} style={{
-                padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f2f3f5',
+                padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.04)',
                 background: selectedId === s.id ? '#e6f7ff' : 'transparent',
                 borderLeft: selectedId === s.id ? '3px solid #00b96b' : '3px solid transparent',
               }}>
@@ -174,7 +174,7 @@ export default function ManualRecord() {
             </div>
 
             {/* 录入表单 */}
-            <div style={{ marginTop: 24, padding: '20px 24px', background: '#fff', borderRadius: 10, border: '1px solid #e5e6eb' }}>
+            <div style={{ marginTop: 24, padding: '20px 24px', background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.05)' }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#1d2129', marginBottom: 16 }}>录入结果</div>
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 13, color: '#4e5969', marginBottom: 8 }}>测试结果</div>

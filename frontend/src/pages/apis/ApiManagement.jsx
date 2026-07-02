@@ -229,7 +229,7 @@ function ResponsePanel({ response, onUseAsBody }) {
   const respHeaders = r.headers || []
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', marginBottom: 8, borderBottom: '1px solid #e5e6e8' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', marginBottom: 8, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
         <span style={{ fontWeight: 700, fontSize: 14, color: statusColor, background: statusColor + '10', padding: '2px 8px', borderRadius: 12 }}>{sc} {r.statusText || ''}</span>
         <span style={{ fontSize: 11, color: durationColor, fontWeight: 600 }}>{durationMs} ms</span>
         <span style={{ fontSize: 11, color: '#666' }}>{sizeStr}</span>
@@ -242,7 +242,7 @@ function ResponsePanel({ response, onUseAsBody }) {
       </div>
       {sc === 0 && (
         <div style={{ marginBottom: 8, padding: '8px 12px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 10, fontSize: 12, color: '#cf1322' }}>
-          请求失败，请检查：URL 是否正确、服务是否在运行、环境变量是否配置（如 <code style={{ background: '#fff', padding: '0 4px', borderRadius: 3 }}>{'{{BASE_URL}}'}</code>）
+          请求失败，请检查：URL 是否正确、服务是否在运行、环境变量是否配置（如 <code style={{ background: 'rgba(255,255,255,0.7)', padding: '0 4px', borderRadius: 3 }}>{'{{BASE_URL}}'}</code>）
         </div>
       )}
       {viewTab === 'body' && (
@@ -551,7 +551,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
       </div>
 
       {/* Method + URL + Send */}
-      <div style={{ padding: '8px 16px', borderBottom: '1px solid #e5e6e8', flexShrink: 0 }}>
+      <div style={{ padding: '8px 16px', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Select size="middle" value={method} onChange={v => up('method', v)} style={{ width: 100 }} popupMatchSelectWidth={false}
             options={['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => ({ value: m, label: <span style={{ color: methodColors[m]?.color, fontWeight: 700, fontSize: 13 }}>{m}</span> }))} />
@@ -593,7 +593,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #e5e6e8', background: '#f9fafb', flexShrink: 0, paddingLeft: 8, overflowX: 'auto' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,0,0,0.04)', background: '#f9fafb', flexShrink: 0, paddingLeft: 8, overflowX: 'auto' }}>
         {tabs.map(t => (
           <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
             padding: '8px 14px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
@@ -894,7 +894,7 @@ export default function ApiManagement() {
   if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
 
   return (
-    <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden', height: 'calc(100vh - 80px)', background: '#fff' }}>
+    <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden', height: 'calc(100vh - 80px)', background: 'rgba(255,255,255,0.7)' }}>
       {/* 左侧：接口树 */}
       <div style={{ width: 300, borderRight: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         {/* 工具栏 */}
@@ -1042,7 +1042,7 @@ export default function ApiManagement() {
       {/* 右键菜单 */}
       {ctxMenu && (
         <div style={{ position: 'fixed', left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000 }} onClick={() => setCtxMenu(null)}>
-          <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 6px 16px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 160 }}>
+          <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 12, boxShadow: '0 6px 16px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 160 }}>
             {ctxMenu.items.map((item, i) => item.type === 'divider'
               ? <div key={i} style={{ height: 1, background: '#e0e0e0', margin: '4px 0' }} />
               : <div key={item.key} onClick={item.onClick} style={{

@@ -563,7 +563,7 @@ export default function CaseManagement() {
       <div style={{ flex: 1, display: 'flex', gap: 6, minHeight: 0 }}>
         {/* 左侧树 */}
         <Card style={{ width: 220, flexShrink: 0, overflow: 'auto' }}
-          styles={{ body: { padding: '8px 4px' }, header: { padding: '0 12px', minHeight: 36, borderBottom: '1px solid #f2f3f5' } }}
+          styles={{ body: { padding: '8px 4px' }, header: { padding: '0 12px', minHeight: 36, borderBottom: '1px solid rgba(0,0,0,0.04)' } }}
           title={<span style={{ fontSize: 13, fontWeight: 600 }}>用例导航</span>}
           extra={<Button type="text" size="small" icon={<PlusOutlined />} onClick={() => setFolderModalOpen(true)} style={{ color: '#00b96b' }} />}>
           {treeData.length > 0 ? (

@@ -30,6 +30,9 @@ export default function ApiTest() {
   const [form] = Form.useForm()
   const [running, setRunning] = useState(false)
   const [runResponse, setRunResponse] = useState(null)
+  const [folderModalOpen, setFolderModalOpen] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [folders, setFolders] = useState([])
 
   useEffect(() => {
     if (!projectId) return
@@ -101,28 +104,59 @@ export default function ApiTest() {
     } finally { setRunning(false) }
   }
 
-  // 构建目录树：文件夹 + 场景叶子节点（带编号图标）
+  // 构建目录树：手动文件夹 + 场景叶子节点
   const buildTreeData = () => {
+    // 按场景的 title 前缀分组（后续改为数据库存储的文件夹）
     const groups = {}
+    const ungrouped = []
     for (const s of scenarios) {
       const dashIdx = s.title.indexOf('-')
-      const folder = dashIdx > 0 ? s.title.slice(0, dashIdx) : '未分类'
-      if (!groups[folder]) groups[folder] = []
-      groups[folder].push(s)
+      const folder = dashIdx > 0 ? s.title.slice(0, dashIdx) : null
+      if (folder) {
+        if (!groups[folder]) groups[folder] = []
+        groups[folder].push(s)
+      } else {
+        ungrouped.push(s)
+      }
     }
-    return Object.entries(groups).map(([folder, items]) => ({
+    const tree = Object.entries(groups).map(([folder, items]) => ({
       key: `folder-${folder}`,
       title: `${folder} (${items.length})`,
       selectable: false,
+      isFolder: true,
+      folderName: folder,
       children: items.map(s => ({
         key: s.id,
-        title: `${s.code}-${s.title.slice(folder.length + 1) || s.title}`,
+        title: s.title.slice(folder.length + 1) || s.title,
         isLeaf: true,
         scenario: s,
       })),
     }))
+    // 未分组的场景放顶层
+    for (const s of ungrouped) {
+      tree.push({ key: s.id, title: s.title, isLeaf: true, scenario: s })
+    }
+    return tree
   }
   const treeData = buildTreeData()
+
+  const handleCreateFolder = () => {
+    if (!newFolderName.trim()) return
+    setFolders(prev => [...prev, newFolderName.trim()])
+    setFolderModalOpen(false)
+    setNewFolderName('')
+    message.success('文件夹已创建')
+  }
+
+  const handleDeleteFolder = (folderName) => {
+    const hasScenarios = scenarios.some(s => s.title.startsWith(folderName + '-'))
+    if (hasScenarios) {
+      message.warning('文件夹下有场景，无法删除')
+      return
+    }
+    setFolders(prev => prev.filter(f => f !== folderName))
+    message.success('文件夹已删除')
+  }
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
@@ -130,10 +164,9 @@ export default function ApiTest() {
       <div style={{ width: 250, flexShrink: 0, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '8px 12px', borderBottom: '1px solid #f2f3f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>测试场景</span>
-          <Space size={4}>
-            <Tooltip title="搜索"><Button type="text" size="small" icon={<ThunderboltOutlined />} style={{ color: '#8c8c8c' }} /></Tooltip>
-            <Tooltip title="生成测试"><Button type="text" size="small" icon={<PlusOutlined />} onClick={() => { setGenOpen(true); form.resetFields() }} style={{ color: '#00b96b' }} /></Tooltip>
-          </Space>
+          <Tooltip title="新建文件夹">
+            <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => { setNewFolderName(''); setFolderModalOpen(true) }} style={{ color: '#00b96b' }} />
+          </Tooltip>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
           {loading ? <Spin style={{ display: 'block', margin: '40px auto' }} /> :
@@ -151,22 +184,20 @@ export default function ApiTest() {
                 }}
                 titleRender={(node) => (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', overflow: 'hidden' }}>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {node.isLeaf && <FileTextOutlined style={{ color: '#8c8c8c', fontSize: 12, flexShrink: 0 }} />}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                       {node.title}
                     </span>
-                    {node.isLeaf && node.scenario && (
-                      <Popconfirm
-                        title="确定删除？"
-                        onConfirm={async (e) => { e?.stopPropagation(); handleDelete(node.scenario.id) }}
-                        onCancel={e => e?.stopPropagation()}
-                      >
-                        <Button type="text" size="small" icon={<DeleteOutlined />}
-                          onClick={e => e.stopPropagation()}
-                          style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }}
-                          className="tree-delete-btn" />
+                    {(node.isLeaf && node.scenario) ? (
+                      <Popconfirm title="确定删除此场景？" onConfirm={async (e) => { e?.stopPropagation(); handleDelete(node.scenario.id) }} onCancel={e => e?.stopPropagation()}>
+                        <Button type="text" size="small" icon={<DeleteOutlined />} onClick={e => e.stopPropagation()}
+                          style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-delete-btn" />
                       </Popconfirm>
-                    )}
+                    ) : node.isFolder ? (
+                      <Popconfirm title="确定删除此文件夹？" description="仅允许删除空文件夹" onConfirm={async (e) => { e?.stopPropagation(); handleDeleteFolder(node.folderName) }} onCancel={e => e?.stopPropagation()}>
+                        <Button type="text" size="small" icon={<DeleteOutlined />} onClick={e => e.stopPropagation()}
+                          style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-delete-btn" />
+                      </Popconfirm>
+                    ) : null}
                   </div>
                 )}
               />
@@ -179,9 +210,14 @@ export default function ApiTest() {
       {!selectedScenario ? (
         /* 没选场景：右侧显示场景概览表格 */
         <div style={{ flex: 1, padding: 20, overflowY: 'auto' }}>
-          <div style={{ marginBottom: 16 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>接口测试</h3>
-            <Text type="secondary" style={{ fontSize: 13 }}>点击左侧场景查看测试步骤，或点击「+」生成新的测试场景</Text>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>接口测试</h3>
+              <Text type="secondary" style={{ fontSize: 13 }}>点击左侧场景查看测试步骤</Text>
+            </div>
+            <Button type="primary" icon={<RobotOutlined />} onClick={() => { setGenOpen(true); form.resetFields() }}>
+              AI 生成测试
+            </Button>
           </div>
           {scenarios.length > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -216,7 +252,7 @@ export default function ApiTest() {
         <>
           {/* 中栏：步骤列表 */}
           <div style={{ width: 260, minWidth: 260, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', background: '#fff' }}>
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', background: 'rgba(255,255,255,0.7)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedScenario.code}</span>
                 <Space size={4}>
@@ -279,7 +315,7 @@ export default function ApiTest() {
             {selectedStep ? (
           <>
             {/* 顶部：步骤名 + 运行按钮 */}
-            <div style={{ padding: '10px 20px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 600, fontSize: 14 }}>{selectedStep.name}</span>
               <Button
                 type="primary"
@@ -293,7 +329,7 @@ export default function ApiTest() {
             </div>
 
             {/* URL 栏 */}
-            <div style={{ padding: '10px 20px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 8, alignItems: 'center' }}>
               <div style={{ background: METHOD_COLORS[selectedStep.method], color: '#fff', padding: '4px 12px', borderRadius: 12, fontWeight: 600, fontSize: 12, minWidth: 56, textAlign: 'center' }}>
                 {selectedStep.method}
               </div>
@@ -317,7 +353,7 @@ export default function ApiTest() {
                     key: 'body',
                     label: <span>Body {selectedStep.body && <span style={{ color: '#52c41a' }}>●</span>}</span>,
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.05)', fontSize: 11, color: '#8c8c8c' }}>
                           JSON
                         </div>
@@ -334,7 +370,7 @@ export default function ApiTest() {
                     key: 'headers',
                     label: <span>Headers {selectedStep.headers && Object.keys(selectedStep.headers).length > 0 && <Tag style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{Object.keys(selectedStep.headers).length}</Tag>}</span>,
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
@@ -361,7 +397,7 @@ export default function ApiTest() {
                     key: 'assertions',
                     label: <span>断言 {selectedStep.assertions?.length > 0 && <Tag color="green" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{selectedStep.assertions.length}</Tag>}</span>,
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
@@ -396,7 +432,7 @@ export default function ApiTest() {
                     key: 'variables',
                     label: '变量提取',
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', padding: 16 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', padding: 16 }}>
                         {selectedStep.variablesExtract && Object.keys(selectedStep.variablesExtract).length > 0 ? (
                           Object.entries(selectedStep.variablesExtract).map(([k, v]) => (
                             <div key={k} style={{ padding: '4px 0', fontSize: 13 }}>
@@ -413,7 +449,7 @@ export default function ApiTest() {
                     key: 'response',
                     label: <span>响应 {runResponse && <span style={{ color: runResponse.error ? '#ff4d4f' : '#52c41a' }}>●</span>}</span>,
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         {runResponse ? (
                           runResponse.error ? (
                             <div style={{ padding: 16, color: '#ff4d4f' }}>{runResponse.error}</div>
@@ -483,6 +519,25 @@ export default function ApiTest() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* 新建文件夹弹窗 */}
+      <Modal
+        title="新建文件夹"
+        open={folderModalOpen}
+        onOk={handleCreateFolder}
+        onCancel={() => setFolderModalOpen(false)}
+        okText="创建"
+        cancelText="取消"
+        width={360}
+      >
+        <Input
+          value={newFolderName}
+          onChange={e => setNewFolderName(e.target.value)}
+          placeholder="文件夹名称"
+          style={{ marginTop: 12 }}
+          onPressEnter={handleCreateFolder}
+        />
       </Modal>
     </div>
   )

@@ -109,7 +109,7 @@ function EnvironmentPanel() {
   return (
     <div style={{ display: 'flex', gap: 16, minHeight: 500 }}>
       {/* 左侧环境列表 */}
-      <div style={{ width: 200, background: '#fff', borderRadius: 10, border: '1px solid #f2f3f5', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div style={{ width: 200, background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {loading ? <div style={{ textAlign: 'center', padding: 20 }}><Spin size="small" /></div> :
             envs.map(env => (
@@ -118,7 +118,7 @@ function EnvironmentPanel() {
                   padding: '10px 14px', cursor: 'pointer',
                   background: selectedId === env.id ? '#e6f7ff' : 'transparent',
                   borderLeft: selectedId === env.id ? '3px solid #00b96b' : '3px solid transparent',
-                  borderBottom: '1px solid #f2f3f5',
+                  borderBottom: '1px solid rgba(0,0,0,0.04)',
                 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129' }}>{env.name}</div>
                 {env.description && <div style={{ fontSize: 11, color: '#86909c', marginTop: 2 }}>{env.description}</div>}
@@ -132,7 +132,7 @@ function EnvironmentPanel() {
       </div>
 
       {/* 右侧环境详情 */}
-      <div style={{ flex: 1, background: '#fff', borderRadius: 10, border: '1px solid #f2f3f5', padding: '20px 24px' }}>
+      <div style={{ flex: 1, background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', padding: '20px 24px' }}>
         {selectedEnv ? (<>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div>
@@ -192,7 +192,7 @@ function GlobalVariablePanel() {
   }
 
   return (
-    <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #f2f3f5', padding: '20px 24px', maxWidth: 800 }}>
+    <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', padding: '20px 24px', maxWidth: 800 }}>
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: '#1d2129' }}>全局变量</div>
         <div style={{ fontSize: 12, color: '#86909c', marginTop: 4 }}>
@@ -292,7 +292,7 @@ const COMMON_VARS = [
 
 function CommonVarHint() {
   return (
-    <div style={{ marginTop: 16, padding: '12px 16px', background: '#f9fafb', borderRadius: 12, border: '1px solid #f2f3f5' }}>
+    <div style={{ marginTop: 16, padding: '12px 16px', background: '#f9fafb', borderRadius: 12, border: '1px solid rgba(0,0,0,0.04)' }}>
       <div style={{ fontSize: 12, fontWeight: 600, color: '#86909c', marginBottom: 8 }}>常用变量参考</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {COMMON_VARS.map(v => (

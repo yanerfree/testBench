@@ -98,10 +98,10 @@ function findFolderPath(tree, targetId) {
 function ScenarioStepsView({ steps, extraCol, extraColLabel, extraPlaceholder, extraColor }) {
   if (!steps?.length) return <Empty description="暂无步骤" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: 24 }} />
   return (
-    <div style={{ borderRadius: 10, border: '1px solid #f2f3f5', overflow: 'hidden' }}>
+    <div style={{ borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
       <div style={{
         display: 'flex', gap: 10, padding: '6px 14px', fontSize: 12, fontWeight: 600,
-        background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid #f2f3f5', alignItems: 'center',
+        background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
       }}>
         <span style={{ width: 28, flexShrink: 0 }}>#</span>
         <span style={{ width: 52, flexShrink: 0 }}>阶段</span>
@@ -152,7 +152,7 @@ function ScriptViewer({ scriptData, loading, error, onRetry }) {
     <div>
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '8px 16px', background: '#f7f8fa', borderBottom: '1px solid #f2f3f5', fontSize: 12,
+        padding: '8px 16px', background: '#f7f8fa', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 12,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <FileTextOutlined style={{ color: '#86909c' }} />
@@ -244,7 +244,7 @@ function ScenarioCard({ scenario, type, accentColor, icon, scriptContent, script
               <Button size="small" type="link" icon={<CodeOutlined />} onClick={onLoadScript}>加载脚本</Button>
             )}
           </div>
-          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #f2f3f5' }}>
+          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.04)' }}>
             <ScriptViewer scriptData={scriptContent} loading={scriptLoading} error={scriptError} onRetry={onLoadScript} />
           </div>
         </div>
@@ -340,7 +340,7 @@ function ScenarioEditor({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <Space size={8}>
           {/* 视图切换 */}
-          <div style={{ display: 'inline-flex', borderRadius: 10, border: '1px solid #e5e6eb', overflow: 'hidden' }}>
+          <div style={{ display: 'inline-flex', borderRadius: 10, border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
             <div onClick={() => setViewMode('steps')} style={{
               padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 500,
               background: viewMode === 'steps' ? accentColor : '#fff',
@@ -390,10 +390,10 @@ function ScenarioEditor({
                 <h4 style={{ fontSize: 13, color: '#86909c', margin: 0 }}>UI 测试步骤</h4>
                 <Button type="primary" ghost size="small" icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
               </div>
-              <div style={{ borderRadius: 10, border: '1px solid #f2f3f5', overflow: 'hidden' }}>
+              <div style={{ borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                 <div style={{
                   display: 'flex', gap: 6, padding: '6px 14px', fontSize: 12, fontWeight: 600,
-                  background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid #f2f3f5', alignItems: 'center',
+                  background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
                 }}>
                   <span style={{ width: 24, flexShrink: 0 }}></span>
                   <span style={{ width: 28, flexShrink: 0 }}>#</span>
@@ -481,7 +481,7 @@ function TemplateModal({ open, onClose, projectId, branchId, scenarioType, onSel
               const sc = t[scenario]
               return (
                 <div key={t.id} style={{
-                  padding: '12px 16px', borderRadius: 12, border: '1px solid #f2f3f5',
+                  padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.04)',
                   marginBottom: 8, cursor: 'pointer', transition: 'all 0.15s',
                 }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = '#91d5ff'}
@@ -815,10 +815,10 @@ export default function CaseDetail() {
                     <h4 style={{ fontSize: 13, color: '#86909c', margin: 0 }}>测试步骤</h4>
                     <Button type="primary" ghost size="small" icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
                   </div>
-                  <div style={{ borderRadius: 10, border: '1px solid #f2f3f5', overflow: 'hidden' }}>
+                  <div style={{ borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                     <div style={{
                       display: 'flex', gap: 10, padding: '6px 14px', fontSize: 12, fontWeight: 600,
-                      background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid #f2f3f5', alignItems: 'center',
+                      background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
                     }}>
                       <span style={{ width: 24, flexShrink: 0 }}></span>
                       <span style={{ width: 28, flexShrink: 0 }}>#</span>

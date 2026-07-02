@@ -90,24 +90,32 @@ body {
 
 /* --- Button --- */
 .ant-btn {
-  border-radius: 20px !important;
+  border-radius: var(--radius-md) !important;
   font-weight: 500;
   box-shadow: none !important;
   transition: all 0.2s ease !important;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 .ant-btn:not(:disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
 }
 .ant-btn-primary {
+  border-radius: 20px !important;
   background: var(--primary) !important;
   border-color: var(--primary) !important;
+  letter-spacing: 0.5px;
 }
 .ant-btn-primary:hover {
   background: var(--primary-hover) !important;
   border-color: var(--primary-hover) !important;
   filter: brightness(1.05);
+}
+.ant-btn-sm {
+  border-radius: var(--radius-sm) !important;
+}
+.ant-btn-icon-only {
+  border-radius: var(--radius-sm) !important;
 }
 .ant-btn-primary:disabled, .ant-btn-primary[disabled] {
   background: #a8e6c3 !important;
@@ -199,7 +207,7 @@ body {
 
 /* --- Input / Select --- */
 .ant-input, .ant-select-selector, .ant-input-affix-wrapper {
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-sm) !important;
   transition: border-color 0.2s, box-shadow 0.2s !important;
 }
 .ant-input:focus, .ant-input-focused,
@@ -209,7 +217,10 @@ body {
   box-shadow: 0 0 0 3px rgba(54, 179, 126, 0.08) !important;
 }
 .ant-input-number {
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-sm) !important;
+}
+textarea.ant-input {
+  border-radius: var(--radius-sm) !important;
 }
 
 /* --- Pagination --- */
@@ -239,16 +250,19 @@ body {
   box-shadow: 0 2px 8px rgba(0,185,107,0.1) !important;
 }
 .ant-menu-item:hover:not(.ant-menu-item-selected) {
-  background: #f0faf5 !important;
+  background: rgba(54,179,126,0.06) !important;
   color: var(--primary) !important;
+}
+.ant-menu-inline {
+  background: transparent !important;
 }
 
 /* --- Radio Button --- */
 .ant-radio-group .ant-radio-button-wrapper:first-child {
-  border-radius: 14px 0 0 14px !important;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm) !important;
 }
 .ant-radio-group .ant-radio-button-wrapper:last-child {
-  border-radius: 0 14px 14px 0 !important;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;
 }
 .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
   background: var(--primary) !important;

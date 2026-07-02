@@ -192,7 +192,7 @@ export default function PlanDetail() {
 
       {/* Plan Config */}
       <Card style={{ marginBottom: 8 }} title={<span style={{ fontSize: 14, fontWeight: 600 }}>计划配置</span>}
-        styles={{ header: { borderBottom: '1px solid #f2f3f5', minHeight: 44 }, body: { padding: '12px 24px' } }}>
+        styles={{ header: { borderBottom: '1px solid rgba(0,0,0,0.04)', minHeight: 44 }, body: { padding: '12px 24px' } }}>
         {editing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'flex', gap: 16 }}>
@@ -277,7 +277,7 @@ export default function PlanDetail() {
           <span style={{ fontSize: 14, fontWeight: 600 }}>执行历史</span>
           <span style={{ fontSize: 13, color: '#86909c', fontWeight: 400 }}>共 {executions.length} 次执行</span>
         </div>
-      } styles={{ header: { borderBottom: '1px solid #f2f3f5', minHeight: 44 } }}>
+      } styles={{ header: { borderBottom: '1px solid rgba(0,0,0,0.04)', minHeight: 44 } }}>
         {executions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 40, color: '#c9cdd4' }}>
             {plan.status === 'draft' ? '尚未执行，点击上方"启动执行"开始' : '暂无执行记录'}
@@ -301,7 +301,7 @@ export default function PlanDetail() {
               return (
                 <div key={exec.id} style={{
                   display: 'flex', alignItems: 'center', padding: '12px 16px',
-                  borderBottom: '1px solid #f2f3f5', fontSize: 13,
+                  borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 13,
                 }}>
                   <div style={{ width: 50, color: '#86909c', fontWeight: 600 }}>#{num}</div>
                   <div style={{ flex: 3, color: '#4e5969' }}>

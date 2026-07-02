@@ -127,7 +127,7 @@ export default function AuditLogs() {
 
       <div style={{
         display: 'flex', gap: 10, marginBottom: 12, padding: '12px 16px',
-        background: '#fff', borderRadius: 10, border: '1px solid #f2f3f5',
+        background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)',
       }}>
         <Input
           prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />}
@@ -161,7 +161,7 @@ export default function AuditLogs() {
         />
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #f2f3f5', padding: 2 }}>
+      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', padding: 2 }}>
         <Table
           dataSource={logs}
           columns={columns}
@@ -229,7 +229,7 @@ export default function AuditLogs() {
                   fontSize: 12, lineHeight: 1.8, overflow: 'auto', maxHeight: 400,
                   whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                   fontFamily: "Menlo, Monaco, 'Courier New', monospace",
-                  border: '1px solid #f2f3f5',
+                  border: '1px solid rgba(0,0,0,0.04)',
                 }}>
                   {typeof detailLog.changes === 'string' ? detailLog.changes : JSON.stringify(detailLog.changes, null, 2)}
                 </pre>
