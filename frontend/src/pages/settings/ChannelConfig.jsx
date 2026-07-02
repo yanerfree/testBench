@@ -79,7 +79,7 @@ export default function ChannelConfig() {
       title: '渠道名称', dataIndex: 'name', width: 200,
       render: v => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <BellOutlined style={{ color: '#00b96b' }} />
+          <BellOutlined style={{ color: '#36b37e' }} />
           <span style={{ fontWeight: 500 }}>{v}</span>
         </div>
       ),
@@ -109,7 +109,7 @@ export default function ChannelConfig() {
           </Tooltip>
           <Popconfirm title={`确定删除「${record.name}」？`} onConfirm={() => handleDelete(record.id)}>
             <Tooltip title="删除">
-              <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#ff4d4f' }} />
+              <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#e8453c' }} />
             </Tooltip>
           </Popconfirm>
         </Space>
@@ -134,7 +134,7 @@ export default function ChannelConfig() {
           </Empty>
         ) : (
           <Table dataSource={channels} columns={columns} rowKey="id" size="small"
-            pagination={false} style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10 }} />
+            pagination={false} style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10 }} />
         )
       }
 

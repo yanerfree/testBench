@@ -9,16 +9,16 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 
 const statusCfg = {
-  passed: { label: '通过', color: '#00b96b', dot: '#00b96b' },
-  failed: { label: '失败', color: '#ff4d4f', dot: '#ff4d4f' },
+  passed: { label: '通过', color: '#36b37e', dot: '#36b37e' },
+  failed: { label: '失败', color: '#e8453c', dot: '#e8453c' },
   error: { label: '错误', color: '#faad14', dot: '#faad14' },
   skipped: { label: '跳过', color: '#c9cdd4', dot: '#c9cdd4' },
   running: { label: '执行中', color: '#1890ff', dot: '#1890ff' },
   pending: { label: '待执行', color: '#c9cdd4', dot: '#c9cdd4' },
 }
 
-const methodColor = { GET: '#00b96b', POST: '#1890ff', PUT: '#faad14', DELETE: '#ff4d4f', PATCH: '#722ed1' }
-const phaseColor = { setup: '#722ed1', action: '#1890ff', verify: '#00b96b' }
+const methodColor = { GET: '#36b37e', POST: '#1890ff', PUT: '#faad14', DELETE: '#e8453c', PATCH: '#7c5cbf' }
+const phaseColor = { setup: '#7c5cbf', action: '#1890ff', verify: '#36b37e' }
 const phaseLabel = { setup: '准备', action: '操作', verify: '验证' }
 
 function fmt(ms) {
@@ -33,7 +33,7 @@ function PassRateRing({ rate, passed, total, size = 160, running = false, done =
   const c = 2 * Math.PI * r
   const pct = running ? (total > 0 ? (done / total) * 100 : 0) : (total > 0 ? (passed / total) * 100 : 0)
   const offset = c - (c * pct) / 100
-  const color = running ? '#1890ff' : pct >= 95 ? '#00b96b' : pct >= 80 ? '#faad14' : '#ff4d4f'
+  const color = running ? '#1890ff' : pct >= 95 ? '#36b37e' : pct >= 80 ? '#faad14' : '#e8453c'
   return (
     <svg width={size} height={size} style={{ display: 'block', flexShrink: 0 }}>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#f2f3f5" strokeWidth={10} />
@@ -54,8 +54,8 @@ function PassRateRing({ rate, passed, total, size = 160, running = false, done =
 function StatusIcon({ status, size = 16 }) {
   const s = { fontSize: size, lineHeight: 1 }
   switch (status) {
-    case 'passed': return <CheckCircleFilled style={{ ...s, color: '#00b96b' }} />
-    case 'failed': return <CloseCircleFilled style={{ ...s, color: '#ff4d4f' }} />
+    case 'passed': return <CheckCircleFilled style={{ ...s, color: '#36b37e' }} />
+    case 'failed': return <CloseCircleFilled style={{ ...s, color: '#e8453c' }} />
     case 'error': return <ExclamationCircleFilled style={{ ...s, color: '#faad14' }} />
     case 'skipped': return <MinusCircleFilled style={{ ...s, color: '#c9cdd4' }} />
     case 'running': return <LoadingOutlined style={{ ...s, color: '#1890ff' }} spin />
@@ -185,7 +185,7 @@ function StepDetailDrawer({ step, open, onClose }) {
           {step.statusCode && (
             <>
               <span style={{ color: '#86909c' }}>HTTP 状态码:</span>
-              <span style={{ color: step.statusCode >= 400 ? '#ff4d4f' : '#00b96b', fontWeight: 600 }}>{step.statusCode}</span>
+              <span style={{ color: step.statusCode >= 400 ? '#e8453c' : '#36b37e', fontWeight: 600 }}>{step.statusCode}</span>
               <span style={{ color: '#e5e6eb', margin: '0 4px' }}>|</span>
             </>
           )}
@@ -199,7 +199,7 @@ function StepDetailDrawer({ step, open, onClose }) {
             display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 14px', marginBottom: 14,
             background: '#fff2f0', borderRadius: 10, border: '1px solid #ffccc7',
           }}>
-            <CloseCircleFilled style={{ color: '#ff4d4f', fontSize: 14, marginTop: 2, flexShrink: 0 }} />
+            <CloseCircleFilled style={{ color: '#e8453c', fontSize: 14, marginTop: 2, flexShrink: 0 }} />
             <span style={{ fontSize: 12, color: '#4e5969', lineHeight: 1.6 }}>{step.errorSummary}</span>
           </div>
         )}
@@ -212,8 +212,8 @@ function StepDetailDrawer({ step, open, onClose }) {
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, lineHeight: 2 }}>
                 <span style={{ color: '#86909c', minWidth: 16 }}>{i + 1}.</span>
                 {a.passed
-                  ? <CheckCircleFilled style={{ color: '#00b96b', fontSize: 13 }} />
-                  : <CloseCircleFilled style={{ color: '#ff4d4f', fontSize: 13 }} />}
+                  ? <CheckCircleFilled style={{ color: '#36b37e', fontSize: 13 }} />
+                  : <CloseCircleFilled style={{ color: '#e8453c', fontSize: 13 }} />}
                 <span style={{ color: '#4e5969' }}>{a.description || a.message || JSON.stringify(a)}</span>
               </div>
             ))}
@@ -312,7 +312,7 @@ function ScenarioExpanded({ scenario }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <StatusIcon status={status} size={18} />
-            <span style={{ fontWeight: 600, fontSize: 14, color: isPassed ? '#00b96b' : isFailed ? '#ff4d4f' : '#86909c' }}>
+            <span style={{ fontWeight: 600, fontSize: 14, color: isPassed ? '#36b37e' : isFailed ? '#e8453c' : '#86909c' }}>
               {isPassed ? '执行通过' : isFailed ? '执行失败' : status === 'skipped' ? '已跳过' : status === 'running' ? '执行中' : '待执行'}
             </span>
             {hasRetry && (
@@ -339,15 +339,15 @@ function ScenarioExpanded({ scenario }) {
       {/* 失败原因 */}
       {isFailed && (errorSummary || parsed.errorLines.length > 0) && (
         <div>
-          <div style={{ fontSize: 12, color: '#ff4d4f', marginBottom: 6, fontWeight: 600 }}>失败原因</div>
+          <div style={{ fontSize: 12, color: '#e8453c', marginBottom: 6, fontWeight: 600 }}>失败原因</div>
           {errorSummary && (
-            <div style={{ fontSize: 13, color: '#ff4d4f', padding: '10px 14px', background: '#fff2f0', borderRadius: 10, border: '1px solid #fde2e4', marginBottom: parsed.errorLines.length > 0 ? 8 : 0, lineHeight: 1.6 }}>
+            <div style={{ fontSize: 13, color: '#e8453c', padding: '10px 14px', background: '#fff2f0', borderRadius: 10, border: '1px solid #fde2e4', marginBottom: parsed.errorLines.length > 0 ? 8 : 0, lineHeight: 1.6 }}>
               {errorSummary}
             </div>
           )}
           {parsed.errorLines.length > 0 && (
             <pre style={{
-              margin: 0, padding: '10px 14px', background: '#f7f8fa', color: '#ff4d4f',
+              margin: 0, padding: '10px 14px', background: '#f7f8fa', color: '#e8453c',
               borderRadius: 10, fontSize: 12, lineHeight: 1.5, overflow: 'auto', maxHeight: 200,
               whiteSpace: 'pre-wrap', wordBreak: 'break-all', border: '1px solid rgba(0,0,0,0.04)',
               fontFamily: "'SF Mono', 'Menlo', 'Monaco', monospace",
@@ -358,7 +358,7 @@ function ScenarioExpanded({ scenario }) {
 
       {isFailed && (
         <div style={{ padding: '8px 12px', background: '#f0f5ff', borderRadius: 10, border: '1px solid #d6e4ff' }}>
-          <span style={{ fontSize: 12, color: '#1677ff' }}>
+          <span style={{ fontSize: 12, color: '#4e8af0' }}>
             💡 可在用例管理页使用「AI 评审」分析失败原因，或通过 API 调用失败诊断 Skill
           </span>
         </div>
@@ -372,13 +372,13 @@ function ScenarioExpanded({ scenario }) {
             {caseSteps.map((step, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 12px',
-                background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)',
+                background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)',
               }}>
                 <span style={{
                   width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontWeight: 600, color: '#fff',
-                  background: isPassed ? '#00b96b' : '#c9cdd4',
+                  background: isPassed ? '#36b37e' : '#c9cdd4',
                 }}>{step.seq || i + 1}</span>
                 {step.phase && (
                   <span style={{
@@ -595,7 +595,7 @@ export default function ReportDetail() {
               <Tag style={{ color: '#faad14', border: 'none', background: 'transparent', fontSize: 11 }}>{s.remark}</Tag>
             )}
             {s.errorSummary && (
-              <span style={{ fontSize: 12, color: '#ff4d4f', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 12, color: '#e8453c', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {s.errorSummary}
               </span>
             )}
@@ -683,7 +683,7 @@ export default function ReportDetail() {
                         fontFamily: 'monospace', fontSize: 12, fontWeight: 600,
                         padding: '1px 6px', borderRadius: 3,
                         background: step.statusCode >= 400 ? '#fff2f0' : '#e6f7ff',
-                        color: step.statusCode >= 400 ? '#ff4d4f' : '#00b96b',
+                        color: step.statusCode >= 400 ? '#e8453c' : '#36b37e',
                       }}>{step.statusCode}</span>
                     )}
                     <span style={{ fontSize: 12, color: '#c9cdd4', fontFamily: 'monospace', minWidth: 48, textAlign: 'right' }}>
@@ -723,7 +723,7 @@ export default function ReportDetail() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#00b96b', display: 'inline-block' }} />
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#36b37e', display: 'inline-block' }} />
               <span style={{ color: '#4e5969' }}>通过</span>
             </div>
             <div style={{ paddingLeft: 18, marginBottom: 8 }}>
@@ -731,7 +731,7 @@ export default function ReportDetail() {
               <span style={{ color: '#86909c', marginLeft: 6 }}>({liveRate != null ? `${liveRate}%` : '-'})</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff4d4f', display: 'inline-block' }} />
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#e8453c', display: 'inline-block' }} />
               <span style={{ color: '#4e5969' }}>失败</span>
             </div>
             <div style={{ paddingLeft: 18 }}>

@@ -17,7 +17,7 @@ const { TextArea } = Input
 const MONO = "'SF Mono', Monaco, Menlo, Consolas, monospace"
 
 const STATUS_COLOR = (sc) => {
-  if (sc >= 500) return '#ff4d4f'
+  if (sc >= 500) return '#e8453c'
   if (sc >= 400) return '#fa8c16'
   return '#52c41a'
 }
@@ -342,13 +342,13 @@ export default function LlmMock() {
               variant="borderless" style={{ width: 100, flexShrink: 0 }} popupMatchSelectWidth={100}>
               {['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map(m => (
                 <Select.Option key={m} value={m}>
-                  <span style={{ fontWeight: 600, color: m === 'GET' ? '#52c41a' : m === 'POST' ? '#fa8c16' : m === 'DELETE' ? '#ff4d4f' : '#1677ff' }}>{m}</span>
+                  <span style={{ fontWeight: 600, color: m === 'GET' ? '#52c41a' : m === 'POST' ? '#fa8c16' : m === 'DELETE' ? '#e8453c' : '#4e8af0' }}>{m}</span>
                 </Select.Option>
               ))}
             </Select>
             <div style={{ width: 1, height: 24, background: '#d9d9d9', flexShrink: 0 }} />
             <Input value={routeForm.path} onChange={e => setRouteForm(f => ({ ...f, path: e.target.value }))}
-              variant="borderless" style={{ fontFamily: MONO, fontSize: 13, background: 'rgba(255,255,255,0.7)' }} placeholder="/v1/chat/completions" />
+              variant="borderless" style={{ fontFamily: MONO, fontSize: 13, background: 'rgba(255,255,255,0.45)' }} placeholder="/v1/chat/completions" />
           </div>
 
           {/* 完整访问地址 */}
@@ -427,7 +427,7 @@ export default function LlmMock() {
                       <Select.Option key={`custom:${p.id}`} value={`custom:${p.id}`}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span><StarOutlined style={{ color: '#faad14', marginRight: 4, fontSize: 11 }} />{p.name}</span>
-                          <DeleteOutlined style={{ color: '#ff4d4f', fontSize: 11 }} onClick={(e) => handleDeleteCustomPreset(e, p.id)} />
+                          <DeleteOutlined style={{ color: '#e8453c', fontSize: 11 }} onClick={(e) => handleDeleteCustomPreset(e, p.id)} />
                         </div>
                       </Select.Option>)}
                   </Select.OptGroup>
@@ -636,7 +636,7 @@ export default function LlmMock() {
                         <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应内容</div>
                         <pre style={{
                           maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
-                          background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
+                          background: 'rgba(255,255,255,0.45)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                           whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                         }}>
                           {(() => { try { return JSON.stringify(JSON.parse(expandedLogDetail.responseBody), null, 2) } catch { return expandedLogDetail.responseBody || '-' } })()}
@@ -669,12 +669,12 @@ export default function LlmMock() {
 
       {/* ━━━ 顶栏 ━━━ */}
       <div style={{
-        padding: '10px 20px', background: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(0,0,0,0.05)',
+        padding: '10px 20px', background: 'rgba(255,255,255,0.45)', borderBottom: '1px solid rgba(0,0,0,0.05)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <ThunderboltOutlined style={{ fontSize: 18, color: '#1677ff' }} />
+            <ThunderboltOutlined style={{ fontSize: 18, color: '#4e8af0' }} />
             <span style={{ fontWeight: 600, fontSize: 16, letterSpacing: 0.5 }}>LLM Mock</span>
           </div>
           <div style={{
@@ -713,7 +713,7 @@ export default function LlmMock() {
 
         {/* 左栏：路由列表 */}
         <div style={{
-          width: 260, flexShrink: 0, background: 'rgba(255,255,255,0.7)', borderRight: '1px solid rgba(0,0,0,0.05)',
+          width: 260, flexShrink: 0, background: 'rgba(255,255,255,0.45)', borderRight: '1px solid rgba(0,0,0,0.05)',
           display: 'flex', flexDirection: 'column',
         }}>
           <div style={{
@@ -734,7 +734,7 @@ export default function LlmMock() {
                 <div key={r.id} onClick={() => selectRoute(r)} style={{
                   padding: '10px 12px', marginBottom: 4, borderRadius: 10, cursor: 'pointer',
                   background: sel ? '#e6f4ff' : 'transparent',
-                  borderLeft: `3px solid ${sel ? '#1677ff' : r.enabled ? '#52c41a' : '#d9d9d9'}`,
+                  borderLeft: `3px solid ${sel ? '#4e8af0' : r.enabled ? '#52c41a' : '#d9d9d9'}`,
                   transition: 'all .15s',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -767,7 +767,7 @@ export default function LlmMock() {
         </div>
 
         {/* 右栏：Tab(配置/日志) */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'rgba(255,255,255,0.7)' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'rgba(255,255,255,0.45)' }}>
           <div style={{ borderBottom: '1px solid rgba(0,0,0,0.04)', paddingLeft: 16, flexShrink: 0 }}>
             <div style={{ display: 'flex', gap: 0 }}>
               {[
@@ -776,9 +776,9 @@ export default function LlmMock() {
               ].map(t => (
                 <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
                   padding: '10px 16px', cursor: 'pointer', fontSize: 14, position: 'relative',
-                  color: activeTab === t.key ? '#1677ff' : '#595959',
+                  color: activeTab === t.key ? '#4e8af0' : '#595959',
                   fontWeight: activeTab === t.key ? 500 : 400,
-                  borderBottom: activeTab === t.key ? '2px solid #1677ff' : '2px solid transparent',
+                  borderBottom: activeTab === t.key ? '2px solid #4e8af0' : '2px solid transparent',
                   marginBottom: -1,
                 }}>
                   {t.label}

@@ -142,7 +142,7 @@ export default function Documents() {
       title: '文档标题', dataIndex: 'title', ellipsis: true,
       render: (t, r) => (
         <Space>
-          <FileTextOutlined style={{ color: DOC_TYPE_COLORS[r.docType] === 'blue' ? '#1677ff' : DOC_TYPE_COLORS[r.docType] === 'green' ? '#52c41a' : '#722ed1' }} />
+          <FileTextOutlined style={{ color: DOC_TYPE_COLORS[r.docType] === 'blue' ? '#4e8af0' : DOC_TYPE_COLORS[r.docType] === 'green' ? '#52c41a' : '#7c5cbf' }} />
           <a onClick={() => loadDoc(r.id)} style={{ fontWeight: 500 }}>{t}</a>
         </Space>
       ),
@@ -464,7 +464,7 @@ function DocPreviewWithToc({ content }) {
                 fontWeight: h.level === 1 ? 600 : 400,
                 fontSize: h.level === 1 ? 13 : 12,
               }}
-              onMouseEnter={(e) => { e.target.style.background = '#e6f4ff'; e.target.style.color = '#1677ff' }}
+              onMouseEnter={(e) => { e.target.style.background = '#e6f4ff'; e.target.style.color = '#4e8af0' }}
               onMouseLeave={(e) => { e.target.style.background = ''; e.target.style.color = '#333' }}
             >
               {h.text}

@@ -15,7 +15,7 @@ const { Text, Paragraph } = Typography
 const { TextArea } = Input
 
 const FINDING_TYPES = { bug: { label: 'Bug', color: 'error', icon: <BugOutlined /> }, risk: { label: '风险', color: 'warning', icon: <ExclamationCircleOutlined /> }, suggestion: { label: '建议', color: 'blue', icon: <BulbOutlined /> } }
-const SEVERITY_COLORS = { critical: '#ff4d4f', high: '#fa8c16', medium: '#1677ff', low: '#8c8c8c' }
+const SEVERITY_COLORS = { critical: '#e8453c', high: '#fa8c16', medium: '#4e8af0', low: '#8c8c8c' }
 
 export default function Exploratory() {
   const { projectId } = useParams()
@@ -159,7 +159,7 @@ export default function Exploratory() {
           <div>
             {/* 章程区 */}
             {!activeSession.charter ? (
-              <Card size="small" style={{ marginBottom: 16, borderColor: '#1677ff' }}>
+              <Card size="small" style={{ marginBottom: 16, borderColor: '#4e8af0' }}>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Text strong>还没有章程，让 AI 生成一份？</Text>
                   <Text type="secondary">AI 会根据项目 API 接口分析，自动生成检查点和探索建议</Text>

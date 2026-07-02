@@ -16,8 +16,8 @@ const methodColors = {
   GET: { color: '#52c41a', bg: '#f6ffed' },
   POST: { color: '#fa8c16', bg: '#fff7e6' },
   PUT: { color: '#faad14', bg: '#fffbe6' },
-  PATCH: { color: '#722ed1', bg: '#f9f0ff' },
-  DELETE: { color: '#ff4d4f', bg: '#fff2f0' },
+  PATCH: { color: '#7c5cbf', bg: '#f9f0ff' },
+  DELETE: { color: '#e8453c', bg: '#fff2f0' },
 }
 
 const commonHeaders = [
@@ -218,9 +218,9 @@ function ResponsePanel({ response, onUseAsBody }) {
   if (!response) return null
   const r = response
   const sc = r.statusCode || 0
-  const statusColor = sc === 0 ? '#ff4d4f' : sc < 300 ? '#52c41a' : sc < 400 ? '#faad14' : '#ff4d4f'
+  const statusColor = sc === 0 ? '#e8453c' : sc < 300 ? '#52c41a' : sc < 400 ? '#faad14' : '#e8453c'
   const durationMs = r.durationMs || 0
-  const durationColor = durationMs < 200 ? '#52c41a' : durationMs < 1000 ? '#faad14' : '#ff4d4f'
+  const durationColor = durationMs < 200 ? '#52c41a' : durationMs < 1000 ? '#faad14' : '#e8453c'
   const rawBody = r.body || ''
   let prettyBody = rawBody, isJson = false
   try { prettyBody = JSON.stringify(JSON.parse(rawBody), null, 2); isJson = true } catch {}
@@ -242,7 +242,7 @@ function ResponsePanel({ response, onUseAsBody }) {
       </div>
       {sc === 0 && (
         <div style={{ marginBottom: 8, padding: '8px 12px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 10, fontSize: 12, color: '#cf1322' }}>
-          请求失败，请检查：URL 是否正确、服务是否在运行、环境变量是否配置（如 <code style={{ background: 'rgba(255,255,255,0.7)', padding: '0 4px', borderRadius: 3 }}>{'{{BASE_URL}}'}</code>）
+          请求失败，请检查：URL 是否正确、服务是否在运行、环境变量是否配置（如 <code style={{ background: 'rgba(255,255,255,0.45)', padding: '0 4px', borderRadius: 3 }}>{'{{BASE_URL}}'}</code>）
         </div>
       )}
       {viewTab === 'body' && (
@@ -661,7 +661,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
             {((data.bodyType || 'json') === 'json' || data.bodyType === 'raw') && (
               <>
                 <Input.TextArea ref={bodyRef} value={data.body || ''} onChange={e => up('body', e.target.value)} placeholder='{"key": "value"}' autoSize={{ minRows: 6, maxRows: 18 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
-                {jsonError && <div style={{ marginTop: 4, fontSize: 11, color: '#ff4d4f', padding: '2px 8px', background: '#fff2f0', borderRadius: 12 }}>JSON 语法错误: {jsonError}</div>}
+                {jsonError && <div style={{ marginTop: 4, fontSize: 11, color: '#e8453c', padding: '2px 8px', background: '#fff2f0', borderRadius: 12 }}>JSON 语法错误: {jsonError}</div>}
               </>
             )}
             {data.bodyType === 'form' && <KvEditor items={data.formParams || []} onChange={v => up('formParams', v)} keyPh="字段名" valPh="字段值" />}
@@ -894,7 +894,7 @@ export default function ApiManagement() {
   if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
 
   return (
-    <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden', height: 'calc(100vh - 80px)', background: 'rgba(255,255,255,0.7)' }}>
+    <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden', height: 'calc(100vh - 80px)', background: 'rgba(255,255,255,0.45)' }}>
       {/* 左侧：接口树 */}
       <div style={{ width: 300, borderRight: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         {/* 工具栏 */}
@@ -1042,12 +1042,12 @@ export default function ApiManagement() {
       {/* 右键菜单 */}
       {ctxMenu && (
         <div style={{ position: 'fixed', left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000 }} onClick={() => setCtxMenu(null)}>
-          <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 12, boxShadow: '0 6px 16px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 160 }}>
+          <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 12, boxShadow: '0 6px 16px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 160 }}>
             {ctxMenu.items.map((item, i) => item.type === 'divider'
               ? <div key={i} style={{ height: 1, background: '#e0e0e0', margin: '4px 0' }} />
               : <div key={item.key} onClick={item.onClick} style={{
                   padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
-                  color: item.danger ? '#ff4d4f' : '#4e5969',
+                  color: item.danger ? '#e8453c' : '#4e5969',
                 }} onMouseEnter={e => e.currentTarget.style.background = '#eef0f3'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   {item.icon}<span>{item.label}</span>
                 </div>

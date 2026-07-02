@@ -14,7 +14,7 @@ const { TextArea } = Input
 const MONO = "'SF Mono', Monaco, Menlo, Consolas, monospace"
 
 const MODE_LABEL = { success: '成功', error: '失败', custom: '自定义', real: '真实' }
-const MODE_COLOR = { success: '#52c41a', error: '#ff4d4f', custom: '#1677ff' }
+const MODE_COLOR = { success: '#52c41a', error: '#e8453c', custom: '#4e8af0' }
 
 export default function McpMock() {
   const [enabled, setEnabled] = useState(false)
@@ -112,12 +112,12 @@ export default function McpMock() {
 
       {/* ━━━ 顶栏 ━━━ */}
       <div style={{
-        padding: '10px 20px', background: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(0,0,0,0.05)',
+        padding: '10px 20px', background: 'rgba(255,255,255,0.45)', borderBottom: '1px solid rgba(0,0,0,0.05)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <ApiOutlined style={{ fontSize: 18, color: '#722ed1' }} />
+            <ApiOutlined style={{ fontSize: 18, color: '#7c5cbf' }} />
             <span style={{ fontWeight: 600, fontSize: 16, letterSpacing: 0.5 }}>MCP Mock</span>
           </div>
           <div style={{
@@ -142,7 +142,7 @@ export default function McpMock() {
       </div>
 
       {/* ━━━ 主体 ━━━ */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'rgba(255,255,255,0.7)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'rgba(255,255,255,0.45)' }}>
 
         {/* Tab 栏 */}
         <div style={{ borderBottom: '1px solid rgba(0,0,0,0.04)', paddingLeft: 16, flexShrink: 0 }}>
@@ -153,13 +153,13 @@ export default function McpMock() {
             ].map(t => (
               <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
                 padding: '10px 16px', cursor: 'pointer', fontSize: 14, position: 'relative',
-                color: activeTab === t.key ? '#722ed1' : '#595959',
+                color: activeTab === t.key ? '#7c5cbf' : '#595959',
                 fontWeight: activeTab === t.key ? 600 : 400,
               }}>
                 {t.label}
                 {activeTab === t.key && <div style={{
                   position: 'absolute', bottom: 0, left: 16, right: 16, height: 2,
-                  background: '#722ed1', borderRadius: 1,
+                  background: '#7c5cbf', borderRadius: 1,
                 }} />}
               </div>
             ))}
@@ -193,8 +193,8 @@ export default function McpMock() {
                         <Radio.Group size="small" value={t.mode} buttonStyle="solid"
                           onChange={e => handleModeSwitch(t.name, e.target.value)}>
                           <Radio.Button value="success" style={t.mode === 'success' ? { background: '#52c41a', borderColor: '#52c41a' } : {}}>成功</Radio.Button>
-                          <Radio.Button value="error" style={t.mode === 'error' ? { background: '#ff4d4f', borderColor: '#ff4d4f' } : {}}>失败</Radio.Button>
-                          <Radio.Button value="custom" style={t.mode === 'custom' ? { background: '#1677ff', borderColor: '#1677ff' } : {}}>自定义</Radio.Button>
+                          <Radio.Button value="error" style={t.mode === 'error' ? { background: '#e8453c', borderColor: '#e8453c' } : {}}>失败</Radio.Button>
+                          <Radio.Button value="custom" style={t.mode === 'custom' ? { background: '#4e8af0', borderColor: '#4e8af0' } : {}}>自定义</Radio.Button>
                         </Radio.Group>
                         {t.mode === 'custom' && (
                           <Button type="link" size="small" icon={<EditOutlined />} style={{ marginLeft: 4, padding: 0, fontSize: 12 }}
@@ -273,7 +273,7 @@ export default function McpMock() {
                                   <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>请求参数</div>
                                   <pre style={{
                                     maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
-                                    background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
+                                    background: 'rgba(255,255,255,0.45)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                                     whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                                   }}>{JSON.stringify(l.arguments, null, 2)}</pre>
                                 </div>
@@ -281,7 +281,7 @@ export default function McpMock() {
                                   <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应结果</div>
                                   <pre style={{
                                     maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
-                                    background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
+                                    background: 'rgba(255,255,255,0.45)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                                     whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                                   }}>{(() => { try { return JSON.stringify(JSON.parse(l.response), null, 2) } catch { return l.response } })()}</pre>
                                 </div>

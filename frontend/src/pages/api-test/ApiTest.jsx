@@ -14,7 +14,7 @@ import { api } from '../../utils/request'
 const { Text } = Typography
 const { TextArea } = Input
 
-const METHOD_COLORS = { GET: '#1677ff', POST: '#52c41a', PUT: '#faad14', DELETE: '#ff4d4f', PATCH: '#722ed1' }
+const METHOD_COLORS = { GET: '#4e8af0', POST: '#52c41a', PUT: '#faad14', DELETE: '#e8453c', PATCH: '#7c5cbf' }
 const PRIORITY_COLORS = { P0: 'red', P1: 'orange', P2: 'blue', P3: 'default' }
 
 export default function ApiTest() {
@@ -46,7 +46,7 @@ export default function ApiTest() {
   const fetchFolders = useCallback(async () => {
     if (!branchId) return
     try {
-      const res = await api.get(`/projects/${projectId}/branches/${branchId}/folders`)
+      const res = await api.get(`/projects/${projectId}/branches/${branchId}/api-tests/folders`)
       setFolderTree(res.data || [])
     } catch { /* */ }
   }, [projectId, branchId])
@@ -120,7 +120,7 @@ export default function ApiTest() {
   // 构建目录树：真实文件夹 + 场景叶子节点
   const buildTreeData = (nodes) => nodes.map(n => ({
     key: n.id,
-    title: `${n.name} (${n.caseCount || 0})`,
+    title: `${n.name} (${n.scenarioCount || 0})`,
     isFolder: true,
     folderId: n.id,
     children: [
@@ -147,7 +147,7 @@ export default function ApiTest() {
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return
     try {
-      await api.post(`/projects/${projectId}/branches/${branchId}/folders?name=${encodeURIComponent(newFolderName.trim())}${newFolderParent ? `&parentId=${newFolderParent}` : ''}`)
+      await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/folders?name=${encodeURIComponent(newFolderName.trim())}${newFolderParent ? `&parentId=${newFolderParent}` : ''}`)
       message.success('文件夹已创建')
       setFolderModalOpen(false)
       setNewFolderName('')
@@ -158,7 +158,7 @@ export default function ApiTest() {
 
   const handleDeleteFolder = async (folderId) => {
     try {
-      await api.del(`/projects/${projectId}/branches/${branchId}/folders/${folderId}`)
+      await api.del(`/projects/${projectId}/branches/${branchId}/api-tests/folders/${folderId}`)
       message.success('文件夹已删除')
       fetchFolders()
     } catch { /* */ }
@@ -171,7 +171,7 @@ export default function ApiTest() {
         <div style={{ padding: '8px 12px', borderBottom: '1px solid #f2f3f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>测试场景</span>
           <Tooltip title="新建文件夹">
-            <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => { setNewFolderName(''); setFolderModalOpen(true) }} style={{ color: '#00b96b' }} />
+            <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => { setNewFolderName(''); setFolderModalOpen(true) }} style={{ color: '#36b37e' }} />
           </Tooltip>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
@@ -258,7 +258,7 @@ export default function ApiTest() {
         <>
           {/* 中栏：步骤列表 */}
           <div style={{ width: 300, minWidth: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', background: 'rgba(255,255,255,0.7)' }}>
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', background: 'rgba(255,255,255,0.45)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedScenario.code}</span>
                 <Space size={4}>
@@ -291,14 +291,14 @@ export default function ApiTest() {
                       style={{
                         padding: '8px 12px', cursor: 'pointer',
                         background: isSelected ? '#e6f4ff' : 'transparent',
-                        borderLeft: isSelected ? '3px solid #1677ff' : '3px solid transparent',
+                        borderLeft: isSelected ? '3px solid #4e8af0' : '3px solid transparent',
                         display: 'flex', alignItems: 'center', gap: 6,
                       }}
                       onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#fafafa' }}
                       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
                     >
                       {step.lastStatus === 'pass' ? <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 12 }} /> :
-                       step.lastStatus === 'fail' ? <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 12 }} /> :
+                       step.lastStatus === 'fail' ? <CloseCircleOutlined style={{ color: '#e8453c', fontSize: 12 }} /> :
                        <span style={{ width: 12, height: 12, borderRadius: 10, border: '1.5px solid #d9d9d9', display: 'inline-block', flexShrink: 0 }} />}
                       <Tag color={METHOD_COLORS[step.method]} style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '18px' }}>
                         {step.method}
@@ -321,7 +321,7 @@ export default function ApiTest() {
             {selectedStep ? (
           <>
             {/* 顶部：步骤名 + 运行按钮 */}
-            <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.45)', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 600, fontSize: 14 }}>{selectedStep.name}</span>
               <Button
                 type="primary"
@@ -335,7 +335,7 @@ export default function ApiTest() {
             </div>
 
             {/* URL 栏 */}
-            <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.45)', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 8, alignItems: 'center' }}>
               <div style={{ background: METHOD_COLORS[selectedStep.method], color: '#fff', padding: '4px 12px', borderRadius: 12, fontWeight: 600, fontSize: 12, minWidth: 56, textAlign: 'center' }}>
                 {selectedStep.method}
               </div>
@@ -359,7 +359,7 @@ export default function ApiTest() {
                     key: 'body',
                     label: <span>Body {selectedStep.body && <span style={{ color: '#52c41a' }}>●</span>}</span>,
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.05)', fontSize: 11, color: '#8c8c8c' }}>
                           JSON
                         </div>
@@ -376,7 +376,7 @@ export default function ApiTest() {
                     key: 'headers',
                     label: <span>Headers {selectedStep.headers && Object.keys(selectedStep.headers).length > 0 && <Tag style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{Object.keys(selectedStep.headers).length}</Tag>}</span>,
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
@@ -403,7 +403,7 @@ export default function ApiTest() {
                     key: 'assertions',
                     label: <span>断言 {selectedStep.assertions?.length > 0 && <Tag color="green" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{selectedStep.assertions.length}</Tag>}</span>,
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
@@ -420,7 +420,7 @@ export default function ApiTest() {
                                 <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}><CheckCircleOutlined style={{ color: '#52c41a' }} /></td>
                                 <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontWeight: 500 }}>{a.type}</td>
                                 <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontFamily: 'monospace', color: '#595959' }}>{a.field || '-'}</td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', color: '#1677ff' }}>{a.operator}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', color: '#4e8af0' }}>{a.operator}</td>
                                 <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                                   <code style={{ background: '#f0f5ff', padding: '2px 8px', borderRadius: 3, color: '#1d39c4' }}>{JSON.stringify(a.value)}</code>
                                 </td>
@@ -438,7 +438,7 @@ export default function ApiTest() {
                     key: 'variables',
                     label: '变量提取',
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', padding: 16 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', padding: 16 }}>
                         {selectedStep.variablesExtract && Object.keys(selectedStep.variablesExtract).length > 0 ? (
                           Object.entries(selectedStep.variablesExtract).map(([k, v]) => (
                             <div key={k} style={{ padding: '4px 0', fontSize: 13 }}>
@@ -453,12 +453,12 @@ export default function ApiTest() {
                   },
                   {
                     key: 'response',
-                    label: <span>响应 {runResponse && <span style={{ color: runResponse.error ? '#ff4d4f' : '#52c41a' }}>●</span>}</span>,
+                    label: <span>响应 {runResponse && <span style={{ color: runResponse.error ? '#e8453c' : '#52c41a' }}>●</span>}</span>,
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         {runResponse ? (
                           runResponse.error ? (
-                            <div style={{ padding: 16, color: '#ff4d4f' }}>{runResponse.error}</div>
+                            <div style={{ padding: 16, color: '#e8453c' }}>{runResponse.error}</div>
                           ) : (
                             <>
                               <div style={{ padding: '8px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 12, fontSize: 12 }}>

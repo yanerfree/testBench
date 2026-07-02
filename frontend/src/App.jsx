@@ -184,7 +184,7 @@ function AppLayout() {
           </Tooltip>
           <Dropdown menu={userMenu} placement="bottomRight">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <Avatar size={24} style={{ background: 'linear-gradient(135deg, #00b96b, #00b96bcc)', fontSize: 11 }}>{displayName[0]}</Avatar>
+              <Avatar size={24} style={{ background: 'linear-gradient(135deg, #36b37e, #36b37ecc)', fontSize: 11 }}>{displayName[0]}</Avatar>
               <span style={{ color: '#8c919e', fontSize: 13 }}>{displayName}</span>
             </div>
           </Dropdown>
@@ -197,7 +197,7 @@ function AppLayout() {
           collapsedWidth={52}
           collapsed={collapsed}
           theme="light"
-          style={{ background: 'linear-gradient(180deg, #d4f5e2 0%, #e8dff5 50%, #dceef8 100%)', borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}
+          style={{ background: 'linear-gradient(180deg, #edf7f1 0%, #f0edf8 50%, #edf2f8 100%)', borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}
         >
           <div style={{ flex: 1, overflow: 'auto' }}>
             <Menu

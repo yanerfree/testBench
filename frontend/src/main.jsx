@@ -9,7 +9,7 @@ import './styles/global.css'
 
 const theme = {
   token: {
-    colorPrimary: '#00b96b',
+    colorPrimary: '#36b37e',
     borderRadius: 6,
     colorBgContainer: '#ffffff',
     fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
@@ -18,7 +18,7 @@ const theme = {
     colorBorder: '#e5e6eb',
     colorBorderSecondary: '#f2f3f5',
     controlHeight: 32,
-    colorSuccess: '#00b96b',
+    colorSuccess: '#36b37e',
     colorError: '#f53f3f',
     colorWarning: '#ff7d00',
     colorInfo: '#3370ff',

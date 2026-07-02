@@ -7,14 +7,14 @@ import { api } from '../../utils/request'
 const { RangePicker } = DatePicker
 
 const ACTION_CONFIG = {
-  create: { label: '创建', color: '#00b96b', bg: '#e6f7ff' },
-  update: { label: '修改', color: '#00b96b', bg: '#e6f7ff' },
-  delete: { label: '删除', color: '#ff4d4f', bg: '#fff2f0' },
+  create: { label: '创建', color: '#36b37e', bg: '#e6f7ff' },
+  update: { label: '修改', color: '#36b37e', bg: '#e6f7ff' },
+  delete: { label: '删除', color: '#e8453c', bg: '#fff2f0' },
   execute: { label: '执行', color: '#faad14', bg: '#fffbe6' },
   import: { label: '导入', color: '#1890ff', bg: '#e6f7ff' },
   archive: { label: '归档', color: '#c9cdd4', bg: '#f2f3f5' },
-  login: { label: '登录', color: '#722ed1', bg: '#f9f0ff' },
-  logout: { label: '登出', color: '#722ed1', bg: '#f9f0ff' },
+  login: { label: '登录', color: '#7c5cbf', bg: '#f9f0ff' },
+  logout: { label: '登出', color: '#7c5cbf', bg: '#f9f0ff' },
   sync: { label: '同步', color: '#1890ff', bg: '#e6f7ff' },
   change_password: { label: '改密', color: '#fa8c16', bg: '#fff7e6' },
 }
@@ -127,7 +127,7 @@ export default function AuditLogs() {
 
       <div style={{
         display: 'flex', gap: 10, marginBottom: 12, padding: '12px 16px',
-        background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)',
+        background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)',
       }}>
         <Input
           prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />}
@@ -161,7 +161,7 @@ export default function AuditLogs() {
         />
       </div>
 
-      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', padding: 2 }}>
+      <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', padding: 2 }}>
         <Table
           dataSource={logs}
           columns={columns}

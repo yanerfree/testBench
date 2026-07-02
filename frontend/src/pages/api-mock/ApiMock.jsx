@@ -18,18 +18,18 @@ const { TextArea } = Input
 const MONO = "'SF Mono', Monaco, Menlo, Consolas, monospace"
 
 const STATUS_COLOR = (sc) => {
-  if (sc >= 500) return '#ff4d4f'
+  if (sc >= 500) return '#e8453c'
   if (sc >= 400) return '#fa8c16'
-  if (sc >= 300) return '#722ed1'
+  if (sc >= 300) return '#7c5cbf'
   return '#52c41a'
 }
 
 const METHOD_COLOR = (m) => {
   if (m === 'GET') return '#52c41a'
   if (m === 'POST') return '#fa8c16'
-  if (m === 'DELETE') return '#ff4d4f'
-  if (m === 'PUT') return '#1677ff'
-  if (m === 'PATCH') return '#722ed1'
+  if (m === 'DELETE') return '#e8453c'
+  if (m === 'PUT') return '#4e8af0'
+  if (m === 'PATCH') return '#7c5cbf'
   return '#595959'
 }
 
@@ -384,7 +384,7 @@ export default function ApiMock() {
               value={routeForm.path}
               onChange={e => setRouteForm(f => ({ ...f, path: e.target.value }))}
               variant="borderless"
-              style={{ fontFamily: MONO, fontSize: 13, background: 'rgba(255,255,255,0.7)' }}
+              style={{ fontFamily: MONO, fontSize: 13, background: 'rgba(255,255,255,0.45)' }}
               placeholder="/mock/api-example"
             />
           </div>
@@ -454,7 +454,7 @@ export default function ApiMock() {
                       <Select.Option key={`custom:${p.id}`} value={`custom:${p.id}`}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span><StarOutlined style={{ color: '#faad14', marginRight: 4, fontSize: 11 }} />{p.name}</span>
-                          <DeleteOutlined style={{ color: '#ff4d4f', fontSize: 11 }} onClick={(e) => handleDeleteCustomPreset(e, p.id)} />
+                          <DeleteOutlined style={{ color: '#e8453c', fontSize: 11 }} onClick={(e) => handleDeleteCustomPreset(e, p.id)} />
                         </div>
                       </Select.Option>)}
                   </Select.OptGroup>
@@ -619,7 +619,7 @@ export default function ApiMock() {
                           <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>请求体</div>
                           <pre style={{
                             maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
-                            background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
+                            background: 'rgba(255,255,255,0.45)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                             whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                           }}>{expandedLogDetail.requestBody || '-'}</pre>
                         </div>
@@ -627,7 +627,7 @@ export default function ApiMock() {
                           <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应体</div>
                           <pre style={{
                             maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
-                            background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
+                            background: 'rgba(255,255,255,0.45)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                             whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                           }}>{formatBody(expandedLogDetail.responseBody, expandedLogDetail.contentType)}</pre>
                         </div>
@@ -662,12 +662,12 @@ export default function ApiMock() {
 
       {/* ━━━ 顶栏 ━━━ */}
       <div style={{
-        padding: '10px 20px', background: 'rgba(255,255,255,0.7)', borderBottom: '1px solid rgba(0,0,0,0.05)',
+        padding: '10px 20px', background: 'rgba(255,255,255,0.45)', borderBottom: '1px solid rgba(0,0,0,0.05)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CloudServerOutlined style={{ fontSize: 18, color: '#722ed1' }} />
+            <CloudServerOutlined style={{ fontSize: 18, color: '#7c5cbf' }} />
             <span style={{ fontWeight: 600, fontSize: 16, letterSpacing: 0.5 }}>API Mock</span>
           </div>
           <div style={{
@@ -711,7 +711,7 @@ export default function ApiMock() {
 
         {/* ── 左栏：路由列表 ── */}
         <div style={{
-          width: 260, flexShrink: 0, background: 'rgba(255,255,255,0.7)', borderRight: '1px solid rgba(0,0,0,0.05)',
+          width: 260, flexShrink: 0, background: 'rgba(255,255,255,0.45)', borderRight: '1px solid rgba(0,0,0,0.05)',
           display: 'flex', flexDirection: 'column',
         }}>
           <div style={{
@@ -731,7 +731,7 @@ export default function ApiMock() {
                 <div key={r.id} onClick={() => selectRoute(r)} style={{
                   padding: '10px 12px', marginBottom: 4, borderRadius: 10, cursor: 'pointer',
                   background: sel ? '#f9f0ff' : 'transparent',
-                  borderLeft: `3px solid ${sel ? '#722ed1' : r.enabled ? '#52c41a' : '#d9d9d9'}`,
+                  borderLeft: `3px solid ${sel ? '#7c5cbf' : r.enabled ? '#52c41a' : '#d9d9d9'}`,
                   transition: 'all .15s',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -769,7 +769,7 @@ export default function ApiMock() {
         </div>
 
         {/* ── 右栏：Tab 切换（路由配置 / 请求日志） ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'rgba(255,255,255,0.7)' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'rgba(255,255,255,0.45)' }}>
           <div style={{ borderBottom: '1px solid rgba(0,0,0,0.04)', paddingLeft: 16, flexShrink: 0 }}>
             <div style={{ display: 'flex', gap: 0 }}>
               {[
@@ -778,9 +778,9 @@ export default function ApiMock() {
               ].map(t => (
                 <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
                   padding: '10px 16px', cursor: 'pointer', fontSize: 14, position: 'relative',
-                  color: activeTab === t.key ? '#722ed1' : '#595959',
+                  color: activeTab === t.key ? '#7c5cbf' : '#595959',
                   fontWeight: activeTab === t.key ? 500 : 400,
-                  borderBottom: activeTab === t.key ? '2px solid #722ed1' : '2px solid transparent',
+                  borderBottom: activeTab === t.key ? '2px solid #7c5cbf' : '2px solid transparent',
                   marginBottom: -1,
                 }}>
                   {t.label}

@@ -88,7 +88,7 @@ export default function AIStreamPanel({
         <div>
           <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
             <Spin indicator={<LoadingOutlined spin />} size="small" />
-            <span style={{ color: '#1677ff' }}>AI 正在生成...</span>
+            <span style={{ color: '#4e8af0' }}>AI 正在生成...</span>
             <Button size="small" icon={<StopOutlined />} onClick={handleStop} danger>
               停止
             </Button>

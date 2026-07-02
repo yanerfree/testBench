@@ -15,8 +15,8 @@ const methodColors = {
   GET: { color: '#52c41a', bg: '#f6ffed', border: '#b7eb8f' },
   POST: { color: '#fa8c16', bg: '#fff7e6', border: '#ffd591' },
   PUT: { color: '#faad14', bg: '#fffbe6', border: '#ffe58f' },
-  PATCH: { color: '#722ed1', bg: '#f9f0ff', border: '#d3adf7' },
-  DELETE: { color: '#ff4d4f', bg: '#fff2f0', border: '#ffa39e' },
+  PATCH: { color: '#7c5cbf', bg: '#f9f0ff', border: '#d3adf7' },
+  DELETE: { color: '#e8453c', bg: '#fff2f0', border: '#ffa39e' },
 }
 
 // ---- 动态变量 ----
@@ -355,7 +355,7 @@ function CompactApiRow({ step, index, isSelected, onClick, onRemove, onCopy, onD
       </div>
       <div style={{ display: 'flex', gap: 2, flexShrink: 0, alignItems: 'center' }}>
         {assertCount > 0 && <span title={`${assertCount} 个断言`} style={{ fontSize: 9, background: '#f6ffed', color: '#52c41a', borderRadius: 8, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>{assertCount}</span>}
-        {extractCount > 0 && <span title={`${extractCount} 个提取`} style={{ fontSize: 9, background: '#f9f0ff', color: '#722ed1', borderRadius: 8, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>{extractCount}</span>}
+        {extractCount > 0 && <span title={`${extractCount} 个提取`} style={{ fontSize: 9, background: '#f9f0ff', color: '#7c5cbf', borderRadius: 8, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>{extractCount}</span>}
       </div>
       {hovered && (
         <div style={{ display: 'flex', gap: 0, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
@@ -376,10 +376,10 @@ function CompactGroupRow({ node, children, onRemove }) {
       }}
         onMouseEnter={e => e.currentTarget.style.background = '#f0e6ff'}
         onMouseLeave={e => e.currentTarget.style.background = '#f9f0ff'}>
-        {collapsed ? <CaretRightOutlined style={{ fontSize: 9, color: '#722ed1' }} /> : <CaretDownOutlined style={{ fontSize: 9, color: '#722ed1' }} />}
-        <FolderOutlined style={{ color: '#722ed1', fontSize: 11 }} />
-        <span style={{ fontSize: 11, color: '#722ed1', fontWeight: 500 }}>Group</span>
-        <span style={{ fontSize: 12, color: '#722ed1', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.label || '分组'}</span>
+        {collapsed ? <CaretRightOutlined style={{ fontSize: 9, color: '#7c5cbf' }} /> : <CaretDownOutlined style={{ fontSize: 9, color: '#7c5cbf' }} />}
+        <FolderOutlined style={{ color: '#7c5cbf', fontSize: 11 }} />
+        <span style={{ fontSize: 11, color: '#7c5cbf', fontWeight: 500 }}>Group</span>
+        <span style={{ fontSize: 12, color: '#7c5cbf', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.label || '分组'}</span>
         <span style={{ fontSize: 10, color: '#b37feb' }}>({(node.children || []).length})</span>
         <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={e => { e.stopPropagation(); onRemove() }} style={{ fontSize: 10, width: 20, height: 20 }} />
       </div>
@@ -452,7 +452,7 @@ function CompactConditionRow({ node, onRemove, thenChildren, elseChildren }) {
             {thenChildren}
           </div>
           <div style={{ paddingLeft: 16 }}>
-            <div style={{ fontSize: 10, color: '#ff4d4f', padding: '2px 10px', fontWeight: 600 }}>ELSE</div>
+            <div style={{ fontSize: 10, color: '#e8453c', padding: '2px 10px', fontWeight: 600 }}>ELSE</div>
             {elseChildren}
           </div>
         </div>
@@ -547,7 +547,7 @@ function getOps(step, key) {
 // ===========================================================================
 const opMeta = {
   assertion: { icon: <CheckCircleOutlined />, color: '#52c41a', label: '断言' },
-  extractor: { icon: <FieldStringOutlined />, color: '#722ed1', label: '提取变量' },
+  extractor: { icon: <FieldStringOutlined />, color: '#7c5cbf', label: '提取变量' },
   headerSetter: { icon: <LockOutlined />, color: '#13c2c2', label: '设置 Header' },
   bodySetter: { icon: <FormOutlined />, color: '#eb2f96', label: '设置 Body' },
   script: { icon: <CodeOutlined />, color: '#1890ff', label: '脚本' },
@@ -870,9 +870,9 @@ function ResponsePanel({ response, onAddAssertion }) {
   const r = response
   const sc = r.status_code || r.statusCode || 0
   const isOk = sc >= 200 && sc < 300
-  const statusColor = sc === 0 ? '#ff4d4f' : isOk ? '#52c41a' : sc < 400 ? '#faad14' : '#ff4d4f'
+  const statusColor = sc === 0 ? '#e8453c' : isOk ? '#52c41a' : sc < 400 ? '#faad14' : '#e8453c'
   const durationMs = r.duration_ms || r.durationMs || 0
-  const durationColor = durationMs < 200 ? '#52c41a' : durationMs < 1000 ? '#faad14' : '#ff4d4f'
+  const durationColor = durationMs < 200 ? '#52c41a' : durationMs < 1000 ? '#faad14' : '#e8453c'
 
   const rawBody = r.body || ''
   let prettyBody = rawBody

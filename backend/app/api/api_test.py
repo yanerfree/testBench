@@ -17,6 +17,7 @@ from app.deps.auth import get_current_user, require_project_role
 from app.deps.db import get_db
 from app.models.user import User
 from app.models.api_test import ApiTestScenario, ApiTestStep
+from app.models.api_test_folder import ApiTestFolder
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,81 @@ async def list_scenarios(
     )
     scenarios = result.scalars().all()
     return {"data": [_scenario_to_dict(s) for s in scenarios]}
+
+
+# ── 文件夹管理（必须在 /{scenario_id} 之前） ──
+
+@router.get("/folders")
+async def list_api_test_folders(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    result = await session.execute(
+        select(ApiTestFolder).where(ApiTestFolder.branch_id == branch_id).order_by(ApiTestFolder.sort_order)
+    )
+    all_folders = result.scalars().all()
+
+    sc_all = await session.execute(select(ApiTestScenario.folder_id).where(ApiTestScenario.branch_id == branch_id))
+    scenario_counts = {}
+    for (fid,) in sc_all:
+        if fid:
+            scenario_counts[fid] = scenario_counts.get(fid, 0) + 1
+
+    def build_tree(parent_id=None):
+        children = [f for f in all_folders if f.parent_id == parent_id]
+        return [{
+            "id": str(f.id),
+            "name": f.name,
+            "parentId": str(f.parent_id) if f.parent_id else None,
+            "scenarioCount": scenario_counts.get(f.id, 0),
+            "children": build_tree(f.id),
+        } for f in children]
+
+    return {"data": build_tree()}
+
+
+@router.post("/folders")
+async def create_api_test_folder(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    name: str,
+    parent_id: str | None = None,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    folder = ApiTestFolder(
+        branch_id=branch_id,
+        name=name,
+        parent_id=uuid.UUID(parent_id) if parent_id else None,
+    )
+    session.add(folder)
+    await session.commit()
+    return {"data": {"id": str(folder.id), "name": folder.name}}
+
+
+@router.delete("/folders/{folder_id}")
+async def delete_api_test_folder(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    folder_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    children = await session.execute(select(ApiTestFolder).where(ApiTestFolder.parent_id == folder_id))
+    if children.scalars().first():
+        from app.core.exceptions import AppError
+        raise AppError(code="HAS_CHILDREN", message="该文件夹下有子文件夹，请先删除", status_code=400)
+    sc = await session.execute(select(ApiTestScenario).where(ApiTestScenario.folder_id == folder_id).limit(1))
+    if sc.scalars().first():
+        from app.core.exceptions import AppError
+        raise AppError(code="HAS_SCENARIOS", message="该文件夹下有测试场景，请先移动或删除", status_code=400)
+    folder = await session.get(ApiTestFolder, folder_id)
+    if folder:
+        await session.delete(folder)
+        await session.commit()
+    return {"data": {"deleted": True}}
 
 
 @router.get("/{scenario_id}")

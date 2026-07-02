@@ -125,7 +125,7 @@ export default function AISidebar() {
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          background: '#00b96b',
+          background: '#36b37e',
           color: '#fff',
           padding: '10px 18px 10px 14px',
           borderRadius: 24,
@@ -307,7 +307,7 @@ export default function AISidebar() {
             )}
 
             {error && (
-              <Card size="small" style={{ borderColor: '#ff4d4f', background: '#fff2f0' }}>
+              <Card size="small" style={{ borderColor: '#e8453c', background: '#fff2f0' }}>
                 <Space direction="vertical" size={4}>
                   <Text type="danger">
                     <ExclamationCircleOutlined /> 生成失败

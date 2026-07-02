@@ -12,9 +12,9 @@ const PROJECT_ROLES = [
 ]
 
 const ROLE_TAG = {
-  project_admin: { color: '#ff4d4f', bg: '#fff2f0' },
-  developer: { color: '#00b96b', bg: '#e6f7ff' },
-  tester: { color: '#00b96b', bg: '#f6ffed' },
+  project_admin: { color: '#e8453c', bg: '#fff2f0' },
+  developer: { color: '#36b37e', bg: '#e6f7ff' },
+  tester: { color: '#36b37e', bg: '#f6ffed' },
   guest: { color: '#86909c', bg: '#f7f8fa' },
 }
 
@@ -87,7 +87,7 @@ function MemberModal({ project, open, onClose }) {
       title: '用户', dataIndex: 'username', width: 160,
       render: v => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Avatar size={24} style={{ background: '#722ed1', fontSize: 11 }}>{v?.[0]?.toUpperCase()}</Avatar>
+          <Avatar size={24} style={{ background: '#7c5cbf', fontSize: 11 }}>{v?.[0]?.toUpperCase()}</Avatar>
           <span style={{ fontWeight: 500 }}>{v}</span>
         </div>
       ),
@@ -112,7 +112,7 @@ function MemberModal({ project, open, onClose }) {
       title: '操作', width: 80, align: 'center',
       render: (_, record) => (
         <Popconfirm title={`确定移除 ${record.username}？`} onConfirm={() => handleRemove(record)}>
-          <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#ff4d4f' }} />
+          <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#e8453c' }} />
         </Popconfirm>
       ),
     },
@@ -304,7 +304,7 @@ export default function ProjectList() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 16,
                   }}>
-                    <FolderOpenOutlined style={{ color: '#00b96b' }} />
+                    <FolderOpenOutlined style={{ color: '#36b37e' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
@@ -341,7 +341,7 @@ export default function ProjectList() {
                     onConfirm={(e) => handleDelete(e, p)}
                     onCancel={(e) => e.stopPropagation()}
                   >
-                    <Button size="small" type="text" icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()} style={{ color: '#ff4d4f' }}>删除</Button>
+                    <Button size="small" type="text" icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()} style={{ color: '#e8453c' }}>删除</Button>
                   </Popconfirm>
                 </div>
               </Card>
@@ -391,7 +391,7 @@ export default function ProjectList() {
             <Input prefix={<FolderOpenOutlined style={{ color: '#c9cdd4' }} />} placeholder="/workspace/repos/project-name（不填则不支持脚本同步）" />
           </Form.Item>
           {!editingProject && (
-            <div style={{ padding: '8px 12px', background: '#f6ffed', borderRadius: 12, fontSize: 12, color: '#00b96b' }}>
+            <div style={{ padding: '8px 12px', background: '#f6ffed', borderRadius: 12, fontSize: 12, color: '#36b37e' }}>
               创建后系统将自动生成默认分支配置（名称: default，分支: main）
             </div>
           )}

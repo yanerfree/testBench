@@ -9,8 +9,8 @@ const statusMap = {
   draft:          { label: '草稿',     color: '#86909c', bg: '#f2f3f5', dot: '#c9cdd4' },
   executing:      { label: '执行中',   color: '#1890ff', bg: '#e6f7ff', dot: '#1890ff' },
   paused:         { label: '已暂停',   color: '#faad14', bg: '#fffbe6', dot: '#faad14' },
-  pending_manual: { label: '待录入',   color: '#722ed1', bg: '#f9f0ff', dot: '#722ed1' },
-  completed:      { label: '已完成',   color: '#00b96b', bg: '#f6ffed', dot: '#00b96b' },
+  pending_manual: { label: '待录入',   color: '#7c5cbf', bg: '#f9f0ff', dot: '#7c5cbf' },
+  completed:      { label: '已完成',   color: '#36b37e', bg: '#f6ffed', dot: '#36b37e' },
   archived:       { label: '已归档',   color: '#86909c', bg: '#f2f3f5', dot: '#c9cdd4' },
 }
 
@@ -167,7 +167,7 @@ export default function PlanList() {
       {loading ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spin /></div> :
         filteredPlans.length === 0 ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Empty description="暂无计划" /></div> : <>
         {/* Table */}
-        <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 12, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ background: 'rgba(255,255,255,0.45)', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 12, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', height: 36, background: '#f7f8fa', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0 }}>
             <div style={{ flex: 4, ...th }}>计划名称</div>
@@ -229,7 +229,7 @@ export default function PlanList() {
                       fontSize: 11, padding: '2px 8px', borderRadius: 10,
                       background: s.dot, color: '#fff',
                     }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.7)' }} />
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.45)' }} />
                       {s.label}
                     </span>
                   </div>

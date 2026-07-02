@@ -4,8 +4,8 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ReloadOutline
 import { api } from '../../utils/request'
 
 const ROLE_CONFIG = {
-  admin: { label: '系统管理员', color: '#ff4d4f', bg: '#fff2f0' },
-  user: { label: '普通用户', color: '#00b96b', bg: '#e6f7ff' },
+  admin: { label: '系统管理员', color: '#e8453c', bg: '#fef2f0' },
+  user: { label: '普通用户', color: '#7c5cbf', bg: '#f5f0ff' },
 }
 
 export default function UserManagement() {
@@ -89,7 +89,7 @@ export default function UserManagement() {
       title: '用户', dataIndex: 'username', width: 200,
       render: (v) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Avatar size={28} style={{ background: '#722ed1', fontSize: 12 }}>{v[0].toUpperCase()}</Avatar>
+          <Avatar size={28} style={{ background: 'linear-gradient(135deg, #7c5cbf, #a78bda)', fontSize: 12 }}>{v[0].toUpperCase()}</Avatar>
           <span style={{ fontWeight: 500 }}>{v}</span>
         </div>
       ),
@@ -121,14 +121,14 @@ export default function UserManagement() {
       title: '操作', width: 120, align: 'center',
       render: (_, record) => (
         <Space size={4}>
-          <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} style={{ color: '#00b96b' }} />
+          <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} style={{ color: '#86909c' }} />
           {record.username !== 'admin' && (
             <Popconfirm
               title={`确定删除用户 ${record.username}？`}
               description={record.isActive ? '该用户当前处于启用状态' : undefined}
               onConfirm={() => handleDelete(record)}
             >
-              <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#ff4d4f' }} />
+              <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#e8453c' }} />
             </Popconfirm>
           )}
         </Space>
@@ -149,7 +149,7 @@ export default function UserManagement() {
         </Space>
       </div>
 
-      <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', padding: 2 }}>
+      <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', padding: 2 }}>
         <Table
           dataSource={users}
           columns={columns}

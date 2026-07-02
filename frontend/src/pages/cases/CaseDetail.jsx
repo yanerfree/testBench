@@ -15,16 +15,16 @@ import ApiStepList, { generateApiCodeFromSteps } from '../../components/ApiStepL
 
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
 const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' }
-const statusColors = { automated: '#00b96b', pending: '#faad14', removed: '#ff4d4f' }
+const statusColors = { automated: '#36b37e', pending: '#faad14', removed: '#e8453c' }
 const statusBg = { automated: '#f6ffed', pending: '#fffbe6', removed: '#fff2f0' }
 const statusLabels = { automated: '已自动化', pending: '待自动化', removed: '脚本已移除' }
-const dotColors = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9', automated: '#00b96b', pending: '#faad14', removed: '#ff4d4f' }
-const phaseColor = { setup: '#722ed1', action: '#1890ff', verify: '#00b96b' }
+const dotColors = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9', automated: '#36b37e', pending: '#faad14', removed: '#e8453c' }
+const phaseColor = { setup: '#7c5cbf', action: '#1890ff', verify: '#36b37e' }
 const phaseLabel = { setup: '准备', action: '操作', verify: '验证' }
 const scenarioStatusMap = {
   draft: { label: '草稿', color: '#86909c', bg: '#f7f8fa' },
   debugging: { label: '调试中', color: '#faad14', bg: '#fffbe6' },
-  completed: { label: '已完成', color: '#00b96b', bg: '#f6ffed' },
+  completed: { label: '已完成', color: '#36b37e', bg: '#f6ffed' },
 }
 
 function InlineProp({ icon, value, color, bg, children }) {
@@ -143,7 +143,7 @@ function ScriptViewer({ scriptData, loading, error, onRetry }) {
   if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><Spin tip="加载脚本中..." /></div>
   if (error) return (
     <div style={{ padding: 24, textAlign: 'center' }}>
-      <div style={{ color: '#ff4d4f', marginBottom: 12 }}>{error}</div>
+      <div style={{ color: '#e8453c', marginBottom: 12 }}>{error}</div>
       <Button size="small" onClick={onRetry}>重试</Button>
     </div>
   )
@@ -743,7 +743,7 @@ export default function CaseDetail() {
             <DropdownList activeKey={priority} onSelect={setPriority}
               items={['P0','P1','P2','P3'].map(p => ({ key: p, label: p, dot: 'square', color: dotColors[p] }))} />
           </InlineProp>
-          <InlineProp icon={<ApiOutlined />} value={type?.toUpperCase()} color={type==='api'?'#1890ff':'#00b96b'} bg={type==='api'?'#e6f7ff':'#f6ffed'}>
+          <InlineProp icon={<ApiOutlined />} value={type?.toUpperCase()} color={type==='api'?'#1890ff':'#36b37e'} bg={type==='api'?'#e6f7ff':'#f6ffed'}>
             <DropdownList activeKey={type} onSelect={setType} items={['api','e2e'].map(t => ({ key: t, label: t.toUpperCase() }))} />
           </InlineProp>
           <ReadonlyProp icon={<AppstoreOutlined />} label="模块" value={[module, subModule].filter(Boolean).join(' / ') || '未分类'} />
@@ -766,7 +766,7 @@ export default function CaseDetail() {
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
                 borderRadius: 12, fontSize: 11, fontWeight: 500,
-                background: '#f6ffed', color: '#00b96b', border: '1px solid #b7eb8f',
+                background: '#f6ffed', color: '#36b37e', border: '1px solid #b7eb8f',
               }}><CheckCircleOutlined style={{ fontSize: 10 }} /> 手动 ({steps.length}步)</span>
             </Tooltip>
             <Tooltip title={hasApi ? `接口场景 · ${(scenarioStatusMap[apiScenarioStatus] || {}).label || '草稿'}${isApiTemplate ? ' · 模板' : ''}` : '暂无接口测试场景，点击接口测试 Tab 创建'}>
@@ -787,7 +787,7 @@ export default function CaseDetail() {
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
                 borderRadius: 12, fontSize: 11, fontWeight: 500,
                 background: hasUi ? '#f0f5ff' : '#f7f8fa',
-                color: hasUi ? (scenarioStatusMap[uiScenarioStatus] || {}).color || '#722ed1' : '#c9cdd4',
+                color: hasUi ? (scenarioStatusMap[uiScenarioStatus] || {}).color || '#7c5cbf' : '#c9cdd4',
                 border: `1px solid ${hasUi ? '#d3adf7' : '#e5e6eb'}`,
               }}>
                 {isUiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14' }} />}
@@ -885,12 +885,12 @@ export default function CaseDetail() {
               />
             )},
 
-            { key: 'ui', label: <span><DesktopOutlined style={{ marginRight: 4, color: hasUi ? '#722ed1' : undefined }} />UI 测试{hasUi && <span style={{ fontSize: 11, color: '#722ed1', marginLeft: 4 }}>({uiScenario?.steps?.length || 0}步)</span>}</span>, children: (
+            { key: 'ui', label: <span><DesktopOutlined style={{ marginRight: 4, color: hasUi ? '#7c5cbf' : undefined }} />UI 测试{hasUi && <span style={{ fontSize: 11, color: '#7c5cbf', marginLeft: 4 }}>({uiScenario?.steps?.length || 0}步)</span>}</span>, children: (
               <ScenarioEditor
                 scenario={uiScenario} setScenario={setUiScenario}
                 scenarioStatus={uiScenarioStatus} setScenarioStatus={setUiScenarioStatus}
                 isTemplate={isUiTemplate} setIsTemplate={setIsUiTemplate}
-                type="e2e" accentColor="#722ed1"
+                type="e2e" accentColor="#7c5cbf"
                 onImportTemplate={() => { setTemplateModalType('ui'); setTemplateModalOpen(true) }}
                 manualSteps={steps} caseTitle={title}
                 projectId={projectId} branchId={branchId} caseId={caseId}
@@ -928,7 +928,7 @@ export default function CaseDetail() {
                     },
                     {
                       title: '错误摘要', dataIndex: 'errorSummary', ellipsis: true,
-                      render: v => v ? <span style={{ color: '#ff4d4f', fontFamily: 'monospace', fontSize: 12 }}>{v}</span> : '-'
+                      render: v => v ? <span style={{ color: '#e8453c', fontFamily: 'monospace', fontSize: 12 }}>{v}</span> : '-'
                     },
                   ]}
                 />
@@ -1057,7 +1057,7 @@ export default function CaseDetail() {
 
                   {runResult.errorSummary && (
                     <div style={{ padding: '10px 14px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 12, marginBottom: 12 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#ff4d4f', marginBottom: 4 }}>错误信息</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#e8453c', marginBottom: 4 }}>错误信息</div>
                       <pre style={{ margin: 0, fontSize: 12, color: '#434343', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 150, overflow: 'auto' }}>{runResult.errorSummary}</pre>
                     </div>
                   )}
@@ -1098,10 +1098,10 @@ function CaseFileTab({ caseId }) {
   if (!data) return <Empty description="无法加载病历" image={Empty.PRESENTED_IMAGE_SIMPLE} />
 
   const EVENT_LABELS = {
-    ai_generated: { label: 'AI 生成', color: '#1677ff', icon: '🔵' },
-    ai_reviewed: { label: 'AI 评审', color: '#722ed1', icon: '🟡' },
+    ai_generated: { label: 'AI 生成', color: '#4e8af0', icon: '🔵' },
+    ai_reviewed: { label: 'AI 评审', color: '#7c5cbf', icon: '🟡' },
     executed_pass: { label: '执行通过', color: '#52c41a', icon: '🟢' },
-    executed_fail: { label: '执行失败', color: '#ff4d4f', icon: '🔴' },
+    executed_fail: { label: '执行失败', color: '#e8453c', icon: '🔴' },
     ai_diagnosed: { label: 'AI 诊断', color: '#fa8c16', icon: '🟠' },
     manual_edit: { label: '手动编辑', color: '#86909c', icon: '⚪' },
   }
@@ -1117,7 +1117,7 @@ function CaseFileTab({ caseId }) {
           <Space size={16}>
             <span style={{ fontSize: 12, color: '#86909c' }}>执行 {data.stats.totalExecutions} 次</span>
             {data.stats.passRate !== null && (
-              <span style={{ fontSize: 12, color: data.stats.passRate >= 80 ? '#52c41a' : '#ff4d4f' }}>
+              <span style={{ fontSize: 12, color: data.stats.passRate >= 80 ? '#52c41a' : '#e8453c' }}>
                 通过率 {data.stats.passRate}%
               </span>
             )}

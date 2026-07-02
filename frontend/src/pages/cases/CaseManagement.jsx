@@ -9,7 +9,7 @@ import AIScriptModal from '../../components/AIScriptModal'
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
 const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' }
 const statusMap = { automated: '已自动化', pending: '待自动化', script_removed: '脚本已移除', archived: '已归档' }
-const statusColors = { automated: '#00b96b', pending: '#faad14', script_removed: '#ff4d4f', archived: '#bfbfbf' }
+const statusColors = { automated: '#36b37e', pending: '#faad14', script_removed: '#e8453c', archived: '#bfbfbf' }
 const statusBg = { automated: 'transparent', pending: 'transparent', script_removed: 'transparent', archived: 'transparent' }
 
 // ---- 分支管理弹窗（保持不变） ----
@@ -73,7 +73,7 @@ function BranchManageModal({ projectId, open, onClose, onBranchesChanged }) {
         {b.status === 'active' ? (
           <Popconfirm title={`确定归档「${b.name}」？`} onConfirm={() => handleArchive(b)}><Tooltip title="归档"><Button size="small" type="text" icon={<PauseCircleOutlined />} style={{ color: '#faad14' }} /></Tooltip></Popconfirm>
         ) : (
-          <Tooltip title="恢复"><Button size="small" type="text" icon={<PlayCircleOutlined />} style={{ color: '#00b96b' }} onClick={() => handleActivate(b)} /></Tooltip>
+          <Tooltip title="恢复"><Button size="small" type="text" icon={<PlayCircleOutlined />} style={{ color: '#36b37e' }} onClick={() => handleActivate(b)} /></Tooltip>
         )}
       </Space>
     </div>
@@ -450,7 +450,7 @@ export default function CaseManagement() {
       const apiSt = row.apiScenarioStatus
       const uiSt = row.uiScenarioStatus
       const apiColor = apiSt === 'completed' ? '#1890ff' : apiSt === 'debugging' ? '#faad14' : '#86909c'
-      const uiColor = uiSt === 'completed' ? '#722ed1' : uiSt === 'debugging' ? '#faad14' : '#86909c'
+      const uiColor = uiSt === 'completed' ? '#7c5cbf' : uiSt === 'debugging' ? '#faad14' : '#86909c'
       return (
         <Space size={4}>
           <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#f6ffed', color: '#52c41a' }}>手动</Tag>
@@ -505,7 +505,7 @@ export default function CaseManagement() {
               fetchFolders()
             } catch { /* */ }
           }}>
-            <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#ff4d4f' }} />
+            <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#e8453c' }} />
           </Popconfirm>
         </Space>
       )
@@ -525,7 +525,7 @@ export default function CaseManagement() {
           <SettingOutlined
             onClick={() => setColumnSettingOpen(true)}
             style={{ color: '#c9cdd4', cursor: 'pointer', fontSize: 14 }}
-            onMouseEnter={e => e.target.style.color = '#00b96b'}
+            onMouseEnter={e => e.target.style.color = '#36b37e'}
             onMouseLeave={e => e.target.style.color = '#c9cdd4'}
           />
         </Tooltip>
@@ -543,7 +543,7 @@ export default function CaseManagement() {
       <Card styles={{ body: { padding: '6px 16px' } }} style={{ flexShrink: 0, marginBottom: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <BranchesOutlined style={{ color: '#00b96b' }} />
+            <BranchesOutlined style={{ color: '#36b37e' }} />
             <span style={{ fontSize: 13, color: '#86909c' }}>分支配置</span>
             <Select
               value={currentBranch}
@@ -565,7 +565,7 @@ export default function CaseManagement() {
         <Card style={{ width: 220, flexShrink: 0, overflow: 'auto' }}
           styles={{ body: { padding: '8px 4px' }, header: { padding: '0 12px', minHeight: 36, borderBottom: '1px solid rgba(0,0,0,0.04)' } }}
           title={<span style={{ fontSize: 13, fontWeight: 600 }}>用例导航</span>}
-          extra={<Button type="text" size="small" icon={<PlusOutlined />} onClick={() => setFolderModalOpen(true)} style={{ color: '#00b96b' }} />}>
+          extra={<Button type="text" size="small" icon={<PlusOutlined />} onClick={() => setFolderModalOpen(true)} style={{ color: '#36b37e' }} />}>
           {treeData.length > 0 ? (
             <Tree
               treeData={treeData}
@@ -658,7 +658,7 @@ export default function CaseManagement() {
             </div>
             {selectedRowKeys.length > 0 && (
               <div style={{ marginTop: 10, padding: '8px 12px', background: statusFilter === 'deleted' ? '#fff2f0' : '#e6f7ff', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 13, color: statusFilter === 'deleted' ? '#ff4d4f' : '#1890ff' }}>已选 {selectedRowKeys.length} 条</span>
+                <span style={{ fontSize: 13, color: statusFilter === 'deleted' ? '#e8453c' : '#1890ff' }}>已选 {selectedRowKeys.length} 条</span>
                 {statusFilter === 'deleted' ? (
                   <Popconfirm title={`确定彻底删除 ${selectedRowKeys.length} 条用例？此操作不可恢复！`} onConfirm={async () => {
                     try {
@@ -739,7 +739,7 @@ export default function CaseManagement() {
         {!importResult ? (
           <Upload.Dragger accept=".json,.xlsx" showUploadList={false} beforeUpload={handleImportFile} disabled={importing} style={{ padding: '32px 0' }}>
             {importing ? <Spin tip="正在导入..." /> : (<>
-              <p><InboxOutlined style={{ fontSize: 40, color: '#00b96b' }} /></p>
+              <p><InboxOutlined style={{ fontSize: 40, color: '#36b37e' }} /></p>
               <p style={{ fontSize: 14, color: '#1d2129', marginTop: 8 }}>点击或拖拽上传用例文件</p>
               <p style={{ fontSize: 12, color: '#86909c' }}>支持 .json（TEA 格式）和 .xlsx（Excel 导出格式）</p>
             </>)}
@@ -747,9 +747,9 @@ export default function CaseManagement() {
         ) : (
           <div style={{ display: 'flex', gap: 12 }}>
             {[
-              { label: '新增', count: importResult.new, color: '#00b96b', bg: '#e6f7ff' },
-              { label: '更新', count: importResult.updated, color: '#00b96b', bg: '#e6f7ff' },
-              { label: '移除', count: importResult.removed, color: '#ff4d4f', bg: '#fff2f0' },
+              { label: '新增', count: importResult.new, color: '#36b37e', bg: '#e6f7ff' },
+              { label: '更新', count: importResult.updated, color: '#36b37e', bg: '#e6f7ff' },
+              { label: '移除', count: importResult.removed, color: '#e8453c', bg: '#fff2f0' },
               { label: '跳过', count: importResult.skipped, color: '#8c8c8c', bg: '#f2f3f5' },
             ].map(s => (
               <div key={s.label} style={{ flex: 1, textAlign: 'center', padding: '16px 0', background: s.bg, borderRadius: 12 }}>
@@ -897,7 +897,7 @@ export default function CaseManagement() {
         {reviewResult && (
           <div>
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div style={{ fontSize: 48, fontWeight: 700, color: reviewResult.score >= 75 ? '#52c41a' : reviewResult.score >= 60 ? '#faad14' : '#ff4d4f' }}>
+              <div style={{ fontSize: 48, fontWeight: 700, color: reviewResult.score >= 75 ? '#52c41a' : reviewResult.score >= 60 ? '#faad14' : '#e8453c' }}>
                 {reviewResult.score}
               </div>
               <Tag color={reviewResult.score >= 75 ? 'success' : reviewResult.score >= 60 ? 'warning' : 'error'} style={{ fontSize: 14 }}>
@@ -911,13 +911,13 @@ export default function CaseManagement() {
             {reviewResult.report?.dimensions && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
                 {Object.entries(reviewResult.report.dimensions).map(([key, dim]) => (
-                  <div key={key} style={{ padding: '8px 12px', background: '#f9fafb', borderRadius: 10, borderLeft: `3px solid ${dim.score >= 80 ? '#52c41a' : dim.score >= 60 ? '#faad14' : '#ff4d4f'}` }}>
+                  <div key={key} style={{ padding: '8px 12px', background: '#f9fafb', borderRadius: 10, borderLeft: `3px solid ${dim.score >= 80 ? '#52c41a' : dim.score >= 60 ? '#faad14' : '#e8453c'}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Text strong>{{completeness:'完整性',accuracy:'准确性',effectiveness:'有效性',executability:'可执行性'}[key] || key}</Text>
                       <Text strong>{dim.score} 分 ({dim.weight}%)</Text>
                     </div>
                     {dim.issues?.length > 0 && dim.issues.map((issue, i) => (
-                      <div key={i} style={{ fontSize: 12, color: '#ff4d4f', marginTop: 2 }}>- {issue}</div>
+                      <div key={i} style={{ fontSize: 12, color: '#e8453c', marginTop: 2 }}>- {issue}</div>
                     ))}
                   </div>
                 ))}
