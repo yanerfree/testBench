@@ -52,7 +52,12 @@ export default function ApiTest() {
     if (!branchId) return
     try {
       const res = await api.get(`/projects/${projectId}/branches/${branchId}/api-tests/folders`)
-      setFolderTree(res.data || [])
+      const tree = res.data || []
+      setFolderTree(tree)
+      // 默认选中第一个文件夹
+      if (!selectedFolderId && !selectedScenario && tree.length > 0) {
+        setSelectedFolderId(tree[0].id)
+      }
     } catch { /* */ }
   }, [projectId, branchId])
 

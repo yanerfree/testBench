@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import {
   Switch, Tag, Space, Typography, Button, message, Drawer, Input, Radio,
-  Pagination, Popconfirm, Badge
+  Pagination, Popconfirm
 } from 'antd'
 import {
   ApiOutlined, PlayCircleOutlined, LoadingOutlined, EditOutlined,
@@ -116,7 +116,7 @@ export default function McpMock() {
         padding: '10px 20px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.05)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <ApiOutlined style={{ fontSize: 18, color: '#7c5cbf' }} />
             <span style={{ fontWeight: 600, fontSize: 16, letterSpacing: 0.5 }}>MCP Mock</span>
@@ -124,17 +124,17 @@ export default function McpMock() {
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '2px 10px', borderRadius: 12,
-            background: enabled ? '#fff7e6' : '#f5f5f5',
-            border: `1px solid ${enabled ? '#ffd591' : '#d9d9d9'}`,
+            background: enabled ? '#fff7e6' : '#f6ffed',
+            border: `1px solid ${enabled ? '#ffd591' : '#b7eb8f'}`,
           }}>
-            <Badge status={enabled ? 'warning' : 'default'} />
-            <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: enabled ? '#d46b08' : '#999' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: enabled ? '#fa8c16' : '#52c41a' }} />
+            <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: enabled ? '#d46b08' : '#389e0d' }}>
               {enabled ? 'MOCK' : 'REAL'}
             </span>
           </div>
           <span style={{ fontSize: 12, color: '#8c8c8c' }}>{tools.length} 个工具</span>
         </div>
-        <Space size={8}>
+        <Space size={12}>
           <Button size="small" icon={<CopyOutlined />} onClick={() => {
             copyToClipboard(mcpUrl).then(() => message.success('已复制 MCP 地址'))
           }}>复制地址</Button>
@@ -191,19 +191,19 @@ export default function McpMock() {
                       </td>
                       <td style={{ padding: '10px 16px', fontSize: 12, color: '#595959' }}>{t.description}</td>
                       <td style={{ padding: '10px 16px' }}>
-                        <Radio.Group size="small" value={t.mode} buttonStyle="solid"
+                        <Radio.Group size="small" value={t.mode}
                           onChange={e => handleModeSwitch(t.name, e.target.value)}>
-                          <Radio.Button value="success" style={t.mode === 'success' ? { background: '#52c41a', borderColor: '#52c41a' } : {}}>成功</Radio.Button>
-                          <Radio.Button value="error" style={t.mode === 'error' ? { background: '#e8453c', borderColor: '#e8453c' } : {}}>失败</Radio.Button>
-                          <Radio.Button value="custom" style={t.mode === 'custom' ? { background: '#4e8af0', borderColor: '#4e8af0' } : {}}>自定义</Radio.Button>
+                          <Radio value="success"><span style={{ color: '#52c41a' }}>成功</span></Radio>
+                          <Radio value="error"><span style={{ color: '#e8453c' }}>失败</span></Radio>
+                          <Radio value="custom"><span style={{ color: '#4e8af0' }}>自定义</span></Radio>
                         </Radio.Group>
                         {t.mode === 'custom' && (
-                          <Button type="link" size="small" icon={<EditOutlined />} style={{ marginLeft: 4, padding: 0, fontSize: 12 }}
+                          <Button type="link" size="small" icon={<EditOutlined />} style={{ padding: 0, fontSize: 12 }}
                             onClick={() => { setEditTool(t.name); setEditCustom(''); setEditIsError(false) }}>编辑</Button>
                         )}
                       </td>
                       <td style={{ padding: '10px 16px' }}>
-                        <Button size="small" type="primary" ghost icon={<PlayCircleOutlined />}
+                        <Button size="small" type="link" icon={<PlayCircleOutlined />}
                           onClick={() => openCall(t.name)}>调用</Button>
                       </td>
                     </tr>
