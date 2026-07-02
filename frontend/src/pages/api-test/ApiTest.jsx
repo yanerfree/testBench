@@ -143,7 +143,7 @@ export default function ApiTest() {
       </div>
 
       {/* 中栏：步骤列表 */}
-      <div style={{ width: 320, minWidth: 320, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ width: 260, minWidth: 260, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
         {selectedScenario ? (
           <>
             <div style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0', background: '#fff' }}>
@@ -214,127 +214,166 @@ export default function ApiTest() {
       </div>
 
       {/* 右栏：请求编辑器 */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fafafa' }}>
         {selectedStep ? (
           <>
             {/* 顶部：步骤名 + 运行按钮 */}
-            <div style={{ padding: '8px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Space>
-                {selectedStep.lastStatus === 'pass' ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> :
-                 selectedStep.lastStatus === 'fail' ? <CloseCircleOutlined style={{ color: '#ff4d4f' }} /> : null}
-                <span style={{ fontWeight: 500, fontSize: 14 }}>{selectedStep.name}</span>
-              </Space>
+            <div style={{ padding: '10px 20px', background: '#fff', borderBottom: '1px solid #e8e8e8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>{selectedStep.name}</span>
               <Button
                 type="primary"
-                icon={running ? <LoadingOutlined /> : <SendOutlined />}
+                icon={running ? <LoadingOutlined /> : <CaretRightOutlined />}
                 loading={running}
                 onClick={handleRunStep}
-                style={{ background: '#52c41a', borderColor: '#52c41a' }}
+                style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 500 }}
               >
                 运行
               </Button>
             </div>
 
             {/* URL 栏 */}
-            <div style={{ padding: '8px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', gap: 8, alignItems: 'center' }}>
-              <Tag color={METHOD_COLORS[selectedStep.method]} style={{ fontSize: 12, padding: '2px 8px', margin: 0 }}>
+            <div style={{ padding: '10px 20px', background: '#fff', borderBottom: '1px solid #e8e8e8', display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ background: METHOD_COLORS[selectedStep.method], color: '#fff', padding: '4px 12px', borderRadius: 4, fontWeight: 600, fontSize: 12, minWidth: 56, textAlign: 'center' }}>
                 {selectedStep.method}
-              </Tag>
+              </div>
               <Input
                 value={selectedStep.url}
                 readOnly
-                style={{ fontFamily: 'monospace', fontSize: 13 }}
+                variant="borderless"
+                style={{ fontFamily: "'SF Mono', Monaco, Consolas, monospace", fontSize: 13, color: '#333' }}
               />
+              <Button size="small" style={{ fontSize: 12 }}>发送</Button>
             </div>
 
-            {/* Tab 栏：Body / Headers / 断言 / 变量 */}
-            <div style={{ flex: 1, overflow: 'auto', padding: '0 16px' }}>
+            {/* Tab 栏 */}
+            <div style={{ flex: 1, overflow: 'auto' }}>
               <Tabs
                 defaultActiveKey="body"
                 size="small"
+                style={{ padding: '0 20px' }}
                 items={[
                   {
                     key: 'body',
-                    label: `Body${selectedStep.body ? ' ●' : ''}`,
-                    children: selectedStep.body ? (
-                      <pre style={{
-                        background: '#161b22', color: '#e6edf3', padding: 12, borderRadius: 6,
-                        fontSize: 12, fontFamily: 'monospace', lineHeight: 1.6, overflow: 'auto',
-                        minHeight: 120, maxHeight: 300,
-                      }}>
-                        {JSON.stringify(selectedStep.body, null, 2)}
-                      </pre>
-                    ) : <Text type="secondary" style={{ fontSize: 12 }}>无请求体</Text>,
+                    label: <span>Body {selectedStep.body && <span style={{ color: '#52c41a' }}>●</span>}</span>,
+                    children: (
+                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
+                        <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid #e8e8e8', fontSize: 11, color: '#8c8c8c' }}>
+                          JSON
+                        </div>
+                        <pre style={{
+                          margin: 0, padding: 16, fontSize: 13, fontFamily: "'SF Mono', Monaco, Consolas, monospace",
+                          lineHeight: 1.6, overflow: 'auto', minHeight: 100, maxHeight: 400, color: '#333',
+                        }}>
+                          {selectedStep.body ? JSON.stringify(selectedStep.body, null, 2) : '// 无请求体'}
+                        </pre>
+                      </div>
+                    ),
                   },
                   {
                     key: 'headers',
-                    label: `Headers${selectedStep.headers && Object.keys(selectedStep.headers).length ? ` ${Object.keys(selectedStep.headers).length}` : ''}`,
-                    children: selectedStep.headers && Object.keys(selectedStep.headers).length > 0 ? (
-                      <div style={{ fontSize: 12 }}>
-                        {Object.entries(selectedStep.headers).map(([k, v]) => (
-                          <div key={k} style={{ display: 'flex', gap: 8, padding: '4px 0', borderBottom: '1px solid #f5f5f5' }}>
-                            <span style={{ fontWeight: 500, minWidth: 140, color: '#333' }}>{k}</span>
-                            <span style={{ color: '#595959', fontFamily: 'monospace' }}>{v}</span>
-                          </div>
-                        ))}
+                    label: <span>Headers {selectedStep.headers && Object.keys(selectedStep.headers).length > 0 && <Tag style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{Object.keys(selectedStep.headers).length}</Tag>}</span>,
+                    children: (
+                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ background: '#f6f7f9' }}>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>Key</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>Value</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedStep.headers && Object.entries(selectedStep.headers).map(([k, v]) => (
+                              <tr key={k}>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontWeight: 500, color: '#333' }}>{k}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontFamily: 'monospace', color: '#595959', wordBreak: 'break-all' }}>{v}</td>
+                              </tr>
+                            ))}
+                            {(!selectedStep.headers || Object.keys(selectedStep.headers).length === 0) && (
+                              <tr><td colSpan={2} style={{ padding: 16, color: '#bfbfbf', textAlign: 'center' }}>无自定义 Headers</td></tr>
+                            )}
+                          </tbody>
+                        </table>
                       </div>
-                    ) : <Text type="secondary" style={{ fontSize: 12 }}>无自定义 Headers</Text>,
+                    ),
                   },
                   {
                     key: 'assertions',
-                    label: `断言${selectedStep.assertions?.length ? ` ${selectedStep.assertions.length}` : ''}`,
-                    children: selectedStep.assertions?.length > 0 ? (
-                      <div style={{ fontSize: 12 }}>
-                        {selectedStep.assertions.map((a, j) => (
-                          <div key={j} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #f5f5f5', alignItems: 'center' }}>
-                            <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                            <span>{a.type}</span>
-                            {a.field && <Tag style={{ fontSize: 11 }}>{a.field}</Tag>}
-                            <span style={{ color: '#1677ff' }}>{a.operator}</span>
-                            <code style={{ background: '#eff1f3', padding: '1px 6px', borderRadius: 3 }}>{JSON.stringify(a.value)}</code>
-                          </div>
-                        ))}
+                    label: <span>断言 {selectedStep.assertions?.length > 0 && <Tag color="green" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{selectedStep.assertions.length}</Tag>}</span>,
+                    children: (
+                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ background: '#f6f7f9' }}>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8', width: 30 }}></th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>类型</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>字段</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>操作</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>期望值</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(selectedStep.assertions || []).map((a, j) => (
+                              <tr key={j}>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0' }}><CheckCircleOutlined style={{ color: '#52c41a' }} /></td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontWeight: 500 }}>{a.type}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontFamily: 'monospace', color: '#595959' }}>{a.field || '-'}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', color: '#1677ff' }}>{a.operator}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0' }}>
+                                  <code style={{ background: '#f0f5ff', padding: '2px 8px', borderRadius: 3, color: '#1d39c4' }}>{JSON.stringify(a.value)}</code>
+                                </td>
+                              </tr>
+                            ))}
+                            {(!selectedStep.assertions || selectedStep.assertions.length === 0) && (
+                              <tr><td colSpan={5} style={{ padding: 16, color: '#bfbfbf', textAlign: 'center' }}>无断言</td></tr>
+                            )}
+                          </tbody>
+                        </table>
                       </div>
-                    ) : <Text type="secondary" style={{ fontSize: 12 }}>无断言</Text>,
+                    ),
                   },
                   {
                     key: 'variables',
                     label: '变量提取',
-                    children: selectedStep.variablesExtract && Object.keys(selectedStep.variablesExtract).length > 0 ? (
-                      <div style={{ fontSize: 12 }}>
-                        {Object.entries(selectedStep.variablesExtract).map(([k, v]) => (
-                          <div key={k} style={{ padding: '4px 0' }}>
-                            <code style={{ color: '#d46b08' }}>${`{${k}}`}</code>
-                            <span style={{ margin: '0 8px', color: '#8c8c8c' }}>←</span>
-                            <code>{v}</code>
-                          </div>
-                        ))}
+                    children: (
+                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', padding: 16 }}>
+                        {selectedStep.variablesExtract && Object.keys(selectedStep.variablesExtract).length > 0 ? (
+                          Object.entries(selectedStep.variablesExtract).map(([k, v]) => (
+                            <div key={k} style={{ padding: '4px 0', fontSize: 13 }}>
+                              <code style={{ color: '#d46b08', fontWeight: 500 }}>${`{${k}}`}</code>
+                              <span style={{ margin: '0 8px', color: '#8c8c8c' }}>←</span>
+                              <code style={{ color: '#333' }}>{v}</code>
+                            </div>
+                          ))
+                        ) : <Text type="secondary" style={{ fontSize: 12 }}>无变量提取</Text>}
                       </div>
-                    ) : <Text type="secondary" style={{ fontSize: 12 }}>无变量提取</Text>,
+                    ),
                   },
                   {
                     key: 'response',
-                    label: `响应${runResponse ? ' ●' : ''}`,
-                    children: runResponse ? (
-                      <div>
-                        {runResponse.error ? (
-                          <div style={{ color: '#ff4d4f', fontSize: 13 }}>{runResponse.error}</div>
+                    label: <span>响应 {runResponse && <span style={{ color: runResponse.error ? '#ff4d4f' : '#52c41a' }}>●</span>}</span>,
+                    children: (
+                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
+                        {runResponse ? (
+                          runResponse.error ? (
+                            <div style={{ padding: 16, color: '#ff4d4f' }}>{runResponse.error}</div>
+                          ) : (
+                            <>
+                              <div style={{ padding: '8px 12px', background: '#f6f7f9', borderBottom: '1px solid #e8e8e8', display: 'flex', gap: 12, fontSize: 12 }}>
+                                <Tag color={runResponse.statusCode < 400 ? 'success' : 'error'}>{runResponse.statusCode}</Tag>
+                                <span style={{ color: '#8c8c8c' }}>{runResponse.duration}ms</span>
+                              </div>
+                              <pre style={{ margin: 0, padding: 16, fontSize: 12, fontFamily: 'monospace', lineHeight: 1.5, overflow: 'auto', maxHeight: 400 }}>
+                                {JSON.stringify(runResponse.body, null, 2)}
+                              </pre>
+                            </>
+                          )
                         ) : (
-                          <>
-                            <div style={{ marginBottom: 8 }}>
-                              <Tag color={runResponse.statusCode < 400 ? 'success' : 'error'}>{runResponse.statusCode}</Tag>
-                              <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8 }}>{runResponse.duration}ms</span>
-                            </div>
-                            <pre style={{
-                              background: '#161b22', color: '#e6edf3', padding: 12, borderRadius: 6,
-                              fontSize: 11, fontFamily: 'monospace', lineHeight: 1.5, overflow: 'auto', maxHeight: 400,
-                            }}>
-                              {JSON.stringify(runResponse.body, null, 2)}
-                            </pre>
-                          </>
+                          <div style={{ padding: 24, textAlign: 'center', color: '#bfbfbf', fontSize: 12 }}>
+                            点击「运行」查看响应
+                          </div>
                         )}
                       </div>
-                    ) : <Text type="secondary" style={{ fontSize: 12 }}>点击「运行」查看响应</Text>,
+                    ),
                   },
                 ]}
               />
