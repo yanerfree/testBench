@@ -1,0 +1,48 @@
+"""接口测试 — 测试场景 + 测试步骤"""
+import uuid
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Boolean, func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.models.user import Base
+
+
+class ApiTestScenario(Base):
+    """测试场景：一组针对某接口的测试步骤"""
+    __tablename__ = "api_test_scenarios"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=func.gen_random_uuid())
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    branch_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"), nullable=False)
+    code: Mapped[str] = mapped_column(String(30), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    priority: Mapped[str] = mapped_column(String(5), default="P1")
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="draft")  # draft | completed | failed
+    source_api_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    env_variables: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ApiTestStep(Base):
+    """测试步骤：场景中的一个请求"""
+    __tablename__ = "api_test_steps"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=func.gen_random_uuid())
+    scenario_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("api_test_scenarios.id", ondelete="CASCADE"), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    group_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    method: Mapped[str] = mapped_column(String(10), nullable=False)  # GET/POST/PUT/DELETE
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+    headers: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    body: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    assertions: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    variables_extract: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    last_status: Mapped[str | None] = mapped_column(String(10), nullable=True)  # pass | fail | null
+    last_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Input, Button, Space, Tag, message, Radio, Switch, InputNumber, Tooltip } from 'antd'
+import { Input, Button, Space, Tag, message, Radio, Switch, InputNumber } from 'antd'
 import {
   ToolOutlined, FormatPainterOutlined, SwapOutlined, ClockCircleOutlined,
   FileSearchOutlined, DatabaseOutlined, DiffOutlined, CopyOutlined,
@@ -46,8 +46,11 @@ function JsonTool() {
     setOutput(JSON.stringify(input))
   }
   const handleUnescape = () => {
-    try { setOutput(JSON.parse(input)); setError('') }
-    catch (e) { setError(e.message) }
+    try {
+      const parsed = JSON.parse(input)
+      setOutput(typeof parsed === 'string' ? parsed : JSON.stringify(parsed, null, 2))
+      setError('')
+    } catch (e) { setError(e.message) }
   }
 
   const stats = useMemo(() => {
@@ -115,8 +118,8 @@ function CodecTool() {
       encode: () => input.split('').map(c => c.charCodeAt(0) > 127 ? `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}` : c).join(''),
       decode: () => input.replace(/\\u([0-9a-fA-F]{4})/g, (_, p) => String.fromCharCode(parseInt(p, 16))),
     },
-    md5: { encode: () => simpleHash(input, 'md5') },
-    sha256: { encode: () => simpleHash(input, 'sha256') },
+    sha1: { encode: () => simpleHash(input, 'SHA-1') },
+    sha256: { encode: () => simpleHash(input, 'SHA-256') },
   }
 
   const handleAction = async (action) => {
@@ -128,7 +131,7 @@ function CodecTool() {
     } catch (e) { message.error(e.message) }
   }
 
-  const isHash = mode === 'md5' || mode === 'sha256'
+  const isHash = mode === 'sha1' || mode === 'sha256'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 20 }}>
@@ -137,7 +140,7 @@ function CodecTool() {
           <Radio.Button value="base64">Base64</Radio.Button>
           <Radio.Button value="url">URL</Radio.Button>
           <Radio.Button value="unicode">Unicode</Radio.Button>
-          <Radio.Button value="md5">MD5</Radio.Button>
+          <Radio.Button value="sha1">SHA-1</Radio.Button>
           <Radio.Button value="sha256">SHA-256</Radio.Button>
         </Radio.Group>
         <Button type="primary" size="small" onClick={() => handleAction('encode')}>{isHash ? '计算' : '编码 →'}</Button>
@@ -161,18 +164,8 @@ function CodecTool() {
 }
 
 async function simpleHash(text, algo) {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(text)
-  const name = algo === 'md5' ? 'SHA-1' : 'SHA-256'
-  if (algo === 'md5') {
-    let h = 0x811c9dc5
-    for (let i = 0; i < data.length; i++) { h ^= data[i]; h = Math.imul(h, 0x01000193) }
-    const h2 = h >>> 0
-    const buf = await crypto.subtle.digest('SHA-256', data)
-    const arr = Array.from(new Uint8Array(buf))
-    return arr.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32)
-  }
-  const buf = await crypto.subtle.digest(name, data)
+  const data = new TextEncoder().encode(text)
+  const buf = await crypto.subtle.digest(algo, data)
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 

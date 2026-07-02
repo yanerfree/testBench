@@ -6,8 +6,8 @@ import {
 import {
   PlusOutlined, DeleteOutlined, SaveOutlined, PlayCircleOutlined, PauseCircleOutlined,
   ReloadOutlined, ExportOutlined, ClearOutlined, CopyOutlined, CloudServerOutlined,
-  LockOutlined, SettingOutlined, DownOutlined, UpOutlined, CheckOutlined,
-  CloseOutlined, SendOutlined, StarOutlined
+  LockOutlined, SettingOutlined, CheckOutlined,
+  SendOutlined, StarOutlined
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
