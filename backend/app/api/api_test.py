@@ -159,3 +159,139 @@ async def generate_api_tests(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
+
+
+@router.post("/{scenario_id}/run-step/{step_id}")
+async def run_step(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    step_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """执行单个测试步骤 — 发送 HTTP 请求并返回结果"""
+    import httpx
+    import time
+    import re
+
+    scenario = await session.get(ApiTestScenario, scenario_id)
+    if not scenario or scenario.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="场景不存在")
+
+    step = await session.get(ApiTestStep, step_id)
+    if not step or step.scenario_id != scenario_id:
+        raise NotFoundError(code="NOT_FOUND", message="步骤不存在")
+
+    # 替换环境变量
+    env = scenario.env_variables or {}
+    # 从同场景已执行步骤中收集提取的变量
+    steps_result = await session.execute(
+        select(ApiTestStep)
+        .where(ApiTestStep.scenario_id == scenario_id, ApiTestStep.last_response != None)
+        .order_by(ApiTestStep.sort_order)
+    )
+    for prev in steps_result.scalars().all():
+        if prev.variables_extract and prev.last_response:
+            resp_body = prev.last_response.get("body", {})
+            for var_name, path in prev.variables_extract.items():
+                val = resp_body
+                for key in path.split("."):
+                    if isinstance(val, dict):
+                        val = val.get(key)
+                    else:
+                        val = None
+                        break
+                if val is not None:
+                    env[var_name] = str(val)
+
+    def resolve(text):
+        if not isinstance(text, str):
+            return text
+        def replacer(m):
+            return env.get(m.group(1), m.group(0))
+        return re.sub(r'\$\{(\w+)\}', replacer, text)
+
+    def resolve_obj(obj):
+        if isinstance(obj, str):
+            return resolve(obj)
+        if isinstance(obj, dict):
+            return {k: resolve_obj(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [resolve_obj(v) for v in obj]
+        return obj
+
+    url = resolve(step.url)
+    headers = resolve_obj(step.headers or {})
+    body = resolve_obj(step.body)
+
+    start = time.time()
+    try:
+        async with httpx.AsyncClient(timeout=30, verify=False) as client:
+            resp = await client.request(
+                method=step.method,
+                url=url,
+                headers=headers,
+                json=body if body else None,
+            )
+        duration = int((time.time() - start) * 1000)
+
+        try:
+            resp_body = resp.json()
+        except Exception:
+            resp_body = resp.text[:2000]
+
+        # 检查断言
+        assertion_results = []
+        all_pass = True
+        for a in (step.assertions or []):
+            passed = False
+            a_type = a.get("type")
+            operator = a.get("operator", "==")
+            expected = a.get("value")
+            field = a.get("field")
+
+            if a_type == "status":
+                actual = resp.status_code
+                if operator == "==":
+                    passed = actual == expected
+                elif operator == "in":
+                    passed = actual in (expected if isinstance(expected, list) else [expected])
+            elif a_type == "body_contains":
+                actual = str(resp_body)
+                passed = str(expected) in actual
+            elif a_type == "body_field":
+                actual = resp_body
+                if field:
+                    for key in field.split("."):
+                        if isinstance(actual, dict):
+                            actual = actual.get(key)
+                        else:
+                            actual = None
+                            break
+                if operator == "==":
+                    passed = actual == expected
+                elif operator == "not_empty":
+                    passed = actual is not None and actual != ""
+
+            if not passed:
+                all_pass = False
+            assertion_results.append({**a, "passed": passed})
+
+        # 保存结果
+        step.last_status = "pass" if all_pass else "fail"
+        step.last_response = {
+            "statusCode": resp.status_code,
+            "duration": duration,
+            "body": resp_body if isinstance(resp_body, (dict, list)) else {"_text": resp_body},
+            "assertions": assertion_results,
+        }
+        await session.commit()
+
+        return {"data": step.last_response}
+
+    except Exception as e:
+        step.last_status = "fail"
+        step.last_response = {"error": str(e)[:500]}
+        await session.commit()
+        return {"data": step.last_response}
