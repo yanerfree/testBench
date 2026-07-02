@@ -30,6 +30,7 @@ export default function ApiTest() {
   const [form] = Form.useForm()
   const [running, setRunning] = useState(false)
   const [runResponse, setRunResponse] = useState(null)
+  const [bodyText, setBodyText] = useState('')
   const [folderModalOpen, setFolderModalOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [newFolderParent, setNewFolderParent] = useState(null)
@@ -72,7 +73,9 @@ export default function ApiTest() {
       setRunResponse(null)
       // 自动选中第一个步骤
       const steps = res.data?.steps || []
-      setSelectedStep(steps.length > 0 ? steps[0] : null)
+      const firstStep = steps.length > 0 ? steps[0] : null
+      setSelectedStep(firstStep)
+      setBodyText(firstStep?.body ? JSON.stringify(firstStep.body, null, 2) : '')
     } catch { /* */ }
   }
 
@@ -122,8 +125,15 @@ export default function ApiTest() {
 
   const saveStep = async (stepId, updates) => {
     try {
-      await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/steps/${stepId}`, updates)
-      loadScenario(selectedScenario.id)
+      const res = await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/steps/${stepId}`, updates)
+      message.success('已保存')
+      // 更新 selectedStep 而不重置
+      if (selectedStep?.id === stepId) {
+        setSelectedStep(prev => ({ ...prev, ...res.data }))
+      }
+      // 刷新场景步骤列表但保持选中
+      const scRes = await api.get(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}`)
+      setSelectedScenario(scRes.data)
     } catch { message.error('保存失败') }
   }
 
@@ -352,7 +362,11 @@ export default function ApiTest() {
                       </div>
                     )}
                     <div
-                      onClick={() => { setSelectedStep(step); setRunResponse(null) }}
+                      onClick={() => {
+                        setSelectedStep(step)
+                        setBodyText(step.body ? JSON.stringify(step.body, null, 2) : '')
+                        setRunResponse(null)
+                      }}
                       style={{
                         padding: '8px 12px', cursor: 'pointer',
                         background: isSelected ? '#e6f4ff' : 'transparent',
@@ -444,21 +458,19 @@ export default function ApiTest() {
                           <Button size="small" type="text" style={{ fontSize: 11, height: 18, padding: '0 4px' }}
                             onClick={() => {
                               try {
-                                const parsed = JSON.parse(document.getElementById('body-editor')?.value || '{}')
+                                const parsed = JSON.parse(bodyText || '{}')
                                 saveStep(selectedStep.id, { body: parsed })
-                                message.success('Body 已保存')
                               } catch { message.error('JSON 格式错误') }
                             }}>保存</Button>
                         </div>
                         <textarea
-                          id="body-editor"
-                          defaultValue={selectedStep.body ? JSON.stringify(selectedStep.body, null, 2) : ''}
+                          value={bodyText}
+                          onChange={e => setBodyText(e.target.value)}
                           style={{
                             width: '100%', border: 'none', outline: 'none', resize: 'vertical',
                             padding: 16, fontSize: 13, fontFamily: "'SF Mono', Monaco, Consolas, monospace",
                             lineHeight: 1.6, minHeight: 100, maxHeight: 400, color: '#333', background: 'transparent',
                           }}
-                          key={selectedStep.id}
                         />
                       </div>
                     ),
