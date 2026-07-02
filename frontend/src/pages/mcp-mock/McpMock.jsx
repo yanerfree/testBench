@@ -112,7 +112,7 @@ export default function McpMock() {
 
       {/* ━━━ 顶栏 ━━━ */}
       <div style={{
-        padding: '10px 20px', background: 'rgba(255,255,255,0.45)', borderBottom: '1px solid rgba(0,0,0,0.05)',
+        padding: '10px 20px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.05)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -142,7 +142,7 @@ export default function McpMock() {
       </div>
 
       {/* ━━━ 主体 ━━━ */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'rgba(255,255,255,0.45)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'rgba(255,255,255,0.3)' }}>
 
         {/* Tab 栏 */}
         <div style={{ borderBottom: '1px solid rgba(0,0,0,0.04)', paddingLeft: 16, flexShrink: 0 }}>
@@ -273,7 +273,7 @@ export default function McpMock() {
                                   <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>请求参数</div>
                                   <pre style={{
                                     maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
-                                    background: 'rgba(255,255,255,0.45)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
+                                    background: 'rgba(255,255,255,0.3)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                                     whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                                   }}>{JSON.stringify(l.arguments, null, 2)}</pre>
                                 </div>
@@ -281,7 +281,7 @@ export default function McpMock() {
                                   <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应结果</div>
                                   <pre style={{
                                     maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
-                                    background: 'rgba(255,255,255,0.45)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
+                                    background: 'rgba(255,255,255,0.3)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                                     whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                                   }}>{(() => { try { return JSON.stringify(JSON.parse(l.response), null, 2) } catch { return l.response } })()}</pre>
                                 </div>

@@ -314,7 +314,7 @@ export default function ProjectList() {
 
                 <div style={{
                   margin: '12px 0', padding: '10px 0',
-                  borderTop: '1px solid #f2f3f5', borderBottom: '1px solid rgba(0,0,0,0.04)',
+                  borderTop: '1px solid rgba(0,0,0,0.04)', borderBottom: '1px solid rgba(0,0,0,0.04)',
                   fontSize: 12, color: '#86909c',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>

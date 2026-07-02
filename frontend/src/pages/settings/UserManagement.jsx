@@ -149,7 +149,7 @@ export default function UserManagement() {
         </Space>
       </div>
 
-      <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', padding: 2 }}>
+      <div style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', padding: 2 }}>
         <Table
           dataSource={users}
           columns={columns}

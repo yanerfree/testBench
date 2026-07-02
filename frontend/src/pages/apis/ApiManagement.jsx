@@ -242,7 +242,7 @@ function ResponsePanel({ response, onUseAsBody }) {
       </div>
       {sc === 0 && (
         <div style={{ marginBottom: 8, padding: '8px 12px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 10, fontSize: 12, color: '#cf1322' }}>
-          请求失败，请检查：URL 是否正确、服务是否在运行、环境变量是否配置（如 <code style={{ background: 'rgba(255,255,255,0.45)', padding: '0 4px', borderRadius: 3 }}>{'{{BASE_URL}}'}</code>）
+          请求失败，请检查：URL 是否正确、服务是否在运行、环境变量是否配置（如 <code style={{ background: 'rgba(255,255,255,0.3)', padding: '0 4px', borderRadius: 3 }}>{'{{BASE_URL}}'}</code>）
         </div>
       )}
       {viewTab === 'body' && (
@@ -894,7 +894,7 @@ export default function ApiManagement() {
   if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
 
   return (
-    <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden', height: 'calc(100vh - 80px)', background: 'rgba(255,255,255,0.45)' }}>
+    <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden', height: 'calc(100vh - 80px)', background: 'rgba(255,255,255,0.3)' }}>
       {/* 左侧：接口树 */}
       <div style={{ width: 300, borderRight: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         {/* 工具栏 */}
@@ -1042,7 +1042,7 @@ export default function ApiManagement() {
       {/* 右键菜单 */}
       {ctxMenu && (
         <div style={{ position: 'fixed', left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000 }} onClick={() => setCtxMenu(null)}>
-          <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 12, boxShadow: '0 6px 16px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 160 }}>
+          <div style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 12, boxShadow: '0 6px 16px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 160 }}>
             {ctxMenu.items.map((item, i) => item.type === 'divider'
               ? <div key={i} style={{ height: 1, background: '#e0e0e0', margin: '4px 0' }} />
               : <div key={item.key} onClick={item.onClick} style={{

@@ -167,7 +167,7 @@ export default function PlanList() {
       {loading ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spin /></div> :
         filteredPlans.length === 0 ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Empty description="暂无计划" /></div> : <>
         {/* Table */}
-        <div style={{ background: 'rgba(255,255,255,0.45)', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 12, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ background: 'rgba(255,255,255,0.3)', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 12, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', height: 36, background: '#f7f8fa', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0 }}>
             <div style={{ flex: 4, ...th }}>计划名称</div>
@@ -229,7 +229,7 @@ export default function PlanList() {
                       fontSize: 11, padding: '2px 8px', borderRadius: 10,
                       background: s.dot, color: '#fff',
                     }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.45)' }} />
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.3)' }} />
                       {s.label}
                     </span>
                   </div>

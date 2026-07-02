@@ -372,7 +372,7 @@ function ScenarioExpanded({ scenario }) {
             {caseSteps.map((step, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 12px',
-                background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)',
+                background: 'rgba(255,255,255,0.3)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)',
               }}>
                 <span style={{
                   width: 20, height: 20, borderRadius: '50%', flexShrink: 0,

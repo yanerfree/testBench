@@ -34,6 +34,7 @@ export default function ApiTest() {
   const [newFolderName, setNewFolderName] = useState('')
   const [newFolderParent, setNewFolderParent] = useState(null)
   const [folderTree, setFolderTree] = useState([])
+  const [selectedFolderId, setSelectedFolderId] = useState(null)
 
   useEffect(() => {
     if (!projectId) return
@@ -184,9 +185,16 @@ export default function ApiTest() {
                 defaultExpandAll
                 blockNode
                 style={{ fontSize: 12 }}
-                selectedKeys={selectedScenario ? [selectedScenario.id] : []}
+                selectedKeys={selectedScenario ? [selectedScenario.id] : selectedFolderId ? [selectedFolderId] : []}
                 onSelect={(keys, { node }) => {
-                  if (node.isLeaf && node.scenario) loadScenario(node.scenario.id)
+                  if (node.isLeaf && node.scenario) {
+                    setSelectedFolderId(null)
+                    loadScenario(node.scenario.id)
+                  } else if (node.isFolder) {
+                    setSelectedFolderId(node.folderId)
+                    setSelectedScenario(null)
+                    setSelectedStep(null)
+                  }
                 }}
                 titleRender={(node) => (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', overflow: 'hidden' }}>
@@ -225,7 +233,9 @@ export default function ApiTest() {
               AI 生成测试
             </Button>
           </div>
-          {scenarios.length > 0 && (
+          {(() => {
+            const filtered = selectedFolderId ? scenarios.filter(s => s.folderId === selectedFolderId) : scenarios
+            return filtered.length > 0 ? (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#f6f7f9' }}>
@@ -236,7 +246,7 @@ export default function ApiTest() {
                 </tr>
               </thead>
               <tbody>
-                {scenarios.map(s => (
+                {filtered.map(s => (
                   <tr key={s.id}
                     style={{ cursor: 'pointer' }}
                     onClick={() => loadScenario(s.id)}
@@ -251,14 +261,19 @@ export default function ApiTest() {
                 ))}
               </tbody>
             </table>
-          )}
+            ) : (
+              <div style={{ textAlign: 'center', padding: 40, color: '#bfbfbf', fontSize: 13 }}>
+                {selectedFolderId ? '该文件夹下暂无测试场景' : '暂无测试场景'}
+              </div>
+            )
+          })()}
         </div>
       ) : (
         /* 选了场景：中栏步骤列表 + 右栏请求编辑器 */
         <>
           {/* 中栏：步骤列表 */}
           <div style={{ width: 300, minWidth: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', background: 'rgba(255,255,255,0.45)' }}>
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', background: 'rgba(255,255,255,0.3)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedScenario.code}</span>
                 <Space size={4}>
@@ -321,7 +336,7 @@ export default function ApiTest() {
             {selectedStep ? (
           <>
             {/* 顶部：步骤名 + 运行按钮 */}
-            <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.45)', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 600, fontSize: 14 }}>{selectedStep.name}</span>
               <Button
                 type="primary"
@@ -335,7 +350,7 @@ export default function ApiTest() {
             </div>
 
             {/* URL 栏 */}
-            <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.45)', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 8, alignItems: 'center' }}>
               <div style={{ background: METHOD_COLORS[selectedStep.method], color: '#fff', padding: '4px 12px', borderRadius: 12, fontWeight: 600, fontSize: 12, minWidth: 56, textAlign: 'center' }}>
                 {selectedStep.method}
               </div>
@@ -359,7 +374,7 @@ export default function ApiTest() {
                     key: 'body',
                     label: <span>Body {selectedStep.body && <span style={{ color: '#52c41a' }}>●</span>}</span>,
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.05)', fontSize: 11, color: '#8c8c8c' }}>
                           JSON
                         </div>
@@ -376,7 +391,7 @@ export default function ApiTest() {
                     key: 'headers',
                     label: <span>Headers {selectedStep.headers && Object.keys(selectedStep.headers).length > 0 && <Tag style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{Object.keys(selectedStep.headers).length}</Tag>}</span>,
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
@@ -403,7 +418,7 @@ export default function ApiTest() {
                     key: 'assertions',
                     label: <span>断言 {selectedStep.assertions?.length > 0 && <Tag color="green" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{selectedStep.assertions.length}</Tag>}</span>,
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
@@ -438,7 +453,7 @@ export default function ApiTest() {
                     key: 'variables',
                     label: '变量提取',
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', padding: 16 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', padding: 16 }}>
                         {selectedStep.variablesExtract && Object.keys(selectedStep.variablesExtract).length > 0 ? (
                           Object.entries(selectedStep.variablesExtract).map(([k, v]) => (
                             <div key={k} style={{ padding: '4px 0', fontSize: 13 }}>
@@ -455,7 +470,7 @@ export default function ApiTest() {
                     key: 'response',
                     label: <span>响应 {runResponse && <span style={{ color: runResponse.error ? '#e8453c' : '#52c41a' }}>●</span>}</span>,
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.45)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         {runResponse ? (
                           runResponse.error ? (
                             <div style={{ padding: 16, color: '#e8453c' }}>{runResponse.error}</div>

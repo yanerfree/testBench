@@ -99,7 +99,7 @@ export default function ReportList() {
       {loading ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spin /></div> :
         filtered.length === 0 ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Empty description="暂无报告" /></div> : <>
         {/* Table */}
-        <div style={{ background: 'rgba(255,255,255,0.45)', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 12, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ background: 'rgba(255,255,255,0.3)', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 12, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', height: 36, background: '#f7f8fa', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0 }}>
             <div style={{ flex: 3, ...th }}>关联计划</div>
@@ -159,7 +159,7 @@ export default function ReportList() {
                       background: isCompleted ? '#36b37e' : '#1890ff',
                       color: '#fff',
                     }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.45)' }} />
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.3)' }} />
                       {isCompleted ? '已完成' : '执行中'}
                     </span>
                   </div>
