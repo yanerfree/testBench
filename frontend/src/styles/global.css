@@ -73,46 +73,54 @@ body {
 /* --- Card --- */
 .ant-card {
   border-radius: var(--radius-lg) !important;
-  border: 1px solid rgba(0,0,0,0.04) !important;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04) !important;
+  border: none !important;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04) !important;
   transition: all 0.3s ease !important;
-  background: rgba(255,255,255,0.85) !important;
+  background: rgba(255,255,255,0.6) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
 }
 .ant-card:hover {
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07) !important;
   transform: translateY(-2px);
 }
 .ant-card .ant-card-head {
   border-bottom: 1px solid rgba(0,0,0,0.04) !important;
   min-height: 40px !important;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+  background: transparent !important;
 }
 
 /* --- Button --- */
 .ant-btn {
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-sm) !important;
   font-weight: 500;
   box-shadow: none !important;
   transition: all 0.2s ease !important;
   letter-spacing: 0.3px;
 }
-.ant-btn:not(:disabled):hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+.ant-btn-default {
+  background: rgba(255,255,255,0.6) !important;
+  border-color: rgba(0,0,0,0.08) !important;
+}
+.ant-btn-default:not(:disabled):hover {
+  background: rgba(255,255,255,0.9) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
 }
 .ant-btn-primary {
   border-radius: 20px !important;
-  background: var(--primary) !important;
-  border-color: var(--primary) !important;
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover)) !important;
+  border-color: transparent !important;
   letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(54,179,126,0.2) !important;
 }
-.ant-btn-primary:hover {
-  background: var(--primary-hover) !important;
-  border-color: var(--primary-hover) !important;
-  filter: brightness(1.05);
+.ant-btn-primary:not(:disabled):hover {
+  box-shadow: 0 4px 14px rgba(54,179,126,0.3) !important;
+  transform: translateY(-1px);
 }
 .ant-btn-sm {
-  border-radius: var(--radius-sm) !important;
+  border-radius: 6px !important;
 }
 .ant-btn-icon-only {
   border-radius: var(--radius-sm) !important;

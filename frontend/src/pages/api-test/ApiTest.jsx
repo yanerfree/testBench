@@ -57,8 +57,10 @@ export default function ApiTest() {
     try {
       const res = await api.get(`/projects/${projectId}/branches/${branchId}/api-tests/${id}`)
       setSelectedScenario(res.data)
-      setSelectedStep(null)
       setRunResponse(null)
+      // 自动选中第一个步骤
+      const steps = res.data?.steps || []
+      setSelectedStep(steps.length > 0 ? steps[0] : null)
     } catch { /* */ }
   }
 
@@ -251,7 +253,7 @@ export default function ApiTest() {
         /* 选了场景：中栏步骤列表 + 右栏请求编辑器 */
         <>
           {/* 中栏：步骤列表 */}
-          <div style={{ width: 260, minWidth: 260, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ width: 300, minWidth: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', background: 'rgba(255,255,255,0.7)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedScenario.code}</span>
@@ -297,7 +299,7 @@ export default function ApiTest() {
                       <Tag color={METHOD_COLORS[step.method]} style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '18px' }}>
                         {step.method}
                       </Tag>
-                      <span style={{ fontSize: 12, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 12, flex: 1 }}>
                         {step.name}
                       </span>
                     </div>
