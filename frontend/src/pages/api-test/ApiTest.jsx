@@ -101,17 +101,27 @@ export default function ApiTest() {
     } finally { setRunning(false) }
   }
 
-  // 构建目录树
-  const treeData = scenarios.map(s => ({
-    key: s.id,
-    title: (
-      <span style={{ fontSize: 13 }}>
-        <Tag color={PRIORITY_COLORS[s.priority]} style={{ fontSize: 10, padding: '0 4px', marginRight: 4 }}>{s.priority}</Tag>
-        {s.title}
-      </span>
-    ),
-    icon: <FolderOutlined />,
-  }))
+  // 构建目录树：按标题前缀（"-"前的部分）自动分组成文件夹
+  const buildTreeData = () => {
+    const groups = {}
+    for (const s of scenarios) {
+      const dashIdx = s.title.indexOf('-')
+      const folder = dashIdx > 0 ? s.title.slice(0, dashIdx) : '未分类'
+      if (!groups[folder]) groups[folder] = []
+      groups[folder].push(s)
+    }
+    return Object.entries(groups).map(([folder, items]) => ({
+      key: `folder-${folder}`,
+      title: `${folder} (${items.length})`,
+      children: items.map(s => ({
+        key: s.id,
+        title: s.title.slice(folder.length + 1) || s.title,
+        isLeaf: true,
+        scenario: s,
+      })),
+    }))
+  }
+  const treeData = buildTreeData()
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
@@ -132,7 +142,9 @@ export default function ApiTest() {
               blockNode
               style={{ fontSize: 13 }}
               selectedKeys={selectedScenario ? [selectedScenario.id] : []}
-              onSelect={(keys) => { if (keys[0]) loadScenario(keys[0]) }}
+              onSelect={(keys, { node }) => {
+                if (node.isLeaf && node.scenario) loadScenario(node.scenario.id)
+              }}
             />
           )
         }
