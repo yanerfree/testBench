@@ -280,10 +280,6 @@ async def create_step(
     scenario = await session.get(ApiTestScenario, scenario_id)
     if not scenario or scenario.project_id != project_id:
         raise NotFoundError(code="NOT_FOUND", message="场景不存在")
-    max_order = await session.execute(
-        select(select(ApiTestStep.sort_order).where(ApiTestStep.scenario_id == scenario_id).correlate(None).scalar_subquery())
-    )
-    # 简单方式：取最大 sort_order + 1
     from sqlalchemy import func as sa_func
     max_result = await session.execute(
         select(sa_func.max(ApiTestStep.sort_order)).where(ApiTestStep.scenario_id == scenario_id)
