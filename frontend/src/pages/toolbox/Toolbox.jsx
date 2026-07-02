@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Input, Button, Space, Tag, message, Radio, Switch, InputNumber } from 'antd'
 import {
   ToolOutlined, FormatPainterOutlined, SwapOutlined, ClockCircleOutlined,
@@ -19,7 +19,18 @@ const TOOLS = [
   { key: 'diff', icon: <DiffOutlined />, label: '文本对比' },
 ]
 
-const copy = (text) => navigator.clipboard.writeText(text).then(() => message.success('已复制'))
+const copy = (text) => {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => message.success('已复制')).catch(() => fallbackCopy(text))
+  } else { fallbackCopy(text) }
+}
+const fallbackCopy = (text) => {
+  const ta = document.createElement('textarea')
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'
+  document.body.appendChild(ta); ta.select()
+  try { document.execCommand('copy'); message.success('已复制') } catch { message.error('复制失败') }
+  document.body.removeChild(ta)
+}
 
 // ━━━ JSON 工具 ━━━
 function JsonTool() {
@@ -35,17 +46,21 @@ function JsonTool() {
   }, [input, autoFormat])
 
   const handleFormat = () => {
+    if (!input.trim()) return
     try { const o = JSON.stringify(JSON.parse(input), null, 2); setOutput(o); setError('') }
     catch (e) { setError(e.message) }
   }
   const handleCompress = () => {
+    if (!input.trim()) return
     try { const o = JSON.stringify(JSON.parse(input)); setOutput(o); setError('') }
     catch (e) { setError(e.message) }
   }
   const handleEscape = () => {
+    if (!input) return
     setOutput(JSON.stringify(input))
   }
   const handleUnescape = () => {
+    if (!input.trim()) return
     try {
       const parsed = JSON.parse(input)
       setOutput(typeof parsed === 'string' ? parsed : JSON.stringify(parsed, null, 2))
@@ -115,20 +130,25 @@ function CodecTool() {
       decode: () => decodeURIComponent(input),
     },
     unicode: {
-      encode: () => input.split('').map(c => c.charCodeAt(0) > 127 ? `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}` : c).join(''),
-      decode: () => input.replace(/\\u([0-9a-fA-F]{4})/g, (_, p) => String.fromCharCode(parseInt(p, 16))),
+      encode: () => Array.from(input).map(c => {
+        const cp = c.codePointAt(0)
+        if (cp <= 127) return c
+        return cp > 0xFFFF ? `\\u{${cp.toString(16)}}` : `\\u${cp.toString(16).padStart(4, '0')}`
+      }).join(''),
+      decode: () => input.replace(/\\u\{([0-9a-fA-F]+)\}|\\u([0-9a-fA-F]{4})/g, (_, p1, p2) => String.fromCodePoint(parseInt(p1 || p2, 16))),
     },
     sha1: { encode: () => simpleHash(input, 'SHA-1') },
     sha256: { encode: () => simpleHash(input, 'SHA-256') },
   }
 
   const handleAction = async (action) => {
+    if (!input) { message.warning('请先输入内容'); return }
     try {
       const fn = actions[mode]?.[action]
       if (!fn) return
       const result = await fn()
       setOutput(result)
-    } catch (e) { message.error(e.message) }
+    } catch (e) { message.error('操作失败：' + (e.message || '格式不正确')) }
   }
 
   const isHash = mode === 'sha1' || mode === 'sha256'
@@ -195,7 +215,9 @@ function TimestampTool() {
   }
 
   const quickOffset = (days) => {
-    const d = new Date(Date.now() + days * 86400000)
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() + days)
     setTs(String(Math.floor(d.getTime() / 1000)))
     setDt(formatDate(d))
   }
@@ -264,8 +286,12 @@ function RegexTool() {
   const [aiLoading, setAiLoading] = useState(false)
   const [aiExplanation, setAiExplanation] = useState('')
 
-  const { highlighted, matchCount, groups } = useMemo(() => {
-    if (!pattern || !text) return { highlighted: null, matchCount: 0, groups: [] }
+  const { highlighted, matchCount, groups, regexError } = useMemo(() => {
+    if (!pattern) return { highlighted: null, matchCount: 0, groups: [], regexError: null }
+    try { new RegExp(pattern, flags) } catch (e) {
+      return { highlighted: null, matchCount: 0, groups: [], regexError: e.message }
+    }
+    if (!text) return { highlighted: null, matchCount: 0, groups: [], regexError: null }
     try {
       const tempRe = new RegExp(pattern, flags.includes('g') ? flags : flags + 'g')
       let count = 0
@@ -282,8 +308,8 @@ function RegexTool() {
         if (!match[0].length) { tempRe.lastIndex++; if (tempRe.lastIndex > text.length) break }
       }
       if (lastIndex < text.length) parts.push({ text: text.slice(lastIndex), matched: false })
-      return { highlighted: parts, matchCount: count, groups: grps }
-    } catch { return { highlighted: null, matchCount: 0, groups: [] } }
+      return { highlighted: parts, matchCount: count, groups: grps, regexError: null }
+    } catch (e) { return { highlighted: null, matchCount: 0, groups: [], regexError: e.message } }
   }, [pattern, flags, text])
 
   const handleAiGenerate = async () => {
@@ -320,8 +346,12 @@ function RegexTool() {
         <Input value={flags} onChange={e => setFlags(e.target.value)}
           style={{ width: 50, fontFamily: MONO, textAlign: 'center' }} placeholder="g" />
         {matchCount > 0 && <Tag color="green">{matchCount} 个匹配</Tag>}
-        {pattern && matchCount === 0 && text && <Tag color="orange">无匹配</Tag>}
+        {pattern && matchCount === 0 && !regexError && text && <Tag color="orange">无匹配</Tag>}
+        {regexError && <Tag color="red">语法错误</Tag>}
       </div>
+      {regexError && (
+        <div style={{ color: '#ff4d4f', fontSize: 12, marginBottom: 8, padding: '4px 8px', background: '#fff2f0', borderRadius: 4 }}>{regexError}</div>
+      )}
 
       {/* AI 生成 + 常用正则 */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
@@ -366,7 +396,7 @@ function RegexTool() {
             {highlighted ? highlighted.map((p, i) => p.matched
               ? <mark key={i} style={{ background: '#bae637', padding: '1px 2px', borderRadius: 2 }}>{p.text}</mark>
               : <span key={i}>{p.text}</span>
-            ) : <span style={{ color: '#bfbfbf' }}>{text ? '输入正则后实时匹配' : '等待输入...'}</span>}
+            ) : <span style={{ color: '#bfbfbf' }}>{regexError ? '请修正正则语法' : text ? '输入正则后实时匹配' : '等待输入...'}</span>}
           </div>
           {groups.length > 0 && (
             <div style={{ marginTop: 8, maxHeight: 80, overflow: 'auto' }}>
@@ -447,7 +477,7 @@ function DataGenTool() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 20 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 12, color: '#8c8c8c' }}>数量</span>
-        <InputNumber value={count} onChange={v => setCount(Math.max(1, Math.min(200, v || 1)))}
+        <InputNumber value={count} onChange={v => v != null && setCount(Math.max(1, Math.min(200, v)))}
           min={1} max={200} size="small" style={{ width: 65 }} />
         {generators.map(g => (
           <Button key={g.key} size="small" type={activeType === g.key ? 'primary' : 'default'}
@@ -567,7 +597,14 @@ function computeLCS(a, b) {
     let i = 0, j = 0
     while (i < m && j < n) {
       if (a[i] === b[j]) { result.push([i, j]); i++; j++ }
-      else { i++; j++ }
+      else {
+        let fi = -1, fj = -1
+        for (let k = 1; k <= 3 && i + k < m; k++) { if (a[i + k] === b[j]) { fi = k; break } }
+        for (let k = 1; k <= 3 && j + k < n; k++) { if (a[i] === b[j + k]) { fj = k; break } }
+        if (fi >= 0 && (fj < 0 || fi <= fj)) i += fi
+        else if (fj >= 0) j += fj
+        else { i++; j++ }
+      }
     }
     return result
   }
