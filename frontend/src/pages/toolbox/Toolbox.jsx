@@ -761,7 +761,7 @@ export default function Toolbox() {
   const theme = THEMES[activeTool]
   const ActiveComponent = TOOL_MAP[activeTool]
 
-  const gradient = `linear-gradient(135deg, ${theme.light} 0%, #f0ecfb 50%, #edf5f0 100%)`
+  const gradient = `linear-gradient(160deg, ${theme.light}88 0%, #f0ecfb44 40%, #edf5f044 70%, ${theme.pale} 100%)`
 
   return (
     <div className="toolbox-page" style={{
@@ -778,11 +778,9 @@ export default function Toolbox() {
       <style>{TOOLBOX_CSS}</style>
 
       <div style={{
-        padding: '12px 24px',
-        background: 'rgba(255,255,255,0.7)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(255,255,255,0.6)',
+        padding: '10px 24px',
+        background: 'rgba(255,255,255,0.45)',
+        borderBottom: '1px solid rgba(0,0,0,0.04)',
         display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
       }}>
         <div style={{
@@ -800,17 +798,14 @@ export default function Toolbox() {
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', minHeight: 0, padding: 10, gap: 10 }}>
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, padding: '8px 10px 10px', gap: 8 }}>
         <div style={{
           width: 200, flexShrink: 0,
-          background: 'rgba(255,255,255,0.65)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
+          background: 'rgba(255,255,255,0.5)',
           borderRadius: 16,
           overflow: 'auto',
-          padding: '14px 8px 8px',
+          padding: '10px 8px 8px',
           display: 'flex', flexDirection: 'column',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
         }}>
           <div style={{ flex: 1 }}>
             {TOOLS.map(t => {
@@ -853,11 +848,8 @@ export default function Toolbox() {
 
         <div style={{
           flex: 1, minWidth: 0, overflow: 'hidden',
-          background: 'rgba(255,255,255,0.55)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          background: 'rgba(255,255,255,0.4)',
           borderRadius: 16,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
         }}>
           <div key={activeTool} className="tb-content-fade" style={{ height: '100%' }}>
             <ActiveComponent theme={theme} />
