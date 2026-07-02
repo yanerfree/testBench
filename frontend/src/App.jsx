@@ -154,7 +154,7 @@ function AppLayout() {
     <Layout style={{ minHeight: '100vh' }}>
       {/* 顶栏 */}
       <Header style={{
-        background: 'linear-gradient(90deg, #e3fcef 0%, #f0ecfb 50%, #edf5f8 100%)', height: 46, lineHeight: '46px', padding: '0 16px',
+        background: 'linear-gradient(90deg, #edf7f1 0%, #f0edf8 50%, #edf2f8 100%)', height: 46, lineHeight: '46px', padding: '0 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         borderBottom: '1px solid rgba(0,0,0,0.04)',
       }}>
@@ -197,7 +197,7 @@ function AppLayout() {
           collapsedWidth={52}
           collapsed={collapsed}
           theme="light"
-          style={{ background: 'linear-gradient(180deg, #e3fcef 0%, #f0ecfb 50%, #edf5f8 100%)', borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}
+          style={{ background: 'linear-gradient(180deg, #d4f5e2 0%, #e8dff5 50%, #dceef8 100%)', borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}
         >
           <div style={{ flex: 1, overflow: 'auto' }}>
             <Menu
@@ -219,7 +219,7 @@ function AppLayout() {
           </div>
         </Sider>
 
-        <Content style={{ padding: '12px 16px', background: 'linear-gradient(160deg, #f0f9f4 0%, #f5f0ff 40%, #f0f5f8 70%, #faf8f5 100%)', overflow: 'auto', minHeight: 'calc(100vh - 46px)' }}>
+        <Content style={{ padding: '12px 16px', background: 'linear-gradient(160deg, #edf7f1 0%, #f0edf8 35%, #edf2f8 65%, #f8f5f0 100%)', overflow: 'auto', minHeight: 'calc(100vh - 46px)' }}>
           <Routes>
             <Route path="/" element={<Navigate to="/projects" replace />} />
             <Route path="/projects" element={<ProjectList />} />

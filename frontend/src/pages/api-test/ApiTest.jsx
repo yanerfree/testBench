@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   Button, Tag, Space, Typography, Modal, Form, Input, Select, Tabs,
-  message, Popconfirm, Spin, Tree, Tooltip,
+  message, Popconfirm, Spin, Tree, Tooltip, TreeSelect,
 } from 'antd'
 import {
   PlusOutlined, ThunderboltOutlined, DeleteOutlined, RobotOutlined,
@@ -32,7 +32,8 @@ export default function ApiTest() {
   const [runResponse, setRunResponse] = useState(null)
   const [folderModalOpen, setFolderModalOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
-  const [folders, setFolders] = useState([])
+  const [newFolderParent, setNewFolderParent] = useState(null)
+  const [folderTree, setFolderTree] = useState([])
 
   useEffect(() => {
     if (!projectId) return
@@ -41,6 +42,16 @@ export default function ApiTest() {
       if (b) setBranchId(b.id)
     }).catch(() => {})
   }, [projectId])
+
+  const fetchFolders = useCallback(async () => {
+    if (!branchId) return
+    try {
+      const res = await api.get(`/projects/${projectId}/branches/${branchId}/folders`)
+      setFolderTree(res.data || [])
+    } catch { /* */ }
+  }, [projectId, branchId])
+
+  useEffect(() => { fetchFolders() }, [fetchFolders])
 
   const fetchScenarios = useCallback(async () => {
     if (!branchId) return
@@ -106,58 +117,51 @@ export default function ApiTest() {
     } finally { setRunning(false) }
   }
 
-  // 构建目录树：手动文件夹 + 场景叶子节点
-  const buildTreeData = () => {
-    // 按场景的 title 前缀分组（后续改为数据库存储的文件夹）
-    const groups = {}
-    const ungrouped = []
-    for (const s of scenarios) {
-      const dashIdx = s.title.indexOf('-')
-      const folder = dashIdx > 0 ? s.title.slice(0, dashIdx) : null
-      if (folder) {
-        if (!groups[folder]) groups[folder] = []
-        groups[folder].push(s)
-      } else {
-        ungrouped.push(s)
-      }
-    }
-    const tree = Object.entries(groups).map(([folder, items]) => ({
-      key: `folder-${folder}`,
-      title: `${folder} (${items.length})`,
-      selectable: false,
-      isFolder: true,
-      folderName: folder,
-      children: items.map(s => ({
-        key: s.id,
-        title: s.title.slice(folder.length + 1) || s.title,
-        isLeaf: true,
-        scenario: s,
+  // 构建目录树：真实文件夹 + 场景叶子节点
+  const buildTreeData = (nodes) => nodes.map(n => ({
+    key: n.id,
+    title: `${n.name} (${n.caseCount || 0})`,
+    isFolder: true,
+    folderId: n.id,
+    children: [
+      ...(n.children?.length > 0 ? buildTreeData(n.children) : []),
+      ...scenarios.filter(s => s.folderId === n.id).map(s => ({
+        key: s.id, title: s.title, isLeaf: true, scenario: s,
       })),
-    }))
-    // 未分组的场景放顶层
-    for (const s of ungrouped) {
-      tree.push({ key: s.id, title: s.title, isLeaf: true, scenario: s })
-    }
-    return tree
-  }
-  const treeData = buildTreeData()
+    ],
+  }))
 
-  const handleCreateFolder = () => {
+  // 未分配文件夹的场景
+  const unassigned = scenarios.filter(s => !s.folderId)
+  const treeData = [
+    ...buildTreeData(folderTree),
+    ...unassigned.map(s => ({ key: s.id, title: s.title, isLeaf: true, scenario: s })),
+  ]
+
+  // 构建父模块 TreeSelect
+  const buildParentSelect = (nodes) => nodes.map(n => ({
+    value: n.id, title: n.name,
+    children: n.children?.length > 0 ? buildParentSelect(n.children) : undefined,
+  }))
+
+  const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return
-    setFolders(prev => [...prev, newFolderName.trim()])
-    setFolderModalOpen(false)
-    setNewFolderName('')
-    message.success('文件夹已创建')
+    try {
+      await api.post(`/projects/${projectId}/branches/${branchId}/folders?name=${encodeURIComponent(newFolderName.trim())}${newFolderParent ? `&parentId=${newFolderParent}` : ''}`)
+      message.success('文件夹已创建')
+      setFolderModalOpen(false)
+      setNewFolderName('')
+      setNewFolderParent(null)
+      fetchFolders()
+    } catch { /* */ }
   }
 
-  const handleDeleteFolder = (folderName) => {
-    const hasScenarios = scenarios.some(s => s.title.startsWith(folderName + '-'))
-    if (hasScenarios) {
-      message.warning('文件夹下有场景，无法删除')
-      return
-    }
-    setFolders(prev => prev.filter(f => f !== folderName))
-    message.success('文件夹已删除')
+  const handleDeleteFolder = async (folderId) => {
+    try {
+      await api.del(`/projects/${projectId}/branches/${branchId}/folders/${folderId}`)
+      message.success('文件夹已删除')
+      fetchFolders()
+    } catch { /* */ }
   }
 
   return (
@@ -195,7 +199,7 @@ export default function ApiTest() {
                           style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-delete-btn" />
                       </Popconfirm>
                     ) : node.isFolder ? (
-                      <Popconfirm title="确定删除此文件夹？" description="仅允许删除空文件夹" onConfirm={async (e) => { e?.stopPropagation(); handleDeleteFolder(node.folderName) }} onCancel={e => e?.stopPropagation()}>
+                      <Popconfirm title="确定删除此文件夹？" description="仅允许删除空文件夹" onConfirm={async (e) => { e?.stopPropagation(); handleDeleteFolder(node.folderId) }} onCancel={e => e?.stopPropagation()}>
                         <Button type="text" size="small" icon={<DeleteOutlined />} onClick={e => e.stopPropagation()}
                           style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-delete-btn" />
                       </Popconfirm>
@@ -523,23 +527,36 @@ export default function ApiTest() {
         )}
       </Modal>
 
-      {/* 新建文件夹弹窗 */}
+      {/* 新建模块弹窗 — 和用例管理一致 */}
       <Modal
-        title="新建文件夹"
+        title="新建模块"
         open={folderModalOpen}
         onOk={handleCreateFolder}
         onCancel={() => setFolderModalOpen(false)}
         okText="创建"
         cancelText="取消"
-        width={360}
+        width={420}
       >
-        <Input
-          value={newFolderName}
-          onChange={e => setNewFolderName(e.target.value)}
-          placeholder="文件夹名称"
-          style={{ marginTop: 12 }}
-          onPressEnter={handleCreateFolder}
-        />
+        <Form layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item label="模块名称" required>
+            <Input
+              value={newFolderName}
+              onChange={e => setNewFolderName(e.target.value)}
+              placeholder="如：AUTH、USER_MGMT"
+              onPressEnter={handleCreateFolder}
+            />
+          </Form.Item>
+          <Form.Item label="父模块（可选）">
+            <TreeSelect
+              value={newFolderParent}
+              onChange={setNewFolderParent}
+              treeData={buildParentSelect(folderTree)}
+              placeholder="顶级模块（不选则为一级模块）"
+              allowClear
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   )

@@ -34,6 +34,7 @@ def _scenario_to_dict(s: ApiTestScenario, steps: list[ApiTestStep] | None = None
         "priority": s.priority,
         "description": s.description,
         "status": s.status,
+        "folderId": str(s.folder_id) if s.folder_id else None,
         "sourceApiIds": s.source_api_ids,
         "envVariables": s.env_variables,
         "createdAt": s.created_at.isoformat() if s.created_at else None,
