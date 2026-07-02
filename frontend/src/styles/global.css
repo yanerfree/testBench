@@ -17,11 +17,11 @@
   --border-light: #f2f3f5;
   --border-regular: #e5e6eb;
 
-  --primary: #00b96b;
-  --primary-hover: #009e5a;
-  --primary-bg: #e8f8f0;
-  --green: #00b96b;
-  --green-bg: #e8f8f0;
+  --primary: #36b37e;
+  --primary-hover: #2d9e6f;
+  --primary-bg: #e3fcef;
+  --green: #36b37e;
+  --green-bg: #e3fcef;
   --red: #f53f3f;
   --red-bg: #fff0f0;
   --orange: #ff7d00;
@@ -110,8 +110,8 @@ body {
   filter: brightness(1.05);
 }
 .ant-btn-primary:disabled, .ant-btn-primary[disabled] {
-  background: #b4e6cc !important;
-  border-color: #b4e6cc !important;
+  background: #a8e6c3 !important;
+  border-color: #a8e6c3 !important;
   color: #fff !important;
   transform: none !important;
   box-shadow: none !important;
@@ -128,7 +128,7 @@ body {
 }
 .ant-btn-dashed {
   color: var(--primary) !important;
-  border-color: #b4e6cc !important;
+  border-color: #a8e6c3 !important;
 }
 .ant-btn-dashed:hover {
   color: var(--primary-hover) !important;
@@ -206,7 +206,7 @@ body {
 .ant-input-affix-wrapper:focus, .ant-input-affix-wrapper-focused,
 .ant-select-focused .ant-select-selector {
   border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px rgba(0, 185, 107, 0.08) !important;
+  box-shadow: 0 0 0 3px rgba(54, 179, 126, 0.08) !important;
 }
 .ant-input-number {
   border-radius: var(--radius-md) !important;

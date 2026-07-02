@@ -43,15 +43,15 @@ export default function Login() {
         background: 'rgba(255,255,255,0.75)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         borderRadius: 20,
-        boxShadow: '0 8px 40px rgba(0, 185, 107, 0.08)',
+        boxShadow: '0 8px 40px rgba(54, 179, 126, 0.08)',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <div style={{
             width: 48, height: 48, borderRadius: 16,
-            background: 'linear-gradient(135deg, #00b96b, #00b96bcc)',
+            background: 'linear-gradient(135deg, #36b37e, #36b37ecc)',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             color: '#fff', fontWeight: 700, fontSize: 22, marginBottom: 16,
-            boxShadow: '0 4px 16px rgba(0,185,107,0.25)',
+            boxShadow: '0 4px 16px rgba(54,179,126,0.25)',
           }}>T</div>
           <div style={{ fontSize: 20, fontWeight: 600, color: '#1d2129', letterSpacing: 1 }}>{t('login.title')}</div>
           <div style={{ fontSize: 13, color: '#86909c', marginTop: 6, letterSpacing: 0.5 }}>{t('login.subtitle')}</div>

@@ -118,7 +118,6 @@ export default function ApiTest() {
         key: s.id,
         title: `${s.code}-${s.title.slice(folder.length + 1) || s.title}`,
         isLeaf: true,
-        icon: <FileTextOutlined style={{ color: '#8c8c8c' }} />,
         scenario: s,
       })),
     }))
@@ -144,7 +143,6 @@ export default function ApiTest() {
               <Tree
                 treeData={treeData}
                 defaultExpandAll
-                showIcon
                 blockNode
                 style={{ fontSize: 12 }}
                 selectedKeys={selectedScenario ? [selectedScenario.id] : []}
@@ -153,7 +151,10 @@ export default function ApiTest() {
                 }}
                 titleRender={(node) => (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', overflow: 'hidden' }}>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{node.title}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {node.isLeaf && <FileTextOutlined style={{ color: '#8c8c8c', fontSize: 12, flexShrink: 0 }} />}
+                      {node.title}
+                    </span>
                     {node.isLeaf && node.scenario && (
                       <Popconfirm
                         title="确定删除？"
@@ -175,10 +176,46 @@ export default function ApiTest() {
         <style>{`.ant-tree-treenode:hover .tree-delete-btn { opacity: 0.6 !important; } .ant-tree-treenode:hover .tree-delete-btn:hover { opacity: 1 !important; }`}</style>
       </div>
 
-      {/* 中栏：步骤列表 */}
-      <div style={{ width: 260, minWidth: 260, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
-        {selectedScenario ? (
-          <>
+      {!selectedScenario ? (
+        /* 没选场景：右侧显示场景概览表格 */
+        <div style={{ flex: 1, padding: 20, overflowY: 'auto' }}>
+          <div style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>接口测试</h3>
+            <Text type="secondary" style={{ fontSize: 13 }}>点击左侧场景查看测试步骤，或点击「+」生成新的测试场景</Text>
+          </div>
+          {scenarios.length > 0 && (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#f6f7f9' }}>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>编号</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>场景名称</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8', width: 60 }}>优先级</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8', width: 60 }}>状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scenarios.map(s => (
+                  <tr key={s.id}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => loadScenario(s.id)}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f6f8ff'}
+                    onMouseLeave={e => e.currentTarget.style.background = ''}
+                  >
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0', fontFamily: 'monospace', color: '#8c8c8c', fontSize: 12 }}>{s.code}</td>
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0', fontWeight: 500 }}>{s.title}</td>
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}><Tag color={PRIORITY_COLORS[s.priority]}>{s.priority}</Tag></td>
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}><Tag color={s.status === 'completed' ? 'success' : 'default'}>{s.status === 'completed' ? '已完成' : '草稿'}</Tag></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      ) : (
+        /* 选了场景：中栏步骤列表 + 右栏请求编辑器 */
+        <>
+          {/* 中栏：步骤列表 */}
+          <div style={{ width: 260, minWidth: 260, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', background: '#fff' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedScenario.code}</span>
@@ -235,20 +272,11 @@ export default function ApiTest() {
                 <Button type="dashed" size="small" icon={<PlusOutlined />} block style={{ fontSize: 12 }}>添加步骤</Button>
               </div>
             </div>
-          </>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#bfbfbf' }}>
-            <div style={{ textAlign: 'center' }}>
-              <ThunderboltOutlined style={{ fontSize: 32, marginBottom: 8 }} />
-              <div style={{ fontSize: 13 }}>选择场景</div>
-            </div>
           </div>
-        )}
-      </div>
 
-      {/* 右栏：请求编辑器 */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f9fafb' }}>
-        {selectedStep ? (
+          {/* 右栏：请求编辑器 */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f9fafb' }}>
+            {selectedStep ? (
           <>
             {/* 顶部：步骤名 + 运行按钮 */}
             <div style={{ padding: '10px 20px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -416,11 +444,13 @@ export default function ApiTest() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#bfbfbf' }}>
             <div style={{ textAlign: 'center' }}>
               <SendOutlined style={{ fontSize: 40, marginBottom: 12 }} />
-              <div style={{ fontSize: 13 }}>选择步骤查看请求详情</div>
+              <div style={{ fontSize: 13 }}>选择左侧步骤查看请求详情</div>
             </div>
           </div>
         )}
-      </div>
+          </div>
+        </>
+      )}
 
       {/* 生成弹窗 */}
       <Modal

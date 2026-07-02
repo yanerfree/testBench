@@ -154,18 +154,17 @@ function AppLayout() {
     <Layout style={{ minHeight: '100vh' }}>
       {/* 顶栏 */}
       <Header style={{
-        background: 'rgba(255,255,255,0.85)', height: 46, lineHeight: '46px', padding: '0 16px',
+        background: 'linear-gradient(90deg, #e3fcef 0%, #f0ecfb 50%, #edf5f8 100%)', height: 46, lineHeight: '46px', padding: '0 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         borderBottom: '1px solid rgba(0,0,0,0.04)',
-        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 28, height: 28, borderRadius: 9,
-            background: 'linear-gradient(135deg, #00b96b, #00b96bcc)',
+            background: 'linear-gradient(135deg, #36b37e, #36b37ecc)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#fff', fontWeight: 700, fontSize: 13,
-            boxShadow: '0 2px 8px rgba(0,185,107,0.25)',
+            boxShadow: '0 2px 8px rgba(54,179,126,0.25)',
           }}>T</div>
           <span style={{ color: '#2e3138', fontSize: 14, fontWeight: 600, letterSpacing: 0.5 }}>{t('header.platformName')}</span>
           {isProjectPage && projectName && (
@@ -198,7 +197,7 @@ function AppLayout() {
           collapsedWidth={52}
           collapsed={collapsed}
           theme="light"
-          style={{ background: 'rgba(255,255,255,0.75)', borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}
+          style={{ background: 'linear-gradient(180deg, #e3fcef 0%, #f0ecfb 50%, #edf5f8 100%)', borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}
         >
           <div style={{ flex: 1, overflow: 'auto' }}>
             <Menu
