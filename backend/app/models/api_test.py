@@ -21,7 +21,9 @@ class ApiTestScenario(Base):
     folder_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("api_test_folders.id"), nullable=True)
     priority: Mapped[str] = mapped_column(String(5), default="P1")
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(20), default="draft")  # draft | completed | failed
+    status: Mapped[str] = mapped_column(String(20), default="draft")  # draft | published | deprecated
+    source: Mapped[str] = mapped_column(String(10), default="ai")  # ai | manual
+    pre_steps: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # 场景级前置操作(如auth)
     source_api_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     env_variables: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
@@ -44,6 +46,9 @@ class ApiTestStep(Base):
     body: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     assertions: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     variables_extract: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    last_status: Mapped[str | None] = mapped_column(String(10), nullable=True)  # pass | fail | null
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    pre_script: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    post_script: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    last_status: Mapped[str | None] = mapped_column(String(10), nullable=True)  # pass | fail | skip
     last_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

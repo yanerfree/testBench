@@ -299,12 +299,12 @@ export default function ProjectList() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                   <div style={{
-                    width: 36, height: 36, borderRadius: 10,
-                    background: 'linear-gradient(135deg, #e3fcef 0%, #d4f5e2 100%)',
+                    width: 36, height: 36, borderRadius: 18,
+                    background: 'linear-gradient(135deg, #36b37e, #36b37eaa)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 16,
+                    fontSize: 16, boxShadow: '0 2px 6px rgba(54,179,126,0.2)',
                   }}>
-                    <FolderOpenOutlined style={{ color: '#36b37e' }} />
+                    <FolderOpenOutlined style={{ color: '#fff' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>

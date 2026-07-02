@@ -98,13 +98,14 @@ body {
   letter-spacing: 0.3px;
 }
 .ant-btn-default {
-  background: transparent !important;
-  border-color: transparent !important;
+  background: rgba(255,255,255,0.4) !important;
+  border: 1px solid rgba(0,0,0,0.06) !important;
   color: var(--text-regular) !important;
+  border-radius: 20px !important;
 }
 .ant-btn-default:not(:disabled):hover {
-  background: rgba(54,179,126,0.06) !important;
-  border-color: transparent !important;
+  background: rgba(255,255,255,0.7) !important;
+  border-color: var(--primary) !important;
   color: var(--primary) !important;
 }
 .ant-btn-primary {

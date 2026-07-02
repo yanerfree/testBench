@@ -35,6 +35,8 @@ def _scenario_to_dict(s: ApiTestScenario, steps: list[ApiTestStep] | None = None
         "priority": s.priority,
         "description": s.description,
         "status": s.status,
+        "source": s.source,
+        "preSteps": s.pre_steps,
         "folderId": str(s.folder_id) if s.folder_id else None,
         "sourceApiIds": s.source_api_ids,
         "envVariables": s.env_variables,
@@ -58,6 +60,9 @@ def _step_to_dict(st: ApiTestStep) -> dict:
         "body": st.body,
         "assertions": st.assertions,
         "variablesExtract": st.variables_extract,
+        "enabled": st.enabled,
+        "preScript": st.pre_script,
+        "postScript": st.post_script,
         "lastStatus": st.last_status,
         "lastResponse": st.last_response,
     }
@@ -187,6 +192,129 @@ async def delete_scenario(
     if not scenario or scenario.project_id != project_id:
         raise NotFoundError(code="NOT_FOUND", message="场景不存在")
     await session.delete(scenario)
+    await session.commit()
+    return {"data": {"deleted": True}}
+
+
+class UpdateScenarioRequest(BaseSchema):
+    title: str | None = None
+    status: str | None = None
+    priority: str | None = None
+    description: str | None = None
+    pre_steps: dict | None = None
+    folder_id: str | None = None
+
+
+@router.put("/{scenario_id}")
+async def update_scenario(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    body: UpdateScenarioRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    scenario = await session.get(ApiTestScenario, scenario_id)
+    if not scenario or scenario.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="场景不存在")
+    if body.title is not None: scenario.title = body.title
+    if body.status is not None: scenario.status = body.status
+    if body.priority is not None: scenario.priority = body.priority
+    if body.description is not None: scenario.description = body.description
+    if body.pre_steps is not None: scenario.pre_steps = body.pre_steps
+    if body.folder_id is not None: scenario.folder_id = uuid.UUID(body.folder_id) if body.folder_id else None
+    await session.commit()
+    return {"data": _scenario_to_dict(scenario)}
+
+
+class UpdateStepRequest(BaseSchema):
+    name: str | None = None
+    method: str | None = None
+    url: str | None = None
+    headers: dict | None = None
+    body: dict | None = None
+    assertions: list | None = None
+    variables_extract: dict | None = None
+    enabled: bool | None = None
+    group_name: str | None = None
+    pre_script: dict | None = None
+    post_script: dict | None = None
+
+
+@router.put("/{scenario_id}/steps/{step_id}")
+async def update_step(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    step_id: uuid.UUID,
+    body: UpdateStepRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    step = await session.get(ApiTestStep, step_id)
+    if not step or step.scenario_id != scenario_id:
+        raise NotFoundError(code="NOT_FOUND", message="步骤不存在")
+    for field in ['name', 'method', 'url', 'headers', 'body', 'assertions', 'variables_extract', 'enabled', 'group_name', 'pre_script', 'post_script']:
+        val = getattr(body, field, None)
+        if val is not None:
+            setattr(step, field, val)
+    await session.commit()
+    return {"data": _step_to_dict(step)}
+
+
+class CreateStepRequest(BaseSchema):
+    name: str = Field(..., min_length=1)
+    method: str = Field(default="GET")
+    url: str = Field(default="")
+
+
+@router.post("/{scenario_id}/steps")
+async def create_step(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    body: CreateStepRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    scenario = await session.get(ApiTestScenario, scenario_id)
+    if not scenario or scenario.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="场景不存在")
+    max_order = await session.execute(
+        select(select(ApiTestStep.sort_order).where(ApiTestStep.scenario_id == scenario_id).correlate(None).scalar_subquery())
+    )
+    # 简单方式：取最大 sort_order + 1
+    from sqlalchemy import func as sa_func
+    max_result = await session.execute(
+        select(sa_func.max(ApiTestStep.sort_order)).where(ApiTestStep.scenario_id == scenario_id)
+    )
+    next_order = (max_result.scalar() or 0) + 1
+
+    step = ApiTestStep(
+        scenario_id=scenario_id,
+        sort_order=next_order,
+        name=body.name,
+        method=body.method,
+        url=body.url,
+    )
+    session.add(step)
+    await session.commit()
+    return {"data": _step_to_dict(step)}
+
+
+@router.delete("/{scenario_id}/steps/{step_id}")
+async def delete_step(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    step_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    step = await session.get(ApiTestStep, step_id)
+    if not step or step.scenario_id != scenario_id:
+        raise NotFoundError(code="NOT_FOUND", message="步骤不存在")
+    await session.delete(step)
     await session.commit()
     return {"data": {"deleted": True}}
 
