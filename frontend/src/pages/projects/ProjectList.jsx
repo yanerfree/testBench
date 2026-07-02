@@ -289,7 +289,17 @@ export default function ProjectList() {
       ) : (
         <>
         <Row gutter={[12, 12]}>
-          {pagedProjects.map(p => (
+          {pagedProjects.map((p, idx) => {
+            const CARD_COLORS = [
+              { bg: 'linear-gradient(135deg, #81c995, #81c995aa)', shadow: 'rgba(129,201,149,0.2)' },
+              { bg: 'linear-gradient(135deg, #7cacf8, #7cacf8aa)', shadow: 'rgba(124,172,248,0.2)' },
+              { bg: 'linear-gradient(135deg, #f0a0c0, #f0a0c0aa)', shadow: 'rgba(240,160,192,0.2)' },
+              { bg: 'linear-gradient(135deg, #f5b971, #f5b971aa)', shadow: 'rgba(245,185,113,0.2)' },
+              { bg: 'linear-gradient(135deg, #a78bda, #a78bdaaa)', shadow: 'rgba(167,139,218,0.2)' },
+              { bg: 'linear-gradient(135deg, #6ecfcf, #6ecfcfaa)', shadow: 'rgba(110,207,207,0.2)' },
+            ]
+            const cc = CARD_COLORS[idx % CARD_COLORS.length]
+            return (
             <Col span={6} key={p.id}>
               <Card
                 hoverable
@@ -300,9 +310,9 @@ export default function ProjectList() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 18,
-                    background: 'linear-gradient(135deg, #36b37e, #36b37eaa)',
+                    background: cc.bg,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 16, boxShadow: '0 2px 6px rgba(54,179,126,0.2)',
+                    fontSize: 16, boxShadow: `0 2px 6px ${cc.shadow}`,
                   }}>
                     <FolderOpenOutlined style={{ color: '#fff' }} />
                   </div>
@@ -346,7 +356,7 @@ export default function ProjectList() {
                 </div>
               </Card>
             </Col>
-          ))}
+          )})}
         </Row>
         {projects.length > pageSize && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>

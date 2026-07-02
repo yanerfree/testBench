@@ -113,9 +113,41 @@ export default function ApiTest() {
     try {
       const res = await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/run-step/${selectedStep.id}`)
       setRunResponse(res.data)
+      // 刷新场景更新步骤状态
+      loadScenario(selectedScenario.id)
     } catch (e) {
       setRunResponse({ error: e.message || '执行失败' })
     } finally { setRunning(false) }
+  }
+
+  const saveStep = async (stepId, updates) => {
+    try {
+      await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/steps/${stepId}`, updates)
+      loadScenario(selectedScenario.id)
+    } catch { message.error('保存失败') }
+  }
+
+  const saveScenario = async (updates) => {
+    try {
+      await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}`, updates)
+      fetchScenarios()
+      loadScenario(selectedScenario.id)
+    } catch { message.error('保存失败') }
+  }
+
+  const addStep = async () => {
+    try {
+      await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/steps`, { name: '新步骤', method: 'GET', url: '${BASE_URL}/' })
+      loadScenario(selectedScenario.id)
+    } catch { message.error('添加失败') }
+  }
+
+  const removeStep = async (stepId) => {
+    try {
+      await api.del(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/steps/${stepId}`)
+      if (selectedStep?.id === stepId) setSelectedStep(null)
+      loadScenario(selectedScenario.id)
+    } catch { message.error('删除失败') }
   }
 
   // 构建目录树：真实文件夹 + 场景叶子节点
@@ -280,19 +312,32 @@ export default function ApiTest() {
           <div style={{ width: 300, minWidth: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', background: 'rgba(255,255,255,0.3)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedScenario.code}</span>
+                <Space size={4}>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedScenario.code}</span>
+                  <Tag color={selectedScenario.source === 'ai' ? 'blue' : 'default'} style={{ fontSize: 10 }}>
+                    {selectedScenario.source === 'ai' ? 'AI' : '手动'}
+                  </Tag>
+                  <Select size="small" value={selectedScenario.status} onChange={v => saveScenario({ status: v })}
+                    style={{ fontSize: 11 }} variant="borderless"
+                    options={[
+                      { value: 'draft', label: <Tag>草稿</Tag> },
+                      { value: 'published', label: <Tag color="success">已发布</Tag> },
+                      { value: 'deprecated', label: <Tag color="default">已废弃</Tag> },
+                    ]}
+                  />
+                </Space>
                 <Space size={4}>
                   <Tooltip title="运行全部">
                     <Button size="small" type="text" icon={<PlayCircleOutlined style={{ color: '#52c41a' }} />} />
                   </Tooltip>
-                  <Popconfirm title="确认删除？" onConfirm={() => handleDelete(selectedScenario.id)}>
-                    <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-                  </Popconfirm>
+                  <Tooltip title="返回列表">
+                    <Button size="small" type="text" onClick={() => { setSelectedScenario(null); setSelectedStep(null) }}>✕</Button>
+                  </Tooltip>
                 </Space>
               </div>
               <Text type="secondary" style={{ fontSize: 12 }}>{selectedScenario.title}</Text>
               <div style={{ marginTop: 4, fontSize: 11, color: '#8c8c8c' }}>
-                已选 {selectedScenario.steps?.length || 0} 项
+                {selectedScenario.steps?.length || 0} 个步骤
               </div>
             </div>
             <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -331,7 +376,7 @@ export default function ApiTest() {
                 )
               })}
               <div style={{ padding: '8px 12px' }}>
-                <Button type="dashed" size="small" icon={<PlusOutlined />} block style={{ fontSize: 12 }}>添加步骤</Button>
+                <Button type="dashed" size="small" icon={<PlusOutlined />} block style={{ fontSize: 12 }} onClick={addStep}>添加步骤</Button>
               </div>
             </div>
           </div>
@@ -340,30 +385,44 @@ export default function ApiTest() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f9fafb' }}>
             {selectedStep ? (
           <>
-            {/* 顶部：步骤名 + 运行按钮 */}
+            {/* 顶部：步骤名(可编辑) + 运行/删除按钮 */}
             <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 600, fontSize: 14 }}>{selectedStep.name}</span>
-              <Button
-                type="primary"
-                icon={running ? <LoadingOutlined /> : <CaretRightOutlined />}
-                loading={running}
-                onClick={handleRunStep}
-                style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 500 }}
-              >
-                运行
-              </Button>
+              <Input
+                value={selectedStep.name}
+                variant="borderless"
+                style={{ fontWeight: 600, fontSize: 14, flex: 1, padding: 0 }}
+                onBlur={e => saveStep(selectedStep.id, { name: e.target.value })}
+                onChange={e => setSelectedStep({ ...selectedStep, name: e.target.value })}
+              />
+              <Space size={4}>
+                <Popconfirm title="删除此步骤？" onConfirm={() => removeStep(selectedStep.id)}>
+                  <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+                </Popconfirm>
+                <Button
+                  type="primary"
+                  icon={running ? <LoadingOutlined /> : <CaretRightOutlined />}
+                  loading={running}
+                  onClick={handleRunStep}
+                  style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 500 }}
+                >
+                  运行
+                </Button>
+              </Space>
             </div>
 
-            {/* URL 栏 */}
+            {/* URL 栏(可编辑) */}
             <div style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 8, alignItems: 'center' }}>
-              <div style={{ background: METHOD_COLORS[selectedStep.method], color: '#fff', padding: '4px 12px', borderRadius: 12, fontWeight: 600, fontSize: 12, minWidth: 56, textAlign: 'center' }}>
-                {selectedStep.method}
-              </div>
+              <Select value={selectedStep.method} size="small"
+                style={{ width: 90, fontWeight: 600 }}
+                onChange={v => { setSelectedStep({ ...selectedStep, method: v }); saveStep(selectedStep.id, { method: v }) }}
+                options={['GET','POST','PUT','DELETE','PATCH'].map(m => ({ value: m, label: m }))}
+              />
               <Input
                 value={selectedStep.url}
-                readOnly
                 variant="borderless"
                 style={{ fontFamily: "'SF Mono', Monaco, Consolas, monospace", fontSize: 13, color: '#333' }}
+                onChange={e => setSelectedStep({ ...selectedStep, url: e.target.value })}
+                onBlur={e => saveStep(selectedStep.id, { url: e.target.value })}
               />
               <Button size="small" style={{ fontSize: 12 }}>发送</Button>
             </div>
@@ -380,15 +439,27 @@ export default function ApiTest() {
                     label: <span>Body {selectedStep.body && <span style={{ color: '#52c41a' }}>●</span>}</span>,
                     children: (
                       <div style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                        <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.05)', fontSize: 11, color: '#8c8c8c' }}>
-                          JSON
+                        <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.05)', fontSize: 11, color: '#8c8c8c', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>JSON</span>
+                          <Button size="small" type="text" style={{ fontSize: 11, height: 18, padding: '0 4px' }}
+                            onClick={() => {
+                              try {
+                                const parsed = JSON.parse(document.getElementById('body-editor')?.value || '{}')
+                                saveStep(selectedStep.id, { body: parsed })
+                                message.success('Body 已保存')
+                              } catch { message.error('JSON 格式错误') }
+                            }}>保存</Button>
                         </div>
-                        <pre style={{
-                          margin: 0, padding: 16, fontSize: 13, fontFamily: "'SF Mono', Monaco, Consolas, monospace",
-                          lineHeight: 1.6, overflow: 'auto', minHeight: 100, maxHeight: 400, color: '#333',
-                        }}>
-                          {selectedStep.body ? JSON.stringify(selectedStep.body, null, 2) : '// 无请求体'}
-                        </pre>
+                        <textarea
+                          id="body-editor"
+                          defaultValue={selectedStep.body ? JSON.stringify(selectedStep.body, null, 2) : ''}
+                          style={{
+                            width: '100%', border: 'none', outline: 'none', resize: 'vertical',
+                            padding: 16, fontSize: 13, fontFamily: "'SF Mono', Monaco, Consolas, monospace",
+                            lineHeight: 1.6, minHeight: 100, maxHeight: 400, color: '#333', background: 'transparent',
+                          }}
+                          key={selectedStep.id}
+                        />
                       </div>
                     ),
                   },

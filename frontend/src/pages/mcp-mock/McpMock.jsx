@@ -8,6 +8,7 @@ import {
   ReloadOutlined, ClearOutlined, CopyOutlined
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
+import { copyToClipboard } from '../../utils/clipboard'
 
 const { Text } = Typography
 const { TextArea } = Input
@@ -135,7 +136,7 @@ export default function McpMock() {
         </div>
         <Space size={8}>
           <Button size="small" icon={<CopyOutlined />} onClick={() => {
-            navigator.clipboard.writeText(mcpUrl); message.success('已复制 MCP 地址')
+            copyToClipboard(mcpUrl).then(() => message.success('已复制 MCP 地址'))
           }}>复制地址</Button>
           <Switch checked={enabled} onChange={handleToggle} checkedChildren="Mock" unCheckedChildren="Real" />
         </Space>

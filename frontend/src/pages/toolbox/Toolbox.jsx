@@ -6,6 +6,7 @@ import {
   ReloadOutlined, ThunderboltOutlined, LoadingOutlined
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
+import { copyToClipboard } from '../../utils/clipboard'
 
 const { TextArea } = Input
 const FONT = "'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei UI', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif"
@@ -29,18 +30,7 @@ const TOOLS = [
   { key: 'diff', icon: <DiffOutlined />, label: '文本对比', desc: 'LCS 逐行差异' },
 ]
 
-const copy = (text) => {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).then(() => message.success('已复制')).catch(() => fallbackCopy(text))
-  } else { fallbackCopy(text) }
-}
-const fallbackCopy = (text) => {
-  const ta = document.createElement('textarea')
-  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'
-  document.body.appendChild(ta); ta.select()
-  try { document.execCommand('copy'); message.success('已复制') } catch { message.error('复制失败') }
-  document.body.removeChild(ta)
-}
+const copy = (text) => copyToClipboard(text).then(() => message.success('已复制'))
 
 const Dot = ({ color }) => (
   <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 3, background: color, marginRight: 6, verticalAlign: 'middle', opacity: 0.7 }} />
