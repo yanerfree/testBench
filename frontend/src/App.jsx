@@ -34,6 +34,7 @@ import SkillManage from './pages/settings/SkillManage'
 import MCPTools from './pages/settings/MCPTools'
 import Exploratory from './pages/exploratory/Exploratory'
 import Documents from './pages/documents/Documents'
+import ApiTest from './pages/api-test/ApiTest'
 
 const { Header, Sider, Content } = Layout
 
@@ -78,6 +79,7 @@ function AppLayout() {
     { key: `/projects/${projectId}/reports`, icon: <BarChartOutlined />, label: t('menu.reports') },
     { key: `/projects/${projectId}/exploratory`, icon: <BugOutlined />, label: t('menu.exploratory') },
     { key: `/projects/${projectId}/documents`, icon: <FileTextOutlined />, label: t('menu.documents') },
+    { key: `/projects/${projectId}/api-test`, icon: <ThunderboltOutlined />, label: t('menu.apiTest') },
     { type: 'divider' },
     {
       key: 'ai-group',
@@ -236,6 +238,7 @@ function AppLayout() {
             <Route path="/projects/:projectId/settings/mcp-tools" element={<MCPTools />} />
             <Route path="/projects/:projectId/exploratory" element={<Exploratory />} />
             <Route path="/projects/:projectId/documents" element={<Documents />} />
+            <Route path="/projects/:projectId/api-test" element={<ApiTest />} />
             <Route path="/settings/env" element={<EnvConfig />} />
             <Route path="/settings/channels" element={<ChannelConfig />} />
             <Route path="/settings/ai-providers" element={<AIProviderConfig />} />
