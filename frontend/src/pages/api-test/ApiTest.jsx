@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import {
-  Button, Tag, Space, Typography, Modal, Form, Input, Select, Tabs,
+  Button, Tag, Space, Typography, Modal, Form, Input, Select, Tabs, Table,
   message, Popconfirm, Spin, Tree, Tooltip, TreeSelect,
 } from 'antd'
 import {
   PlusOutlined, ThunderboltOutlined, DeleteOutlined, RobotOutlined,
   LoadingOutlined, CheckCircleOutlined, CloseCircleOutlined,
   PlayCircleOutlined, FileTextOutlined, CaretRightOutlined, SendOutlined,
+  SearchOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 
@@ -31,6 +32,8 @@ export default function ApiTest() {
   const [running, setRunning] = useState(false)
   const [runResponse, setRunResponse] = useState(null)
   const [bodyText, setBodyText] = useState('')
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [folderModalOpen, setFolderModalOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [newFolderParent, setNewFolderParent] = useState(null)
@@ -264,56 +267,93 @@ export default function ApiTest() {
       </div>
 
       {!selectedScenario ? (
-        /* 没选场景：右侧显示场景概览表格 */
-        <div style={{ flex: 1, padding: 20, overflowY: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div>
-              <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>接口测试</h3>
-              <Text type="secondary" style={{ fontSize: 13 }}>点击左侧场景查看测试步骤</Text>
-            </div>
-            <Button type="primary" icon={<RobotOutlined />} onClick={() => { setGenOpen(true); form.resetFields() }}>
-              AI 生成测试
-            </Button>
+        /* 没选场景：右侧显示场景表格（对标用例管理） */
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* 工具栏 */}
+          <div style={{ padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <Space size={8} wrap>
+              <Input
+                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                placeholder="搜索场景ID或标题"
+                value={searchKeyword}
+                onChange={e => setSearchKeyword(e.target.value)}
+                style={{ width: 200 }}
+                size="small"
+                allowClear
+              />
+              <Space size={0}>
+                {[
+                  { key: 'all', label: '全部' },
+                  { key: 'draft', label: '草稿' },
+                  { key: 'published', label: '已发布' },
+                  { key: 'deprecated', label: '已废弃' },
+                ].map(f => (
+                  <Button key={f.key} size="small" type={statusFilter === f.key ? 'primary' : 'default'}
+                    onClick={() => setStatusFilter(f.key)} style={{ borderRadius: 0, ...(f.key === 'all' ? { borderRadius: '4px 0 0 4px' } : f.key === 'deprecated' ? { borderRadius: '0 4px 4px 0' } : {}) }}>
+                    {f.label}
+                  </Button>
+                ))}
+              </Space>
+            </Space>
+            <Space size={8}>
+              <Button icon={<RobotOutlined />} type="primary" onClick={() => { setGenOpen(true); form.resetFields() }}>
+                AI 生成测试
+              </Button>
+              <Button icon={<PlusOutlined />} onClick={() => {/* TODO: 手动创建场景 */}}>
+                新建场景
+              </Button>
+            </Space>
           </div>
-          {(() => {
-            const filtered = selectedFolderId ? scenarios.filter(s => s.folderId === selectedFolderId) : scenarios
-            return (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: '#f6f7f9' }}>
-                  <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>编号</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8' }}>场景名称</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8', width: 60 }}>优先级</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #e8e8e8', width: 60 }}>状态</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length > 0 ? filtered.map(s => (
-                  <tr key={s.id}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => loadScenario(s.id)}
-                    onMouseEnter={e => e.currentTarget.style.background = '#f6f8ff'}
-                    onMouseLeave={e => e.currentTarget.style.background = ''}
-                  >
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0', fontFamily: 'monospace', color: '#8c8c8c', fontSize: 12 }}>{s.code}</td>
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0', fontWeight: 500 }}>{s.title}</td>
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}><Tag color={PRIORITY_COLORS[s.priority]}>{s.priority}</Tag></td>
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}><Tag color={s.status === 'completed' ? 'success' : 'default'}>{s.status === 'completed' ? '已完成' : '草稿'}</Tag></td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={4} style={{ padding: '60px 0', textAlign: 'center' }}>
-                      <div style={{ color: '#bfbfbf' }}>
-                        <FileTextOutlined style={{ fontSize: 40, marginBottom: 8, display: 'block' }} />
-                        暂无用例
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-            )
-          })()}
+
+          {/* 表格 */}
+          <div style={{ flex: 1, overflow: 'auto', padding: '0 16px 16px' }}>
+            <Table
+              rowKey="id"
+              size="small"
+              dataSource={(() => {
+                let data = selectedFolderId ? scenarios.filter(s => s.folderId === selectedFolderId) : scenarios
+                if (statusFilter !== 'all') data = data.filter(s => s.status === statusFilter)
+                if (searchKeyword) data = data.filter(s => s.title.includes(searchKeyword) || s.code?.includes(searchKeyword))
+                return data
+              })()}
+              pagination={{ pageSize: 20, size: 'small', showTotal: t => `共 ${t} 条` }}
+              onRow={r => ({ onClick: () => loadScenario(r.id), style: { cursor: 'pointer' } })}
+              columns={[
+                {
+                  title: '场景ID', dataIndex: 'code', width: 120,
+                  render: v => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#86909c' }}>{v}</span>,
+                },
+                {
+                  title: '标题', dataIndex: 'title', ellipsis: true,
+                  render: (t, r) => <span style={{ fontWeight: 500 }}>{t}</span>,
+                },
+                {
+                  title: '来源', dataIndex: 'source', width: 60,
+                  render: v => <Tag color={v === 'ai' ? 'blue' : 'default'} style={{ fontSize: 11 }}>{v === 'ai' ? 'AI' : '手动'}</Tag>,
+                },
+                {
+                  title: '优先级', dataIndex: 'priority', width: 70,
+                  render: v => <Tag color={PRIORITY_COLORS[v]}>{v}</Tag>,
+                },
+                {
+                  title: '状态', dataIndex: 'status', width: 70,
+                  render: v => <Tag color={v === 'published' ? 'success' : v === 'deprecated' ? 'default' : undefined}>
+                    {v === 'published' ? '已发布' : v === 'deprecated' ? '已废弃' : '草稿'}
+                  </Tag>,
+                },
+                {
+                  title: '操作', width: 80,
+                  render: (_, r) => (
+                    <Space size={4} onClick={e => e.stopPropagation()}>
+                      <Popconfirm title="确认删除？" onConfirm={() => handleDelete(r.id)}>
+                        <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                      </Popconfirm>
+                    </Space>
+                  ),
+                },
+              ]}
+            />
+          </div>
         </div>
       ) : (
         /* 选了场景：中栏步骤列表 + 右栏请求编辑器 */

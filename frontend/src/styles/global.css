@@ -89,70 +89,70 @@ body {
   background: transparent !important;
 }
 
-/* --- Button --- */
+/* --- Button: 强制覆盖 antd v6 CSS-in-JS --- */
 .ant-btn {
-  border-radius: var(--radius-sm) !important;
-  font-weight: 500;
-  box-shadow: none !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
   transition: all 0.2s ease !important;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.3px !important;
 }
-.ant-btn-default,
-.ant-btn-color-default.ant-btn-variant-outlined {
+button.ant-btn[class*="color-primary"][class*="variant-solid"],
+.ant-btn-primary {
+  border-radius: 20px !important;
+  background: linear-gradient(135deg, #36b37e, #2d9e6f) !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(54,179,126,0.25) !important;
+  color: #fff !important;
+  letter-spacing: 0.5px !important;
+}
+button.ant-btn[class*="color-primary"][class*="variant-solid"]:hover,
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, #2d9e6f, #259060) !important;
+  box-shadow: 0 4px 14px rgba(54,179,126,0.35) !important;
+  transform: translateY(-1px) !important;
+}
+button.ant-btn[class*="color-default"][class*="variant-outlined"],
+.ant-btn-default {
   background: rgba(54,179,126,0.08) !important;
   border: none !important;
-  color: var(--primary) !important;
+  color: #36b37e !important;
   border-radius: 20px !important;
 }
-.ant-btn-default:not(:disabled):hover,
-.ant-btn-color-default.ant-btn-variant-outlined:not(:disabled):hover {
+button.ant-btn[class*="color-default"][class*="variant-outlined"]:hover,
+.ant-btn-default:hover {
   background: rgba(54,179,126,0.15) !important;
-  color: var(--primary-hover) !important;
-  box-shadow: 0 2px 8px rgba(54,179,126,0.1) !important;
-}
-.ant-btn-primary,
-.ant-btn-color-primary.ant-btn-variant-solid {
-  border-radius: 20px !important;
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover)) !important;
-  border-color: transparent !important;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(54,179,126,0.2) !important;
-}
-.ant-btn-primary:not(:disabled):hover,
-.ant-btn-color-primary.ant-btn-variant-solid:not(:disabled):hover {
-  box-shadow: 0 4px 14px rgba(54,179,126,0.3) !important;
-  transform: translateY(-1px);
+  color: #2d9e6f !important;
 }
 .ant-btn-sm {
   border-radius: 6px !important;
 }
 .ant-btn-icon-only {
-  border-radius: var(--radius-sm) !important;
+  border-radius: 8px !important;
 }
-.ant-btn-primary:disabled, .ant-btn-primary[disabled],
-.ant-btn-color-primary.ant-btn-variant-solid:disabled {
+button.ant-btn[class*="color-primary"]:disabled,
+.ant-btn-primary:disabled, .ant-btn-primary[disabled] {
   background: #a8e6c3 !important;
-  border-color: #a8e6c3 !important;
+  border: none !important;
   color: #fff !important;
   transform: none !important;
   box-shadow: none !important;
 }
 .ant-btn-primary.ant-btn-background-ghost,
-.ant-btn-color-primary.ant-btn-variant-outlined {
-  color: var(--primary) !important;
-  border-color: var(--primary) !important;
+button.ant-btn[class*="color-primary"][class*="variant-outlined"] {
+  color: #36b37e !important;
+  border: 1px solid #36b37e !important;
   background: transparent !important;
   border-radius: 20px !important;
 }
 .ant-btn-primary.ant-btn-background-ghost:hover,
-.ant-btn-color-primary.ant-btn-variant-outlined:hover {
-  color: var(--primary-hover) !important;
-  border-color: var(--primary-hover) !important;
-  background: var(--primary-bg) !important;
+button.ant-btn[class*="color-primary"][class*="variant-outlined"]:hover {
+  color: #2d9e6f !important;
+  border-color: #2d9e6f !important;
+  background: rgba(54,179,126,0.06) !important;
 }
 .ant-btn-dashed,
-.ant-btn-color-default.ant-btn-variant-dashed {
-  color: var(--primary) !important;
+button.ant-btn[class*="variant-dashed"] {
+  color: #36b37e !important;
   border-color: #a8e6c3 !important;
   border-radius: 20px !important;
 }

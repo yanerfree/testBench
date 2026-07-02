@@ -118,6 +118,10 @@ export default function ApiMock() {
 
   useEffect(() => { setLogPage(1); fetchLogs(1) }, [logFilter])
 
+  useEffect(() => {
+    if (routes.length > 0 && !selectedRouteId) selectRoute(routes[0])
+  }, [routes])
+
   const selectRoute = useCallback((route) => {
     const formData = { ...route }
     setSelectedRouteId(route.id)
@@ -342,18 +346,18 @@ export default function ApiMock() {
             />
           </div>
           <Space size={8}>
+            <Button type="primary" icon={<SaveOutlined />} size="small" onClick={handleSaveRoute} loading={saving} disabled={!isDirty}>保存</Button>
             <Switch
               checked={routeForm.enabled}
               onChange={(v) => handleToggle(routeForm.id, v)}
               checkedChildren="启用" unCheckedChildren="禁用" size="small"
             />
-            <Button icon={<SettingOutlined />} size="small" onClick={() => setAdvancedOpen(true)}>高级</Button>
-            <Button type="primary" icon={<SaveOutlined />} size="small" onClick={handleSaveRoute} loading={saving} disabled={!isDirty}>保存</Button>
+            <Button size="small" onClick={() => setAdvancedOpen(true)}>高级</Button>
             {isDefault ? (
               <Tooltip title="默认路由不可删除"><Button icon={<DeleteOutlined />} size="small" disabled /></Tooltip>
             ) : (
               <Popconfirm title="确认删除？" onConfirm={() => handleDeleteRoute(routeForm.id)}>
-                <Button icon={<DeleteOutlined />} danger size="small" />
+                <Button icon={<DeleteOutlined />} size="small" danger />
               </Popconfirm>
             )}
           </Space>
