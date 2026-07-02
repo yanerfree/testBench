@@ -115,32 +115,28 @@ export default function ApiTest() {
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
-      {/* 左栏：目录树 */}
-      <div style={{ width: 280, minWidth: 280, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', background: '#fafafa' }}>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', background: '#fff' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>测试场景</span>
-            <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => { setGenOpen(true); form.resetFields() }}>
-              生成
-            </Button>
-          </div>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
-          {loading ? <Spin style={{ display: 'block', margin: '40px auto' }} /> :
-            scenarios.length === 0 ? (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无场景" style={{ marginTop: 60 }} />
-            ) : (
-              <Tree
-                treeData={treeData}
-                showIcon
-                selectedKeys={selectedScenario ? [selectedScenario.id] : []}
-                onSelect={(keys) => { if (keys[0]) loadScenario(keys[0]) }}
-                style={{ background: 'transparent' }}
-              />
-            )
-          }
-        </div>
-      </div>
+      {/* 左栏：目录树 — 和用例管理页面一致 */}
+      <Card
+        style={{ width: 220, flexShrink: 0, overflow: 'auto', borderRadius: 0, borderRight: '1px solid #f0f0f0', borderTop: 0, borderBottom: 0, borderLeft: 0 }}
+        styles={{ body: { padding: '8px 4px' }, header: { padding: '0 12px', minHeight: 36, borderBottom: '1px solid #f2f3f5' } }}
+        title={<span style={{ fontSize: 13, fontWeight: 600 }}>测试场景</span>}
+        extra={<Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => { setGenOpen(true); form.resetFields() }}>生成</Button>}
+      >
+        {loading ? <Spin style={{ display: 'block', margin: '40px auto' }} /> :
+          treeData.length === 0 ? (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无场景" style={{ marginTop: 40 }} />
+          ) : (
+            <Tree
+              treeData={treeData}
+              defaultExpandAll
+              blockNode
+              style={{ fontSize: 13 }}
+              selectedKeys={selectedScenario ? [selectedScenario.id] : []}
+              onSelect={(keys) => { if (keys[0]) loadScenario(keys[0]) }}
+            />
+          )
+        }
+      </Card>
 
       {/* 中栏：步骤列表 */}
       <div style={{ width: 260, minWidth: 260, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>

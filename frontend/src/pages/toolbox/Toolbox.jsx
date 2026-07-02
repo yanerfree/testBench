@@ -8,7 +8,8 @@ import {
 import { api } from '../../utils/request'
 
 const { TextArea } = Input
-const MONO = "'SF Mono', Monaco, Menlo, Consolas, monospace"
+const FONT = "'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei UI', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif"
+const MONO = "'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'SF Mono', Monaco, Menlo, Consolas, monospace"
 
 const THEMES = {
   json:      { primary: '#43a047', light: '#e8f5e9', bg: 'rgba(232,245,233,0.5)', pale: 'rgba(232,245,233,0.25)', border: 'rgba(67,160,71,0.25)' },
@@ -46,10 +47,18 @@ const Dot = ({ color }) => (
 )
 
 const TOOLBOX_CSS = `
+.toolbox-page {
+  font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei UI', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+  letter-spacing: 0.3px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 .toolbox-page .ant-btn {
   border-radius: 20px !important;
   transition: all 0.2s ease !important;
   font-weight: 500 !important;
+  font-size: 12.5px !important;
+  letter-spacing: 0.5px !important;
   box-shadow: none !important;
 }
 .toolbox-page .ant-btn:not(:disabled):hover {
@@ -90,6 +99,8 @@ const TOOLBOX_CSS = `
 }
 .toolbox-page .ant-tag {
   border-radius: 12px !important;
+  font-size: 11.5px !important;
+  letter-spacing: 0.5px !important;
 }
 .toolbox-page .ant-radio-group .ant-radio-button-wrapper:first-child {
   border-radius: 14px 0 0 14px !important;
@@ -169,17 +180,17 @@ function JsonTool({ theme }) {
           <Button size="small" onClick={handleCompress}>压缩</Button>
           <Button size="small" onClick={handleEscape}>转义</Button>
           <Button size="small" onClick={handleUnescape}>去转义</Button>
-          <span style={{ fontSize: 12, color: theme.primary, opacity: 0.8 }}>
+          <span style={{ fontSize: 11.5, color: theme.primary, opacity: 0.8, fontFamily: FONT, letterSpacing: 0.5 }}>
             <Switch size="small" checked={autoFormat} onChange={setAutoFormat} style={{ marginRight: 4 }} />实时格式化
           </span>
         </Space>
-        {stats && <span style={{ fontSize: 11, color: theme.primary, opacity: 0.6 }}>{stats.chars} 字符 · {stats.lines} 行 · {stats.bytes} B</span>}
+        {stats && <span style={{ fontSize: 10.5, color: theme.primary, opacity: 0.6, fontFamily: FONT, letterSpacing: 0.5 }}>{stats.chars} 字符 · {stats.lines} 行 · {stats.bytes} B</span>}
       </div>
       {error && <div style={{ color: '#e53935', fontSize: 12, marginBottom: 10, padding: '6px 12px', background: '#fff5f5', borderRadius: 12, border: '1px solid #ffcdd2' }}>{error}</div>}
       <div style={{ flex: 1, display: 'flex', gap: 14, minHeight: 0 }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: theme.primary, fontWeight: 600 }}>
+            <span style={{ fontSize: 11.5, color: theme.primary, fontWeight: 600, fontFamily: FONT, letterSpacing: 0.8 }}>
               <Dot color={theme.primary} />输入
             </span>
             <Button type="link" size="small" style={{ padding: 0, fontSize: 11, height: 'auto', color: theme.primary }}
@@ -191,7 +202,7 @@ function JsonTool({ theme }) {
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: theme.primary, fontWeight: 600 }}>
+            <span style={{ fontSize: 11.5, color: theme.primary, fontWeight: 600, fontFamily: FONT, letterSpacing: 0.8 }}>
               <Dot color={theme.primary} />输出
             </span>
             <Button type="link" size="small" icon={<CopyOutlined />} style={{ padding: 0, fontSize: 11, height: 'auto', color: theme.primary }}
@@ -261,7 +272,7 @@ function CodecTool({ theme }) {
       </div>
       <div style={{ flex: 1, display: 'flex', gap: 14, minHeight: 0 }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>
+          <div style={{ fontSize: 11.5, color: theme.primary, fontWeight: 600, marginBottom: 6, fontFamily: FONT, letterSpacing: 0.8 }}>
             <Dot color={theme.primary} />输入
           </div>
           <TextArea value={input} onChange={e => setInput(e.target.value)}
@@ -269,7 +280,7 @@ function CodecTool({ theme }) {
             placeholder="输入要处理的内容 ~" />
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>
+          <div style={{ fontSize: 11.5, color: theme.primary, fontWeight: 600, marginBottom: 6, fontFamily: FONT, letterSpacing: 0.8 }}>
             <Dot color={theme.primary} />输出
           </div>
           <TextArea value={output} readOnly
@@ -326,16 +337,16 @@ function TimestampTool({ theme }) {
         padding: '14px 18px', background: theme.bg, borderRadius: 16,
         border: `1.5px solid ${theme.border}`,
       }}>
-        <span style={{ fontSize: 13, color: theme.primary, fontWeight: 600 }}>⏱ 当前</span>
-        <span style={{ fontFamily: MONO, fontSize: 18, fontWeight: 700, color: '#262626', minWidth: 110 }}>{now}</span>
-        <span style={{ fontSize: 12, color: '#4e5969' }}>{new Date(now * 1000).toLocaleString('zh-CN', { hour12: false })}</span>
+        <span style={{ fontSize: 12.5, color: theme.primary, fontWeight: 600, fontFamily: FONT, letterSpacing: 1 }}>⏱ 当前</span>
+        <span style={{ fontFamily: MONO, fontSize: 17, fontWeight: 700, color: '#262626', minWidth: 110, letterSpacing: 0.5 }}>{now}</span>
+        <span style={{ fontSize: 11.5, color: '#4e5969', fontFamily: FONT }}>{new Date(now * 1000).toLocaleString('zh-CN', { hour12: false })}</span>
         <Button size="small" icon={<CopyOutlined />} onClick={() => copy(String(now))}>复制</Button>
         <Button size="small" icon={<CopyOutlined />} onClick={() => copy(String(now * 1000))}>复制毫秒</Button>
       </div>
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', marginBottom: 20 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>
+          <div style={{ fontSize: 11.5, color: theme.primary, fontWeight: 600, marginBottom: 6, fontFamily: FONT, letterSpacing: 0.8 }}>
             <Dot color={theme.primary} />时间戳（秒/毫秒）
           </div>
           <Input value={ts} onChange={e => setTs(e.target.value)} placeholder="1719820800"
@@ -344,7 +355,7 @@ function TimestampTool({ theme }) {
         <Button type="primary" onClick={tsToDate}>→ 转日期</Button>
         <Button onClick={dateToTs}>← 转时间戳</Button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>
+          <div style={{ fontSize: 11.5, color: theme.primary, fontWeight: 600, marginBottom: 6, fontFamily: FONT, letterSpacing: 0.8 }}>
             <Dot color={theme.primary} />日期时间
           </div>
           <Input value={dt} onChange={e => setDt(e.target.value)} placeholder="2024-07-01 12:00:00"
@@ -353,7 +364,7 @@ function TimestampTool({ theme }) {
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 10 }}>
+        <div style={{ fontSize: 11.5, color: theme.primary, fontWeight: 600, marginBottom: 10, fontFamily: FONT, letterSpacing: 0.8 }}>
           <Dot color={theme.primary} />快捷选择
         </div>
         <Space size={8} wrap>
@@ -372,7 +383,7 @@ function TimestampTool({ theme }) {
         </Space>
       </div>
 
-      <div style={{ fontSize: 11, color: theme.primary, opacity: 0.5 }}>
+      <div style={{ fontSize: 10.5, color: theme.primary, opacity: 0.5, fontFamily: FONT, letterSpacing: 0.5 }}>
         支持 10 位（秒）和 13 位（毫秒）时间戳
       </div>
     </div>
@@ -445,10 +456,10 @@ function RegexTool({ theme }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 20 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-        <span style={{ fontSize: 16, color: theme.primary, flexShrink: 0, fontWeight: 300 }}>/</span>
+        <span style={{ fontSize: 15, color: theme.primary, flexShrink: 0, fontWeight: 300, fontFamily: MONO }}>/</span>
         <Input value={pattern} onChange={e => setPattern(e.target.value)}
           style={{ flex: 1, fontFamily: MONO, borderColor: theme.border }} placeholder="输入正则表达式..." />
-        <span style={{ fontSize: 16, color: theme.primary, flexShrink: 0, fontWeight: 300 }}>/</span>
+        <span style={{ fontSize: 15, color: theme.primary, flexShrink: 0, fontWeight: 300, fontFamily: MONO }}>/</span>
         <Input value={flags} onChange={e => setFlags(e.target.value)}
           style={{ width: 54, fontFamily: MONO, textAlign: 'center', borderColor: theme.border }} placeholder="g" />
         {matchCount > 0 && <Tag color="green" style={{ borderRadius: 12 }}>{matchCount} 个匹配</Tag>}
@@ -471,7 +482,7 @@ function RegexTool({ theme }) {
           }
         />
         <span style={{ fontSize: 11, color: '#d9d9d9' }}>|</span>
-        <span style={{ fontSize: 11, color: theme.primary, opacity: 0.6 }}>常用:</span>
+        <span style={{ fontSize: 10.5, color: theme.primary, opacity: 0.6, fontFamily: FONT, letterSpacing: 0.5 }}>常用:</span>
         {COMMON.map(c => (
           <Tag key={c.label} style={{ cursor: 'pointer', fontSize: 11, borderRadius: 12, color: theme.primary, borderColor: theme.border }}
             onClick={() => setPattern(c.re)}>{c.label}</Tag>
@@ -485,7 +496,7 @@ function RegexTool({ theme }) {
 
       <div style={{ flex: 1, display: 'flex', gap: 14, minHeight: 0 }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>
+          <div style={{ fontSize: 11.5, color: theme.primary, fontWeight: 600, marginBottom: 6, fontFamily: FONT, letterSpacing: 0.8 }}>
             <Dot color={theme.primary} />测试文本
           </div>
           <TextArea value={text} onChange={e => setText(e.target.value)}
@@ -493,7 +504,7 @@ function RegexTool({ theme }) {
             placeholder="输入要匹配的文本 ~" />
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>
+          <div style={{ fontSize: 11.5, color: theme.primary, fontWeight: 600, marginBottom: 6, fontFamily: FONT, letterSpacing: 0.8 }}>
             <Dot color={theme.primary} />匹配结果
           </div>
           <div style={{
@@ -584,7 +595,7 @@ function DataGenTool({ theme }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 20 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, color: theme.primary, fontWeight: 600 }}>
+        <span style={{ fontSize: 11.5, color: theme.primary, fontWeight: 600, fontFamily: FONT, letterSpacing: 0.8 }}>
           <Dot color={theme.primary} />数量
         </span>
         <InputNumber value={count} onChange={v => v != null && setCount(Math.max(1, Math.min(200, v)))}
@@ -619,7 +630,7 @@ function DataGenTool({ theme }) {
             ))}
           </div>
         ) : (
-          <div style={{ textAlign: 'center', padding: 50, color: theme.primary, opacity: 0.4, fontSize: 13 }}>
+          <div style={{ textAlign: 'center', padding: 50, color: theme.primary, opacity: 0.4, fontSize: 12.5, fontFamily: FONT, letterSpacing: 1 }}>
             选择数据类型开始生成 ✨
           </div>
         )}
@@ -659,7 +670,7 @@ function DiffTool({ theme }) {
         {diffResult && <Button size="small" onClick={() => setDiffResult(null)}>返回编辑</Button>}
         <Button size="small" onClick={() => { setLeft(''); setRight(''); setDiffResult(null) }}>清空</Button>
         {diffResult && (
-          <span style={{ fontSize: 12, color: theme.primary, opacity: 0.7 }}>
+          <span style={{ fontSize: 11.5, color: theme.primary, opacity: 0.7, fontFamily: FONT }}>
             {diffResult.length} 行，
             {diffCount > 0
               ? <span style={{ color: '#e53935' }}>{diffCount} 处差异</span>
@@ -670,7 +681,7 @@ function DiffTool({ theme }) {
       {!diffResult ? (
         <div style={{ flex: 1, display: 'flex', gap: 14, minHeight: 0 }}>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>
+            <div style={{ fontSize: 11.5, color: theme.primary, fontWeight: 600, marginBottom: 6, fontFamily: FONT, letterSpacing: 0.8 }}>
               <Dot color={theme.primary} />文本 A
             </div>
             <TextArea value={left} onChange={e => setLeft(e.target.value)}
@@ -678,7 +689,7 @@ function DiffTool({ theme }) {
               placeholder="粘贴文本 A ~" />
           </div>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>
+            <div style={{ fontSize: 11.5, color: theme.primary, fontWeight: 600, marginBottom: 6, fontFamily: FONT, letterSpacing: 0.8 }}>
               <Dot color={theme.primary} />文本 B
             </div>
             <TextArea value={right} onChange={e => setRight(e.target.value)}
@@ -784,8 +795,8 @@ export default function Toolbox() {
           <ToolOutlined style={{ fontSize: 17, color: '#fff' }} />
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 17, color: '#1d2129', lineHeight: 1.3 }}>工具箱</div>
-          <div style={{ fontSize: 11.5, color: '#86909c', lineHeight: 1.2 }}>开发者的随身百宝箱</div>
+          <div style={{ fontWeight: 700, fontSize: 16, color: '#1d2129', lineHeight: 1.3, fontFamily: FONT, letterSpacing: 1 }}>工具箱</div>
+          <div style={{ fontSize: 11, color: '#86909c', lineHeight: 1.2, fontFamily: FONT, letterSpacing: 0.5 }}>开发者的随身百宝箱</div>
         </div>
       </div>
 
@@ -819,21 +830,23 @@ export default function Toolbox() {
                   }}>{t.icon}</span>
                   <div style={{ minWidth: 0 }}>
                     <div style={{
-                      fontSize: 13.5, fontWeight: active ? 600 : 400,
+                      fontSize: 13, fontWeight: active ? 600 : 400,
                       color: active ? tt.primary : '#4e5969',
                       transition: 'all 0.25s', lineHeight: 1.3,
+                      fontFamily: FONT, letterSpacing: 0.5,
                     }}>{t.label}</div>
                     <div style={{
-                      fontSize: 10.5, color: active ? `${tt.primary}99` : '#c9cdd4',
+                      fontSize: 10, color: active ? `${tt.primary}99` : '#c9cdd4',
                       transition: 'color 0.25s', lineHeight: 1.4,
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      fontFamily: FONT, letterSpacing: 0.3,
                     }}>{t.desc}</div>
                   </div>
                 </div>
               )
             })}
           </div>
-          <div style={{ textAlign: 'center', fontSize: 11, color: '#c9cdd4', padding: '10px 0', letterSpacing: 3 }}>
+          <div style={{ textAlign: 'center', fontSize: 10.5, color: '#c9cdd4', padding: '10px 0', letterSpacing: 4, fontFamily: FONT }}>
             ✿ 宁静致远
           </div>
         </div>
