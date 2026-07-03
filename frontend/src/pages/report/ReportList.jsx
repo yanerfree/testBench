@@ -12,7 +12,7 @@ function fmt(ms) {
 }
 
 function rateColor(v) {
-  if (v >= 95) return '#36b37e'
+  if (v >= 95) return '#0ea5a0'
   if (v >= 80) return '#faad14'
   return '#e8453c'
 }
@@ -156,7 +156,7 @@ export default function ReportList() {
                     <span style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
                       fontSize: 11, padding: '2px 8px', borderRadius: 10,
-                      background: isCompleted ? '#36b37e' : '#1890ff',
+                      background: isCompleted ? '#0ea5a0' : '#1890ff',
                       color: '#fff',
                     }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.3)' }} />
@@ -166,7 +166,7 @@ export default function ReportList() {
 
                   {/* Results */}
                   <div style={{ width: 150, textAlign: 'center', fontSize: 12, fontFamily: 'monospace' }}>
-                    <span style={{ color: '#36b37e' }}>{r.passed}</span>
+                    <span style={{ color: '#0ea5a0' }}>{r.passed}</span>
                     <span style={{ color: '#c9cdd4' }}> / </span>
                     <span style={{ color: '#e8453c' }}>{r.failed + r.error}</span>
                     <span style={{ color: '#c9cdd4' }}> / </span>

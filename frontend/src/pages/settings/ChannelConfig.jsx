@@ -79,7 +79,7 @@ export default function ChannelConfig() {
       title: '渠道名称', dataIndex: 'name', width: 200,
       render: v => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <BellOutlined style={{ color: '#36b37e' }} />
+          <BellOutlined style={{ color: '#0ea5a0' }} />
           <span style={{ fontWeight: 500 }}>{v}</span>
         </div>
       ),

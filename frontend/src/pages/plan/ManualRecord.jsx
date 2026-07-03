@@ -106,7 +106,7 @@ export default function ManualRecord() {
 
   const getStatusIcon = (s) => {
     const status = getEffectiveStatus(s)
-    if (status === 'passed') return <CheckCircleFilled style={{ color: '#36b37e', fontSize: 16 }} />
+    if (status === 'passed') return <CheckCircleFilled style={{ color: '#0ea5a0', fontSize: 16 }} />
     if (status === 'failed') return <CloseCircleFilled style={{ color: '#e8453c', fontSize: 16 }} />
     return <ClockCircleOutlined style={{ color: '#c9cdd4', fontSize: 16 }} />
   }
@@ -129,7 +129,7 @@ export default function ManualRecord() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 13, color: '#86909c' }}>已录入</span>
             <span style={{ fontSize: 15, fontWeight: 600, color: '#1d2129' }}>{recordedCount}/{totalCount}</span>
-            {totalCount > 0 && <Progress percent={Math.round(recordedCount / totalCount * 100)} size="small" style={{ width: 120, marginBottom: 0 }} strokeColor="#36b37e" />}
+            {totalCount > 0 && <Progress percent={Math.round(recordedCount / totalCount * 100)} size="small" style={{ width: 120, marginBottom: 0 }} strokeColor="#0ea5a0" />}
           </div>
         </div>
       </div>
@@ -146,7 +146,7 @@ export default function ManualRecord() {
               <div key={s.id} onClick={() => setSelectedId(s.id)} style={{
                 padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.04)',
                 background: selectedId === s.id ? '#e6f7ff' : 'transparent',
-                borderLeft: selectedId === s.id ? '3px solid #36b37e' : '3px solid transparent',
+                borderLeft: selectedId === s.id ? '3px solid #0ea5a0' : '3px solid transparent',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {getStatusIcon(s)}
@@ -179,7 +179,7 @@ export default function ManualRecord() {
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 13, color: '#4e5969', marginBottom: 8 }}>测试结果</div>
                 <Radio.Group value={selectedEdit.result || (selected.status !== 'pending' ? selected.status : undefined)} onChange={e => updateLocalEdit(selected.id, { result: e.target.value })} size="large">
-                  <Radio.Button value="passed" style={{ borderRadius: '8px 0 0 8px', ...((selectedEdit.result || selected.status) === 'passed' ? { background: '#36b37e', borderColor: '#36b37e', color: '#fff' } : {}) }}>
+                  <Radio.Button value="passed" style={{ borderRadius: '8px 0 0 8px', ...((selectedEdit.result || selected.status) === 'passed' ? { background: '#0ea5a0', borderColor: '#0ea5a0', color: '#fff' } : {}) }}>
                     <CheckCircleFilled style={{ marginRight: 4 }} /> 通过
                   </Radio.Button>
                   <Radio.Button value="failed" style={{ borderRadius: '0 8px 8px 0', ...((selectedEdit.result || selected.status) === 'failed' ? { background: '#ff7875', borderColor: '#ff7875', color: '#fff' } : {}) }}>

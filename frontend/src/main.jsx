@@ -9,7 +9,7 @@ import './styles/global.css'
 
 const theme = {
   token: {
-    colorPrimary: '#36b37e',
+    colorPrimary: '#0ea5a0',
     borderRadius: 12,
     borderRadiusLG: 16,
     borderRadiusSM: 8,
@@ -20,7 +20,7 @@ const theme = {
     colorBorder: 'rgba(0,0,0,0.06)',
     colorBorderSecondary: 'rgba(0,0,0,0.04)',
     controlHeight: 32,
-    colorSuccess: '#36b37e',
+    colorSuccess: '#0ea5a0',
     colorError: '#e8453c',
     colorWarning: '#f0a020',
     colorInfo: '#4e8af0',
@@ -31,7 +31,7 @@ const theme = {
       borderRadius: 20,
       borderRadiusLG: 20,
       borderRadiusSM: 12,
-      primaryShadow: '0 2px 8px rgba(54,179,126,0.25)',
+      primaryShadow: '0 2px 8px rgba(14,165,160,0.25)',
       fontWeight: 500,
     },
     Card: {
@@ -63,10 +63,10 @@ const theme = {
     },
     Menu: {
       itemBorderRadius: 12,
-      itemSelectedBg: '#e3fcef',
-      itemSelectedColor: '#36b37e',
-      itemHoverBg: 'rgba(54,179,126,0.05)',
-      itemHoverColor: '#36b37e',
+      itemSelectedBg: '#e0f7f6',
+      itemSelectedColor: '#0ea5a0',
+      itemHoverBg: 'rgba(14,165,160,0.05)',
+      itemHoverColor: '#0ea5a0',
       subMenuItemBg: 'transparent',
     },
   },

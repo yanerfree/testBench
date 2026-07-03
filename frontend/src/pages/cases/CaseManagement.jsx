@@ -9,7 +9,7 @@ import AIScriptModal from '../../components/AIScriptModal'
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
 const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' }
 const statusMap = { automated: '已自动化', pending: '待自动化', script_removed: '脚本已移除', archived: '已归档' }
-const statusColors = { automated: '#36b37e', pending: '#faad14', script_removed: '#e8453c', archived: '#bfbfbf' }
+const statusColors = { automated: '#0ea5a0', pending: '#faad14', script_removed: '#e8453c', archived: '#bfbfbf' }
 const statusBg = { automated: 'transparent', pending: 'transparent', script_removed: 'transparent', archived: 'transparent' }
 
 // ---- 分支管理弹窗（保持不变） ----
@@ -73,7 +73,7 @@ function BranchManageModal({ projectId, open, onClose, onBranchesChanged }) {
         {b.status === 'active' ? (
           <Popconfirm title={`确定归档「${b.name}」？`} onConfirm={() => handleArchive(b)}><Tooltip title="归档"><Button size="small" type="text" icon={<PauseCircleOutlined />} style={{ color: '#faad14' }} /></Tooltip></Popconfirm>
         ) : (
-          <Tooltip title="恢复"><Button size="small" type="text" icon={<PlayCircleOutlined />} style={{ color: '#36b37e' }} onClick={() => handleActivate(b)} /></Tooltip>
+          <Tooltip title="恢复"><Button size="small" type="text" icon={<PlayCircleOutlined />} style={{ color: '#0ea5a0' }} onClick={() => handleActivate(b)} /></Tooltip>
         )}
       </Space>
     </div>
@@ -525,7 +525,7 @@ export default function CaseManagement() {
           <SettingOutlined
             onClick={() => setColumnSettingOpen(true)}
             style={{ color: '#c9cdd4', cursor: 'pointer', fontSize: 14 }}
-            onMouseEnter={e => e.target.style.color = '#36b37e'}
+            onMouseEnter={e => e.target.style.color = '#0ea5a0'}
             onMouseLeave={e => e.target.style.color = '#c9cdd4'}
           />
         </Tooltip>
@@ -543,7 +543,7 @@ export default function CaseManagement() {
       <Card styles={{ body: { padding: '6px 16px' } }} style={{ flexShrink: 0, marginBottom: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <BranchesOutlined style={{ color: '#36b37e' }} />
+            <BranchesOutlined style={{ color: '#0ea5a0' }} />
             <span style={{ fontSize: 13, color: '#86909c' }}>分支配置</span>
             <Select
               value={currentBranch}
@@ -565,7 +565,7 @@ export default function CaseManagement() {
         <Card style={{ width: 220, flexShrink: 0, overflow: 'auto' }}
           styles={{ body: { padding: '8px 4px' }, header: { padding: '0 12px', minHeight: 36, borderBottom: '1px solid rgba(0,0,0,0.04)' } }}
           title={<span style={{ fontSize: 13, fontWeight: 600 }}>用例导航</span>}
-          extra={<Button type="text" size="small" icon={<PlusOutlined />} onClick={() => setFolderModalOpen(true)} style={{ color: '#36b37e' }} />}>
+          extra={<Button type="text" size="small" icon={<PlusOutlined />} onClick={() => setFolderModalOpen(true)} style={{ color: '#0ea5a0' }} />}>
           {treeData.length > 0 ? (
             <Tree
               treeData={treeData}
@@ -739,7 +739,7 @@ export default function CaseManagement() {
         {!importResult ? (
           <Upload.Dragger accept=".json,.xlsx" showUploadList={false} beforeUpload={handleImportFile} disabled={importing} style={{ padding: '32px 0' }}>
             {importing ? <Spin tip="正在导入..." /> : (<>
-              <p><InboxOutlined style={{ fontSize: 40, color: '#36b37e' }} /></p>
+              <p><InboxOutlined style={{ fontSize: 40, color: '#0ea5a0' }} /></p>
               <p style={{ fontSize: 14, color: '#1d2129', marginTop: 8 }}>点击或拖拽上传用例文件</p>
               <p style={{ fontSize: 12, color: '#86909c' }}>支持 .json（TEA 格式）和 .xlsx（Excel 导出格式）</p>
             </>)}
@@ -747,8 +747,8 @@ export default function CaseManagement() {
         ) : (
           <div style={{ display: 'flex', gap: 12 }}>
             {[
-              { label: '新增', count: importResult.new, color: '#36b37e', bg: '#e6f7ff' },
-              { label: '更新', count: importResult.updated, color: '#36b37e', bg: '#e6f7ff' },
+              { label: '新增', count: importResult.new, color: '#0ea5a0', bg: '#e6f7ff' },
+              { label: '更新', count: importResult.updated, color: '#0ea5a0', bg: '#e6f7ff' },
               { label: '移除', count: importResult.removed, color: '#e8453c', bg: '#fff2f0' },
               { label: '跳过', count: importResult.skipped, color: '#8c8c8c', bg: '#f2f3f5' },
             ].map(s => (

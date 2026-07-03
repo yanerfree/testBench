@@ -9,7 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 
 const statusCfg = {
-  passed: { label: '通过', color: '#36b37e', dot: '#36b37e' },
+  passed: { label: '通过', color: '#0ea5a0', dot: '#0ea5a0' },
   failed: { label: '失败', color: '#e8453c', dot: '#e8453c' },
   error: { label: '错误', color: '#faad14', dot: '#faad14' },
   skipped: { label: '跳过', color: '#c9cdd4', dot: '#c9cdd4' },
@@ -17,8 +17,8 @@ const statusCfg = {
   pending: { label: '待执行', color: '#c9cdd4', dot: '#c9cdd4' },
 }
 
-const methodColor = { GET: '#36b37e', POST: '#1890ff', PUT: '#faad14', DELETE: '#e8453c', PATCH: '#7c5cbf' }
-const phaseColor = { setup: '#7c5cbf', action: '#1890ff', verify: '#36b37e' }
+const methodColor = { GET: '#0ea5a0', POST: '#1890ff', PUT: '#faad14', DELETE: '#e8453c', PATCH: '#7c5cbf' }
+const phaseColor = { setup: '#7c5cbf', action: '#1890ff', verify: '#0ea5a0' }
 const phaseLabel = { setup: '准备', action: '操作', verify: '验证' }
 
 function fmt(ms) {
@@ -33,7 +33,7 @@ function PassRateRing({ rate, passed, total, size = 160, running = false, done =
   const c = 2 * Math.PI * r
   const pct = running ? (total > 0 ? (done / total) * 100 : 0) : (total > 0 ? (passed / total) * 100 : 0)
   const offset = c - (c * pct) / 100
-  const color = running ? '#1890ff' : pct >= 95 ? '#36b37e' : pct >= 80 ? '#faad14' : '#e8453c'
+  const color = running ? '#1890ff' : pct >= 95 ? '#0ea5a0' : pct >= 80 ? '#faad14' : '#e8453c'
   return (
     <svg width={size} height={size} style={{ display: 'block', flexShrink: 0 }}>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#f2f3f5" strokeWidth={10} />
@@ -54,7 +54,7 @@ function PassRateRing({ rate, passed, total, size = 160, running = false, done =
 function StatusIcon({ status, size = 16 }) {
   const s = { fontSize: size, lineHeight: 1 }
   switch (status) {
-    case 'passed': return <CheckCircleFilled style={{ ...s, color: '#36b37e' }} />
+    case 'passed': return <CheckCircleFilled style={{ ...s, color: '#0ea5a0' }} />
     case 'failed': return <CloseCircleFilled style={{ ...s, color: '#e8453c' }} />
     case 'error': return <ExclamationCircleFilled style={{ ...s, color: '#faad14' }} />
     case 'skipped': return <MinusCircleFilled style={{ ...s, color: '#c9cdd4' }} />
@@ -185,7 +185,7 @@ function StepDetailDrawer({ step, open, onClose }) {
           {step.statusCode && (
             <>
               <span style={{ color: '#86909c' }}>HTTP 状态码:</span>
-              <span style={{ color: step.statusCode >= 400 ? '#e8453c' : '#36b37e', fontWeight: 600 }}>{step.statusCode}</span>
+              <span style={{ color: step.statusCode >= 400 ? '#e8453c' : '#0ea5a0', fontWeight: 600 }}>{step.statusCode}</span>
               <span style={{ color: '#e5e6eb', margin: '0 4px' }}>|</span>
             </>
           )}
@@ -212,7 +212,7 @@ function StepDetailDrawer({ step, open, onClose }) {
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, lineHeight: 2 }}>
                 <span style={{ color: '#86909c', minWidth: 16 }}>{i + 1}.</span>
                 {a.passed
-                  ? <CheckCircleFilled style={{ color: '#36b37e', fontSize: 13 }} />
+                  ? <CheckCircleFilled style={{ color: '#0ea5a0', fontSize: 13 }} />
                   : <CloseCircleFilled style={{ color: '#e8453c', fontSize: 13 }} />}
                 <span style={{ color: '#4e5969' }}>{a.description || a.message || JSON.stringify(a)}</span>
               </div>
@@ -312,7 +312,7 @@ function ScenarioExpanded({ scenario }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <StatusIcon status={status} size={18} />
-            <span style={{ fontWeight: 600, fontSize: 14, color: isPassed ? '#36b37e' : isFailed ? '#e8453c' : '#86909c' }}>
+            <span style={{ fontWeight: 600, fontSize: 14, color: isPassed ? '#0ea5a0' : isFailed ? '#e8453c' : '#86909c' }}>
               {isPassed ? '执行通过' : isFailed ? '执行失败' : status === 'skipped' ? '已跳过' : status === 'running' ? '执行中' : '待执行'}
             </span>
             {hasRetry && (
@@ -378,7 +378,7 @@ function ScenarioExpanded({ scenario }) {
                   width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontWeight: 600, color: '#fff',
-                  background: isPassed ? '#36b37e' : '#c9cdd4',
+                  background: isPassed ? '#0ea5a0' : '#c9cdd4',
                 }}>{step.seq || i + 1}</span>
                 {step.phase && (
                   <span style={{
@@ -683,7 +683,7 @@ export default function ReportDetail() {
                         fontFamily: 'monospace', fontSize: 12, fontWeight: 600,
                         padding: '1px 6px', borderRadius: 3,
                         background: step.statusCode >= 400 ? '#fff2f0' : '#e6f7ff',
-                        color: step.statusCode >= 400 ? '#e8453c' : '#36b37e',
+                        color: step.statusCode >= 400 ? '#e8453c' : '#0ea5a0',
                       }}>{step.statusCode}</span>
                     )}
                     <span style={{ fontSize: 12, color: '#c9cdd4', fontFamily: 'monospace', minWidth: 48, textAlign: 'right' }}>
@@ -723,7 +723,7 @@ export default function ReportDetail() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#36b37e', display: 'inline-block' }} />
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#0ea5a0', display: 'inline-block' }} />
               <span style={{ color: '#4e5969' }}>通过</span>
             </div>
             <div style={{ paddingLeft: 18, marginBottom: 8 }}>

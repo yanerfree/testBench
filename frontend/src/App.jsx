@@ -156,28 +156,28 @@ function AppLayout() {
       <style>{`
         button.ant-btn[class*="color-primary"][class*="variant-solid"] {
           border-radius: 20px !important;
-          background: linear-gradient(135deg, #36b37e, #2d9e6f) !important;
+          background: linear-gradient(135deg, #2ec4b6, #0ea5a0) !important;
           border: none !important;
-          box-shadow: 0 2px 8px rgba(54,179,126,0.25) !important;
+          box-shadow: 0 2px 8px rgba(14,165,160,0.15) !important;
           color: #fff !important;
         }
         button.ant-btn[class*="color-primary"][class*="variant-solid"]:hover {
-          background: linear-gradient(135deg, #2d9e6f, #259060) !important;
-          box-shadow: 0 4px 14px rgba(54,179,126,0.35) !important;
+          background: linear-gradient(135deg, #0ea5a0, #0d908c) !important;
+          box-shadow: 0 4px 14px rgba(14,165,160,0.25) !important;
           transform: translateY(-1px);
         }
         button.ant-btn[class*="color-default"][class*="variant-outlined"] {
-          background: rgba(54,179,126,0.08) !important;
+          background: rgba(14,165,160,0.08) !important;
           border: none !important;
-          color: #36b37e !important;
+          color: #0ea5a0 !important;
           border-radius: 20px !important;
         }
         button.ant-btn[class*="color-default"][class*="variant-outlined"]:hover {
-          background: rgba(54,179,126,0.15) !important;
-          color: #2d9e6f !important;
+          background: rgba(14,165,160,0.15) !important;
+          color: #0d908c !important;
         }
         button.ant-btn[class*="variant-dashed"] {
-          color: #36b37e !important;
+          color: #0ea5a0 !important;
           border-color: #a8e6c3 !important;
           border-radius: 20px !important;
         }
@@ -191,10 +191,10 @@ function AppLayout() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 28, height: 28, borderRadius: 9,
-            background: 'linear-gradient(135deg, #36b37e, #36b37ecc)',
+            background: 'rgba(14,165,160,0.1)',
+            border: '1.5px solid rgba(14,165,160,0.3)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontWeight: 700, fontSize: 13,
-            boxShadow: '0 2px 8px rgba(54,179,126,0.25)',
+            color: '#0ea5a0', fontWeight: 700, fontSize: 13,
           }}>T</div>
           <span style={{ color: '#2e3138', fontSize: 14, fontWeight: 600, letterSpacing: 0.5 }}>{t('header.platformName')}</span>
           {isProjectPage && projectName && (
@@ -206,15 +206,15 @@ function AppLayout() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Tooltip title={lang === 'zh' ? '简体中文 → English' : 'English → 简体中文'}>
-            <Button type="text" size="small" icon={<GlobalOutlined style={{ color: '#bfc4cd' }} />}
+            <Button type="text" size="small" icon={<GlobalOutlined style={{ color: '#7cacf8' }} />}
               onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} />
           </Tooltip>
           <Tooltip title={lang === 'zh' ? '通知' : 'Notifications'}>
-            <Button type="text" icon={<BellOutlined style={{ color: '#bfc4cd' }} />} size="small" />
+            <Button type="text" icon={<BellOutlined style={{ color: '#f5b971' }} />} size="small" />
           </Tooltip>
           <Dropdown menu={userMenu} placement="bottomRight">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <Avatar size={24} style={{ background: 'linear-gradient(135deg, #36b37e, #36b37ecc)', fontSize: 11 }}>{displayName[0]}</Avatar>
+              <Avatar size={24} style={{ background: 'rgba(124,172,248,0.15)', color: '#7cacf8', fontSize: 11, border: '1.5px solid rgba(124,172,248,0.3)' }}>{displayName[0]}</Avatar>
               <span style={{ color: '#8c919e', fontSize: 13 }}>{displayName}</span>
             </div>
           </Dropdown>

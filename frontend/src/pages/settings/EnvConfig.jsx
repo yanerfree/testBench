@@ -117,7 +117,7 @@ function EnvironmentPanel() {
                 style={{
                   padding: '10px 14px', cursor: 'pointer',
                   background: selectedId === env.id ? '#e6f7ff' : 'transparent',
-                  borderLeft: selectedId === env.id ? '3px solid #36b37e' : '3px solid transparent',
+                  borderLeft: selectedId === env.id ? '3px solid #0ea5a0' : '3px solid transparent',
                   borderBottom: '1px solid rgba(0,0,0,0.04)',
                 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129' }}>{env.name}</div>

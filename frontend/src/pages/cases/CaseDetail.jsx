@@ -15,16 +15,16 @@ import ApiStepList, { generateApiCodeFromSteps } from '../../components/ApiStepL
 
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
 const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' }
-const statusColors = { automated: '#36b37e', pending: '#faad14', removed: '#e8453c' }
+const statusColors = { automated: '#0ea5a0', pending: '#faad14', removed: '#e8453c' }
 const statusBg = { automated: '#f6ffed', pending: '#fffbe6', removed: '#fff2f0' }
 const statusLabels = { automated: '已自动化', pending: '待自动化', removed: '脚本已移除' }
-const dotColors = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9', automated: '#36b37e', pending: '#faad14', removed: '#e8453c' }
-const phaseColor = { setup: '#7c5cbf', action: '#1890ff', verify: '#36b37e' }
+const dotColors = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9', automated: '#0ea5a0', pending: '#faad14', removed: '#e8453c' }
+const phaseColor = { setup: '#7c5cbf', action: '#1890ff', verify: '#0ea5a0' }
 const phaseLabel = { setup: '准备', action: '操作', verify: '验证' }
 const scenarioStatusMap = {
   draft: { label: '草稿', color: '#86909c', bg: '#f7f8fa' },
   debugging: { label: '调试中', color: '#faad14', bg: '#fffbe6' },
-  completed: { label: '已完成', color: '#36b37e', bg: '#f6ffed' },
+  completed: { label: '已完成', color: '#0ea5a0', bg: '#f6ffed' },
 }
 
 function InlineProp({ icon, value, color, bg, children }) {
@@ -743,7 +743,7 @@ export default function CaseDetail() {
             <DropdownList activeKey={priority} onSelect={setPriority}
               items={['P0','P1','P2','P3'].map(p => ({ key: p, label: p, dot: 'square', color: dotColors[p] }))} />
           </InlineProp>
-          <InlineProp icon={<ApiOutlined />} value={type?.toUpperCase()} color={type==='api'?'#1890ff':'#36b37e'} bg={type==='api'?'#e6f7ff':'#f6ffed'}>
+          <InlineProp icon={<ApiOutlined />} value={type?.toUpperCase()} color={type==='api'?'#1890ff':'#0ea5a0'} bg={type==='api'?'#e6f7ff':'#f6ffed'}>
             <DropdownList activeKey={type} onSelect={setType} items={['api','e2e'].map(t => ({ key: t, label: t.toUpperCase() }))} />
           </InlineProp>
           <ReadonlyProp icon={<AppstoreOutlined />} label="模块" value={[module, subModule].filter(Boolean).join(' / ') || '未分类'} />
@@ -766,7 +766,7 @@ export default function CaseDetail() {
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
                 borderRadius: 12, fontSize: 11, fontWeight: 500,
-                background: '#f6ffed', color: '#36b37e', border: '1px solid #b7eb8f',
+                background: '#f6ffed', color: '#0ea5a0', border: '1px solid #b7eb8f',
               }}><CheckCircleOutlined style={{ fontSize: 10 }} /> 手动 ({steps.length}步)</span>
             </Tooltip>
             <Tooltip title={hasApi ? `接口场景 · ${(scenarioStatusMap[apiScenarioStatus] || {}).label || '草稿'}${isApiTemplate ? ' · 模板' : ''}` : '暂无接口测试场景，点击接口测试 Tab 创建'}>

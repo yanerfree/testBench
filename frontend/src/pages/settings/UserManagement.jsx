@@ -89,7 +89,7 @@ export default function UserManagement() {
       title: '用户', dataIndex: 'username', width: 200,
       render: (v) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Avatar size={28} style={{ background: 'linear-gradient(135deg, #7c5cbf, #a78bda)', fontSize: 12 }}>{v[0].toUpperCase()}</Avatar>
+          <Avatar size={28} style={{ background: 'rgba(124,92,191,0.12)', color: '#7c5cbf', fontSize: 12, border: '1.5px solid rgba(124,92,191,0.25)' }}>{v[0].toUpperCase()}</Avatar>
           <span style={{ fontWeight: 500 }}>{v}</span>
         </div>
       ),

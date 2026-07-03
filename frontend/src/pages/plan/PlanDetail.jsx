@@ -8,7 +8,7 @@ import CasePicker from '../../components/CasePicker'
 const planStatusMap = {
   draft: { label: '草稿', color: '#c9cdd4', bg: '#f2f3f5' },
   executing: { label: '执行中', color: '#1890ff', bg: '#e6f7ff' },
-  completed: { label: '已完成', color: '#36b37e', bg: '#f6ffed' },
+  completed: { label: '已完成', color: '#0ea5a0', bg: '#f6ffed' },
   paused: { label: '已暂停', color: '#faad14', bg: '#fffbe6' },
   pending_manual: { label: '待手动录入', color: '#7c5cbf', bg: '#f9f0ff' },
   archived: { label: '已归档', color: '#8c8c8c', bg: '#f2f3f5' },
@@ -311,13 +311,13 @@ export default function PlanDetail() {
                     {isRunning ? (
                       <Tag icon={<SyncOutlined spin />} color="processing">执行中</Tag>
                     ) : (
-                      <Tag style={{ background: isCompleted ? '#36b37e' : '#1890ff', color: '#fff', border: 'none' }}>
+                      <Tag style={{ background: isCompleted ? '#0ea5a0' : '#1890ff', color: '#fff', border: 'none' }}>
                         {isCompleted ? '已完成' : '进行中'}
                       </Tag>
                     )}
                   </div>
                   <div style={{ flex: 3 }}>
-                    <span style={{ color: '#36b37e', fontWeight: 500 }}>{exec.passed}</span>
+                    <span style={{ color: '#0ea5a0', fontWeight: 500 }}>{exec.passed}</span>
                     <span style={{ color: '#86909c' }}> / </span>
                     <span style={{ color: '#e8453c', fontWeight: 500 }}>{exec.failed + exec.error}</span>
                     <span style={{ color: '#86909c' }}> / </span>
@@ -326,7 +326,7 @@ export default function PlanDetail() {
                   </div>
                   <div style={{ flex: 2, textAlign: 'center' }}>
                     {exec.passRate != null ? (
-                      <span style={{ fontWeight: 600, color: exec.passRate >= 95 ? '#36b37e' : exec.passRate >= 80 ? '#faad14' : '#e8453c' }}>
+                      <span style={{ fontWeight: 600, color: exec.passRate >= 95 ? '#0ea5a0' : exec.passRate >= 80 ? '#faad14' : '#e8453c' }}>
                         {exec.passRate}%
                       </span>
                     ) : '-'}

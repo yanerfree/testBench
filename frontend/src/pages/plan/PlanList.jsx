@@ -10,7 +10,7 @@ const statusMap = {
   executing:      { label: '执行中',   color: '#1890ff', bg: '#e6f7ff', dot: '#1890ff' },
   paused:         { label: '已暂停',   color: '#faad14', bg: '#fffbe6', dot: '#faad14' },
   pending_manual: { label: '待录入',   color: '#7c5cbf', bg: '#f9f0ff', dot: '#7c5cbf' },
-  completed:      { label: '已完成',   color: '#36b37e', bg: '#f6ffed', dot: '#36b37e' },
+  completed:      { label: '已完成',   color: '#0ea5a0', bg: '#f6ffed', dot: '#0ea5a0' },
   archived:       { label: '已归档',   color: '#86909c', bg: '#f2f3f5', dot: '#c9cdd4' },
 }
 

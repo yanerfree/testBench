@@ -48,10 +48,10 @@ export default function Login() {
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <div style={{
             width: 48, height: 48, borderRadius: 16,
-            background: 'linear-gradient(135deg, #36b37e, #36b37ecc)',
+            background: 'rgba(14,165,160,0.1)',
+            border: '2px solid rgba(14,165,160,0.25)',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontWeight: 700, fontSize: 22, marginBottom: 16,
-            boxShadow: '0 4px 16px rgba(54,179,126,0.25)',
+            color: '#0ea5a0', fontWeight: 700, fontSize: 22, marginBottom: 16,
           }}>T</div>
           <div style={{ fontSize: 20, fontWeight: 600, color: '#1d2129', letterSpacing: 1 }}>{t('login.title')}</div>
           <div style={{ fontSize: 13, color: '#86909c', marginTop: 6, letterSpacing: 0.5 }}>{t('login.subtitle')}</div>

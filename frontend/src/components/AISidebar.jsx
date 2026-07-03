@@ -125,7 +125,7 @@ export default function AISidebar() {
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          background: '#36b37e',
+          background: '#0ea5a0',
           color: '#fff',
           padding: '10px 18px 10px 14px',
           borderRadius: 24,

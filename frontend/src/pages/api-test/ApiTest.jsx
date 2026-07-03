@@ -222,7 +222,7 @@ export default function ApiTest() {
         <div style={{ padding: '8px 12px', borderBottom: '1px solid #f2f3f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>测试场景</span>
           <Tooltip title="新建文件夹">
-            <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => { setNewFolderName(''); setFolderModalOpen(true) }} style={{ color: '#36b37e' }} />
+            <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => { setNewFolderName(''); setFolderModalOpen(true) }} style={{ color: '#0ea5a0' }} />
           </Tooltip>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>

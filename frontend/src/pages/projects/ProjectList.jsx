@@ -13,8 +13,8 @@ const PROJECT_ROLES = [
 
 const ROLE_TAG = {
   project_admin: { color: '#e8453c', bg: '#fff2f0' },
-  developer: { color: '#36b37e', bg: '#e6f7ff' },
-  tester: { color: '#36b37e', bg: '#f6ffed' },
+  developer: { color: '#0ea5a0', bg: '#e6f7ff' },
+  tester: { color: '#0ea5a0', bg: '#f6ffed' },
   guest: { color: '#86909c', bg: '#f7f8fa' },
 }
 
@@ -87,7 +87,7 @@ function MemberModal({ project, open, onClose }) {
       title: '用户', dataIndex: 'username', width: 160,
       render: v => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Avatar size={24} style={{ background: '#7c5cbf', fontSize: 11 }}>{v?.[0]?.toUpperCase()}</Avatar>
+          <Avatar size={24} style={{ background: 'rgba(124,92,191,0.12)', color: '#7c5cbf', fontSize: 11, border: '1.5px solid rgba(124,92,191,0.25)' }}>{v?.[0]?.toUpperCase()}</Avatar>
           <span style={{ fontWeight: 500 }}>{v}</span>
         </div>
       ),
@@ -291,7 +291,7 @@ export default function ProjectList() {
         <Row gutter={[12, 12]}>
           {pagedProjects.map((p, idx) => {
             const CARD_COLORS = [
-              { bg: 'linear-gradient(135deg, #81c995, #81c995aa)', shadow: 'rgba(129,201,149,0.2)' },
+              { bg: 'linear-gradient(135deg, #6ecfcf, #6ecfcfaa)', shadow: 'rgba(129,201,149,0.2)' },
               { bg: 'linear-gradient(135deg, #7cacf8, #7cacf8aa)', shadow: 'rgba(124,172,248,0.2)' },
               { bg: 'linear-gradient(135deg, #f0a0c0, #f0a0c0aa)', shadow: 'rgba(240,160,192,0.2)' },
               { bg: 'linear-gradient(135deg, #f5b971, #f5b971aa)', shadow: 'rgba(245,185,113,0.2)' },
@@ -401,7 +401,7 @@ export default function ProjectList() {
             <Input prefix={<FolderOpenOutlined style={{ color: '#c9cdd4' }} />} placeholder="/workspace/repos/project-name（不填则不支持脚本同步）" />
           </Form.Item>
           {!editingProject && (
-            <div style={{ padding: '8px 12px', background: '#f6ffed', borderRadius: 12, fontSize: 12, color: '#36b37e' }}>
+            <div style={{ padding: '8px 12px', background: '#f6ffed', borderRadius: 12, fontSize: 12, color: '#0ea5a0' }}>
               创建后系统将自动生成默认分支配置（名称: default，分支: main）
             </div>
           )}

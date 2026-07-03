@@ -7,8 +7,8 @@ import { api } from '../../utils/request'
 const { RangePicker } = DatePicker
 
 const ACTION_CONFIG = {
-  create: { label: '创建', color: '#36b37e', bg: '#e6f7ff' },
-  update: { label: '修改', color: '#36b37e', bg: '#e6f7ff' },
+  create: { label: '创建', color: '#0ea5a0', bg: '#e6f7ff' },
+  update: { label: '修改', color: '#0ea5a0', bg: '#e6f7ff' },
   delete: { label: '删除', color: '#e8453c', bg: '#fff2f0' },
   execute: { label: '执行', color: '#faad14', bg: '#fffbe6' },
   import: { label: '导入', color: '#1890ff', bg: '#e6f7ff' },
