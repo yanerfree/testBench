@@ -16,15 +16,15 @@ import ApiStepList, { generateApiCodeFromSteps } from '../../components/ApiStepL
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
 const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' }
 const statusColors = { automated: '#0ea5a0', pending: '#faad14', removed: '#e8453c' }
-const statusBg = { automated: '#f6ffed', pending: '#fffbe6', removed: '#fff2f0' }
+const statusBg = { automated: '#e0f7f6', pending: '#fffbe6', removed: '#fff2f0' }
 const statusLabels = { automated: '已自动化', pending: '待自动化', removed: '脚本已移除' }
 const dotColors = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9', automated: '#0ea5a0', pending: '#faad14', removed: '#e8453c' }
-const phaseColor = { setup: '#7c5cbf', action: '#1890ff', verify: '#0ea5a0' }
+const phaseColor = { setup: '#7c5cbf', action: '#0ea5a0', verify: '#0ea5a0' }
 const phaseLabel = { setup: '准备', action: '操作', verify: '验证' }
 const scenarioStatusMap = {
   draft: { label: '草稿', color: '#86909c', bg: '#f7f8fa' },
   debugging: { label: '调试中', color: '#faad14', bg: '#fffbe6' },
-  completed: { label: '已完成', color: '#0ea5a0', bg: '#f6ffed' },
+  completed: { label: '已完成', color: '#0ea5a0', bg: '#e0f7f6' },
 }
 
 function InlineProp({ icon, value, color, bg, children }) {
@@ -70,11 +70,11 @@ function DropdownList({ items, activeKey, onSelect }) {
         <div key={item.key} onClick={() => onSelect(item.key)} style={{
           padding: '6px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 13,
           display: 'flex', alignItems: 'center', gap: 8,
-          background: activeKey === item.key ? '#e6f7ff' : 'transparent',
+          background: activeKey === item.key ? '#e0f7f6' : 'transparent',
           fontWeight: activeKey === item.key ? 600 : 400,
         }}
           onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
-          onMouseLeave={e => e.currentTarget.style.background = activeKey === item.key ? '#e6f7ff' : 'transparent'}>
+          onMouseLeave={e => e.currentTarget.style.background = activeKey === item.key ? '#e0f7f6' : 'transparent'}>
           {item.dot && <span style={{ width: 8, height: 8, borderRadius: item.dot === 'circle' ? '50%' : 2, background: item.color, flexShrink: 0 }} />}
           {item.icon && <span>{item.icon}</span>}
           {item.label}
@@ -116,7 +116,7 @@ function ScenarioStepsView({ steps, extraCol, extraColLabel, extraPlaceholder, e
           borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none', alignItems: 'center',
         }}>
           <span style={{
-            width: 28, height: 24, borderRadius: 10, background: '#e6f7ff', color: '#1890ff',
+            width: 28, height: 24, borderRadius: 10, background: '#e0f7f6', color: '#0ea5a0',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
           }}>{s.seq || i + 1}</span>
           {s.phase ? (
@@ -128,7 +128,7 @@ function ScenarioStepsView({ steps, extraCol, extraColLabel, extraPlaceholder, e
           ) : <span style={{ width: 52, flexShrink: 0 }} />}
           <span style={{ flex: 2 }}>{s.action || '-'}</span>
           {extraCol && (
-            <span style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: extraColor || '#1890ff' }}>
+            <span style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', color: extraColor || '#0ea5a0' }}>
               {s[extraCol] || ''}
             </span>
           )}
@@ -410,7 +410,7 @@ function ScenarioEditor({
                   }}>
                     <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', flexShrink: 0 }} />
                     <span style={{
-                      width: 28, height: 24, borderRadius: 10, background: '#e6f7ff', color: '#1890ff',
+                      width: 28, height: 24, borderRadius: 10, background: '#e0f7f6', color: '#0ea5a0',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
                     }}>{s.seq}</span>
                     <Input value={s.action || ''} onChange={e => updateStepField(i, 'action', e.target.value)}
@@ -743,7 +743,7 @@ export default function CaseDetail() {
             <DropdownList activeKey={priority} onSelect={setPriority}
               items={['P0','P1','P2','P3'].map(p => ({ key: p, label: p, dot: 'square', color: dotColors[p] }))} />
           </InlineProp>
-          <InlineProp icon={<ApiOutlined />} value={type?.toUpperCase()} color={type==='api'?'#1890ff':'#0ea5a0'} bg={type==='api'?'#e6f7ff':'#f6ffed'}>
+          <InlineProp icon={<ApiOutlined />} value={type?.toUpperCase()} color={type==='api'?'#0ea5a0':'#0ea5a0'} bg={type==='api'?'#e0f7f6':'#e0f7f6'}>
             <DropdownList activeKey={type} onSelect={setType} items={['api','e2e'].map(t => ({ key: t, label: t.toUpperCase() }))} />
           </InlineProp>
           <ReadonlyProp icon={<AppstoreOutlined />} label="模块" value={[module, subModule].filter(Boolean).join(' / ') || '未分类'} />
@@ -766,15 +766,15 @@ export default function CaseDetail() {
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
                 borderRadius: 12, fontSize: 11, fontWeight: 500,
-                background: '#f6ffed', color: '#0ea5a0', border: '1px solid #b7eb8f',
+                background: '#e0f7f6', color: '#0ea5a0', border: '1px solid rgba(14,165,160,0.2)',
               }}><CheckCircleOutlined style={{ fontSize: 10 }} /> 手动 ({steps.length}步)</span>
             </Tooltip>
             <Tooltip title={hasApi ? `接口场景 · ${(scenarioStatusMap[apiScenarioStatus] || {}).label || '草稿'}${isApiTemplate ? ' · 模板' : ''}` : '暂无接口测试场景，点击接口测试 Tab 创建'}>
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
                 borderRadius: 12, fontSize: 11, fontWeight: 500,
-                background: hasApi ? '#e6f7ff' : '#f7f8fa',
-                color: hasApi ? (scenarioStatusMap[apiScenarioStatus] || {}).color || '#1890ff' : '#c9cdd4',
+                background: hasApi ? '#e0f7f6' : '#f7f8fa',
+                color: hasApi ? (scenarioStatusMap[apiScenarioStatus] || {}).color || '#0ea5a0' : '#c9cdd4',
                 border: `1px solid ${hasApi ? '#91d5ff' : '#e5e6eb'}`,
               }}>
                 {isApiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14' }} />}
@@ -834,7 +834,7 @@ export default function CaseDetail() {
                       }}>
                         <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', flexShrink: 0 }} />
                         <span style={{
-                          width: 28, height: 24, borderRadius: 10, background: '#e6f7ff', color: '#1890ff',
+                          width: 28, height: 24, borderRadius: 10, background: '#e0f7f6', color: '#0ea5a0',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
                         }}>{s.seq}</span>
                         <Input value={s.action} onChange={e => updateStep(i, 'action', e.target.value)}
@@ -871,12 +871,12 @@ export default function CaseDetail() {
               </Card>
             )},
 
-            { key: 'api', label: <span><ApiOutlined style={{ marginRight: 4, color: hasApi ? '#1890ff' : undefined }} />接口测试{hasApi && <span style={{ fontSize: 11, color: '#1890ff', marginLeft: 4 }}>({apiScenario?.steps?.length || 0}步)</span>}</span>, children: (
+            { key: 'api', label: <span><ApiOutlined style={{ marginRight: 4, color: hasApi ? '#0ea5a0' : undefined }} />接口测试{hasApi && <span style={{ fontSize: 11, color: '#0ea5a0', marginLeft: 4 }}>({apiScenario?.steps?.length || 0}步)</span>}</span>, children: (
               <ScenarioEditor
                 scenario={apiScenario} setScenario={setApiScenario}
                 scenarioStatus={apiScenarioStatus} setScenarioStatus={setApiScenarioStatus}
                 isTemplate={isApiTemplate} setIsTemplate={setIsApiTemplate}
-                type="api" accentColor="#1890ff"
+                type="api" accentColor="#0ea5a0"
                 onImportTemplate={() => { setTemplateModalType('api'); setTemplateModalOpen(true) }}
                 manualSteps={steps} caseTitle={title}
                 projectId={projectId} branchId={branchId} caseId={caseId}
@@ -1100,7 +1100,7 @@ function CaseFileTab({ caseId }) {
   const EVENT_LABELS = {
     ai_generated: { label: 'AI 生成', color: '#4e8af0', icon: '🔵' },
     ai_reviewed: { label: 'AI 评审', color: '#7c5cbf', icon: '🟡' },
-    executed_pass: { label: '执行通过', color: '#52c41a', icon: '🟢' },
+    executed_pass: { label: '执行通过', color: '#0ea5a0', icon: '🟢' },
     executed_fail: { label: '执行失败', color: '#e8453c', icon: '🔴' },
     ai_diagnosed: { label: 'AI 诊断', color: '#fa8c16', icon: '🟠' },
     manual_edit: { label: '手动编辑', color: '#86909c', icon: '⚪' },
@@ -1117,7 +1117,7 @@ function CaseFileTab({ caseId }) {
           <Space size={16}>
             <span style={{ fontSize: 12, color: '#86909c' }}>执行 {data.stats.totalExecutions} 次</span>
             {data.stats.passRate !== null && (
-              <span style={{ fontSize: 12, color: data.stats.passRate >= 80 ? '#52c41a' : '#e8453c' }}>
+              <span style={{ fontSize: 12, color: data.stats.passRate >= 80 ? '#0ea5a0' : '#e8453c' }}>
                 通过率 {data.stats.passRate}%
               </span>
             )}

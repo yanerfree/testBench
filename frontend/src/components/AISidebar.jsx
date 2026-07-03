@@ -125,7 +125,7 @@ export default function AISidebar() {
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          background: '#0ea5a0',
+          background: 'rgba(14,165,160,0.12)', color: '#0ea5a0',
           color: '#fff',
           padding: '10px 18px 10px 14px',
           borderRadius: 24,
@@ -267,7 +267,7 @@ export default function AISidebar() {
                   {generatedCases.map((c, i) => (
                     <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid #f5f5f5' }}>
                       <Space size={4}>
-                        <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 12 }} />
+                        <CheckCircleOutlined style={{ color: '#0ea5a0', fontSize: 12 }} />
                         <Tag style={{ fontSize: 11 }}>{c.priority}</Tag>
                         <Text style={{ fontSize: 13 }}>{c.title}</Text>
                       </Space>
@@ -281,10 +281,10 @@ export default function AISidebar() {
             )}
 
             {result && (
-              <Card size="small" style={{ borderColor: '#52c41a', background: '#f6ffed' }}>
+              <Card size="small" style={{ borderColor: 'rgba(14,165,160,0.3)', background: '#e0f7f6' }}>
                 <Space direction="vertical" size={4}>
                   <Text strong>
-                    <CheckCircleOutlined style={{ color: '#52c41a' }} /> 生成完成
+                    <CheckCircleOutlined style={{ color: '#0ea5a0' }} /> 生成完成
                   </Text>
                   <Text>入库 {result.imported} 条，跳过 {result.skipped} 条</Text>
                   {result.priorities && (

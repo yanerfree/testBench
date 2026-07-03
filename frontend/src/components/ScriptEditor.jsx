@@ -10,7 +10,7 @@ const langMap = { python: 'python', typescript: 'typescript' }
 
 export default function ScriptEditor({
   projectId, branchId, caseId, scriptType,
-  accentColor = '#1890ff',
+  accentColor = '#0ea5a0',
   autoGenerateCode = null,
   onScriptSaved = null,
   envId = null,
@@ -207,7 +207,7 @@ export default function ScriptEditor({
           <Tooltip title={dirty ? '请先保存' : '运行脚本'}>
             <Button size="small" icon={<PlayCircleOutlined />} loading={running}
               disabled={dirty || !script?.id}
-              style={{ color: '#52c41a', borderColor: '#52c41a' }}
+              style={{ color: '#0ea5a0', borderColor: '#0ea5a0' }}
               onClick={handleRun}>运行</Button>
           </Tooltip>
         </Space>

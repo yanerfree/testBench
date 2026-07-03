@@ -9,7 +9,7 @@ const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' 
 const buildTreeData = (nodes) => nodes.map(n => ({
   title: `${n.name} (${n.caseCount})`,
   key: n.id,
-  icon: <FolderOutlined style={{ color: '#1890ff' }} />,
+  icon: <FolderOutlined style={{ color: '#0ea5a0' }} />,
   children: n.children?.length > 0 ? buildTreeData(n.children) : undefined,
 }))
 
@@ -133,8 +133,8 @@ export default function CasePicker({ open, projectId, selectedIds = [], onOk, on
             onClick={() => { setSelectedFolderId(null); setPage(1) }}
             style={{
               padding: '6px 16px', cursor: 'pointer', fontSize: 13,
-              background: selectedFolderId === null ? '#e6f7ff' : 'transparent',
-              color: selectedFolderId === null ? '#1890ff' : '#4e5969',
+              background: selectedFolderId === null ? '#e0f7f6' : 'transparent',
+              color: selectedFolderId === null ? '#0ea5a0' : '#4e5969',
               fontWeight: selectedFolderId === null ? 600 : 400,
             }}
           >
@@ -197,7 +197,7 @@ export default function CasePicker({ open, projectId, selectedIds = [], onOk, on
                   { label: 'E2E', value: 'e2e' },
                 ]}
               />
-              <Tag style={{ background: '#e6f7ff', color: '#1890ff', border: 'none', fontWeight: 600 }}>
+              <Tag style={{ background: '#e0f7f6', color: '#0ea5a0', border: 'none', fontWeight: 600 }}>
                 已选 {picked.length} 条
               </Tag>
             </Space>

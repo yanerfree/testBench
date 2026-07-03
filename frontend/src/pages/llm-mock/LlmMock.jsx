@@ -19,7 +19,7 @@ const MONO = "'SF Mono', Monaco, Menlo, Consolas, monospace"
 const STATUS_COLOR = (sc) => {
   if (sc >= 500) return '#e8453c'
   if (sc >= 400) return '#fa8c16'
-  return '#52c41a'
+  return '#0ea5a0'
 }
 
 const MODE_LABELS = { default: '默认响应', random: '随机响应', custom: '自定义' }
@@ -346,7 +346,7 @@ export default function LlmMock() {
               variant="borderless" style={{ width: 100, flexShrink: 0 }} popupMatchSelectWidth={100}>
               {['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map(m => (
                 <Select.Option key={m} value={m}>
-                  <span style={{ fontWeight: 600, color: m === 'GET' ? '#52c41a' : m === 'POST' ? '#fa8c16' : m === 'DELETE' ? '#e8453c' : '#4e8af0' }}>{m}</span>
+                  <span style={{ fontWeight: 600, color: m === 'GET' ? '#0ea5a0' : m === 'POST' ? '#fa8c16' : m === 'DELETE' ? '#e8453c' : '#4e8af0' }}>{m}</span>
                 </Select.Option>
               ))}
             </Select>
@@ -359,11 +359,11 @@ export default function LlmMock() {
           {serviceStatus.running && fullUrl && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16,
-              padding: '6px 12px', background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 10,
+              padding: '6px 12px', background: '#e0f7f6', border: '1px solid rgba(14,165,160,0.3)', borderRadius: 10,
             }}>
-              <LinkOutlined style={{ color: '#52c41a', fontSize: 12 }} />
+              <LinkOutlined style={{ color: '#0ea5a0', fontSize: 12 }} />
               <span style={{ fontSize: 12, fontFamily: MONO, color: '#389e0d', flex: 1, userSelect: 'all' }}>{fullUrl}</span>
-              <Button size="small" type="text" icon={<CopyOutlined />} style={{ color: '#52c41a' }}
+              <Button size="small" type="text" icon={<CopyOutlined />} style={{ color: '#0ea5a0' }}
                 onClick={() => { copyToClipboard(fullUrl); message.success('已复制访问地址') }} />
             </div>
           )}
@@ -533,7 +533,7 @@ export default function LlmMock() {
                   <Button size="small" type="text"
                     icon={copyText === '复制' ? <CopyOutlined /> : <CheckOutlined />}
                     onClick={handleCopyPreview}
-                    style={{ color: copyText === '复制' ? '#8c8c8c' : '#52c41a', fontSize: 12 }}>
+                    style={{ color: copyText === '复制' ? '#8c8c8c' : '#0ea5a0', fontSize: 12 }}>
                     {copyText}
                   </Button>
                 </div>
@@ -626,7 +626,7 @@ export default function LlmMock() {
                             {expandedLogDetail.requestBody.messages.map((m, i) => (
                               <div key={i} style={{
                                 marginBottom: 2, padding: '3px 8px', borderRadius: 12, fontSize: 11,
-                                background: m.role === 'user' ? '#fff7e6' : m.role === 'system' ? '#f0f0f0' : '#f6ffed',
+                                background: m.role === 'user' ? '#fff7e6' : m.role === 'system' ? '#f0f0f0' : '#e0f7f6',
                                 overflow: 'hidden', textOverflow: 'ellipsis',
                               }}>
                                 <span style={{ color: '#8c8c8c', fontSize: 10 }}>{m.role}</span>{' '}
@@ -684,8 +684,8 @@ export default function LlmMock() {
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '2px 10px', borderRadius: 12,
-            background: serviceStatus.running ? '#f6ffed' : '#f5f5f5',
-            border: `1px solid ${serviceStatus.running ? '#b7eb8f' : '#d9d9d9'}`,
+            background: serviceStatus.running ? '#e0f7f6' : '#f5f5f5',
+            border: `1px solid ${serviceStatus.running ? 'rgba(14,165,160,0.3)' : '#d9d9d9'}`,
           }}>
             <Badge status={serviceStatus.running ? 'success' : 'default'} />
             <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: serviceStatus.running ? '#389e0d' : '#999' }}>
@@ -738,7 +738,7 @@ export default function LlmMock() {
                 <div key={r.id} onClick={() => selectRoute(r)} style={{
                   padding: '10px 12px', marginBottom: 4, borderRadius: 10, cursor: 'pointer',
                   background: sel ? '#e6f4ff' : 'transparent',
-                  borderLeft: `3px solid ${sel ? '#4e8af0' : r.enabled ? '#52c41a' : '#d9d9d9'}`,
+                  borderLeft: `3px solid ${sel ? '#4e8af0' : r.enabled ? '#0ea5a0' : '#d9d9d9'}`,
                   transition: 'all .15s',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

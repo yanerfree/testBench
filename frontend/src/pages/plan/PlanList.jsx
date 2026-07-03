@@ -7,10 +7,10 @@ import CasePicker from '../../components/CasePicker'
 
 const statusMap = {
   draft:          { label: '草稿',     color: '#86909c', bg: '#f2f3f5', dot: '#c9cdd4' },
-  executing:      { label: '执行中',   color: '#1890ff', bg: '#e6f7ff', dot: '#1890ff' },
+  executing:      { label: '执行中',   color: '#0ea5a0', bg: '#e0f7f6', dot: '#0ea5a0' },
   paused:         { label: '已暂停',   color: '#faad14', bg: '#fffbe6', dot: '#faad14' },
   pending_manual: { label: '待录入',   color: '#7c5cbf', bg: '#f9f0ff', dot: '#7c5cbf' },
-  completed:      { label: '已完成',   color: '#0ea5a0', bg: '#f6ffed', dot: '#0ea5a0' },
+  completed:      { label: '已完成',   color: '#0ea5a0', bg: '#e0f7f6', dot: '#0ea5a0' },
   archived:       { label: '已归档',   color: '#86909c', bg: '#f2f3f5', dot: '#c9cdd4' },
 }
 
@@ -248,11 +248,11 @@ export default function PlanList() {
                         }}>修改用例</Button>
                     )}
                     {plan.status === 'draft' && (
-                      <Button type="text" size="small" style={{ fontSize: 12, color: '#1890ff' }}
+                      <Button type="text" size="small" style={{ fontSize: 12, color: '#0ea5a0' }}
                         onClick={e => handleQuickExecute(e, plan.id)}>执行</Button>
                     )}
                     {(plan.status === 'completed' || plan.status === 'paused') && (
-                      <Button type="text" size="small" style={{ fontSize: 12, color: '#1890ff' }}
+                      <Button type="text" size="small" style={{ fontSize: 12, color: '#0ea5a0' }}
                         onClick={e => {
                           e.stopPropagation()
                           Modal.confirm({

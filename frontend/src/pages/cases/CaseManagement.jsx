@@ -441,7 +441,7 @@ export default function CaseManagement() {
       <span
         onClick={() => navigate(`/projects/${projectId}/cases/${row.id}?branchId=${currentBranch}`)}
         style={{ color: '#1d2129', cursor: 'pointer', fontWeight: 500 }}
-        onMouseEnter={e => e.target.style.color = '#1890ff'}
+        onMouseEnter={e => e.target.style.color = '#0ea5a0'}
         onMouseLeave={e => e.target.style.color = '#1d2129'}
       >{v}</span>
     )},
@@ -449,12 +449,12 @@ export default function CaseManagement() {
     { key: 'scenarios', title: '场景覆盖', width: 170, defaultVisible: true, render: (_, row) => {
       const apiSt = row.apiScenarioStatus
       const uiSt = row.uiScenarioStatus
-      const apiColor = apiSt === 'completed' ? '#1890ff' : apiSt === 'debugging' ? '#faad14' : '#86909c'
+      const apiColor = apiSt === 'completed' ? '#0ea5a0' : apiSt === 'debugging' ? '#faad14' : '#86909c'
       const uiColor = uiSt === 'completed' ? '#7c5cbf' : uiSt === 'debugging' ? '#faad14' : '#86909c'
       return (
         <Space size={4}>
-          <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#f6ffed', color: '#52c41a' }}>手动</Tag>
-          {row.apiScenario && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e6f7ff', color: apiColor }}>
+          <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e0f7f6', color: '#0ea5a0' }}>手动</Tag>
+          {row.apiScenario && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e0f7f6', color: apiColor }}>
             {row.isApiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14', marginRight: 2 }} />}API
           </Tag>}
           {row.uiScenario && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#f9f0ff', color: uiColor }}>
@@ -657,8 +657,8 @@ export default function CaseManagement() {
               </Space>
             </div>
             {selectedRowKeys.length > 0 && (
-              <div style={{ marginTop: 10, padding: '8px 12px', background: statusFilter === 'deleted' ? '#fff2f0' : '#e6f7ff', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 13, color: statusFilter === 'deleted' ? '#e8453c' : '#1890ff' }}>已选 {selectedRowKeys.length} 条</span>
+              <div style={{ marginTop: 10, padding: '8px 12px', background: statusFilter === 'deleted' ? '#fff2f0' : '#e0f7f6', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 13, color: statusFilter === 'deleted' ? '#e8453c' : '#0ea5a0' }}>已选 {selectedRowKeys.length} 条</span>
                 {statusFilter === 'deleted' ? (
                   <Popconfirm title={`确定彻底删除 ${selectedRowKeys.length} 条用例？此操作不可恢复！`} onConfirm={async () => {
                     try {
@@ -747,8 +747,8 @@ export default function CaseManagement() {
         ) : (
           <div style={{ display: 'flex', gap: 12 }}>
             {[
-              { label: '新增', count: importResult.new, color: '#0ea5a0', bg: '#e6f7ff' },
-              { label: '更新', count: importResult.updated, color: '#0ea5a0', bg: '#e6f7ff' },
+              { label: '新增', count: importResult.new, color: '#0ea5a0', bg: '#e0f7f6' },
+              { label: '更新', count: importResult.updated, color: '#0ea5a0', bg: '#e0f7f6' },
               { label: '移除', count: importResult.removed, color: '#e8453c', bg: '#fff2f0' },
               { label: '跳过', count: importResult.skipped, color: '#8c8c8c', bg: '#f2f3f5' },
             ].map(s => (
@@ -857,7 +857,7 @@ export default function CaseManagement() {
           <p style={{ fontSize: 12, color: '#86909c', marginBottom: 12 }}>勾选需要显示的列（标题列始终显示）</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {allColumns.filter(c => !c.fixed).map(col => (
-              <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 8px', borderRadius: 10, background: visibleColumnKeys.includes(col.key) ? '#e6f7ff' : 'transparent' }}>
+              <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 8px', borderRadius: 10, background: visibleColumnKeys.includes(col.key) ? '#e0f7f6' : 'transparent' }}>
                 <input
                   type="checkbox"
                   checked={visibleColumnKeys.includes(col.key)}
@@ -870,7 +870,7 @@ export default function CaseManagement() {
                   }}
                 />
                 <span style={{ fontSize: 13 }}>{col.title}</span>
-                {col.defaultVisible && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e6f7ff', color: '#1890ff' }}>默认</Tag>}
+                {col.defaultVisible && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e0f7f6', color: '#0ea5a0' }}>默认</Tag>}
               </label>
             ))}
           </div>
@@ -897,7 +897,7 @@ export default function CaseManagement() {
         {reviewResult && (
           <div>
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div style={{ fontSize: 48, fontWeight: 700, color: reviewResult.score >= 75 ? '#52c41a' : reviewResult.score >= 60 ? '#faad14' : '#e8453c' }}>
+              <div style={{ fontSize: 48, fontWeight: 700, color: reviewResult.score >= 75 ? '#0ea5a0' : reviewResult.score >= 60 ? '#faad14' : '#e8453c' }}>
                 {reviewResult.score}
               </div>
               <Tag color={reviewResult.score >= 75 ? 'success' : reviewResult.score >= 60 ? 'warning' : 'error'} style={{ fontSize: 14 }}>
@@ -911,7 +911,7 @@ export default function CaseManagement() {
             {reviewResult.report?.dimensions && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
                 {Object.entries(reviewResult.report.dimensions).map(([key, dim]) => (
-                  <div key={key} style={{ padding: '8px 12px', background: '#f9fafb', borderRadius: 10, borderLeft: `3px solid ${dim.score >= 80 ? '#52c41a' : dim.score >= 60 ? '#faad14' : '#e8453c'}` }}>
+                  <div key={key} style={{ padding: '8px 12px', background: '#f9fafb', borderRadius: 10, borderLeft: `3px solid ${dim.score >= 80 ? '#0ea5a0' : dim.score >= 60 ? '#faad14' : '#e8453c'}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Text strong>{{completeness:'完整性',accuracy:'准确性',effectiveness:'有效性',executability:'可执行性'}[key] || key}</Text>
                       <Text strong>{dim.score} 分 ({dim.weight}%)</Text>
@@ -925,7 +925,7 @@ export default function CaseManagement() {
             )}
 
             {reviewResult.report?.suggestions?.length > 0 && (
-              <div style={{ padding: '8px 12px', background: '#f6ffed', borderRadius: 10 }}>
+              <div style={{ padding: '8px 12px', background: '#e0f7f6', borderRadius: 10 }}>
                 <Text strong>改进建议：</Text>
                 {reviewResult.report.suggestions.map((s, i) => (
                   <div key={i} style={{ fontSize: 13, marginTop: 4 }}>• {s}</div>

@@ -13,12 +13,12 @@ const statusCfg = {
   failed: { label: '失败', color: '#e8453c', dot: '#e8453c' },
   error: { label: '错误', color: '#faad14', dot: '#faad14' },
   skipped: { label: '跳过', color: '#c9cdd4', dot: '#c9cdd4' },
-  running: { label: '执行中', color: '#1890ff', dot: '#1890ff' },
+  running: { label: '执行中', color: '#0ea5a0', dot: '#0ea5a0' },
   pending: { label: '待执行', color: '#c9cdd4', dot: '#c9cdd4' },
 }
 
-const methodColor = { GET: '#0ea5a0', POST: '#1890ff', PUT: '#faad14', DELETE: '#e8453c', PATCH: '#7c5cbf' }
-const phaseColor = { setup: '#7c5cbf', action: '#1890ff', verify: '#0ea5a0' }
+const methodColor = { GET: '#0ea5a0', POST: '#0ea5a0', PUT: '#faad14', DELETE: '#e8453c', PATCH: '#7c5cbf' }
+const phaseColor = { setup: '#7c5cbf', action: '#0ea5a0', verify: '#0ea5a0' }
 const phaseLabel = { setup: '准备', action: '操作', verify: '验证' }
 
 function fmt(ms) {
@@ -33,7 +33,7 @@ function PassRateRing({ rate, passed, total, size = 160, running = false, done =
   const c = 2 * Math.PI * r
   const pct = running ? (total > 0 ? (done / total) * 100 : 0) : (total > 0 ? (passed / total) * 100 : 0)
   const offset = c - (c * pct) / 100
-  const color = running ? '#1890ff' : pct >= 95 ? '#0ea5a0' : pct >= 80 ? '#faad14' : '#e8453c'
+  const color = running ? '#0ea5a0' : pct >= 95 ? '#0ea5a0' : pct >= 80 ? '#faad14' : '#e8453c'
   return (
     <svg width={size} height={size} style={{ display: 'block', flexShrink: 0 }}>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#f2f3f5" strokeWidth={10} />
@@ -42,7 +42,7 @@ function PassRateRing({ rate, passed, total, size = 160, running = false, done =
         transform={`rotate(-90 ${size/2} ${size/2})`}
         style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
       <text x={size/2} y={size/2 - 14} textAnchor="middle" dominantBaseline="central"
-        style={{ fontSize: 13, fill: running ? '#1890ff' : '#86909c' }}>{running ? '执行中' : '已完成'}</text>
+        style={{ fontSize: 13, fill: running ? '#0ea5a0' : '#86909c' }}>{running ? '执行中' : '已完成'}</text>
       <text x={size/2} y={size/2 + 10} textAnchor="middle" dominantBaseline="central"
         style={{ fontSize: running ? 22 : 28, fontWeight: 700, fill: '#1d2129' }}>
         {running ? `${done}/${total}` : (passed ?? 0)}
@@ -58,7 +58,7 @@ function StatusIcon({ status, size = 16 }) {
     case 'failed': return <CloseCircleFilled style={{ ...s, color: '#e8453c' }} />
     case 'error': return <ExclamationCircleFilled style={{ ...s, color: '#faad14' }} />
     case 'skipped': return <MinusCircleFilled style={{ ...s, color: '#c9cdd4' }} />
-    case 'running': return <LoadingOutlined style={{ ...s, color: '#1890ff' }} spin />
+    case 'running': return <LoadingOutlined style={{ ...s, color: '#0ea5a0' }} spin />
     default: return <ClockCircleOutlined style={{ ...s, color: '#c9cdd4' }} />
   }
 }
@@ -308,7 +308,7 @@ function ScenarioExpanded({ scenario }) {
   return (
     <div style={{ padding: '16px 20px 16px 48px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* 执行信息卡片 */}
-      <div style={{ padding: '12px 16px', background: isPassed ? '#f6ffed' : isFailed ? '#fff2f0' : '#f7f8fa', borderRadius: 12, border: `1px solid ${isPassed ? '#d4edda' : isFailed ? '#fde2e4' : '#f2f3f5'}` }}>
+      <div style={{ padding: '12px 16px', background: isPassed ? '#e0f7f6' : isFailed ? '#fff2f0' : '#f7f8fa', borderRadius: 12, border: `1px solid ${isPassed ? '#d4edda' : isFailed ? '#fde2e4' : '#f2f3f5'}` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <StatusIcon status={status} size={18} />
@@ -416,7 +416,7 @@ function ScenarioExpanded({ scenario }) {
       {expectedResult && (
         <div>
           <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4, fontWeight: 600 }}>预期结果</div>
-          <div style={{ fontSize: 13, color: '#4e5969', padding: '8px 14px', background: '#f6ffed', borderRadius: 10, border: '1px solid #d4edda', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, color: '#4e5969', padding: '8px 14px', background: '#e0f7f6', borderRadius: 10, border: '1px solid #d4edda', lineHeight: 1.5 }}>
             {expectedResult}
           </div>
         </div>
@@ -599,7 +599,7 @@ export default function ReportDetail() {
                 {s.errorSummary}
               </span>
             )}
-            <Tag style={{ background: 'transparent', color: isAutomatic ? '#1890ff' : '#faad14', border: 'none', fontSize: 11 }}>
+            <Tag style={{ background: 'transparent', color: isAutomatic ? '#0ea5a0' : '#faad14', border: 'none', fontSize: 11 }}>
               {isAutomatic ? '自动' : '手动'}
             </Tag>
             {s.startedAt && (
@@ -682,7 +682,7 @@ export default function ReportDetail() {
                       <span style={{
                         fontFamily: 'monospace', fontSize: 12, fontWeight: 600,
                         padding: '1px 6px', borderRadius: 3,
-                        background: step.statusCode >= 400 ? '#fff2f0' : '#e6f7ff',
+                        background: step.statusCode >= 400 ? '#fff2f0' : '#e0f7f6',
                         color: step.statusCode >= 400 ? '#e8453c' : '#0ea5a0',
                       }}>{step.statusCode}</span>
                     )}
@@ -743,7 +743,7 @@ export default function ReportDetail() {
           <div style={{ borderLeft: '1px solid #f2f3f5', paddingLeft: 40, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 48px' }}>
             <div>
               <div style={{ color: '#86909c', fontSize: 13, marginBottom: 4 }}>总耗时</div>
-              <div style={{ fontSize: 18, fontWeight: 600, color: '#1890ff' }}>{fmt(totalDuration) || '-'}</div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: '#0ea5a0' }}>{fmt(totalDuration) || '-'}</div>
             </div>
             <div>
               <div style={{ color: '#86909c', fontSize: 13, marginBottom: 4 }}>{isRunning ? '进度' : '总用例'}</div>

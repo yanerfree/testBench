@@ -170,7 +170,7 @@ export default function AICapabilities() {
               <Card
                 key={item.title}
                 size="small"
-                style={{ borderLeft: item.status === 'done' ? '3px solid #52c41a' : '3px solid #d9d9d9' }}
+                style={{ borderLeft: item.status === 'done' ? '3px solid #0ea5a0' : '3px solid #d9d9d9' }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                   <Space>
@@ -189,7 +189,7 @@ export default function AICapabilities() {
                   {item.dimensions && (
                     <div style={{ marginTop: 4 }}>
                       <Text strong>覆盖维度：</Text>
-                      <span style={{ color: '#52c41a' }}>{item.dimensions}</span>
+                      <span style={{ color: '#0ea5a0' }}>{item.dimensions}</span>
                     </div>
                   )}
                 </div>
@@ -227,7 +227,7 @@ export default function AICapabilities() {
       </Divider>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Card size="small" style={{ borderLeft: '3px solid #52c41a' }}>
+        <Card size="small" style={{ borderLeft: '3px solid #0ea5a0' }}>
           <Space style={{ marginBottom: 8 }}>
             <Text strong style={{ fontSize: 15 }}>Web 引擎（浏览器）</Text>
             <Tag color="green">推荐</Tag>

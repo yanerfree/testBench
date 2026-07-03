@@ -170,7 +170,7 @@ export default function Exploratory() {
                 </Space>
               </Card>
             ) : (
-              <Card size="small" style={{ marginBottom: 16 }} title={<Space><CheckCircleOutlined style={{ color: '#52c41a' }} /> 探索章程</Space>}>
+              <Card size="small" style={{ marginBottom: 16 }} title={<Space><CheckCircleOutlined style={{ color: '#0ea5a0' }} /> 探索章程</Space>}>
                 <div style={{ fontSize: 13, lineHeight: 1.8 }}>
                   <div><Text strong>目标：</Text>{activeSession.charter.objective}</div>
                   {activeSession.charter.riskAreas?.length > 0 && (
@@ -184,7 +184,7 @@ export default function Exploratory() {
                       <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid #f5f5f5', display: 'flex', justifyContent: 'space-between' }}>
                         <Space>
                           {i < activeSession.completedCheckpoints
-                            ? <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                            ? <CheckCircleOutlined style={{ color: '#0ea5a0' }} />
                             : <ClockCircleOutlined style={{ color: '#d9d9d9' }} />}
                           <Text>{cp.title}</Text>
                           <Tag>{cp.priority}</Tag>

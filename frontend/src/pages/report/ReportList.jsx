@@ -156,7 +156,7 @@ export default function ReportList() {
                     <span style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
                       fontSize: 11, padding: '2px 8px', borderRadius: 10,
-                      background: isCompleted ? '#0ea5a0' : '#1890ff',
+                      background: isCompleted ? '#0ea5a0' : '#0ea5a0',
                       color: '#fff',
                     }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.3)' }} />
@@ -190,7 +190,7 @@ export default function ReportList() {
 
                   {/* Actions */}
                   <div style={{ width: 130, display: 'flex', justifyContent: 'center', gap: 2 }}>
-                    <Button type="text" size="small" style={{ fontSize: 12, color: '#1890ff' }}
+                    <Button type="text" size="small" style={{ fontSize: 12, color: '#0ea5a0' }}
                       onClick={e => handleExport(e, r.id)}>导出</Button>
                     <Button type="text" size="small" danger style={{ fontSize: 12 }}
                       onClick={e => handleDelete(e, r.id, r.planName)}>删除</Button>

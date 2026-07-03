@@ -181,9 +181,9 @@ export default function ProjectAIConfig() {
 
       {/* 当前状态横幅 */}
       {hasActiveConfig ? (
-        <Card size="small" style={{ borderColor: '#52c41a', background: '#f6ffed', marginBottom: 16 }}>
+        <Card size="small" style={{ borderColor: '#0ea5a0', background: '#e0f7f6', marginBottom: 16 }}>
           <Space>
-            <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 16 }} />
+            <CheckCircleOutlined style={{ color: '#0ea5a0', fontSize: 16 }} />
             <Text strong>当前使用：</Text>
             <Text>{activeName || '未知'}</Text>
             <Tag>{activeModel || ''}</Tag>
@@ -209,7 +209,7 @@ export default function ProjectAIConfig() {
                 <Card
                   key={config.id}
                   size="small"
-                  style={{ borderColor: isActive ? '#52c41a' : undefined }}
+                  style={{ borderColor: isActive ? '#0ea5a0' : undefined }}
                   hoverable={!isActive}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -256,7 +256,7 @@ export default function ProjectAIConfig() {
         {projectConfigs.map((config) => {
           const isActive = config.id === activeConfigId && !activeProviderConfigId
           return (
-            <Card key={config.id} size="small" style={{ borderColor: isActive ? '#52c41a' : undefined }}>
+            <Card key={config.id} size="small" style={{ borderColor: isActive ? '#0ea5a0' : undefined }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Space size="middle">
                   <Radio checked={isActive} />

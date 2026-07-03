@@ -14,7 +14,7 @@ const SKILLS = [
   {
     name: 'tb-case-generate',
     title: 'AI 用例生成',
-    icon: <FileTextOutlined style={{ fontSize: 20, color: '#52c41a' }} />,
+    icon: <FileTextOutlined style={{ fontSize: 20, color: '#0ea5a0' }} />,
     status: 'available',
     description: '从 API 接口定义和业务规则出发，自动生成覆盖 6 个维度的测试用例',
     input: '接口信息（选择或手动输入） + 业务规则 + 目标模块',
@@ -32,7 +32,7 @@ const SKILLS = [
   {
     name: 'tb-script-generate',
     title: 'AI 脚本生成',
-    icon: <CodeOutlined style={{ fontSize: 20, color: '#52c41a' }} />,
+    icon: <CodeOutlined style={{ fontSize: 20, color: '#0ea5a0' }} />,
     status: 'available',
     description: '根据已有测试用例，自动生成 pytest + httpx 可执行的自动化测试脚本',
     input: '选中的测试用例（勾选一条或多条）',
@@ -84,7 +84,7 @@ const SKILLS = [
   {
     name: 'tb-doc-generate',
     title: '文档生成',
-    icon: <BookOutlined style={{ fontSize: 20, color: '#52c41a' }} />,
+    icon: <BookOutlined style={{ fontSize: 20, color: '#0ea5a0' }} />,
     status: 'available',
     description: '自动操作系统截图 + AI 写文档，支持平台直接生成和 Claude Code 两种方式',
     input: '被测系统地址 + 账号密码 + 文档范围 + 目标读者',
@@ -152,7 +152,7 @@ export default function SkillManage() {
             key={skill.name}
             size="small"
             style={{
-              borderLeft: skill.status === 'available' ? '3px solid #52c41a' : '3px solid #d9d9d9',
+              borderLeft: skill.status === 'available' ? '3px solid #0ea5a0' : '3px solid #d9d9d9',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>

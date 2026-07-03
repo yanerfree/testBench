@@ -21,11 +21,11 @@ const STATUS_COLOR = (sc) => {
   if (sc >= 500) return '#e8453c'
   if (sc >= 400) return '#fa8c16'
   if (sc >= 300) return '#7c5cbf'
-  return '#52c41a'
+  return '#0ea5a0'
 }
 
 const METHOD_COLOR = (m) => {
-  if (m === 'GET') return '#52c41a'
+  if (m === 'GET') return '#0ea5a0'
   if (m === 'POST') return '#fa8c16'
   if (m === 'DELETE') return '#e8453c'
   if (m === 'PUT') return '#4e8af0'
@@ -536,7 +536,7 @@ export default function ApiMock() {
                     size="small" type="text"
                     icon={copyText === '复制' ? <CopyOutlined /> : <CheckOutlined />}
                     onClick={handleCopyPreview}
-                    style={{ color: copyText === '复制' ? '#8c8c8c' : '#52c41a', fontSize: 12 }}
+                    style={{ color: copyText === '复制' ? '#8c8c8c' : '#0ea5a0', fontSize: 12 }}
                   >
                     {copyText}
                   </Button>
@@ -677,8 +677,8 @@ export default function ApiMock() {
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '2px 10px', borderRadius: 12,
-            background: serviceStatus.running ? '#f6ffed' : '#f5f5f5',
-            border: `1px solid ${serviceStatus.running ? '#b7eb8f' : '#d9d9d9'}`,
+            background: serviceStatus.running ? '#e0f7f6' : '#f5f5f5',
+            border: `1px solid ${serviceStatus.running ? 'rgba(14,165,160,0.3)' : '#d9d9d9'}`,
           }}>
             <Badge status={serviceStatus.running ? 'success' : 'default'} />
             <span style={{
@@ -735,7 +735,7 @@ export default function ApiMock() {
                 <div key={r.id} onClick={() => selectRoute(r)} style={{
                   padding: '10px 12px', marginBottom: 4, borderRadius: 10, cursor: 'pointer',
                   background: sel ? '#f9f0ff' : 'transparent',
-                  borderLeft: `3px solid ${sel ? '#7c5cbf' : r.enabled ? '#52c41a' : '#d9d9d9'}`,
+                  borderLeft: `3px solid ${sel ? '#7c5cbf' : r.enabled ? '#0ea5a0' : '#d9d9d9'}`,
                   transition: 'all .15s',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

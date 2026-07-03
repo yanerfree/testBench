@@ -46,13 +46,7 @@ export default function Login() {
         boxShadow: '0 8px 40px rgba(54, 179, 126, 0.08)',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 16,
-            background: 'rgba(14,165,160,0.1)',
-            border: '2px solid rgba(14,165,160,0.25)',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            color: '#0ea5a0', fontWeight: 700, fontSize: 22, marginBottom: 16,
-          }}>T</div>
+          <img src="/favicon.svg" alt="" style={{ width: 48, height: 48, marginBottom: 16 }} />
           <div style={{ fontSize: 20, fontWeight: 600, color: '#1d2129', letterSpacing: 1 }}>{t('login.title')}</div>
           <div style={{ fontSize: 13, color: '#86909c', marginTop: 6, letterSpacing: 0.5 }}>{t('login.subtitle')}</div>
         </div>
@@ -65,7 +59,8 @@ export default function Login() {
             <Input.Password prefix={<LockOutlined style={{ color: '#c9cdd4' }} />} placeholder={t('login.password')} id="password" />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
-            <Button type="primary" htmlType="submit" loading={loading} block style={{ height: 42 }}>
+            <Button type="primary" htmlType="submit" loading={loading} block
+              style={{ height: 44, fontSize: 15, letterSpacing: 2, borderRadius: 22, background: 'linear-gradient(135deg, #2ec4b6, #7cacf8)', border: 'none', boxShadow: '0 4px 16px rgba(46,196,182,0.2)' }}>
               {t('login.submit')}
             </Button>
           </Form.Item>

@@ -145,7 +145,7 @@ export default function ManualRecord() {
             {filteredCases.map(s => (
               <div key={s.id} onClick={() => setSelectedId(s.id)} style={{
                 padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.04)',
-                background: selectedId === s.id ? '#e6f7ff' : 'transparent',
+                background: selectedId === s.id ? '#e0f7f6' : 'transparent',
                 borderLeft: selectedId === s.id ? '3px solid #0ea5a0' : '3px solid transparent',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

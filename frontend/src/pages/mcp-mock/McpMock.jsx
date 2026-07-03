@@ -15,7 +15,7 @@ const { TextArea } = Input
 const MONO = "'SF Mono', Monaco, Menlo, Consolas, monospace"
 
 const MODE_LABEL = { success: '成功', error: '失败', custom: '自定义', real: '真实' }
-const MODE_COLOR = { success: '#52c41a', error: '#e8453c', custom: '#4e8af0' }
+const MODE_COLOR = { success: '#0ea5a0', error: '#e8453c', custom: '#4e8af0' }
 
 export default function McpMock() {
   const [enabled, setEnabled] = useState(false)
@@ -124,10 +124,10 @@ export default function McpMock() {
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '2px 10px', borderRadius: 12,
-            background: enabled ? '#f6ffed' : '#f5f5f5',
-            border: `1px solid ${enabled ? '#b7eb8f' : '#d9d9d9'}`,
+            background: enabled ? '#e0f7f6' : '#f5f5f5',
+            border: `1px solid ${enabled ? 'rgba(14,165,160,0.3)' : '#d9d9d9'}`,
           }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: enabled ? '#52c41a' : '#bfbfbf' }} />
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: enabled ? '#0ea5a0' : '#bfbfbf' }} />
             <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: enabled ? '#389e0d' : '#999' }}>
               {enabled ? 'LIVE' : 'STOPPED'}
             </span>
@@ -160,7 +160,7 @@ export default function McpMock() {
                 {t.label}
                 {activeTab === t.key && <div style={{
                   position: 'absolute', bottom: 0, left: 16, right: 16, height: 2,
-                  background: '#7c5cbf', borderRadius: 1,
+                  background: 'rgba(124,92,191,0.12)', color: '#7c5cbf', borderRadius: 4,
                 }} />}
               </div>
             ))}
@@ -193,7 +193,7 @@ export default function McpMock() {
                       <td style={{ padding: '10px 16px' }}>
                         <Radio.Group size="small" value={t.mode}
                           onChange={e => handleModeSwitch(t.name, e.target.value)}>
-                          <Radio value="success"><span style={{ color: '#52c41a' }}>成功</span></Radio>
+                          <Radio value="success"><span style={{ color: '#0ea5a0' }}>成功</span></Radio>
                           <Radio value="error"><span style={{ color: '#e8453c' }}>失败</span></Radio>
                           <Radio value="custom"><span style={{ color: '#4e8af0' }}>自定义</span></Radio>
                         </Radio.Group>

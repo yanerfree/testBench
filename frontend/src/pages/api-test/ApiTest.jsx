@@ -15,7 +15,7 @@ import { api } from '../../utils/request'
 const { Text } = Typography
 const { TextArea } = Input
 
-const METHOD_COLORS = { GET: '#4e8af0', POST: '#52c41a', PUT: '#faad14', DELETE: '#e8453c', PATCH: '#7c5cbf' }
+const METHOD_COLORS = { GET: '#4e8af0', POST: '#0ea5a0', PUT: '#faad14', DELETE: '#e8453c', PATCH: '#7c5cbf' }
 const PRIORITY_COLORS = { P0: 'red', P1: 'orange', P2: 'blue', P3: 'default' }
 
 export default function ApiTest() {
@@ -364,7 +364,7 @@ export default function ApiTest() {
         /* 选了场景：中栏步骤列表 + 右栏请求编辑器 */
         <>
           {/* 中栏：步骤列表 */}
-          <div style={{ width: 300, minWidth: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+          <div style={{ width: 300, minWidth: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.5)' }}>
             <div style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Space size={4}>
@@ -383,7 +383,7 @@ export default function ApiTest() {
                 </Space>
                 <Space size={4}>
                   <Tooltip title="运行全部">
-                    <Button size="small" type="text" icon={<PlayCircleOutlined style={{ color: '#52c41a' }} />} />
+                    <Button size="small" type="text" icon={<PlayCircleOutlined style={{ color: '#0ea5a0' }} />} />
                   </Tooltip>
                   <Tooltip title="返回列表">
                     <Button size="small" type="text" onClick={() => { setSelectedScenario(null); setSelectedStep(null) }}>✕</Button>
@@ -421,7 +421,7 @@ export default function ApiTest() {
                       onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#fafafa' }}
                       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
                     >
-                      {step.lastStatus === 'pass' ? <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 12 }} /> :
+                      {step.lastStatus === 'pass' ? <CheckCircleOutlined style={{ color: '#0ea5a0', fontSize: 12 }} /> :
                        step.lastStatus === 'fail' ? <CloseCircleOutlined style={{ color: '#e8453c', fontSize: 12 }} /> :
                        <span style={{ width: 12, height: 12, borderRadius: 6, border: '1.5px solid #d9d9d9', display: 'inline-block', flexShrink: 0 }} />}
                       <Tag color={METHOD_COLORS[step.method]} style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '18px' }}>
@@ -441,7 +441,7 @@ export default function ApiTest() {
           </div>
 
           {/* 右栏：请求编辑器 */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'rgba(255,255,255,0.5)' }}>
             {selectedStep ? (
           <>
             {/* 顶部：步骤名(可编辑) + 运行/删除按钮 */}
@@ -462,7 +462,7 @@ export default function ApiTest() {
                   icon={running ? <LoadingOutlined /> : <CaretRightOutlined />}
                   loading={running}
                   onClick={handleRunStep}
-                  style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 500 }}
+                  style={{ background: '#0ea5a0', borderColor: '#0ea5a0', fontWeight: 500 }}
                 >
                   运行
                 </Button>
@@ -495,9 +495,9 @@ export default function ApiTest() {
                 items={[
                   {
                     key: 'body',
-                    label: <span>Body {selectedStep.body && <span style={{ color: '#52c41a' }}>●</span>}</span>,
+                    label: <span>Body {selectedStep.body && <span style={{ color: '#0ea5a0' }}>●</span>}</span>,
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid #f0f0f0', fontSize: 11, color: '#8c8c8c', display: 'flex', justifyContent: 'space-between' }}>
                           <span>JSON</span>
                           <Button size="small" type="text" style={{ fontSize: 11, height: 18, padding: '0 4px' }}
@@ -524,7 +524,7 @@ export default function ApiTest() {
                     key: 'headers',
                     label: <span>Headers {selectedStep.headers && Object.keys(selectedStep.headers).length > 0 && <Tag style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{Object.keys(selectedStep.headers).length}</Tag>}</span>,
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
@@ -551,7 +551,7 @@ export default function ApiTest() {
                     key: 'assertions',
                     label: <span>断言 {selectedStep.assertions?.length > 0 && <Tag color="green" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{selectedStep.assertions.length}</Tag>}</span>,
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
@@ -565,7 +565,7 @@ export default function ApiTest() {
                           <tbody>
                             {(selectedStep.assertions || []).map((a, j) => (
                               <tr key={j}>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0' }}><CheckCircleOutlined style={{ color: '#52c41a' }} /></td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0' }}><CheckCircleOutlined style={{ color: '#0ea5a0' }} /></td>
                                 <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontWeight: 500 }}>{a.type}</td>
                                 <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontFamily: 'monospace', color: '#595959' }}>{a.field || '-'}</td>
                                 <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', color: '#4e8af0' }}>{a.operator}</td>
@@ -586,7 +586,7 @@ export default function ApiTest() {
                     key: 'variables',
                     label: '变量提取',
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', padding: 16 }}>
+                      <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', padding: 16 }}>
                         {selectedStep.variablesExtract && Object.keys(selectedStep.variablesExtract).length > 0 ? (
                           Object.entries(selectedStep.variablesExtract).map(([k, v]) => (
                             <div key={k} style={{ padding: '4px 0', fontSize: 13 }}>
@@ -601,9 +601,9 @@ export default function ApiTest() {
                   },
                   {
                     key: 'response',
-                    label: <span>响应 {runResponse && <span style={{ color: runResponse.error ? '#e8453c' : '#52c41a' }}>●</span>}</span>,
+                    label: <span>响应 {runResponse && <span style={{ color: runResponse.error ? '#e8453c' : '#0ea5a0' }}>●</span>}</span>,
                     children: (
-                      <div style={{ background: '#fff', borderRadius: 6, border: '1px solid #e8e8e8', overflow: 'hidden' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         {runResponse ? (
                           runResponse.error ? (
                             <div style={{ padding: 16, color: '#e8453c' }}>{runResponse.error}</div>

@@ -189,13 +189,7 @@ function AppLayout() {
         borderBottom: '1px solid rgba(0,0,0,0.04)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: 9,
-            background: 'rgba(14,165,160,0.1)',
-            border: '1.5px solid rgba(14,165,160,0.3)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#0ea5a0', fontWeight: 700, fontSize: 13,
-          }}>T</div>
+          <img src="/favicon.svg" alt="" style={{ width: 26, height: 26 }} />
           <span style={{ color: '#2e3138', fontSize: 14, fontWeight: 600, letterSpacing: 0.5 }}>{t('header.platformName')}</span>
           {isProjectPage && projectName && (
             <>

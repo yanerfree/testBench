@@ -7,8 +7,8 @@ import CasePicker from '../../components/CasePicker'
 
 const planStatusMap = {
   draft: { label: '草稿', color: '#c9cdd4', bg: '#f2f3f5' },
-  executing: { label: '执行中', color: '#1890ff', bg: '#e6f7ff' },
-  completed: { label: '已完成', color: '#0ea5a0', bg: '#f6ffed' },
+  executing: { label: '执行中', color: '#0ea5a0', bg: '#e0f7f6' },
+  completed: { label: '已完成', color: '#0ea5a0', bg: '#e0f7f6' },
   paused: { label: '已暂停', color: '#faad14', bg: '#fffbe6' },
   pending_manual: { label: '待手动录入', color: '#7c5cbf', bg: '#f9f0ff' },
   archived: { label: '已归档', color: '#8c8c8c', bg: '#f2f3f5' },
@@ -311,7 +311,7 @@ export default function PlanDetail() {
                     {isRunning ? (
                       <Tag icon={<SyncOutlined spin />} color="processing">执行中</Tag>
                     ) : (
-                      <Tag style={{ background: isCompleted ? '#0ea5a0' : '#1890ff', color: '#fff', border: 'none' }}>
+                      <Tag style={{ background: isCompleted ? '#0ea5a0' : '#0ea5a0', color: '#fff', border: 'none' }}>
                         {isCompleted ? '已完成' : '进行中'}
                       </Tag>
                     )}

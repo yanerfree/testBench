@@ -116,7 +116,7 @@ function EnvironmentPanel() {
               <div key={env.id} onClick={() => setSelectedId(env.id)}
                 style={{
                   padding: '10px 14px', cursor: 'pointer',
-                  background: selectedId === env.id ? '#e6f7ff' : 'transparent',
+                  background: selectedId === env.id ? '#e0f7f6' : 'transparent',
                   borderLeft: selectedId === env.id ? '3px solid #0ea5a0' : '3px solid transparent',
                   borderBottom: '1px solid rgba(0,0,0,0.04)',
                 }}>
@@ -297,7 +297,7 @@ function CommonVarHint() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {COMMON_VARS.map(v => (
           <div key={v.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-            <code style={{ background: '#e6f7ff', padding: '1px 6px', borderRadius: 3, color: '#1d2129', fontWeight: 500 }}>{v.key}</code>
+            <code style={{ background: '#e0f7f6', padding: '1px 6px', borderRadius: 3, color: '#1d2129', fontWeight: 500 }}>{v.key}</code>
             <span style={{ color: '#86909c' }}>{v.desc}</span>
             <span style={{ color: '#c9cdd4' }}>如 {v.example}</span>
             {v.required && <Tag color="orange" style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none' }}>必填</Tag>}

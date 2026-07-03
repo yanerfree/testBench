@@ -142,7 +142,7 @@ export default function Documents() {
       title: '文档标题', dataIndex: 'title', ellipsis: true,
       render: (t, r) => (
         <Space>
-          <FileTextOutlined style={{ color: DOC_TYPE_COLORS[r.docType] === 'blue' ? '#4e8af0' : DOC_TYPE_COLORS[r.docType] === 'green' ? '#52c41a' : '#7c5cbf' }} />
+          <FileTextOutlined style={{ color: DOC_TYPE_COLORS[r.docType] === 'blue' ? '#4e8af0' : DOC_TYPE_COLORS[r.docType] === 'green' ? '#0ea5a0' : '#7c5cbf' }} />
           <a onClick={() => loadDoc(r.id)} style={{ fontWeight: 500 }}>{t}</a>
         </Space>
       ),
@@ -260,7 +260,7 @@ export default function Documents() {
           </Form>
         ) : taskResult ? (
           <div>
-            <div style={{ marginBottom: 16, fontSize: 13, color: '#52c41a' }}>任务已保存</div>
+            <div style={{ marginBottom: 16, fontSize: 13, color: '#0ea5a0' }}>任务已保存</div>
             {taskResult.instructions?.map((step, i) => <div key={i} style={{ fontSize: 13, lineHeight: 2 }}>{step}</div>)}
             <div style={{ margin: '16px 0', padding: '12px 16px', background: '#1e1e1e', borderRadius: 12 }}>
               <div style={{ fontSize: 11, color: '#86909c', marginBottom: 4 }}>复制到 Claude Code：</div>

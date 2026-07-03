@@ -7,15 +7,15 @@ import { api } from '../../utils/request'
 const { RangePicker } = DatePicker
 
 const ACTION_CONFIG = {
-  create: { label: '创建', color: '#0ea5a0', bg: '#e6f7ff' },
-  update: { label: '修改', color: '#0ea5a0', bg: '#e6f7ff' },
+  create: { label: '创建', color: '#0ea5a0', bg: '#e0f7f6' },
+  update: { label: '修改', color: '#0ea5a0', bg: '#e0f7f6' },
   delete: { label: '删除', color: '#e8453c', bg: '#fff2f0' },
   execute: { label: '执行', color: '#faad14', bg: '#fffbe6' },
-  import: { label: '导入', color: '#1890ff', bg: '#e6f7ff' },
+  import: { label: '导入', color: '#0ea5a0', bg: '#e0f7f6' },
   archive: { label: '归档', color: '#c9cdd4', bg: '#f2f3f5' },
   login: { label: '登录', color: '#7c5cbf', bg: '#f9f0ff' },
   logout: { label: '登出', color: '#7c5cbf', bg: '#f9f0ff' },
-  sync: { label: '同步', color: '#1890ff', bg: '#e6f7ff' },
+  sync: { label: '同步', color: '#0ea5a0', bg: '#e0f7f6' },
   change_password: { label: '改密', color: '#fa8c16', bg: '#fff7e6' },
 }
 
@@ -113,7 +113,7 @@ export default function AuditLogs() {
     {
       title: '操作', width: 60, align: 'center',
       render: (_, record) => (
-        <a style={{ fontSize: 12, color: '#1890ff' }} onClick={() => setDetailLog(record)}>详情</a>
+        <a style={{ fontSize: 12, color: '#0ea5a0' }} onClick={() => setDetailLog(record)}>详情</a>
       ),
     },
   ]

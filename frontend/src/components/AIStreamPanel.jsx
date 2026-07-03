@@ -100,8 +100,8 @@ export default function AIStreamPanel({
       {status === STATUS.DONE && (
         <div>
           <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CheckCircleOutlined style={{ color: '#52c41a' }} />
-            <span style={{ color: '#52c41a' }}>生成完成</span>
+            <CheckCircleOutlined style={{ color: '#0ea5a0' }} />
+            <span style={{ color: '#0ea5a0' }}>生成完成</span>
             <Button size="small" icon={<CopyOutlined />} onClick={handleCopy}>复制</Button>
             <Button size="small" onClick={startGenerate}>重新生成</Button>
           </div>

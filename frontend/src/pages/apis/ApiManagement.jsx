@@ -13,7 +13,7 @@ import { api } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
 
 const methodColors = {
-  GET: { color: '#52c41a', bg: '#f6ffed' },
+  GET: { color: '#0ea5a0', bg: '#e0f7f6' },
   POST: { color: '#fa8c16', bg: '#fff7e6' },
   PUT: { color: '#faad14', bg: '#fffbe6' },
   PATCH: { color: '#7c5cbf', bg: '#f9f0ff' },
@@ -218,9 +218,9 @@ function ResponsePanel({ response, onUseAsBody }) {
   if (!response) return null
   const r = response
   const sc = r.statusCode || 0
-  const statusColor = sc === 0 ? '#e8453c' : sc < 300 ? '#52c41a' : sc < 400 ? '#faad14' : '#e8453c'
+  const statusColor = sc === 0 ? '#e8453c' : sc < 300 ? '#0ea5a0' : sc < 400 ? '#faad14' : '#e8453c'
   const durationMs = r.durationMs || 0
-  const durationColor = durationMs < 200 ? '#52c41a' : durationMs < 1000 ? '#faad14' : '#e8453c'
+  const durationColor = durationMs < 200 ? '#0ea5a0' : durationMs < 1000 ? '#faad14' : '#e8453c'
   const rawBody = r.body || ''
   let prettyBody = rawBody, isJson = false
   try { prettyBody = JSON.stringify(JSON.parse(rawBody), null, 2); isJson = true } catch {}
@@ -235,7 +235,7 @@ function ResponsePanel({ response, onUseAsBody }) {
         <span style={{ fontSize: 11, color: '#666' }}>{sizeStr}</span>
         <div style={{ flex: 1 }} />
         {['body', 'headers'].map(t => (
-          <div key={t} onClick={() => setViewTab(t)} style={{ padding: '2px 10px', fontSize: 11, cursor: 'pointer', color: viewTab === t ? '#1890ff' : '#666', fontWeight: viewTab === t ? 600 : 400, borderBottom: viewTab === t ? '2px solid #1890ff' : '2px solid transparent' }}>
+          <div key={t} onClick={() => setViewTab(t)} style={{ padding: '2px 10px', fontSize: 11, cursor: 'pointer', color: viewTab === t ? '#0ea5a0' : '#666', fontWeight: viewTab === t ? 600 : 400, borderBottom: viewTab === t ? '2px solid #0ea5a0' : '2px solid transparent' }}>
             {t === 'body' ? 'Body' : `Headers (${respHeaders.length})`}
           </div>
         ))}
@@ -250,7 +250,7 @@ function ResponsePanel({ response, onUseAsBody }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <div style={{ display: 'flex', gap: 0 }}>
               {isJson && ['pretty', 'raw'].map(m => (
-                <div key={m} onClick={() => setBodyMode(m)} style={{ padding: '2px 8px', fontSize: 10, cursor: 'pointer', borderRadius: 3, background: bodyMode === m ? '#e6f7ff' : 'transparent', color: bodyMode === m ? '#1890ff' : '#666' }}>{m === 'pretty' ? 'Pretty' : 'Raw'}</div>
+                <div key={m} onClick={() => setBodyMode(m)} style={{ padding: '2px 8px', fontSize: 10, cursor: 'pointer', borderRadius: 3, background: bodyMode === m ? '#e0f7f6' : 'transparent', color: bodyMode === m ? '#0ea5a0' : '#666' }}>{m === 'pretty' ? 'Pretty' : 'Raw'}</div>
               ))}
             </div>
             <Space size={4}>
@@ -302,7 +302,7 @@ function TreeNode({ node, children, level, isSelected, onClick, onContextMenu, o
           onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
           style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', paddingLeft: 10 + level * 16,
-            cursor: 'pointer', background: isSelected ? '#e6f7ff' : hovered ? '#eef0f3' : 'transparent',
+            cursor: 'pointer', background: isSelected ? '#e0f7f6' : hovered ? 'rgba(14,165,160,0.06)' : 'transparent',
           }}>
           {expanded ? <CaretDownOutlined style={{ fontSize: 9, color: '#666' }} /> : <CaretRightOutlined style={{ fontSize: 9, color: '#666' }} />}
           {expanded ? <FolderOpenOutlined style={{ fontSize: 12, color: '#faad14' }} /> : <FolderOutlined style={{ fontSize: 12, color: '#faad14' }} />}
@@ -331,7 +331,7 @@ function TreeNode({ node, children, level, isSelected, onClick, onContextMenu, o
       onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       style={{
         display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', paddingLeft: 10 + level * 16,
-        cursor: 'pointer', background: isSelected ? mc.bg : hovered ? '#eef0f3' : 'transparent',
+        cursor: 'pointer', background: isSelected ? mc.bg : hovered ? 'rgba(14,165,160,0.06)' : 'transparent',
         borderLeft: isSelected ? `3px solid ${mc.color}` : '3px solid transparent',
       }}>
       <Tag style={{ margin: 0, fontWeight: 700, fontSize: 8, background: mc.bg, color: mc.color, border: 'none', padding: '0 4px', lineHeight: '14px', minWidth: 32, textAlign: 'center' }}>{node.method || 'GET'}</Tag>
@@ -582,12 +582,12 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
           <VarInsertBtn envVars={envVars} onInsert={v => { const cur = data.url || ''; up('url', cur + v) }} />
           <Tooltip title="Ctrl+Enter 发送">
             <Button type="primary" icon={sending ? <LoadingOutlined /> : <SendOutlined />} loading={sending} onClick={handleSend}
-              style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 600, minWidth: 72, height: 32 }}>发送</Button>
+              style={{ background: '#0ea5a0', borderColor: '#0ea5a0', fontWeight: 600, minWidth: 72, height: 32 }}>发送</Button>
           </Tooltip>
         </div>
         {urlHasVars && (
           <div style={{ marginTop: 4, fontSize: 11, color: '#999', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <span style={{ color: '#52c41a', marginRight: 4 }}>→</span>{resolvedUrl}
+            <span style={{ color: '#0ea5a0', marginRight: 4 }}>→</span>{resolvedUrl}
           </div>
         )}
       </div>
@@ -597,9 +597,9 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
         {tabs.map(t => (
           <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
             padding: '8px 14px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
-            color: t.highlight ? '#52c41a' : activeTab === t.key ? '#1890ff' : t.dim ? '#bbb' : '#666',
+            color: t.highlight ? '#0ea5a0' : activeTab === t.key ? '#0ea5a0' : t.dim ? '#bbb' : '#666',
             fontWeight: activeTab === t.key ? 600 : 400,
-            borderBottom: activeTab === t.key ? `2px solid ${t.highlight ? '#52c41a' : '#1890ff'}` : '2px solid transparent',
+            borderBottom: activeTab === t.key ? `2px solid ${t.highlight ? '#0ea5a0' : '#0ea5a0'}` : '2px solid transparent',
           }}>{t.label}{t.count > 0 && <span style={{ fontSize: 10, marginLeft: 3, color: '#999' }}>{t.count}</span>}</div>
         ))}
       </div>
@@ -650,7 +650,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
                         ))}
                       </div>
                     }>
-                    <Button size="small" type="text" icon={<CodeOutlined />} style={{ color: '#1890ff' }}>插入片段</Button>
+                    <Button size="small" type="text" icon={<CodeOutlined />} style={{ color: '#0ea5a0' }}>插入片段</Button>
                   </Popover>
                 </>
               )}
@@ -913,7 +913,7 @@ export default function ApiManagement() {
 
         {/* 全局环境选择器 */}
         <div style={{ padding: '6px 10px', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 6, background: '#f9fafb' }}>
-          <GlobalOutlined style={{ fontSize: 12, color: '#52c41a' }} />
+          <GlobalOutlined style={{ fontSize: 12, color: '#0ea5a0' }} />
           <Select size="small" value={runEnv || '__none__'} onChange={v => handleEnvChange(v === '__none__' ? null : v)}
             style={{ flex: 1 }} popupMatchSelectWidth={false}
             options={[{ value: '__none__', label: '无环境' }, ...environments.map(e => ({ value: e.id, label: e.name }))]} />
@@ -943,7 +943,7 @@ export default function ApiManagement() {
                   }}>保存变量</Button>
                 </div>
               }>
-              <span style={{ fontSize: 10, color: '#52c41a', cursor: 'pointer', textDecoration: 'underline' }}>{envVars.length} 变量</span>
+              <span style={{ fontSize: 10, color: '#0ea5a0', cursor: 'pointer', textDecoration: 'underline' }}>{envVars.length} 变量</span>
             </Popover>
           )}
         </div>
@@ -1048,7 +1048,7 @@ export default function ApiManagement() {
               : <div key={item.key} onClick={item.onClick} style={{
                   padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
                   color: item.danger ? '#e8453c' : '#4e5969',
-                }} onMouseEnter={e => e.currentTarget.style.background = '#eef0f3'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(14,165,160,0.06)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   {item.icon}<span>{item.label}</span>
                 </div>
             )}
@@ -1068,7 +1068,7 @@ export default function ApiManagement() {
             beforeUpload={file => { setImportFile(file); return false }}
             fileList={importFile ? [importFile] : []}
             onRemove={() => setImportFile(null)}>
-            <p style={{ fontSize: 12, color: '#666' }}><ImportOutlined style={{ fontSize: 24, color: '#1890ff', display: 'block', marginBottom: 8 }} />点击或拖拽 JSON 文件到此处</p>
+            <p style={{ fontSize: 12, color: '#666' }}><ImportOutlined style={{ fontSize: 24, color: '#0ea5a0', display: 'block', marginBottom: 8 }} />点击或拖拽 JSON 文件到此处</p>
           </Upload.Dragger>
         </div>
       </Modal>

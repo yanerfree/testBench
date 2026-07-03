@@ -12,7 +12,7 @@ import {
 import { api } from '../utils/request'
 
 const methodColors = {
-  GET: { color: '#52c41a', bg: '#f6ffed', border: '#b7eb8f' },
+  GET: { color: '#0ea5a0', bg: '#e0f7f6', border: 'rgba(14,165,160,0.3)' },
   POST: { color: '#fa8c16', bg: '#fff7e6', border: '#ffd591' },
   PUT: { color: '#faad14', bg: '#fffbe6', border: '#ffe58f' },
   PATCH: { color: '#7c5cbf', bg: '#f9f0ff', border: '#d3adf7' },
@@ -97,7 +97,7 @@ function SnippetPicker({ snippets, onInsert }) {
         <div style={{ width: 340, maxHeight: 400, overflow: 'auto' }}>
           <div style={{ fontSize: 11, color: '#86909c', padding: '4px 8px 6px', fontWeight: 600 }}>点击插入代码片段</div>
           {grouped.map((item, idx) => item.type === 'header' ? (
-            <div key={`g-${idx}`} style={{ padding: '6px 10px 2px', fontSize: 10, color: '#1890ff', fontWeight: 600, borderTop: idx > 0 ? '1px solid #f0f0f0' : 'none', marginTop: idx > 0 ? 4 : 0 }}>
+            <div key={`g-${idx}`} style={{ padding: '6px 10px 2px', fontSize: 10, color: '#0ea5a0', fontWeight: 600, borderTop: idx > 0 ? '1px solid #f0f0f0' : 'none', marginTop: idx > 0 ? 4 : 0 }}>
               {item.label}
             </div>
           ) : (
@@ -106,17 +106,17 @@ function SnippetPicker({ snippets, onInsert }) {
               onMouseEnter={e => e.currentTarget.style.background = '#f0f5ff'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                <CodeOutlined style={{ fontSize: 11, color: '#1890ff' }} />
+                <CodeOutlined style={{ fontSize: 11, color: '#0ea5a0' }} />
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#1d2129' }}>{item.label}</span>
                 <span style={{ fontSize: 10, color: '#86909c' }}>{item.desc}</span>
               </div>
-              <pre style={{ margin: 0, padding: '4px 8px', background: '#fafafa', borderRadius: 4, fontSize: 10, color: '#4e5969', fontFamily: 'monospace', lineHeight: 1.5, whiteSpace: 'pre-wrap', border: '1px solid #f0f0f0', maxHeight: 80, overflow: 'hidden' }}>{item.code}</pre>
+              <pre style={{ margin: 0, padding: '4px 8px', background: '#fafafa', borderRadius: 4, fontSize: 10, color: '#4e5969', fontFamily: 'monospace', lineHeight: 1.5, whiteSpace: 'pre-wrap', border: '1px solid rgba(0,0,0,0.05)', maxHeight: 80, overflow: 'hidden' }}>{item.code}</pre>
             </div>
           ))}
         </div>
       }>
       <Tooltip title="插入代码片段">
-        <Button type="text" size="small" icon={<CodeOutlined />} style={{ color: '#1890ff', fontSize: 12 }}>片段</Button>
+        <Button type="text" size="small" icon={<CodeOutlined />} style={{ color: '#0ea5a0', fontSize: 12 }}>片段</Button>
       </Tooltip>
     </Popover>
   )
@@ -134,7 +134,7 @@ function VarPicker({ onInsert }) {
               onMouseEnter={e => e.currentTarget.style.background = '#f0f5ff'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <div>
-                <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#1890ff' }}>{`{{${v.key}}}`}</div>
+                <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#0ea5a0' }}>{`{{${v.key}}}`}</div>
                 <div style={{ fontSize: 10, color: '#86909c' }}>{v.desc}</div>
               </div>
               <span style={{ fontSize: 10, color: '#8c8c8c', fontFamily: 'monospace' }}>{v.example}</span>
@@ -354,7 +354,7 @@ function CompactApiRow({ step, index, isSelected, onClick, onRemove, onCopy, onD
         {subLabel && <div style={{ fontSize: 10, color: '#8c8c8c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{subLabel}</div>}
       </div>
       <div style={{ display: 'flex', gap: 2, flexShrink: 0, alignItems: 'center' }}>
-        {assertCount > 0 && <span title={`${assertCount} 个断言`} style={{ fontSize: 9, background: '#f6ffed', color: '#52c41a', borderRadius: 8, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>{assertCount}</span>}
+        {assertCount > 0 && <span title={`${assertCount} 个断言`} style={{ fontSize: 9, background: '#e0f7f6', color: '#0ea5a0', borderRadius: 8, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>{assertCount}</span>}
         {extractCount > 0 && <span title={`${extractCount} 个提取`} style={{ fontSize: 9, background: '#f9f0ff', color: '#7c5cbf', borderRadius: 8, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>{extractCount}</span>}
       </div>
       {hovered && (
@@ -393,14 +393,14 @@ function CompactLoopRow({ node, children, onChange, onRemove }) {
   return (
     <div>
       <div onClick={() => setCollapsed(!collapsed)} style={{
-        display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', cursor: 'pointer', background: '#e6f7ff',
+        display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', cursor: 'pointer', background: '#e0f7f6',
       }}
         onMouseEnter={e => e.currentTarget.style.background = '#d6edff'}
-        onMouseLeave={e => e.currentTarget.style.background = '#e6f7ff'}>
-        {collapsed ? <CaretRightOutlined style={{ fontSize: 9, color: '#1890ff' }} /> : <CaretDownOutlined style={{ fontSize: 9, color: '#1890ff' }} />}
-        <RetweetOutlined style={{ color: '#1890ff', fontSize: 11 }} />
-        <span style={{ fontSize: 11, color: '#1890ff', fontWeight: 500 }}>循环 {node.times || 3} 次</span>
-        <span style={{ fontSize: 12, color: '#1890ff', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.label || ''}</span>
+        onMouseLeave={e => e.currentTarget.style.background = '#e0f7f6'}>
+        {collapsed ? <CaretRightOutlined style={{ fontSize: 9, color: '#0ea5a0' }} /> : <CaretDownOutlined style={{ fontSize: 9, color: '#0ea5a0' }} />}
+        <RetweetOutlined style={{ color: '#0ea5a0', fontSize: 11 }} />
+        <span style={{ fontSize: 11, color: '#0ea5a0', fontWeight: 500 }}>循环 {node.times || 3} 次</span>
+        <span style={{ fontSize: 12, color: '#0ea5a0', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.label || ''}</span>
         <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={e => { e.stopPropagation(); onRemove() }} style={{ fontSize: 10, width: 20, height: 20 }} />
       </div>
       {!collapsed && <div style={{ paddingLeft: 16 }}>{children}</div>}
@@ -448,7 +448,7 @@ function CompactConditionRow({ node, onRemove, thenChildren, elseChildren }) {
       {!collapsed && (
         <div>
           <div style={{ paddingLeft: 16 }}>
-            <div style={{ fontSize: 10, color: '#52c41a', padding: '2px 10px', fontWeight: 600 }}>THEN</div>
+            <div style={{ fontSize: 10, color: '#0ea5a0', padding: '2px 10px', fontWeight: 600 }}>THEN</div>
             {thenChildren}
           </div>
           <div style={{ paddingLeft: 16 }}>
@@ -546,11 +546,11 @@ function getOps(step, key) {
 // 操作条目摘要文本
 // ===========================================================================
 const opMeta = {
-  assertion: { icon: <CheckCircleOutlined />, color: '#52c41a', label: '断言' },
+  assertion: { icon: <CheckCircleOutlined />, color: '#0ea5a0', label: '断言' },
   extractor: { icon: <FieldStringOutlined />, color: '#7c5cbf', label: '提取变量' },
   headerSetter: { icon: <LockOutlined />, color: '#13c2c2', label: '设置 Header' },
   bodySetter: { icon: <FormOutlined />, color: '#eb2f96', label: '设置 Body' },
-  script: { icon: <CodeOutlined />, color: '#1890ff', label: '脚本' },
+  script: { icon: <CodeOutlined />, color: '#0ea5a0', label: '脚本' },
   wait: { icon: <ClockCircleOutlined />, color: '#86909c', label: '等待' },
 }
 
@@ -594,7 +594,7 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
       onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; onDragStart(index) }}
       onDragOver={e => { e.preventDefault(); onDragOver(index) }}
       onDrop={e => { e.preventDefault(); onDrop(index) }}
-      style={{ border: '1px solid #f0f0f0', borderRadius: 6, marginBottom: 4, background: '#fff', transition: 'box-shadow 0.12s' }}
+      style={{ border: '1px solid rgba(0,0,0,0.05)', borderRadius: 6, marginBottom: 4, background: 'rgba(255,255,255,0.5)', transition: 'box-shadow 0.12s' }}
       onMouseEnter={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'}
       onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
     >
@@ -637,7 +637,7 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
             <div>
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                 <Tooltip title="后续步骤可用 {{变量名}} 引用"><Input size="small" value={op.variable || ''} placeholder="如: token" onChange={e => up('variable', e.target.value)} style={{ width: 100, fontFamily: 'monospace', fontSize: 11 }} /></Tooltip>
-                <Tag style={{ margin: 0, fontSize: 10, background: '#e6f7ff', color: '#1890ff', border: 'none' }}>临时变量</Tag>
+                <Tag style={{ margin: 0, fontSize: 10, background: '#e0f7f6', color: '#0ea5a0', border: 'none' }}>临时变量</Tag>
                 <span style={{ fontSize: 11, color: '#86909c' }}>Response JSON</span>
                 <Tooltip title="JSONPath 示例：$.data.token, $.list[0].id"><Input size="small" value={op.path || ''} placeholder="$.data.token" onChange={e => up('path', e.target.value)} style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} /></Tooltip>
               </div>
@@ -653,7 +653,7 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
                   options={[{ value: 'literal', label: '直接输入' }, { value: 'context', label: '上下文变量' }]} />
                 <Input size="small" value={op.value || ''} onChange={e => up('value', e.target.value)}
                   placeholder={op.sourceType === 'context' ? '变量名，如 token' : '值，如 Bearer xxx'}
-                  prefix={op.sourceType === 'context' ? <span style={{ color: '#1890ff', fontSize: 10 }}>{'{{'}...{'}}'}</span> : null}
+                  prefix={op.sourceType === 'context' ? <span style={{ color: '#0ea5a0', fontSize: 10 }}>{'{{'}...{'}}'}</span> : null}
                   style={{ flex: 1, minWidth: 120, fontFamily: 'monospace', fontSize: 11 }} />
               </div>
               <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 4 }}>设置请求头字段，"上下文变量"模式会自动用前面步骤提取的值</div>
@@ -676,14 +676,14 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
                   <span style={{ fontSize: 11, color: '#86909c' }}>=</span>
                   <Input size="small" value={op.value || ''} onChange={e => up('value', e.target.value)}
                     placeholder={op.sourceType === 'context' ? '变量名' : '值'}
-                    prefix={op.sourceType === 'context' ? <span style={{ color: '#1890ff', fontSize: 10 }}>{'{{'}...{'}}'}</span> : null}
+                    prefix={op.sourceType === 'context' ? <span style={{ color: '#0ea5a0', fontSize: 10 }}>{'{{'}...{'}}'}</span> : null}
                     style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }} />
                 </div>
               ) : (
                 <div>
                   {op.sourceType === 'context' ? (
                     <Input size="small" value={op.value || ''} onChange={e => up('value', e.target.value)}
-                      placeholder="上下文变量名" prefix={<span style={{ color: '#1890ff', fontSize: 10 }}>{'{{'}...{'}}'}</span>}
+                      placeholder="上下文变量名" prefix={<span style={{ color: '#0ea5a0', fontSize: 10 }}>{'{{'}...{'}}'}</span>}
                       style={{ fontFamily: 'monospace', fontSize: 11 }} />
                   ) : (
                     <Input.TextArea value={op.value || ''} onChange={e => up('value', e.target.value)}
@@ -870,9 +870,9 @@ function ResponsePanel({ response, onAddAssertion }) {
   const r = response
   const sc = r.status_code || r.statusCode || 0
   const isOk = sc >= 200 && sc < 300
-  const statusColor = sc === 0 ? '#e8453c' : isOk ? '#52c41a' : sc < 400 ? '#faad14' : '#e8453c'
+  const statusColor = sc === 0 ? '#e8453c' : isOk ? '#0ea5a0' : sc < 400 ? '#faad14' : '#e8453c'
   const durationMs = r.duration_ms || r.durationMs || 0
-  const durationColor = durationMs < 200 ? '#52c41a' : durationMs < 1000 ? '#faad14' : '#e8453c'
+  const durationColor = durationMs < 200 ? '#0ea5a0' : durationMs < 1000 ? '#faad14' : '#e8453c'
 
   const rawBody = r.body || ''
   let prettyBody = rawBody
@@ -901,7 +901,7 @@ function ResponsePanel({ response, onAddAssertion }) {
     if (obj === null) return <span style={{ color: '#86909c' }}>null</span>
     if (typeof obj === 'boolean') return <span style={{ color: '#d32029' }}>{String(obj)}</span>
     if (typeof obj === 'number') return <span style={{ color: '#d32029' }}>{obj}</span>
-    if (typeof obj === 'string') return <span style={{ color: '#52c41a' }}>"{obj}"</span>
+    if (typeof obj === 'string') return <span style={{ color: '#0ea5a0' }}>"{obj}"</span>
     if (Array.isArray(obj)) {
       if (obj.length === 0) return <span>[]</span>
       return (
@@ -919,7 +919,7 @@ function ResponsePanel({ response, onAddAssertion }) {
         <span>{'{\n'}
           {entries.map(([k, v], i) => (
             <span key={k}>
-              {'  '}<span style={{ color: '#1890ff' }}>"{k}"</span>: {renderJsonTree(v, `${path}.${k}`)}
+              {'  '}<span style={{ color: '#0ea5a0' }}>"{k}"</span>: {renderJsonTree(v, `${path}.${k}`)}
               {onAddAssertion && typeof v !== 'object' && (
                 <Tooltip title={`断言 ${path}.${k}`}>
                   <span onClick={(e) => { e.stopPropagation(); onAddAssertion(path + '.' + k, v) }}
@@ -968,8 +968,8 @@ function ResponsePanel({ response, onAddAssertion }) {
           ].map(t => (
             <div key={t.key} onClick={() => setViewTab(t.key)} style={{
               padding: '2px 10px', fontSize: 11, cursor: 'pointer',
-              color: viewTab === t.key ? '#1890ff' : '#86909c', fontWeight: viewTab === t.key ? 600 : 400,
-              borderBottom: viewTab === t.key ? '2px solid #1890ff' : '2px solid transparent',
+              color: viewTab === t.key ? '#0ea5a0' : '#86909c', fontWeight: viewTab === t.key ? 600 : 400,
+              borderBottom: viewTab === t.key ? '2px solid #0ea5a0' : '2px solid transparent',
             }}>{t.label}</div>
           ))}
         </div>
@@ -983,8 +983,8 @@ function ResponsePanel({ response, onAddAssertion }) {
               {isJson && ['pretty', 'raw'].map(m => (
                 <div key={m} onClick={() => setBodyMode(m)} style={{
                   padding: '2px 8px', fontSize: 10, cursor: 'pointer', borderRadius: 3,
-                  background: bodyMode === m ? '#e6f7ff' : 'transparent',
-                  color: bodyMode === m ? '#1890ff' : '#86909c', fontWeight: bodyMode === m ? 600 : 400,
+                  background: bodyMode === m ? '#e0f7f6' : 'transparent',
+                  color: bodyMode === m ? '#0ea5a0' : '#86909c', fontWeight: bodyMode === m ? 600 : 400,
                 }}>{m === 'pretty' ? 'Pretty' : 'Raw'}</div>
               ))}
             </div>
@@ -996,7 +996,7 @@ function ResponsePanel({ response, onAddAssertion }) {
             </Space>
           </div>
           <pre style={{
-            margin: 0, padding: 12, background: '#fafbfc', border: '1px solid #f0f0f0', borderRadius: 6,
+            margin: 0, padding: 12, background: '#fafbfc', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 6,
             fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: 'auto',
             whiteSpace: 'pre-wrap', wordBreak: 'break-all',
           }}>{bodyMode === 'pretty' && isJson && onAddAssertion ? renderJsonTree(JSON.parse(rawBody)) : (search ? highlightSearch(displayBody) : displayBody)}</pre>
@@ -1030,7 +1030,7 @@ function ResponsePanel({ response, onAddAssertion }) {
             <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid #f8f8f8', fontSize: 11 }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, color: '#4e5969', fontFamily: 'monospace' }}>{c.name}</span>
-                <span style={{ color: '#1890ff', fontFamily: 'monospace', wordBreak: 'break-all' }}>{c.value}</span>
+                <span style={{ color: '#0ea5a0', fontFamily: 'monospace', wordBreak: 'break-all' }}>{c.value}</span>
               </div>
               {c.attrs && <div style={{ fontSize: 10, color: '#8c8c8c', marginTop: 2 }}>{c.attrs}</div>}
             </div>
@@ -1230,7 +1230,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
           <Tooltip title="Ctrl+Enter">
             <Button type="primary" size="small" icon={sending ? <LoadingOutlined /> : <SendOutlined />}
               loading={sending} onClick={handleSend}
-              style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 600, minWidth: 64 }}>
+              style={{ background: '#0ea5a0', borderColor: '#0ea5a0', fontWeight: 600, minWidth: 64 }}>
               发送
             </Button>
           </Tooltip>
@@ -1273,13 +1273,13 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
         {tabs.map(t => (
           <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
             padding: '7px 12px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
-            color: t.highlight ? '#52c41a' : activeTab === t.key ? '#1890ff' : '#86909c',
+            color: t.highlight ? '#0ea5a0' : activeTab === t.key ? '#0ea5a0' : '#86909c',
             fontWeight: activeTab === t.key ? 600 : 400,
-            borderBottom: activeTab === t.key ? `2px solid ${t.highlight ? '#52c41a' : '#1890ff'}` : '2px solid transparent',
+            borderBottom: activeTab === t.key ? `2px solid ${t.highlight ? '#0ea5a0' : '#0ea5a0'}` : '2px solid transparent',
             transition: 'all 0.12s',
           }}>
             {t.icon}{t.label}
-            {t.count > 0 && <span style={{ fontSize: 11, marginLeft: 3, color: activeTab === t.key ? '#1890ff' : '#8c8c8c' }}>{t.count}</span>}
+            {t.count > 0 && <span style={{ fontSize: 11, marginLeft: 3, color: activeTab === t.key ? '#0ea5a0' : '#8c8c8c' }}>{t.count}</span>}
           </div>
         ))}
       </div>
@@ -1330,7 +1330,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
             onChange={ops => onChange({ ...step, preOperations: ops })}
             addItems={preAddItems}
             snippets={preScriptSnippets}
-            infoBg="#e6f7ff" infoBorder="#bae7ff" infoColor="#1890ff"
+            infoBg="#e0f7f6" infoBorder="#bae7ff" infoColor="#0ea5a0"
             infoIcon="⚡" infoTitle="请求前执行"
             infoDesc="可修改请求参数、设置 Header、生成签名、准备数据"
           />
@@ -1380,7 +1380,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
                 {['curl', 'python', 'javascript'].map(l => (
                   <div key={l} onClick={() => setCodeLang(l)} style={{
                     padding: '3px 10px', fontSize: 11, cursor: 'pointer', borderRadius: 4,
-                    background: codeLang === l ? '#1890ff' : '#f7f8fa', color: codeLang === l ? '#fff' : '#4e5969',
+                    background: codeLang === l ? '#0ea5a0' : '#f7f8fa', color: codeLang === l ? '#fff' : '#4e5969',
                     fontWeight: codeLang === l ? 600 : 400, transition: 'all 0.12s',
                   }}>{l === 'curl' ? 'cURL' : l === 'python' ? 'Python' : 'JavaScript'}</div>
                 ))}
@@ -1484,7 +1484,7 @@ export default function ApiStepList({ steps, onChange, environments, runEnv }) {
   }
 
   return (
-    <div style={{ display: 'flex', border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden', minHeight: 480, height: 'calc(100vh - 340px)', maxHeight: 800, background: '#fff' }}>
+    <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 8, overflow: 'hidden', minHeight: 480, height: 'calc(100vh - 340px)', maxHeight: 800, background: 'rgba(255,255,255,0.5)' }}>
       {/* 左侧：紧凑步骤列表 */}
       <div style={{ width: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ padding: '8px 10px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafbfc' }}>
