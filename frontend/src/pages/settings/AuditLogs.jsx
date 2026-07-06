@@ -12,7 +12,7 @@ const ACTION_CONFIG = {
   delete: { label: '删除', color: '#e8453c', bg: '#fff2f0' },
   execute: { label: '执行', color: '#faad14', bg: '#fffbe6' },
   import: { label: '导入', color: '#0ea5a0', bg: '#e0f7f6' },
-  archive: { label: '归档', color: '#c9cdd4', bg: '#f2f3f5' },
+  archive: { label: '归档', color: '#c9cdd4', bg: 'rgba(0,0,0,0.04)' },
   login: { label: '登录', color: '#7c5cbf', bg: '#f9f0ff' },
   logout: { label: '登出', color: '#7c5cbf', bg: '#f9f0ff' },
   sync: { label: '同步', color: '#0ea5a0', bg: '#e0f7f6' },
@@ -83,7 +83,7 @@ export default function AuditLogs() {
     {
       title: '操作', dataIndex: 'action', width: 80, align: 'center',
       render: v => {
-        const cfg = ACTION_CONFIG[v] || { label: v, color: '#86909c', bg: '#f2f3f5' }
+        const cfg = ACTION_CONFIG[v] || { label: v, color: '#86909c', bg: 'rgba(0,0,0,0.04)' }
         return <Tag style={{ color: cfg.color, background: cfg.bg, border: 'none' }}>{cfg.label}</Tag>
       },
     },
@@ -93,7 +93,7 @@ export default function AuditLogs() {
     }] : []),
     {
       title: '对象类型', dataIndex: 'targetType', width: 90, align: 'center',
-      render: v => <Tag style={{ color: '#4e5969', background: '#f2f3f5', border: 'none' }}>
+      render: v => <Tag style={{ color: '#4e5969', background: 'rgba(0,0,0,0.04)', border: 'none' }}>
         {TARGET_TYPE_LABELS[v] || v}
       </Tag>,
     },
@@ -200,7 +200,7 @@ export default function AuditLogs() {
               </div>
               <div>
                 <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4 }}>操作类型</div>
-                <Tag style={{ color: (ACTION_CONFIG[detailLog.action] || {}).color || '#86909c', background: (ACTION_CONFIG[detailLog.action] || {}).bg || '#f2f3f5', border: 'none' }}>
+                <Tag style={{ color: (ACTION_CONFIG[detailLog.action] || {}).color || '#86909c', background: (ACTION_CONFIG[detailLog.action] || {}).bg || 'rgba(0,0,0,0.04)', border: 'none' }}>
                   {(ACTION_CONFIG[detailLog.action] || {}).label || detailLog.action}
                 </Tag>
               </div>

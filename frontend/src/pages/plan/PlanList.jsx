@@ -6,12 +6,12 @@ import { api } from '../../utils/request'
 import CasePicker from '../../components/CasePicker'
 
 const statusMap = {
-  draft:          { label: '草稿',     color: '#86909c', bg: '#f2f3f5', dot: '#c9cdd4' },
+  draft:          { label: '草稿',     color: '#86909c', bg: 'rgba(0,0,0,0.03)', dot: '#c9cdd4' },
   executing:      { label: '执行中',   color: '#0ea5a0', bg: '#e0f7f6', dot: '#0ea5a0' },
   paused:         { label: '已暂停',   color: '#faad14', bg: '#fffbe6', dot: '#faad14' },
   pending_manual: { label: '待录入',   color: '#7c5cbf', bg: '#f9f0ff', dot: '#7c5cbf' },
   completed:      { label: '已完成',   color: '#0ea5a0', bg: '#e0f7f6', dot: '#0ea5a0' },
-  archived:       { label: '已归档',   color: '#86909c', bg: '#f2f3f5', dot: '#c9cdd4' },
+  archived:       { label: '已归档',   color: '#86909c', bg: 'rgba(0,0,0,0.03)', dot: '#c9cdd4' },
 }
 
 const th = { fontSize: 12, color: '#86909c', fontWeight: 500, whiteSpace: 'nowrap' }

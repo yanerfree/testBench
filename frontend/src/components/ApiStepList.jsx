@@ -97,7 +97,7 @@ function SnippetPicker({ snippets, onInsert }) {
         <div style={{ width: 340, maxHeight: 400, overflow: 'auto' }}>
           <div style={{ fontSize: 11, color: '#86909c', padding: '4px 8px 6px', fontWeight: 600 }}>点击插入代码片段</div>
           {grouped.map((item, idx) => item.type === 'header' ? (
-            <div key={`g-${idx}`} style={{ padding: '6px 10px 2px', fontSize: 10, color: '#0ea5a0', fontWeight: 600, borderTop: idx > 0 ? '1px solid #f0f0f0' : 'none', marginTop: idx > 0 ? 4 : 0 }}>
+            <div key={`g-${idx}`} style={{ padding: '6px 10px 2px', fontSize: 10, color: '#0ea5a0', fontWeight: 600, borderTop: idx > 0 ? '1px solid rgba(0,0,0,0.06)' : 'none', marginTop: idx > 0 ? 4 : 0 }}>
               {item.label}
             </div>
           ) : (
@@ -110,7 +110,7 @@ function SnippetPicker({ snippets, onInsert }) {
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#1d2129' }}>{item.label}</span>
                 <span style={{ fontSize: 10, color: '#86909c' }}>{item.desc}</span>
               </div>
-              <pre style={{ margin: 0, padding: '4px 8px', background: '#fafafa', borderRadius: 4, fontSize: 10, color: '#4e5969', fontFamily: 'monospace', lineHeight: 1.5, whiteSpace: 'pre-wrap', border: '1px solid rgba(0,0,0,0.05)', maxHeight: 80, overflow: 'hidden' }}>{item.code}</pre>
+              <pre style={{ margin: 0, padding: '4px 8px', background: 'rgba(0,0,0,0.02)', borderRadius: 4, fontSize: 10, color: '#4e5969', fontFamily: 'monospace', lineHeight: 1.5, whiteSpace: 'pre-wrap', border: '1px solid rgba(0,0,0,0.05)', maxHeight: 80, overflow: 'hidden' }}>{item.code}</pre>
             </div>
           ))}
         </div>
@@ -347,7 +347,7 @@ function CompactApiRow({ step, index, isSelected, onClick, onRemove, onCopy, onD
         borderLeft: isSelected ? `3px solid ${mc.color}` : '3px solid transparent',
         transition: 'all 0.12s',
       }}>
-      <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', fontSize: 9, flexShrink: 0, opacity: hovered ? 1 : 0, transition: 'opacity 0.1s' }} />
+      <HolderOutlined style={{ color: 'rgba(0,0,0,0.25)', cursor: 'grab', fontSize: 9, flexShrink: 0, opacity: hovered ? 1 : 0, transition: 'opacity 0.1s' }} />
       <Tag style={{ margin: 0, fontWeight: 700, fontSize: 9, background: mc.bg, color: mc.color, border: 'none', padding: '0 5px', lineHeight: '16px', minWidth: 38, textAlign: 'center' }}>{method}</Tag>
       <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
         <div style={{ fontSize: 12, color: '#1d2129', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
@@ -601,7 +601,7 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
       <div onClick={() => setExpanded(!expanded)} style={{
         display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', cursor: 'pointer', userSelect: 'none',
       }}>
-        <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', fontSize: 10, flexShrink: 0 }} />
+        <HolderOutlined style={{ color: 'rgba(0,0,0,0.25)', cursor: 'grab', fontSize: 10, flexShrink: 0 }} />
         <span style={{ color: meta.color, fontSize: 11, flexShrink: 0 }}>{meta.icon}</span>
         <span style={{ fontSize: 11, color: meta.color, fontWeight: 500, flexShrink: 0 }}>{meta.label}</span>
         <span style={{ fontSize: 12, color: '#4e5969', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: op.type === 'script' ? 'monospace' : 'inherit' }}>
@@ -752,7 +752,7 @@ function OperationList({ operations, onChange, addItems, snippets, infoBg, infoB
       </div>
 
       {operations.length === 0 && (
-        <div style={{ padding: '16px 12px', textAlign: 'center', color: '#8c8c8c', fontSize: 11, border: '1px dashed #e5e6eb', borderRadius: 6, marginBottom: 8 }}>
+        <div style={{ padding: '16px 12px', textAlign: 'center', color: '#8c8c8c', fontSize: 11, border: '1px dashed rgba(0,0,0,0.08)', borderRadius: 6, marginBottom: 8 }}>
           暂无操作，点击下方按钮添加断言、提取变量或自定义脚本
         </div>
       )}
@@ -948,7 +948,7 @@ function ResponsePanel({ response, onAddAssertion }) {
   return (
     <div>
       {/* 状态栏 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', marginBottom: 8, borderBottom: '1px solid #f2f3f5' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', marginBottom: 8, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
         <Tooltip title={onAddAssertion ? '点击添加状态码断言' : ''}>
           <span onClick={() => onAddAssertion?.('status', sc)} style={{
             fontWeight: 700, fontSize: 14, color: statusColor, background: statusColor + '10', padding: '2px 8px', borderRadius: 4,
@@ -1191,7 +1191,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
       </div>
 
       {/* Method + URL + Send */}
-      <div style={{ padding: '6px 16px 8px', borderBottom: '1px solid #f2f3f5', flexShrink: 0 }}>
+      <div style={{ padding: '6px 16px 8px', borderBottom: '1px solid rgba(0,0,0,0.06)', flexShrink: 0 }}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <Select size="small" value={method} onChange={v => up('method', v)} style={{ width: 90 }}
             popupMatchSelectWidth={false}
@@ -1201,7 +1201,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
           <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
             {baseUrl && !urlHasOwnBase(step.url) && (
               <Tooltip title={baseUrl}>
-                <span style={{ fontSize: 11, color: '#86909c', background: 'rgba(0,0,0,0.02)', border: '1px solid #e5e6eb', borderRight: 'none',
+                <span style={{ fontSize: 11, color: '#86909c', background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.08)', borderRight: 'none',
                   borderRadius: '4px 0 0 4px', padding: '3px 8px', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis',
                   display: 'inline-block', lineHeight: '16px', fontFamily: 'monospace', flexShrink: 0 }}>
                   <GlobalOutlined style={{ marginRight: 4, fontSize: 10 }} />{baseUrl}
@@ -1269,7 +1269,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
       </Modal>
 
       {/* Tab 栏 */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #f2f3f5', background: '#fafbfc', flexShrink: 0, paddingLeft: 4, overflowX: 'auto' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,0,0,0.06)', background: '#fafbfc', flexShrink: 0, paddingLeft: 4, overflowX: 'auto' }}>
         {tabs.map(t => (
           <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
             padding: '7px 12px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
@@ -1486,8 +1486,8 @@ export default function ApiStepList({ steps, onChange, environments, runEnv }) {
   return (
     <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 8, overflow: 'hidden', minHeight: 480, height: 'calc(100vh - 340px)', maxHeight: 800, background: 'transparent' }}>
       {/* 左侧：紧凑步骤列表 */}
-      <div style={{ width: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-        <div style={{ padding: '8px 10px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafbfc' }}>
+      <div style={{ width: 300, borderRight: '1px solid rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafbfc' }}>
           <span style={{ fontSize: 12, color: '#1d2129', fontWeight: 600 }}>步骤 ({steps.length})</span>
           <Dropdown menu={{ items: addMenuItems, onClick: handleAdd }} trigger={['click']}>
             <Button type="primary" size="small" icon={<PlusOutlined />} ghost>添加</Button>

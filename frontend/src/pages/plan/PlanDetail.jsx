@@ -6,12 +6,12 @@ import { api } from '../../utils/request'
 import CasePicker from '../../components/CasePicker'
 
 const planStatusMap = {
-  draft: { label: '草稿', color: '#c9cdd4', bg: '#f2f3f5' },
+  draft: { label: '草稿', color: '#c9cdd4', bg: 'rgba(0,0,0,0.03)' },
   executing: { label: '执行中', color: '#0ea5a0', bg: '#e0f7f6' },
   completed: { label: '已完成', color: '#0ea5a0', bg: '#e0f7f6' },
   paused: { label: '已暂停', color: '#faad14', bg: '#fffbe6' },
   pending_manual: { label: '待手动录入', color: '#7c5cbf', bg: '#f9f0ff' },
-  archived: { label: '已归档', color: '#8c8c8c', bg: '#f2f3f5' },
+  archived: { label: '已归档', color: '#8c8c8c', bg: 'rgba(0,0,0,0.03)' },
 }
 
 function fmt(ms) {
@@ -198,11 +198,11 @@ export default function PlanDetail() {
             <div style={{ display: 'flex', gap: 16 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>计划类型</div>
-                <Tag style={{ background: '#f2f3f5', color: '#86909c' }}>{plan.planType === 'automated' ? '自动化' : '手动'}</Tag>
+                <Tag style={{ background: 'rgba(0,0,0,0.03)', color: '#86909c' }}>{plan.planType === 'automated' ? '自动化' : '手动'}</Tag>
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>测试类型</div>
-                <Tag style={{ background: '#f2f3f5', color: '#86909c' }}>{plan.testType?.toUpperCase()}</Tag>
+                <Tag style={{ background: 'rgba(0,0,0,0.03)', color: '#86909c' }}>{plan.testType?.toUpperCase()}</Tag>
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>目标环境</div>

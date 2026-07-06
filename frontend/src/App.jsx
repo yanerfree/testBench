@@ -187,9 +187,10 @@ function AppLayout() {
       `}</style>
       {/* 顶栏 */}
       <Header style={{
-        background: 'transparent', height: 46, lineHeight: '46px', padding: '0 16px',
+        background: 'rgba(255,255,255,0.35)', height: 46, lineHeight: '46px', padding: '0 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        borderBottom: '1px solid rgba(0,0,0,0.04)',
+        borderBottom: '1px solid rgba(255,255,255,0.4)',
+        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <img src="/favicon.svg" alt="" style={{ width: 26, height: 26 }} />
@@ -224,7 +225,7 @@ function AppLayout() {
           collapsedWidth={52}
           collapsed={collapsed}
           theme="light"
-          style={{ background: 'transparent', borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}
+          style={{ background: 'rgba(255,255,255,0.2)', borderRight: '1px solid rgba(255,255,255,0.3)', display: 'flex', flexDirection: 'column', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
         >
           <div style={{ flex: 1, overflow: 'auto' }}>
             <Menu

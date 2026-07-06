@@ -126,7 +126,7 @@ function EnvironmentPanel() {
             ))
           }
         </div>
-        <div style={{ padding: 10, borderTop: '1px solid #f2f3f5' }}>
+        <div style={{ padding: 10, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
           <Button type="dashed" icon={<PlusOutlined />} block size="small" onClick={() => setCreateOpen(true)}>新增环境</Button>
         </div>
       </div>

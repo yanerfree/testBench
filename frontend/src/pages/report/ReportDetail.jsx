@@ -36,7 +36,7 @@ function PassRateRing({ rate, passed, total, size = 160, running = false, done =
   const color = running ? '#0ea5a0' : pct >= 95 ? '#0ea5a0' : pct >= 80 ? '#faad14' : '#e8453c'
   return (
     <svg width={size} height={size} style={{ display: 'block', flexShrink: 0 }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#f2f3f5" strokeWidth={10} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(0,0,0,0.04)" strokeWidth={10} />
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={10}
         strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
         transform={`rotate(-90 ${size/2} ${size/2})`}
@@ -108,7 +108,7 @@ function JsonBlock({ data, maxHeight = 500 }) {
       }}>
         {lines.map((line, i) => (
           <div key={i} style={{ display: 'flex', minHeight: 22, paddingRight: 14 }}>
-            <span style={{ width: 38, textAlign: 'right', paddingRight: 14, color: '#c9cdd4', fontSize: 11, flexShrink: 0, userSelect: 'none', borderRight: '1px solid #f0f0f0' }}>{i + 1}</span>
+            <span style={{ width: 38, textAlign: 'right', paddingRight: 14, color: '#c9cdd4', fontSize: 11, flexShrink: 0, userSelect: 'none', borderRight: '1px solid rgba(0,0,0,0.04)' }}>{i + 1}</span>
             <span style={{ flex: 1, whiteSpace: 'pre', paddingLeft: 14 }}>{highlight(line)}</span>
           </div>
         ))}
@@ -186,7 +186,7 @@ function StepDetailDrawer({ step, open, onClose }) {
             <>
               <span style={{ color: '#86909c' }}>HTTP 状态码:</span>
               <span style={{ color: step.statusCode >= 400 ? '#e8453c' : '#0ea5a0', fontWeight: 600 }}>{step.statusCode}</span>
-              <span style={{ color: '#e5e6eb', margin: '0 4px' }}>|</span>
+              <span style={{ color: 'rgba(0,0,0,0.15)', margin: '0 4px' }}>|</span>
             </>
           )}
           <span style={{ color: '#86909c' }}>耗时:</span>
@@ -308,7 +308,7 @@ function ScenarioExpanded({ scenario }) {
   return (
     <div style={{ padding: '16px 20px 16px 48px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* 执行信息卡片 */}
-      <div style={{ padding: '12px 16px', background: isPassed ? '#e0f7f6' : isFailed ? '#fff2f0' : 'rgba(0,0,0,0.02)', borderRadius: 12, border: `1px solid ${isPassed ? '#d4edda' : isFailed ? '#fde2e4' : '#f2f3f5'}` }}>
+      <div style={{ padding: '12px 16px', background: isPassed ? '#e0f7f6' : isFailed ? '#fff2f0' : 'rgba(0,0,0,0.02)', borderRadius: 12, border: `1px solid ${isPassed ? '#d4edda' : isFailed ? '#fde2e4' : 'rgba(0,0,0,0.04)'}` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <StatusIcon status={status} size={18} />
@@ -567,11 +567,11 @@ export default function ReportDetail() {
             padding: '12px 20px',
             borderBottom: '1px solid rgba(0,0,0,0.04)',
             cursor: isAutomatic ? 'pointer' : 'default',
-            background: isExpanded ? 'rgba(0,0,0,0.02)' : '#fff',
+            background: isExpanded ? 'rgba(0,0,0,0.02)' : 'transparent',
             transition: 'background 0.15s',
           }}
           onMouseEnter={e => { if (isAutomatic) e.currentTarget.style.background = 'rgba(0,0,0,0.02)' }}
-          onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = '#fff' }}
+          onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = 'transparent' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
             <StatusDot status={s.status} />
@@ -740,7 +740,7 @@ export default function ReportDetail() {
             </div>
           </div>
 
-          <div style={{ borderLeft: '1px solid #f2f3f5', paddingLeft: 40, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 48px' }}>
+          <div style={{ borderLeft: '1px solid rgba(0,0,0,0.04)', paddingLeft: 40, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 48px' }}>
             <div>
               <div style={{ color: '#86909c', fontSize: 13, marginBottom: 4 }}>总耗时</div>
               <div style={{ fontSize: 18, fontWeight: 600, color: '#0ea5a0' }}>{fmt(totalDuration) || '-'}</div>

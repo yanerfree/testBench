@@ -189,7 +189,7 @@ export default function Documents() {
 
       {docs.length === 0 && !loading ? (
         <Card style={{ textAlign: 'center', padding: '40px 0' }}>
-          <FileTextOutlined style={{ fontSize: 40, color: '#d9d9d9' }} />
+          <FileTextOutlined style={{ fontSize: 40, color: 'rgba(0,0,0,0.25)' }} />
           <div style={{ marginTop: 12, color: '#8c8c8c' }}>暂无文档</div>
           <div style={{ marginTop: 4, color: '#bfbfbf', fontSize: 12 }}>点击上方「生成文档」按钮，填写系统信息即可自动生成</div>
         </Card>

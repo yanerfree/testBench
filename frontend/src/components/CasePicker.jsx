@@ -4,7 +4,7 @@ import { SearchOutlined, FolderOutlined } from '@ant-design/icons'
 import { api } from '../utils/request'
 
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
-const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' }
+const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: 'rgba(0,0,0,0.15)' }
 
 const buildTreeData = (nodes) => nodes.map(n => ({
   title: `${n.name} (${n.caseCount})`,
@@ -115,7 +115,7 @@ export default function CasePicker({ open, projectId, selectedIds = [], onOk, on
       style={{ top: 40 }}
     >
       {/* Header */}
-      <div style={{ padding: '20px 24px 12px', borderBottom: '1px solid #f2f3f5' }}>
+      <div style={{ padding: '20px 24px 12px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
         <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>选择用例</div>
         <div style={{ fontSize: 13, color: '#86909c' }}>从用例库中选择要关联到计划的用例</div>
       </div>
@@ -123,7 +123,7 @@ export default function CasePicker({ open, projectId, selectedIds = [], onOk, on
       <div style={{ display: 'flex', height: 560 }}>
         {/* Left: Folder Tree */}
         <div style={{
-          width: 220, borderRight: '1px solid #f2f3f5', padding: '12px 0',
+          width: 220, borderRight: '1px solid rgba(0,0,0,0.06)', padding: '12px 0',
           overflow: 'auto', flexShrink: 0, background: 'rgba(0,0,0,0.02)',
         }}>
           <div style={{ padding: '0 12px 8px', fontSize: 13, fontWeight: 600, color: '#4e5969' }}>
@@ -160,7 +160,7 @@ export default function CasePicker({ open, projectId, selectedIds = [], onOk, on
         {/* Right: Filter + Table */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Filters */}
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f2f3f5' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
             <Space size={10} wrap>
               <Input
                 prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />}
@@ -223,7 +223,7 @@ export default function CasePicker({ open, projectId, selectedIds = [], onOk, on
 
           {/* Bottom: Stats + Pagination */}
           <div style={{
-            padding: '8px 16px', borderTop: '1px solid #f2f3f5',
+            padding: '8px 16px', borderTop: '1px solid rgba(0,0,0,0.06)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}>
             <span style={{ fontSize: 13, color: '#86909c' }}>

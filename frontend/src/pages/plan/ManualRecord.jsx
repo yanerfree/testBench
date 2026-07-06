@@ -137,7 +137,7 @@ export default function ManualRecord() {
       {/* 主内容 */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* 左侧列表 */}
-        <div style={{ width: 320, background: 'transparent', borderRight: '1px solid #f2f3f5', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div style={{ width: 320, background: 'transparent', borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
             <Radio.Group value={filter} onChange={e => setFilter(e.target.value)} optionType="button" buttonStyle="solid" size="small" options={FILTER_OPTIONS} />
           </div>

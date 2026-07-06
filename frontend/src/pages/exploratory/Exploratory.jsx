@@ -185,7 +185,7 @@ export default function Exploratory() {
                         <Space>
                           {i < activeSession.completedCheckpoints
                             ? <CheckCircleOutlined style={{ color: '#0ea5a0' }} />
-                            : <ClockCircleOutlined style={{ color: '#d9d9d9' }} />}
+                            : <ClockCircleOutlined style={{ color: 'rgba(0,0,0,0.25)' }} />}
                           <Text>{cp.title}</Text>
                           <Tag>{cp.priority}</Tag>
                         </Space>

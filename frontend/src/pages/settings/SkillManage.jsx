@@ -152,7 +152,7 @@ export default function SkillManage() {
             key={skill.name}
             size="small"
             style={{
-              borderLeft: skill.status === 'available' ? '3px solid #0ea5a0' : '3px solid #d9d9d9',
+              borderLeft: skill.status === 'available' ? '3px solid #0ea5a0' : '3px solid rgba(0,0,0,0.15)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>

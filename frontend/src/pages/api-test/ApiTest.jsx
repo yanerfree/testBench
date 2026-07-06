@@ -218,8 +218,8 @@ export default function ApiTest() {
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
       {/* 左栏：目录树 */}
-      <div style={{ width: 250, flexShrink: 0, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ padding: '8px 12px', borderBottom: '1px solid #f2f3f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ width: 250, flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>测试场景</span>
           <Tooltip title="新建文件夹">
             <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => { setNewFolderName(''); setFolderModalOpen(true) }} style={{ color: '#0ea5a0' }} />
@@ -364,8 +364,8 @@ export default function ApiTest() {
         /* 选了场景：中栏步骤列表 + 右栏请求编辑器 */
         <>
           {/* 中栏：步骤列表 */}
-          <div style={{ width: 300, minWidth: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
-            <div style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0' }}>
+          <div style={{ width: 300, minWidth: 300, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Space size={4}>
                   <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedScenario.code}</span>
@@ -418,12 +418,12 @@ export default function ApiTest() {
                         borderLeft: isSelected ? '3px solid #4e8af0' : '3px solid transparent',
                         display: 'flex', alignItems: 'center', gap: 6,
                       }}
-                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#fafafa' }}
+                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(0,0,0,0.02)' }}
                       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
                     >
                       {step.lastStatus === 'pass' ? <CheckCircleOutlined style={{ color: '#0ea5a0', fontSize: 12 }} /> :
                        step.lastStatus === 'fail' ? <CloseCircleOutlined style={{ color: '#e8453c', fontSize: 12 }} /> :
-                       <span style={{ width: 12, height: 12, borderRadius: 6, border: '1.5px solid #d9d9d9', display: 'inline-block', flexShrink: 0 }} />}
+                       <span style={{ width: 12, height: 12, borderRadius: 6, border: '1.5px solid rgba(0,0,0,0.15)', display: 'inline-block', flexShrink: 0 }} />}
                       <Tag color={METHOD_COLORS[step.method]} style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '18px' }}>
                         {step.method}
                       </Tag>
@@ -445,7 +445,7 @@ export default function ApiTest() {
             {selectedStep ? (
           <>
             {/* 顶部：步骤名(可编辑) + 运行/删除按钮 */}
-            <div style={{ padding: '10px 20px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '10px 20px', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Input
                 value={selectedStep.name}
                 variant="borderless"
@@ -470,7 +470,7 @@ export default function ApiTest() {
             </div>
 
             {/* URL 栏(可编辑) */}
-            <div style={{ padding: '10px 20px', borderBottom: '1px solid #f0f0f0', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ padding: '10px 20px', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', gap: 8, alignItems: 'center' }}>
               <Select value={selectedStep.method} size="small"
                 style={{ width: 90, fontWeight: 600 }}
                 onChange={v => { setSelectedStep({ ...selectedStep, method: v }); saveStep(selectedStep.id, { method: v }) }}
@@ -498,7 +498,7 @@ export default function ApiTest() {
                     label: <span>Body {selectedStep.body && <span style={{ color: '#0ea5a0' }}>●</span>}</span>,
                     children: (
                       <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                        <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid #f0f0f0', fontSize: 11, color: '#8c8c8c', display: 'flex', justifyContent: 'space-between' }}>
+                        <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 11, color: '#8c8c8c', display: 'flex', justifyContent: 'space-between' }}>
                           <span>JSON</span>
                           <Button size="small" type="text" style={{ fontSize: 11, height: 18, padding: '0 4px' }}
                             onClick={() => {
@@ -528,15 +528,15 @@ export default function ApiTest() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #f0f0f0' }}>Key</th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #f0f0f0' }}>Value</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>Key</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>Value</th>
                             </tr>
                           </thead>
                           <tbody>
                             {selectedStep.headers && Object.entries(selectedStep.headers).map(([k, v]) => (
                               <tr key={k}>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontWeight: 500, color: '#333' }}>{k}</td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontFamily: 'monospace', color: '#595959', wordBreak: 'break-all' }}>{v}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontWeight: 500, color: '#333' }}>{k}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontFamily: 'monospace', color: '#595959', wordBreak: 'break-all' }}>{v}</td>
                               </tr>
                             ))}
                             {(!selectedStep.headers || Object.keys(selectedStep.headers).length === 0) && (
@@ -555,21 +555,21 @@ export default function ApiTest() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #f0f0f0', width: 30 }}></th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #f0f0f0' }}>类型</th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #f0f0f0' }}>字段</th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #f0f0f0' }}>操作</th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid #f0f0f0' }}>期望值</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)', width: 30 }}></th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>类型</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>字段</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>操作</th>
+                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>期望值</th>
                             </tr>
                           </thead>
                           <tbody>
                             {(selectedStep.assertions || []).map((a, j) => (
                               <tr key={j}>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0' }}><CheckCircleOutlined style={{ color: '#0ea5a0' }} /></td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontWeight: 500 }}>{a.type}</td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', fontFamily: 'monospace', color: '#595959' }}>{a.field || '-'}</td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0', color: '#4e8af0' }}>{a.operator}</td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid #f0f0f0' }}>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}><CheckCircleOutlined style={{ color: '#0ea5a0' }} /></td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontWeight: 500 }}>{a.type}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontFamily: 'monospace', color: '#595959' }}>{a.field || '-'}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', color: '#4e8af0' }}>{a.operator}</td>
+                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                                   <code style={{ background: '#f0f5ff', padding: '2px 8px', borderRadius: 3, color: '#1d39c4' }}>{JSON.stringify(a.value)}</code>
                                 </td>
                               </tr>
@@ -609,7 +609,7 @@ export default function ApiTest() {
                             <div style={{ padding: 16, color: '#e8453c' }}>{runResponse.error}</div>
                           ) : (
                             <>
-                              <div style={{ padding: '8px 12px', background: '#f6f7f9', borderBottom: '1px solid #f0f0f0', display: 'flex', gap: 12, fontSize: 12 }}>
+                              <div style={{ padding: '8px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', gap: 12, fontSize: 12 }}>
                                 <Tag color={runResponse.statusCode < 400 ? 'success' : 'error'}>{runResponse.statusCode}</Tag>
                                 <span style={{ color: '#8c8c8c' }}>{runResponse.duration}ms</span>
                               </div>

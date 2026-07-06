@@ -14,11 +14,11 @@ import ScriptEditor from '../../components/ScriptEditor'
 import ApiStepList, { generateApiCodeFromSteps } from '../../components/ApiStepList'
 
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
-const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9' }
+const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: 'rgba(0,0,0,0.08)' }
 const statusColors = { automated: '#0ea5a0', pending: '#faad14', removed: '#e8453c' }
 const statusBg = { automated: '#e0f7f6', pending: '#fffbe6', removed: '#fff2f0' }
 const statusLabels = { automated: '已自动化', pending: '待自动化', removed: '脚本已移除' }
-const dotColors = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9', automated: '#0ea5a0', pending: '#faad14', removed: '#e8453c' }
+const dotColors = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: 'rgba(0,0,0,0.15)', automated: '#0ea5a0', pending: '#faad14', removed: '#e8453c' }
 const phaseColor = { setup: '#7c5cbf', action: '#0ea5a0', verify: '#0ea5a0' }
 const phaseLabel = { setup: '准备', action: '操作', verify: '验证' }
 const scenarioStatusMap = {
@@ -39,7 +39,7 @@ function InlineProp({ icon, value, color, bg, children }) {
         background: bg || 'rgba(0,0,0,0.02)', color: color || '#4e5969', border: '1px solid transparent',
         userSelect: 'none', lineHeight: '22px',
       }}
-        onMouseEnter={e => e.currentTarget.style.borderColor = '#e5e6eb'}
+        onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,0,0,0.06)'}
         onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}>
         {icon && <span style={{ fontSize: 11, color: color || '#86909c', display: 'flex' }}>{icon}</span>}
         <span style={{ fontWeight: 500, color: color || '#4e5969' }}>{value}</span>
@@ -112,7 +112,7 @@ function ScenarioStepsView({ steps, extraCol, extraColLabel, extraPlaceholder, e
       {steps.map((s, i) => (
         <div key={i} style={{
           display: 'flex', gap: 10, padding: '8px 14px', fontSize: 13,
-          background: i % 2 === 0 ? '#fff' : '#fafbfc',
+          background: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)',
           borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none', alignItems: 'center',
         }}>
           <span style={{
@@ -343,14 +343,14 @@ function ScenarioEditor({
           <div style={{ display: 'inline-flex', borderRadius: 10, border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
             <div onClick={() => setViewMode('steps')} style={{
               padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 500,
-              background: viewMode === 'steps' ? accentColor : '#fff',
+              background: viewMode === 'steps' ? accentColor : 'transparent',
               color: viewMode === 'steps' ? '#fff' : '#4e5969',
             }}>步骤视图</div>
             <div onClick={() => setViewMode('code')} style={{
               padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 500,
-              background: viewMode === 'code' ? '#1e1e1e' : '#fff',
+              background: viewMode === 'code' ? '#1e1e1e' : 'transparent',
               color: viewMode === 'code' ? '#d4d4d4' : '#4e5969',
-              borderLeft: '1px solid #e5e6eb',
+              borderLeft: '1px solid rgba(0,0,0,0.06)',
             }}>代码视图</div>
           </div>
           <Select size="small" value={scenarioStatus} onChange={setScenarioStatus} style={{ width: 100 }}
@@ -405,10 +405,10 @@ function ScenarioEditor({
                 {steps.map((s, i) => (
                   <div key={i} style={{
                     display: 'flex', gap: 6, padding: '6px 14px', fontSize: 13,
-                    background: i % 2 === 0 ? '#fff' : '#fafbfc',
+                    background: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)',
                     borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none', alignItems: 'center',
                   }}>
-                    <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', flexShrink: 0 }} />
+                    <HolderOutlined style={{ color: 'rgba(0,0,0,0.15)', cursor: 'grab', flexShrink: 0 }} />
                     <span style={{
                       width: 28, height: 24, borderRadius: 10, background: '#e0f7f6', color: '#0ea5a0',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
@@ -485,7 +485,7 @@ function TemplateModal({ open, onClose, projectId, branchId, scenarioType, onSel
                   marginBottom: 8, cursor: 'pointer', transition: 'all 0.15s',
                 }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = '#91d5ff'}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = '#f2f3f5'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(0,0,0,0.04)'}
                   onClick={() => { onSelect(sc); onClose() }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <span style={{ fontWeight: 500, fontSize: 14 }}>
@@ -722,7 +722,7 @@ export default function CaseDetail() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
         <Button type="text" icon={<ArrowLeftOutlined />} size="small" onClick={handleBack} style={{ color: '#86909c' }} />
         <span style={{ fontSize: 12, color: '#c9cdd4' }}>用例管理</span>
-        <span style={{ color: '#e5e6eb', fontSize: 12 }}>/</span>
+        <span style={{ color: 'rgba(0,0,0,0.15)', fontSize: 12 }}>/</span>
         <span style={{ fontSize: 12, color: '#86909c', fontFamily: 'monospace' }}>{caseCode}</span>
       </div>
 
@@ -775,7 +775,7 @@ export default function CaseDetail() {
                 borderRadius: 12, fontSize: 11, fontWeight: 500,
                 background: hasApi ? '#e0f7f6' : 'rgba(0,0,0,0.02)',
                 color: hasApi ? (scenarioStatusMap[apiScenarioStatus] || {}).color || '#0ea5a0' : '#c9cdd4',
-                border: `1px solid ${hasApi ? '#91d5ff' : '#e5e6eb'}`,
+                border: `1px solid ${hasApi ? '#91d5ff' : 'rgba(0,0,0,0.06)'}`,
               }}>
                 {isApiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14' }} />}
                 <ApiOutlined style={{ fontSize: 10 }} /> API
@@ -788,7 +788,7 @@ export default function CaseDetail() {
                 borderRadius: 12, fontSize: 11, fontWeight: 500,
                 background: hasUi ? '#f0f5ff' : 'rgba(0,0,0,0.02)',
                 color: hasUi ? (scenarioStatusMap[uiScenarioStatus] || {}).color || '#7c5cbf' : '#c9cdd4',
-                border: `1px solid ${hasUi ? '#d3adf7' : '#e5e6eb'}`,
+                border: `1px solid ${hasUi ? '#d3adf7' : 'rgba(0,0,0,0.06)'}`,
               }}>
                 {isUiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14' }} />}
                 <DesktopOutlined style={{ fontSize: 10 }} /> UI
@@ -807,7 +807,7 @@ export default function CaseDetail() {
                 <div style={{ marginBottom: 20 }}>
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>前置条件</h4>
                   <Input.TextArea rows={2} value={preconditions} onChange={e => setPreconditions(e.target.value)}
-                    style={{ background: 'rgba(0,0,0,0.02)', borderColor: '#f2f3f5' }} autoSize={{ minRows: 2, maxRows: 6 }} />
+                    style={{ background: 'rgba(0,0,0,0.02)', borderColor: 'rgba(0,0,0,0.04)' }} autoSize={{ minRows: 2, maxRows: 6 }} />
                 </div>
 
                 <div style={{ marginBottom: 20 }}>
@@ -829,10 +829,10 @@ export default function CaseDetail() {
                     {steps.map((s, i) => (
                       <div key={i} style={{
                         display: 'flex', gap: 10, padding: '8px 14px', fontSize: 13,
-                        background: i % 2 === 0 ? '#fff' : '#fafbfc',
+                        background: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)',
                         borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none', alignItems: 'center',
                       }}>
-                        <HolderOutlined style={{ color: '#d9d9d9', cursor: 'grab', flexShrink: 0 }} />
+                        <HolderOutlined style={{ color: 'rgba(0,0,0,0.15)', cursor: 'grab', flexShrink: 0 }} />
                         <span style={{
                           width: 28, height: 24, borderRadius: 10, background: '#e0f7f6', color: '#0ea5a0',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
@@ -859,13 +859,13 @@ export default function CaseDetail() {
                 <div style={{ marginBottom: 20 }}>
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>预期结果</h4>
                   <Input.TextArea value={expectedResult} onChange={e => setExpectedResult(e.target.value)}
-                    style={{ background: 'rgba(0,0,0,0.02)', borderColor: '#f2f3f5' }} autoSize={{ minRows: 2, maxRows: 6 }} />
+                    style={{ background: 'rgba(0,0,0,0.02)', borderColor: 'rgba(0,0,0,0.04)' }} autoSize={{ minRows: 2, maxRows: 6 }} />
                 </div>
 
                 <div>
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>备注</h4>
                   <Input.TextArea value={remark} onChange={e => setRemark(e.target.value)}
-                    placeholder="可选备注信息" style={{ background: 'rgba(0,0,0,0.02)', borderColor: '#f2f3f5' }}
+                    placeholder="可选备注信息" style={{ background: 'rgba(0,0,0,0.02)', borderColor: 'rgba(0,0,0,0.04)' }}
                     autoSize={{ minRows: 2, maxRows: 4 }} />
                 </div>
               </Card>
@@ -1130,7 +1130,7 @@ function CaseFileTab({ caseId }) {
           <span style={{ fontSize: 12, color: '#86909c' }}>用例被 AI 生成、评审、执行或诊断后会自动记录</span>
         </Empty>
       ) : (
-        <div style={{ borderLeft: '2px solid #f0f0f0', paddingLeft: 16, marginLeft: 8 }}>
+        <div style={{ borderLeft: '2px solid rgba(0,0,0,0.04)', paddingLeft: 16, marginLeft: 8 }}>
           {data.events.map(e => {
             const cfg = EVENT_LABELS[e.eventType] || { label: e.eventType, color: '#86909c', icon: '⚪' }
             return (

@@ -126,7 +126,6 @@ export default function AISidebar() {
           alignItems: 'center',
           gap: 8,
           background: 'rgba(14,165,160,0.12)', color: '#0ea5a0',
-          color: '#fff',
           padding: '10px 18px 10px 14px',
           borderRadius: 24,
           cursor: 'pointer',

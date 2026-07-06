@@ -983,7 +983,7 @@ export default function ApiManagement() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', cursor: 'pointer',
                     borderBottom: isActive ? `2px solid ${mc.color}` : '2px solid transparent',
-                    background: isActive ? '#fff' : 'transparent', whiteSpace: 'nowrap', fontSize: 12,
+                    background: isActive ? 'rgba(255,255,255,0.5)' : 'transparent', whiteSpace: 'nowrap', fontSize: 12,
                     borderRight: '1px solid #eee',
                   }}>
                   <Tag style={{ margin: 0, fontWeight: 700, fontSize: 8, background: mc.bg, color: mc.color, border: 'none', padding: '0 3px', lineHeight: '13px' }}>{tn.method || 'GET'}</Tag>

@@ -175,7 +175,7 @@ export default function ScriptEditor({
   const language = langMap[script?.language] || 'python'
 
   return (
-    <div style={{ border: '1px solid #f2f3f5', borderRadius: 8, overflow: 'hidden' }}>
+    <div style={{ border: '1px solid rgba(0,0,0,0.04)', borderRadius: 8, overflow: 'hidden' }}>
       {/* 工具栏 */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',

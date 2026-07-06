@@ -170,7 +170,7 @@ export default function AICapabilities() {
               <Card
                 key={item.title}
                 size="small"
-                style={{ borderLeft: item.status === 'done' ? '3px solid #0ea5a0' : '3px solid #d9d9d9' }}
+                style={{ borderLeft: item.status === 'done' ? '3px solid #0ea5a0' : '3px solid rgba(0,0,0,0.15)' }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                   <Space>
@@ -238,7 +238,7 @@ export default function AICapabilities() {
             <div><b>特点：</b>实时进度 · 预览导入 · 可暂停</div>
           </div>
         </Card>
-        <Card size="small" style={{ borderLeft: '3px solid #d9d9d9' }}>
+        <Card size="small" style={{ borderLeft: '3px solid rgba(0,0,0,0.15)' }}>
           <Space style={{ marginBottom: 8 }}>
             <Text strong style={{ fontSize: 15 }}>Claude Code 引擎（CLI）</Text>
             <Tag>高级</Tag>
