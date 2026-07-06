@@ -364,7 +364,7 @@ export default function ApiTest() {
         /* 选了场景：中栏步骤列表 + 右栏请求编辑器 */
         <>
           {/* 中栏：步骤列表 */}
-          <div style={{ width: 300, minWidth: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.5)' }}>
+          <div style={{ width: 300, minWidth: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
             <div style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Space size={4}>
@@ -441,7 +441,7 @@ export default function ApiTest() {
           </div>
 
           {/* 右栏：请求编辑器 */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'rgba(255,255,255,0.5)' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'transparent' }}>
             {selectedStep ? (
           <>
             {/* 顶部：步骤名(可编辑) + 运行/删除按钮 */}
@@ -497,7 +497,7 @@ export default function ApiTest() {
                     key: 'body',
                     label: <span>Body {selectedStep.body && <span style={{ color: '#0ea5a0' }}>●</span>}</span>,
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid #f0f0f0', fontSize: 11, color: '#8c8c8c', display: 'flex', justifyContent: 'space-between' }}>
                           <span>JSON</span>
                           <Button size="small" type="text" style={{ fontSize: 11, height: 18, padding: '0 4px' }}
@@ -524,7 +524,7 @@ export default function ApiTest() {
                     key: 'headers',
                     label: <span>Headers {selectedStep.headers && Object.keys(selectedStep.headers).length > 0 && <Tag style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{Object.keys(selectedStep.headers).length}</Tag>}</span>,
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
@@ -551,7 +551,7 @@ export default function ApiTest() {
                     key: 'assertions',
                     label: <span>断言 {selectedStep.assertions?.length > 0 && <Tag color="green" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{selectedStep.assertions.length}</Tag>}</span>,
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: '#f6f7f9' }}>
@@ -586,7 +586,7 @@ export default function ApiTest() {
                     key: 'variables',
                     label: '变量提取',
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', padding: 16 }}>
+                      <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', padding: 16 }}>
                         {selectedStep.variablesExtract && Object.keys(selectedStep.variablesExtract).length > 0 ? (
                           Object.entries(selectedStep.variablesExtract).map(([k, v]) => (
                             <div key={k} style={{ padding: '4px 0', fontSize: 13 }}>
@@ -603,7 +603,7 @@ export default function ApiTest() {
                     key: 'response',
                     label: <span>响应 {runResponse && <span style={{ color: runResponse.error ? '#e8453c' : '#0ea5a0' }}>●</span>}</span>,
                     children: (
-                      <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                         {runResponse ? (
                           runResponse.error ? (
                             <div style={{ padding: 16, color: '#e8453c' }}>{runResponse.error}</div>

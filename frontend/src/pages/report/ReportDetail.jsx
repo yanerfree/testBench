@@ -102,7 +102,7 @@ function JsonBlock({ data, maxHeight = 500 }) {
   }
   const lines = raw.split('\n')
   return (
-    <div style={{ background: '#f9fafb', borderRadius: 12, overflow: 'hidden' }}>
+    <div style={{ background: 'transparent', borderRadius: 12, overflow: 'hidden' }}>
       <div style={{ overflow: 'auto', maxHeight, padding: '10px 0',
         fontFamily: "Menlo, Monaco, 'Courier New', monospace", fontSize: 12, lineHeight: 1.9, color: '#383a42',
       }}>
@@ -308,7 +308,7 @@ function ScenarioExpanded({ scenario }) {
   return (
     <div style={{ padding: '16px 20px 16px 48px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* 执行信息卡片 */}
-      <div style={{ padding: '12px 16px', background: isPassed ? '#e0f7f6' : isFailed ? '#fff2f0' : '#f7f8fa', borderRadius: 12, border: `1px solid ${isPassed ? '#d4edda' : isFailed ? '#fde2e4' : '#f2f3f5'}` }}>
+      <div style={{ padding: '12px 16px', background: isPassed ? '#e0f7f6' : isFailed ? '#fff2f0' : 'rgba(0,0,0,0.02)', borderRadius: 12, border: `1px solid ${isPassed ? '#d4edda' : isFailed ? '#fde2e4' : '#f2f3f5'}` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <StatusIcon status={status} size={18} />
@@ -347,7 +347,7 @@ function ScenarioExpanded({ scenario }) {
           )}
           {parsed.errorLines.length > 0 && (
             <pre style={{
-              margin: 0, padding: '10px 14px', background: '#f7f8fa', color: '#e8453c',
+              margin: 0, padding: '10px 14px', background: 'rgba(0,0,0,0.02)', color: '#e8453c',
               borderRadius: 10, fontSize: 12, lineHeight: 1.5, overflow: 'auto', maxHeight: 200,
               whiteSpace: 'pre-wrap', wordBreak: 'break-all', border: '1px solid rgba(0,0,0,0.04)',
               fontFamily: "'SF Mono', 'Menlo', 'Monaco', monospace",
@@ -372,7 +372,7 @@ function ScenarioExpanded({ scenario }) {
             {caseSteps.map((step, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 12px',
-                background: 'rgba(255,255,255,0.3)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)',
+                background: 'transparent', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)',
               }}>
                 <span style={{
                   width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
@@ -404,7 +404,7 @@ function ScenarioExpanded({ scenario }) {
         <div>
           <div style={{ fontSize: 12, color: '#86909c', marginBottom: 6, fontWeight: 600 }}>执行日志</div>
           <pre style={{
-            margin: 0, padding: '12px 14px', background: '#f7f8fa', color: '#4e5969',
+            margin: 0, padding: '12px 14px', background: 'rgba(0,0,0,0.02)', color: '#4e5969',
             borderRadius: 10, fontSize: 12, lineHeight: 1.6, overflow: 'auto', maxHeight: 300,
             whiteSpace: 'pre-wrap', wordBreak: 'break-all', border: '1px solid rgba(0,0,0,0.04)',
             fontFamily: "'SF Mono', 'Menlo', 'Monaco', monospace",
@@ -567,10 +567,10 @@ export default function ReportDetail() {
             padding: '12px 20px',
             borderBottom: '1px solid rgba(0,0,0,0.04)',
             cursor: isAutomatic ? 'pointer' : 'default',
-            background: isExpanded ? '#f7f8fa' : '#fff',
+            background: isExpanded ? 'rgba(0,0,0,0.02)' : '#fff',
             transition: 'background 0.15s',
           }}
-          onMouseEnter={e => { if (isAutomatic) e.currentTarget.style.background = '#f7f8fa' }}
+          onMouseEnter={e => { if (isAutomatic) e.currentTarget.style.background = 'rgba(0,0,0,0.02)' }}
           onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = '#fff' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
@@ -615,7 +615,7 @@ export default function ReportDetail() {
         </div>
 
         {isExpanded && (
-          <div style={{ background: '#f7f8fa', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+          <div style={{ background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
             {loadingSteps[s.id] ? (
               <div style={{ textAlign: 'center', padding: 16 }}><Spin size="small" /></div>
             ) : steps && steps.length > 0 ? (
@@ -627,7 +627,7 @@ export default function ReportDetail() {
                     padding: '7px 20px 7px 48px', borderBottom: '1px solid rgba(0,0,0,0.04)',
                     cursor: 'pointer', fontSize: 13, transition: 'background .12s',
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.02)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>

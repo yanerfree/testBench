@@ -124,7 +124,7 @@ export default function CasePicker({ open, projectId, selectedIds = [], onOk, on
         {/* Left: Folder Tree */}
         <div style={{
           width: 220, borderRight: '1px solid #f2f3f5', padding: '12px 0',
-          overflow: 'auto', flexShrink: 0, background: '#f7f8fa',
+          overflow: 'auto', flexShrink: 0, background: 'rgba(0,0,0,0.02)',
         }}>
           <div style={{ padding: '0 12px 8px', fontSize: 13, fontWeight: 600, color: '#4e5969' }}>
             用例目录

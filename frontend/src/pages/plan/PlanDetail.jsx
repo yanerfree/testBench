@@ -158,8 +158,8 @@ export default function PlanDetail() {
               )}
               <Tag style={{ background: ps.color, color: '#fff', border: 'none' }}>{ps.label}</Tag>
               {executing && <Tag icon={<SyncOutlined spin />} color="processing">{execMessage}</Tag>}
-              <Tag style={{ background: '#f7f8fa', color: '#86909c', border: 'none' }}>{plan.planType === 'automated' ? '自动化' : '手动'}</Tag>
-              <Tag style={{ background: '#f7f8fa', color: '#86909c', border: 'none' }}>{plan.testType?.toUpperCase()}</Tag>
+              <Tag style={{ background: 'rgba(0,0,0,0.02)', color: '#86909c', border: 'none' }}>{plan.planType === 'automated' ? '自动化' : '手动'}</Tag>
+              <Tag style={{ background: 'rgba(0,0,0,0.02)', color: '#86909c', border: 'none' }}>{plan.testType?.toUpperCase()}</Tag>
             </div>
             <Space size={20} style={{ fontSize: 13, color: '#86909c', paddingLeft: 40 }}>
               <span><ClockCircleOutlined style={{ marginRight: 4 }} />创建于 {new Date(plan.createdAt).toLocaleString('zh-CN')}</span>
@@ -285,7 +285,7 @@ export default function PlanDetail() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {/* Table Header */}
-            <div style={{ display: 'flex', padding: '8px 16px', background: '#f7f8fa', borderRadius: '6px 6px 0 0', fontSize: 12, color: '#86909c', fontWeight: 500 }}>
+            <div style={{ display: 'flex', padding: '8px 16px', background: 'rgba(0,0,0,0.02)', borderRadius: '6px 6px 0 0', fontSize: 12, color: '#86909c', fontWeight: 500 }}>
               <div style={{ width: 50 }}>#</div>
               <div style={{ flex: 3 }}>执行时间</div>
               <div style={{ flex: 2, textAlign: 'center' }}>状态</div>

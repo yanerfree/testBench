@@ -242,7 +242,7 @@ function ResponsePanel({ response, onUseAsBody }) {
       </div>
       {sc === 0 && (
         <div style={{ marginBottom: 8, padding: '8px 12px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 10, fontSize: 12, color: '#cf1322' }}>
-          请求失败，请检查：URL 是否正确、服务是否在运行、环境变量是否配置（如 <code style={{ background: 'rgba(255,255,255,0.3)', padding: '0 4px', borderRadius: 3 }}>{'{{BASE_URL}}'}</code>）
+          请求失败，请检查：URL 是否正确、服务是否在运行、环境变量是否配置（如 <code style={{ background: 'transparent', padding: '0 4px', borderRadius: 3 }}>{'{{BASE_URL}}'}</code>）
         </div>
       )}
       {viewTab === 'body' && (
@@ -259,7 +259,7 @@ function ResponsePanel({ response, onUseAsBody }) {
               {isJson && onUseAsBody && <Tooltip title="填入请求 Body"><Button size="small" icon={<SwapOutlined />} onClick={() => onUseAsBody(prettyBody)}>用作 Body</Button></Tooltip>}
             </Space>
           </div>
-          <pre style={{ margin: 0, padding: 12, background: '#f5f6f8', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 10, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', cursor: isJson ? 'text' : 'default' }}>{displayBody}</pre>
+          <pre style={{ margin: 0, padding: 12, background: 'rgba(255,255,255,0.35)', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 10, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', cursor: isJson ? 'text' : 'default' }}>{displayBody}</pre>
         </div>
       )}
       {viewTab === 'headers' && respHeaders.map((h, i) => (
@@ -593,7 +593,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,0,0,0.04)', background: '#f9fafb', flexShrink: 0, paddingLeft: 8, overflowX: 'auto' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,0,0,0.04)', background: 'transparent', flexShrink: 0, paddingLeft: 8, overflowX: 'auto' }}>
         {tabs.map(t => (
           <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
             padding: '8px 14px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
@@ -894,11 +894,11 @@ export default function ApiManagement() {
   if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
 
   return (
-    <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden', height: 'calc(100vh - 80px)', background: 'rgba(255,255,255,0.3)' }}>
+    <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden', height: 'calc(100vh - 80px)', background: 'transparent' }}>
       {/* 左侧：接口树 */}
       <div style={{ width: 300, borderRight: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         {/* 工具栏 */}
-        <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 6, background: '#f5f6f8' }}>
+        <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.35)' }}>
           <Input size="small" prefix={<SearchOutlined style={{ color: '#999' }} />} placeholder="搜索接口..."
             value={search} onChange={e => setSearch(e.target.value)} allowClear style={{ flex: 1, fontSize: 11 }} />
           <Dropdown menu={{ items: [
@@ -912,7 +912,7 @@ export default function ApiManagement() {
         </div>
 
         {/* 全局环境选择器 */}
-        <div style={{ padding: '6px 10px', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 6, background: '#f9fafb' }}>
+        <div style={{ padding: '6px 10px', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 6, background: 'transparent' }}>
           <GlobalOutlined style={{ fontSize: 12, color: '#0ea5a0' }} />
           <Select size="small" value={runEnv || '__none__'} onChange={v => handleEnvChange(v === '__none__' ? null : v)}
             style={{ flex: 1 }} popupMatchSelectWidth={false}
@@ -972,7 +972,7 @@ export default function ApiManagement() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* 多标签栏 */}
         {openTabs.length > 0 && (
-          <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,0,0,0.05)', background: '#f9fafb', overflowX: 'auto', flexShrink: 0 }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'transparent', overflowX: 'auto', flexShrink: 0 }}>
             {openTabs.map(tid => {
               const tn = nodes.find(n => n.id === tid)
               if (!tn) return null
@@ -1042,7 +1042,7 @@ export default function ApiManagement() {
       {/* 右键菜单 */}
       {ctxMenu && (
         <div style={{ position: 'fixed', left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000 }} onClick={() => setCtxMenu(null)}>
-          <div style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 12, boxShadow: '0 6px 16px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 160 }}>
+          <div style={{ background: 'transparent', borderRadius: 12, boxShadow: '0 6px 16px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 160 }}>
             {ctxMenu.items.map((item, i) => item.type === 'divider'
               ? <div key={i} style={{ height: 1, background: '#e0e0e0', margin: '4px 0' }} />
               : <div key={item.key} onClick={item.onClick} style={{

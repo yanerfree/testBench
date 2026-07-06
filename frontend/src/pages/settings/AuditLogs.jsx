@@ -127,7 +127,7 @@ export default function AuditLogs() {
 
       <div style={{
         display: 'flex', gap: 10, marginBottom: 12, padding: '12px 16px',
-        background: 'rgba(255,255,255,0.3)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)',
+        background: 'transparent', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)',
       }}>
         <Input
           prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />}
@@ -161,7 +161,7 @@ export default function AuditLogs() {
         />
       </div>
 
-      <div style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', padding: 2 }}>
+      <div style={{ background: 'transparent', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', padding: 2 }}>
         <Table
           dataSource={logs}
           columns={columns}
@@ -225,7 +225,7 @@ export default function AuditLogs() {
               <div>
                 <div style={{ fontSize: 12, color: '#86909c', marginBottom: 6 }}>变更摘要</div>
                 <pre style={{
-                  margin: 0, padding: '12px 14px', background: '#f9fafb', borderRadius: 10,
+                  margin: 0, padding: '12px 14px', background: 'transparent', borderRadius: 10,
                   fontSize: 12, lineHeight: 1.8, overflow: 'auto', maxHeight: 400,
                   whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                   fontFamily: "Menlo, Monaco, 'Courier New', monospace",

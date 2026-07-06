@@ -152,7 +152,7 @@ function AppLayout() {
   const displayName = user.username === 'admin' ? '管理员' : user.username || '用户'
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout className="app-layout-root" style={{ minHeight: '100vh' }}>
       <style>{`
         button.ant-btn[class*="color-primary"][class*="variant-solid"] {
           border-radius: 20px !important;
@@ -181,10 +181,13 @@ function AppLayout() {
           border-color: #a8e6c3 !important;
           border-radius: 20px !important;
         }
+        .app-layout-root {
+          position: relative;
+        }
       `}</style>
       {/* 顶栏 */}
       <Header style={{
-        background: 'linear-gradient(90deg, #edf7f1 0%, #f0edf8 50%, #edf2f8 100%)', height: 46, lineHeight: '46px', padding: '0 16px',
+        background: 'transparent', height: 46, lineHeight: '46px', padding: '0 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         borderBottom: '1px solid rgba(0,0,0,0.04)',
       }}>
@@ -221,7 +224,7 @@ function AppLayout() {
           collapsedWidth={52}
           collapsed={collapsed}
           theme="light"
-          style={{ background: 'linear-gradient(180deg, #edf7f1 0%, #f0edf8 50%, #edf2f8 100%)', borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}
+          style={{ background: 'transparent', borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}
         >
           <div style={{ flex: 1, overflow: 'auto' }}>
             <Menu
@@ -243,7 +246,7 @@ function AppLayout() {
           </div>
         </Sider>
 
-        <Content style={{ padding: '12px 16px', background: 'linear-gradient(160deg, #edf7f1 0%, #f0edf8 35%, #edf2f8 65%, #f8f5f0 100%)', overflow: 'auto', minHeight: 'calc(100vh - 46px)' }}>
+        <Content className="app-content-area" style={{ padding: '12px 16px', background: 'transparent', overflow: 'auto', minHeight: 'calc(100vh - 46px)' }}>
           <Routes>
             <Route path="/" element={<Navigate to="/projects" replace />} />
             <Route path="/projects" element={<ProjectList />} />

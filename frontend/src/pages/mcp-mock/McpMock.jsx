@@ -109,11 +109,11 @@ export default function McpMock() {
   const mcpUrl = `http://${window.location.hostname}:8000/mcp/`
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', background: '#f8f9fb' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', background: 'transparent' }}>
 
       {/* ━━━ 顶栏 ━━━ */}
       <div style={{
-        padding: '10px 20px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.05)',
+        padding: '10px 20px', background: 'transparent', borderBottom: '1px solid rgba(0,0,0,0.03)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -125,7 +125,7 @@ export default function McpMock() {
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '2px 10px', borderRadius: 12,
             background: enabled ? '#e0f7f6' : '#f5f5f5',
-            border: `1px solid ${enabled ? 'rgba(14,165,160,0.3)' : '#d9d9d9'}`,
+            border: `1px solid ${enabled ? 'rgba(14,165,160,0.3)' : 'rgba(0,0,0,0.1)'}`,
           }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: enabled ? '#0ea5a0' : '#bfbfbf' }} />
             <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: enabled ? '#389e0d' : '#999' }}>
@@ -143,7 +143,7 @@ export default function McpMock() {
       </div>
 
       {/* ━━━ 主体 ━━━ */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'rgba(255,255,255,0.3)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'transparent' }}>
 
         {/* Tab 栏 */}
         <div style={{ borderBottom: '1px solid rgba(0,0,0,0.04)', paddingLeft: 16, flexShrink: 0 }}>
@@ -174,7 +174,7 @@ export default function McpMock() {
             <div style={{ height: '100%', overflow: 'auto' }}>
               <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ background: '#f9fafb', position: 'sticky', top: 0, zIndex: 1 }}>
+                  <tr style={{ background: 'transparent', position: 'sticky', top: 0, zIndex: 1 }}>
                     {['工具名称', '说明', '响应模式', ''].map((h, i) => (
                       <th key={h || 'op'} style={{
                         padding: '8px 16px', textAlign: 'left',
@@ -185,7 +185,7 @@ export default function McpMock() {
                 </thead>
                 <tbody>
                   {tools.map(t => (
-                    <tr key={t.name} style={{ borderBottom: '1px solid #fafafa' }}>
+                    <tr key={t.name} style={{ borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
                       <td style={{ padding: '10px 16px' }}>
                         <Text code style={{ fontSize: 12 }}>{t.name}</Text>
                       </td>
@@ -230,7 +230,7 @@ export default function McpMock() {
               <div style={{ flex: 1, overflow: 'auto' }}>
                 <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ background: '#f9fafb', position: 'sticky', top: 0, zIndex: 1 }}>
+                    <tr style={{ background: 'transparent', position: 'sticky', top: 0, zIndex: 1 }}>
                       {['时间', '工具', '来源', '模式', '状态', '耗时', ''].map((h, i) => (
                         <th key={h || 'op'} style={{
                           padding: '6px 10px', textAlign: i >= 5 ? 'right' : 'left',
@@ -244,7 +244,7 @@ export default function McpMock() {
                     {logs.map(l => (
                       <Fragment key={l.id}>
                         <tr onClick={() => setExpandedLogId(expandedLogId === l.id ? null : l.id)} style={{
-                          cursor: 'pointer', borderBottom: '1px solid #fafafa',
+                          cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.03)',
                           background: expandedLogId === l.id ? '#e6f4ff' : 'transparent',
                         }}>
                           <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', fontSize: 11, color: '#8c8c8c' }}>
@@ -268,13 +268,13 @@ export default function McpMock() {
                         </tr>
                         {expandedLogId === l.id && (
                           <tr>
-                            <td colSpan={7} style={{ padding: '10px 16px', background: '#f9fafb', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                            <td colSpan={7} style={{ padding: '10px 16px', background: 'transparent', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                               <div style={{ display: 'flex', gap: 24, fontSize: 12 }}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>请求参数</div>
                                   <pre style={{
                                     maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
-                                    background: 'rgba(255,255,255,0.3)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
+                                    background: 'transparent', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                                     whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                                   }}>{JSON.stringify(l.arguments, null, 2)}</pre>
                                 </div>
@@ -282,7 +282,7 @@ export default function McpMock() {
                                   <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应结果</div>
                                   <pre style={{
                                     maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
-                                    background: 'rgba(255,255,255,0.3)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
+                                    background: 'transparent', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                                     whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                                   }}>{(() => { try { return JSON.stringify(JSON.parse(l.response), null, 2) } catch { return l.response } })()}</pre>
                                 </div>
@@ -300,7 +300,7 @@ export default function McpMock() {
               </div>
 
               {logsTotal > 50 && (
-                <div style={{ padding: '8px 16px', borderTop: '1px solid #f0f0f0', flexShrink: 0, textAlign: 'right' }}>
+                <div style={{ padding: '8px 16px', borderTop: '1px solid rgba(0,0,0,0.04)', flexShrink: 0, textAlign: 'right' }}>
                   <Pagination size="small" current={logPage} pageSize={50} total={logsTotal}
                     showTotal={t => `共 ${t} 条`} showSizeChanger={false}
                     onChange={p => { setLogPage(p); setExpandedLogId(null); fetchLogs(p) }} />

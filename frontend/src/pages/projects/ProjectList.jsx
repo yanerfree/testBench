@@ -15,7 +15,7 @@ const ROLE_TAG = {
   project_admin: { color: '#e8453c', bg: '#fff2f0' },
   developer: { color: '#0ea5a0', bg: '#e0f7f6' },
   tester: { color: '#0ea5a0', bg: '#e0f7f6' },
-  guest: { color: '#86909c', bg: '#f7f8fa' },
+  guest: { color: '#86909c', bg: 'rgba(0,0,0,0.02)' },
 }
 
 // ---- 成员管理弹窗 ----

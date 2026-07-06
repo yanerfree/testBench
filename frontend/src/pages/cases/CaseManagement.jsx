@@ -63,7 +63,7 @@ function BranchManageModal({ projectId, open, onClose, onBranchesChanged }) {
   const openEdit = (b) => { setEditBranch(b); editForm.setFieldsValue({ branch: b.branch, description: b.description }) }
 
   const renderBranchItem = (b) => (
-    <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 12, background: '#f7f8fa', marginBottom: 6 }}>
+    <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 12, background: 'rgba(0,0,0,0.02)', marginBottom: 6 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 500, fontSize: 14 }}>{b.name}<span style={{ fontSize: 12, color: '#86909c', marginLeft: 8 }}>({b.branch})</span></div>
         {b.description && <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>{b.description}</div>}
@@ -800,7 +800,7 @@ export default function CaseManagement() {
               />
             </Form.Item>
           </div>
-          <div style={{ padding: '8px 12px', background: '#f7f8fa', borderRadius: 12 }}>
+          <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 12 }}>
             <div style={{ fontSize: 12, color: '#86909c', marginBottom: 8 }}>同时初始化场景（可选）</div>
             <Space>
               <Form.Item name="initApi" valuePropName="checked" noStyle>
@@ -911,7 +911,7 @@ export default function CaseManagement() {
             {reviewResult.report?.dimensions && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
                 {Object.entries(reviewResult.report.dimensions).map(([key, dim]) => (
-                  <div key={key} style={{ padding: '8px 12px', background: '#f9fafb', borderRadius: 10, borderLeft: `3px solid ${dim.score >= 80 ? '#0ea5a0' : dim.score >= 60 ? '#faad14' : '#e8453c'}` }}>
+                  <div key={key} style={{ padding: '8px 12px', background: 'transparent', borderRadius: 10, borderLeft: `3px solid ${dim.score >= 80 ? '#0ea5a0' : dim.score >= 60 ? '#faad14' : '#e8453c'}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Text strong>{{completeness:'完整性',accuracy:'准确性',effectiveness:'有效性',executability:'可执行性'}[key] || key}</Text>
                       <Text strong>{dim.score} 分 ({dim.weight}%)</Text>

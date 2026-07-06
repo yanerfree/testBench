@@ -73,19 +73,25 @@ body {
 /* --- Card --- */
 .ant-card {
   border-radius: var(--radius-lg) !important;
-  border: 1px solid rgba(0,0,0,0.05) !important;
-  box-shadow: none !important;
+  border: 1px solid rgba(255,255,255,0.5) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04) !important;
   transition: all 0.3s ease !important;
   background: rgba(255,255,255,0.35) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
 }
 .ant-card:hover {
-  background: rgba(255,255,255,0.55) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05) !important;
+  background: rgba(255,255,255,0.5) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06) !important;
+  transform: translateY(-2px);
 }
 .ant-card .ant-card-head {
-  border-bottom: 1px solid rgba(0,0,0,0.04) !important;
+  border-bottom: 1px solid rgba(0,0,0,0.03) !important;
   min-height: 40px !important;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+  background: transparent !important;
+}
+.ant-card .ant-card-body {
   background: transparent !important;
 }
 
@@ -182,8 +188,14 @@ button.ant-btn[class*="variant-dashed"] {
   border-radius: var(--radius-lg) !important;
   overflow: hidden !important;
 }
+.ant-table-content {
+  background: transparent !important;
+}
+.ant-table-wrapper {
+  background: transparent !important;
+}
 .ant-table-thead > tr > th {
-  background: rgba(255,255,255,0.4) !important;
+  background: rgba(255,255,255,0.3) !important;
   font-weight: 600 !important;
   color: var(--text-secondary) !important;
   font-size: 13px !important;
@@ -191,12 +203,12 @@ button.ant-btn[class*="variant-dashed"] {
   letter-spacing: 0.5px !important;
 }
 .ant-table-tbody > tr > td {
-  background: rgba(255,255,255,0.3) !important;
+  background: transparent !important;
   border-bottom: 1px solid rgba(0,0,0,0.03) !important;
   transition: background 0.2s ease !important;
 }
 .ant-table-tbody > tr:hover > td {
-  background: rgba(255,255,255,0.55) !important;
+  background: rgba(255,255,255,0.35) !important;
 }
 
 /* --- Modal --- */
@@ -314,6 +326,18 @@ textarea.ant-input {
   border-radius: 20px !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
   padding: 8px 20px !important;
+}
+
+/* --- Layout 强制透明 --- */
+.app-layout-root {
+  background: linear-gradient(135deg, #d0ede9 0%, #e3d8f0 100%) !important;
+}
+.app-layout-root .ant-layout,
+.app-layout-root .ant-layout-header,
+.app-layout-root .ant-layout-sider,
+.app-layout-root .ant-layout-sider-children,
+.app-layout-root .ant-layout-content {
+  background: transparent !important;
 }
 
 /* --- Scrollbar --- */

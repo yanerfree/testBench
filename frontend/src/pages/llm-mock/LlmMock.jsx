@@ -340,7 +340,7 @@ export default function LlmMock() {
           {/* URL 栏 */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 0, marginBottom: 8,
-            border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, overflow: 'hidden', background: '#f9fafb',
+            border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, overflow: 'hidden', background: 'transparent',
           }}>
             <Select value={routeForm.method} onChange={v => setRouteForm(f => ({ ...f, method: v }))}
               variant="borderless" style={{ width: 100, flexShrink: 0 }} popupMatchSelectWidth={100}>
@@ -350,9 +350,9 @@ export default function LlmMock() {
                 </Select.Option>
               ))}
             </Select>
-            <div style={{ width: 1, height: 24, background: '#d9d9d9', flexShrink: 0 }} />
+            <div style={{ width: 1, height: 24, background: 'rgba(0,0,0,0.08)', flexShrink: 0 }} />
             <Input value={routeForm.path} onChange={e => setRouteForm(f => ({ ...f, path: e.target.value }))}
-              variant="borderless" style={{ fontFamily: MONO, fontSize: 13, background: 'rgba(255,255,255,0.3)' }} placeholder="/v1/chat/completions" />
+              variant="borderless" style={{ fontFamily: MONO, fontSize: 13, background: 'transparent' }} placeholder="/v1/chat/completions" />
           </div>
 
           {/* 完整访问地址 */}
@@ -512,7 +512,7 @@ export default function LlmMock() {
                       : '输入 AI 回复文本...\n支持: ${request.model}  ${request.messages[-1].content}  ${timestamp}'}
                   />
                 ) : (
-                  <div style={{ padding: '14px', background: '#f9fafb', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', fontSize: 12, color: '#8c8c8c' }}>
+                  <div style={{ padding: '14px', background: 'transparent', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', fontSize: 12, color: '#8c8c8c' }}>
                     Tool Calls 函数在右侧「高级设置」中配置
                   </div>
                 )}
@@ -578,7 +578,7 @@ export default function LlmMock() {
       <div style={{ flex: 1, overflow: 'auto' }}>
         <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ background: '#f9fafb', position: 'sticky', top: 0, zIndex: 1 }}>
+            <tr style={{ background: 'transparent', position: 'sticky', top: 0, zIndex: 1 }}>
               {['时间', '状态', '方法', '路径', '请求模型', '响应模型', 'Tokens', '耗时', ''].map((h, i) => (
                 <th key={h || 'op'} style={{
                   padding: '6px 10px', textAlign: i >= 6 ? 'right' : 'left',
@@ -592,7 +592,7 @@ export default function LlmMock() {
             {logs.map(l => (
               <Fragment key={l.id}>
               <tr key={l.id} onClick={() => handleToggleLogDetail(l.id)} style={{
-                cursor: 'pointer', borderBottom: '1px solid #fafafa',
+                cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.03)',
                 background: expandedLogId === l.id ? '#e6f4ff' : 'transparent',
               }}>
                 <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', fontSize: 11, color: '#8c8c8c' }}>
@@ -617,7 +617,7 @@ export default function LlmMock() {
               </tr>
               {expandedLogId === l.id && expandedLogDetail && (
                 <tr key={`${l.id}-detail`}>
-                  <td colSpan={9} style={{ padding: '10px 16px', background: '#f9fafb', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                  <td colSpan={9} style={{ padding: '10px 16px', background: 'transparent', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                     <div style={{ display: 'flex', gap: 24, fontSize: 12 }}>
                       {expandedLogDetail.requestBody?.messages && (
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -626,7 +626,7 @@ export default function LlmMock() {
                             {expandedLogDetail.requestBody.messages.map((m, i) => (
                               <div key={i} style={{
                                 marginBottom: 2, padding: '3px 8px', borderRadius: 12, fontSize: 11,
-                                background: m.role === 'user' ? '#fff7e6' : m.role === 'system' ? '#f0f0f0' : '#e0f7f6',
+                                background: m.role === 'user' ? '#fff7e6' : m.role === 'system' ? '#f0f0f5' : '#e0f7f6',
                                 overflow: 'hidden', textOverflow: 'ellipsis',
                               }}>
                                 <span style={{ color: '#8c8c8c', fontSize: 10 }}>{m.role}</span>{' '}
@@ -640,7 +640,7 @@ export default function LlmMock() {
                         <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应内容</div>
                         <pre style={{
                           maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
-                          background: 'rgba(255,255,255,0.3)', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
+                          background: 'transparent', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
                           whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                         }}>
                           {(() => { try { return JSON.stringify(JSON.parse(expandedLogDetail.responseBody), null, 2) } catch { return expandedLogDetail.responseBody || '-' } })()}
@@ -659,7 +659,7 @@ export default function LlmMock() {
       </div>
 
       {logsTotal > logPageSize && (
-        <div style={{ padding: '8px 16px', borderTop: '1px solid #f0f0f0', flexShrink: 0, textAlign: 'right' }}>
+        <div style={{ padding: '8px 16px', borderTop: '1px solid rgba(0,0,0,0.04)', flexShrink: 0, textAlign: 'right' }}>
           <Pagination size="small" current={logPage} pageSize={logPageSize} total={logsTotal}
             showTotal={t => `共 ${t} 条`} showSizeChanger={false}
             onChange={p => { setLogPage(p); setExpandedLogId(null); fetchLogs(p) }} />
@@ -669,11 +669,11 @@ export default function LlmMock() {
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', background: '#f8f9fb' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', background: 'transparent' }}>
 
       {/* ━━━ 顶栏 ━━━ */}
       <div style={{
-        padding: '10px 20px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.05)',
+        padding: '10px 20px', background: 'transparent', borderBottom: '1px solid rgba(0,0,0,0.03)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -685,7 +685,7 @@ export default function LlmMock() {
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '2px 10px', borderRadius: 12,
             background: serviceStatus.running ? '#e0f7f6' : '#f5f5f5',
-            border: `1px solid ${serviceStatus.running ? 'rgba(14,165,160,0.3)' : '#d9d9d9'}`,
+            border: `1px solid ${serviceStatus.running ? 'rgba(14,165,160,0.3)' : 'rgba(0,0,0,0.1)'}`,
           }}>
             <Badge status={serviceStatus.running ? 'success' : 'default'} />
             <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: serviceStatus.running ? '#389e0d' : '#999' }}>
@@ -717,7 +717,7 @@ export default function LlmMock() {
 
         {/* 左栏：路由列表 */}
         <div style={{
-          width: 260, flexShrink: 0, background: 'rgba(255,255,255,0.3)', borderRight: '1px solid rgba(0,0,0,0.05)',
+          width: 260, flexShrink: 0, background: 'transparent', borderRight: '1px solid rgba(0,0,0,0.05)',
           display: 'flex', flexDirection: 'column',
         }}>
           <div style={{
@@ -738,7 +738,7 @@ export default function LlmMock() {
                 <div key={r.id} onClick={() => selectRoute(r)} style={{
                   padding: '10px 12px', marginBottom: 4, borderRadius: 10, cursor: 'pointer',
                   background: sel ? '#e6f4ff' : 'transparent',
-                  borderLeft: `3px solid ${sel ? '#4e8af0' : r.enabled ? '#0ea5a0' : '#d9d9d9'}`,
+                  borderLeft: `3px solid ${sel ? '#4e8af0' : r.enabled ? '#0ea5a0' : 'rgba(0,0,0,0.1)'}`,
                   transition: 'all .15s',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -771,7 +771,7 @@ export default function LlmMock() {
         </div>
 
         {/* 右栏：Tab(配置/日志) */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'rgba(255,255,255,0.3)' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'transparent' }}>
           <div style={{ borderBottom: '1px solid rgba(0,0,0,0.04)', paddingLeft: 16, flexShrink: 0 }}>
             <div style={{ display: 'flex', gap: 0 }}>
               {[

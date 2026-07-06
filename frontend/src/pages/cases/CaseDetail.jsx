@@ -22,7 +22,7 @@ const dotColors = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: '#d9d9d9', 
 const phaseColor = { setup: '#7c5cbf', action: '#0ea5a0', verify: '#0ea5a0' }
 const phaseLabel = { setup: '准备', action: '操作', verify: '验证' }
 const scenarioStatusMap = {
-  draft: { label: '草稿', color: '#86909c', bg: '#f7f8fa' },
+  draft: { label: '草稿', color: '#86909c', bg: 'rgba(0,0,0,0.02)' },
   debugging: { label: '调试中', color: '#faad14', bg: '#fffbe6' },
   completed: { label: '已完成', color: '#0ea5a0', bg: '#e0f7f6' },
 }
@@ -36,7 +36,7 @@ function InlineProp({ icon, value, color, bg, children }) {
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px 2px 6px',
         borderRadius: 10, fontSize: 12, cursor: 'pointer', transition: 'all 0.15s',
-        background: bg || '#f7f8fa', color: color || '#4e5969', border: '1px solid transparent',
+        background: bg || 'rgba(0,0,0,0.02)', color: color || '#4e5969', border: '1px solid transparent',
         userSelect: 'none', lineHeight: '22px',
       }}
         onMouseEnter={e => e.currentTarget.style.borderColor = '#e5e6eb'}
@@ -53,7 +53,7 @@ function ReadonlyProp({ icon, label, value, bg }) {
     <Tooltip title={label}>
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px 2px 6px',
-        borderRadius: 10, fontSize: 12, background: bg || '#f7f8fa', lineHeight: '22px',
+        borderRadius: 10, fontSize: 12, background: bg || 'rgba(0,0,0,0.02)', lineHeight: '22px',
       }}>
         {icon && <span style={{ fontSize: 11, color: '#86909c', display: 'flex' }}>{icon}</span>}
         {label && <span style={{ color: '#86909c' }}>{label}</span>}
@@ -73,7 +73,7 @@ function DropdownList({ items, activeKey, onSelect }) {
           background: activeKey === item.key ? '#e0f7f6' : 'transparent',
           fontWeight: activeKey === item.key ? 600 : 400,
         }}
-          onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.02)'}
           onMouseLeave={e => e.currentTarget.style.background = activeKey === item.key ? '#e0f7f6' : 'transparent'}>
           {item.dot && <span style={{ width: 8, height: 8, borderRadius: item.dot === 'circle' ? '50%' : 2, background: item.color, flexShrink: 0 }} />}
           {item.icon && <span>{item.icon}</span>}
@@ -101,7 +101,7 @@ function ScenarioStepsView({ steps, extraCol, extraColLabel, extraPlaceholder, e
     <div style={{ borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
       <div style={{
         display: 'flex', gap: 10, padding: '6px 14px', fontSize: 12, fontWeight: 600,
-        background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
+        background: 'rgba(0,0,0,0.02)', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
       }}>
         <span style={{ width: 28, flexShrink: 0 }}>#</span>
         <span style={{ width: 52, flexShrink: 0 }}>阶段</span>
@@ -152,7 +152,7 @@ function ScriptViewer({ scriptData, loading, error, onRetry }) {
     <div>
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '8px 16px', background: '#f7f8fa', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 12,
+        padding: '8px 16px', background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 12,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <FileTextOutlined style={{ color: '#86909c' }} />
@@ -210,7 +210,7 @@ function ScenarioCard({ scenario, type, accentColor, icon, scriptContent, script
     <Card styles={{ body: { padding: '16px 20px' } }}>
       {/* 脚本引用 */}
       {scenario.scriptRefFile && (
-        <div style={{ marginBottom: 16, padding: '8px 12px', background: '#f7f8fa', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ marginBottom: 16, padding: '8px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
           <CodeOutlined style={{ color: '#86909c' }} />
           <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#4e5969' }}>{scenario.scriptRefFile}</span>
           {scenario.scriptRefFunc && <Tag color={accentColor} style={{ fontSize: 11, margin: 0 }}>{scenario.scriptRefFunc}</Tag>}
@@ -393,7 +393,7 @@ function ScenarioEditor({
               <div style={{ borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                 <div style={{
                   display: 'flex', gap: 6, padding: '6px 14px', fontSize: 12, fontWeight: 600,
-                  background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
+                  background: 'rgba(0,0,0,0.02)', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
                 }}>
                   <span style={{ width: 24, flexShrink: 0 }}></span>
                   <span style={{ width: 28, flexShrink: 0 }}>#</span>
@@ -752,7 +752,7 @@ export default function CaseDetail() {
             <DropdownList activeKey={automationStatus} onSelect={setAutomationStatus}
               items={['automated','pending','removed'].map(s => ({ key: s, label: statusLabels[s], dot: 'circle', color: dotColors[s] }))} />
           </InlineProp>
-          <InlineProp icon={<WarningOutlined />} value={flaky ? 'Flaky' : '正常'} color={flaky ? '#faad14' : '#86909c'} bg={flaky ? '#fffbe6' : '#f7f8fa'}>
+          <InlineProp icon={<WarningOutlined />} value={flaky ? 'Flaky' : '正常'} color={flaky ? '#faad14' : '#86909c'} bg={flaky ? '#fffbe6' : 'rgba(0,0,0,0.02)'}>
             <div style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ fontSize: 13 }}>Flaky 标记</span>
               <Switch size="small" checked={flaky} onChange={v => setFlaky(v)} />
@@ -773,7 +773,7 @@ export default function CaseDetail() {
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
                 borderRadius: 12, fontSize: 11, fontWeight: 500,
-                background: hasApi ? '#e0f7f6' : '#f7f8fa',
+                background: hasApi ? '#e0f7f6' : 'rgba(0,0,0,0.02)',
                 color: hasApi ? (scenarioStatusMap[apiScenarioStatus] || {}).color || '#0ea5a0' : '#c9cdd4',
                 border: `1px solid ${hasApi ? '#91d5ff' : '#e5e6eb'}`,
               }}>
@@ -786,7 +786,7 @@ export default function CaseDetail() {
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
                 borderRadius: 12, fontSize: 11, fontWeight: 500,
-                background: hasUi ? '#f0f5ff' : '#f7f8fa',
+                background: hasUi ? '#f0f5ff' : 'rgba(0,0,0,0.02)',
                 color: hasUi ? (scenarioStatusMap[uiScenarioStatus] || {}).color || '#7c5cbf' : '#c9cdd4',
                 border: `1px solid ${hasUi ? '#d3adf7' : '#e5e6eb'}`,
               }}>
@@ -807,7 +807,7 @@ export default function CaseDetail() {
                 <div style={{ marginBottom: 20 }}>
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>前置条件</h4>
                   <Input.TextArea rows={2} value={preconditions} onChange={e => setPreconditions(e.target.value)}
-                    style={{ background: '#f7f8fa', borderColor: '#f2f3f5' }} autoSize={{ minRows: 2, maxRows: 6 }} />
+                    style={{ background: 'rgba(0,0,0,0.02)', borderColor: '#f2f3f5' }} autoSize={{ minRows: 2, maxRows: 6 }} />
                 </div>
 
                 <div style={{ marginBottom: 20 }}>
@@ -818,7 +818,7 @@ export default function CaseDetail() {
                   <div style={{ borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                     <div style={{
                       display: 'flex', gap: 10, padding: '6px 14px', fontSize: 12, fontWeight: 600,
-                      background: '#f7f8fa', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
+                      background: 'rgba(0,0,0,0.02)', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
                     }}>
                       <span style={{ width: 24, flexShrink: 0 }}></span>
                       <span style={{ width: 28, flexShrink: 0 }}>#</span>
@@ -859,13 +859,13 @@ export default function CaseDetail() {
                 <div style={{ marginBottom: 20 }}>
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>预期结果</h4>
                   <Input.TextArea value={expectedResult} onChange={e => setExpectedResult(e.target.value)}
-                    style={{ background: '#f7f8fa', borderColor: '#f2f3f5' }} autoSize={{ minRows: 2, maxRows: 6 }} />
+                    style={{ background: 'rgba(0,0,0,0.02)', borderColor: '#f2f3f5' }} autoSize={{ minRows: 2, maxRows: 6 }} />
                 </div>
 
                 <div>
                   <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>备注</h4>
                   <Input.TextArea value={remark} onChange={e => setRemark(e.target.value)}
-                    placeholder="可选备注信息" style={{ background: '#f7f8fa', borderColor: '#f2f3f5' }}
+                    placeholder="可选备注信息" style={{ background: 'rgba(0,0,0,0.02)', borderColor: '#f2f3f5' }}
                     autoSize={{ minRows: 2, maxRows: 4 }} />
                 </div>
               </Card>
@@ -1008,7 +1008,7 @@ export default function CaseDetail() {
 
       <Modal open={runModalOpen} onCancel={() => { setRunModalOpen(false); setRunResult(null); setRunStatus('idle') }} footer={null} title="执行用例" width={560}>
         <div style={{ padding: '12px 0' }}>
-          <div style={{ padding: '12px 16px', background: '#f7f8fa', borderRadius: 10, marginBottom: 20 }}>
+          <div style={{ padding: '12px 16px', background: 'rgba(0,0,0,0.02)', borderRadius: 10, marginBottom: 20 }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>{title}</div>
             <div style={{ fontSize: 12, color: '#86909c', fontFamily: 'monospace' }}>{caseCode}</div>
           </div>

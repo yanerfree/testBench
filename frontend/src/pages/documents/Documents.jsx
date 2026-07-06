@@ -448,7 +448,7 @@ function DocPreviewWithToc({ content }) {
       {headings.length > 0 && (
         <div className="doc-toc" style={{
           width: 220, minWidth: 220, borderRight: '1px solid rgba(0,0,0,0.05)',
-          padding: '16px 0', overflowY: 'auto', fontSize: 13, background: '#f9fafb',
+          padding: '16px 0', overflowY: 'auto', fontSize: 13, background: 'transparent',
         }}>
           <div style={{ padding: '0 16px 8px', fontWeight: 600, fontSize: 12, color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             目录

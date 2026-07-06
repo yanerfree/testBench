@@ -117,9 +117,9 @@ export default function ManualRecord() {
   const isLastPending = selectedEdit.result && pendingCount === 0
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f9fafb' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
       {/* 顶栏 */}
-      <div style={{ height: 54, background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0 }}>
+      <div style={{ height: 54, background: 'transparent', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} />
           <span style={{ fontSize: 15, fontWeight: 600, color: '#1d2129' }}>{plan?.name || '手动录入'}</span>
@@ -137,7 +137,7 @@ export default function ManualRecord() {
       {/* 主内容 */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* 左侧列表 */}
-        <div style={{ width: 320, background: 'rgba(255,255,255,0.3)', borderRight: '1px solid #f2f3f5', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div style={{ width: 320, background: 'transparent', borderRight: '1px solid #f2f3f5', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
             <Radio.Group value={filter} onChange={e => setFilter(e.target.value)} optionType="button" buttonStyle="solid" size="small" options={FILTER_OPTIONS} />
           </div>
@@ -174,7 +174,7 @@ export default function ManualRecord() {
             </div>
 
             {/* 录入表单 */}
-            <div style={{ marginTop: 24, padding: '20px 24px', background: 'rgba(255,255,255,0.3)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.05)' }}>
+            <div style={{ marginTop: 24, padding: '20px 24px', background: 'transparent', borderRadius: 10, border: '1px solid rgba(0,0,0,0.05)' }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#1d2129', marginBottom: 16 }}>录入结果</div>
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 13, color: '#4e5969', marginBottom: 8 }}>测试结果</div>

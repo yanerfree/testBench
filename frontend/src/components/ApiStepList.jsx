@@ -343,7 +343,7 @@ function CompactApiRow({ step, index, isSelected, onClick, onRemove, onCopy, onD
       onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       style={{
         display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', cursor: 'pointer',
-        background: isSelected ? mc.bg : hovered ? '#f7f8fa' : 'transparent',
+        background: isSelected ? mc.bg : hovered ? 'rgba(0,0,0,0.02)' : 'transparent',
         borderLeft: isSelected ? `3px solid ${mc.color}` : '3px solid transparent',
         transition: 'all 0.12s',
       }}>
@@ -463,7 +463,7 @@ function CompactConditionRow({ node, onRemove, thenChildren, elseChildren }) {
 
 function CompactWaitRow({ node, onRemove }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', background: '#f7f8fa' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', background: 'rgba(0,0,0,0.02)' }}>
       <ClockCircleOutlined style={{ color: '#86909c', fontSize: 11 }} />
       <span style={{ fontSize: 11, color: '#86909c' }}>等待 {node.delay || 1000}ms</span>
       <span style={{ fontSize: 11, color: '#8c8c8c', flex: 1 }}>{node.label || ''}</span>
@@ -594,7 +594,7 @@ function OperationItem({ op, index, onChange, onRemove, onDragStart, onDragOver,
       onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; onDragStart(index) }}
       onDragOver={e => { e.preventDefault(); onDragOver(index) }}
       onDrop={e => { e.preventDefault(); onDrop(index) }}
-      style={{ border: '1px solid rgba(0,0,0,0.05)', borderRadius: 6, marginBottom: 4, background: 'rgba(255,255,255,0.5)', transition: 'box-shadow 0.12s' }}
+      style={{ border: '1px solid rgba(0,0,0,0.05)', borderRadius: 6, marginBottom: 4, background: 'transparent', transition: 'box-shadow 0.12s' }}
       onMouseEnter={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'}
       onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
     >
@@ -1201,7 +1201,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
           <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
             {baseUrl && !urlHasOwnBase(step.url) && (
               <Tooltip title={baseUrl}>
-                <span style={{ fontSize: 11, color: '#86909c', background: '#f7f8fa', border: '1px solid #e5e6eb', borderRight: 'none',
+                <span style={{ fontSize: 11, color: '#86909c', background: 'rgba(0,0,0,0.02)', border: '1px solid #e5e6eb', borderRight: 'none',
                   borderRadius: '4px 0 0 4px', padding: '3px 8px', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis',
                   display: 'inline-block', lineHeight: '16px', fontFamily: 'monospace', flexShrink: 0 }}>
                   <GlobalOutlined style={{ marginRight: 4, fontSize: 10 }} />{baseUrl}
@@ -1256,7 +1256,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
         {curlText.trim() && (() => {
           const preview = parseCurl(curlText)
           return (
-            <div style={{ marginTop: 10, padding: 10, background: '#f7f8fa', borderRadius: 6, fontSize: 11 }}>
+            <div style={{ marginTop: 10, padding: 10, background: 'rgba(0,0,0,0.02)', borderRadius: 6, fontSize: 11 }}>
               <div style={{ fontWeight: 600, marginBottom: 4, color: '#4e5969' }}>解析预览：</div>
               <div><Tag color={methodColors[preview.method]?.color}>{preview.method}</Tag> <span style={{ fontFamily: 'monospace' }}>{preview.url}</span></div>
               {preview.headers.length > 0 && <div style={{ color: '#86909c', marginTop: 4 }}>Headers: {preview.headers.map(h => h.key).join(', ')}</div>}
@@ -1380,7 +1380,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
                 {['curl', 'python', 'javascript'].map(l => (
                   <div key={l} onClick={() => setCodeLang(l)} style={{
                     padding: '3px 10px', fontSize: 11, cursor: 'pointer', borderRadius: 4,
-                    background: codeLang === l ? '#0ea5a0' : '#f7f8fa', color: codeLang === l ? '#fff' : '#4e5969',
+                    background: codeLang === l ? '#0ea5a0' : 'rgba(0,0,0,0.02)', color: codeLang === l ? '#fff' : '#4e5969',
                     fontWeight: codeLang === l ? 600 : 400, transition: 'all 0.12s',
                   }}>{l === 'curl' ? 'cURL' : l === 'python' ? 'Python' : 'JavaScript'}</div>
                 ))}
@@ -1484,7 +1484,7 @@ export default function ApiStepList({ steps, onChange, environments, runEnv }) {
   }
 
   return (
-    <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 8, overflow: 'hidden', minHeight: 480, height: 'calc(100vh - 340px)', maxHeight: 800, background: 'rgba(255,255,255,0.5)' }}>
+    <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 8, overflow: 'hidden', minHeight: 480, height: 'calc(100vh - 340px)', maxHeight: 800, background: 'transparent' }}>
       {/* 左侧：紧凑步骤列表 */}
       <div style={{ width: 300, borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ padding: '8px 10px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fafbfc' }}>
