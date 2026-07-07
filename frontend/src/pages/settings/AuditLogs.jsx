@@ -127,7 +127,7 @@ export default function AuditLogs() {
 
       <div style={{
         display: 'flex', gap: 10, marginBottom: 12, padding: '12px 16px',
-        background: 'transparent', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)',
+        background: 'rgba(255,255,255,0.3)', borderRadius: 14, border: 'none', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
       }}>
         <Input
           prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />}
@@ -161,7 +161,7 @@ export default function AuditLogs() {
         />
       </div>
 
-      <div style={{ background: 'transparent', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', padding: 2 }}>
+      <div style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 14, border: 'none', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: 2 }}>
         <Table
           dataSource={logs}
           columns={columns}
