@@ -134,7 +134,7 @@ export default function ChannelConfig() {
           </Empty>
         ) : (
           <Table dataSource={channels} columns={columns} rowKey="id" size="small"
-            pagination={false} style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 14, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }} />
+            pagination={false} style={{ borderRadius: 14 }} />
         )
       }
 

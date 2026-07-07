@@ -592,7 +592,7 @@ export default function LlmMock() {
             {logs.map(l => (
               <Fragment key={l.id}>
               <tr key={l.id} onClick={() => handleToggleLogDetail(l.id)} style={{
-                cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.03)',
+                cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.03)', background: 'rgba(255,255,255,0.25)',
                 background: expandedLogId === l.id ? '#e6f4ff' : 'transparent',
               }}>
                 <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', fontSize: 11, color: '#8c8c8c' }}>
@@ -673,7 +673,7 @@ export default function LlmMock() {
 
       {/* ━━━ 顶栏 ━━━ */}
       <div style={{
-        padding: '10px 20px', background: 'transparent', borderBottom: '1px solid rgba(0,0,0,0.03)',
+        padding: '10px 20px', background: 'transparent', borderBottom: '1px solid rgba(0,0,0,0.03)', background: 'rgba(255,255,255,0.25)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

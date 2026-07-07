@@ -185,7 +185,7 @@ export default function McpMock() {
                 </thead>
                 <tbody>
                   {tools.map(t => (
-                    <tr key={t.name} style={{ borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
+                    <tr key={t.name} style={{ borderBottom: '1px solid rgba(0,0,0,0.03)', background: 'rgba(255,255,255,0.25)' }}>
                       <td style={{ padding: '10px 16px' }}>
                         <Text code style={{ fontSize: 12 }}>{t.name}</Text>
                       </td>
