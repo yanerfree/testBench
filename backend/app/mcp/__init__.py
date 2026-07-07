@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastmcp import FastMCP
 
 from app.mcp.deps import get_mcp_session
-from app.mcp.tools import test_cases, api_endpoints, environments, test_reports
+from app.mcp.tools import test_cases, api_endpoints, environments, test_reports, api_tests
 
 mcp = FastMCP(
     name="testBench",
@@ -13,7 +13,7 @@ mcp = FastMCP(
 
 
 def _register(func, name: str, description: str):
-    """注册一个 MCP 工具。mock 模式返回模拟数据，否则查真实 DB。"""
+    """注册一个 MCP 工具，直接查真实 DB。"""
     import functools
     import inspect
 
@@ -23,12 +23,6 @@ def _register(func, name: str, description: str):
 
     @functools.wraps(func)
     async def wrapper(**kwargs):
-        from app.api.mcp_mock import is_enabled as mock_enabled, get_mock_response
-        if mock_enabled():
-            result = get_mock_response(name)
-            if isinstance(result, dict) and "error" in result and "code" in result:
-                raise RuntimeError(result["error"])
-            return result
         if has_session:
             async with get_mcp_session() as session:
                 return await func(session=session, **kwargs)
@@ -110,4 +104,31 @@ _register(
     test_reports.get_failed_scenarios,
     name="tb_get_failed_scenarios",
     description="获取报告中失败的用例（含步骤、错误信息）。参数: plan_id, report_id(可选)",
+)
+
+
+# ── 接口测试工具 ──────────────────────────────────
+
+_register(
+    api_tests.generate_api_test,
+    name="tb_generate_api_test",
+    description="根据接口定义 AI 生成接口测试场景。参数: branch_id(分支UUID), api_info(接口定义文本，含method/url/参数/响应), folder_name(可选，目标文件夹名)",
+)
+
+_register(
+    api_tests.list_api_test_scenarios,
+    name="tb_list_api_tests",
+    description="列出接口测试场景。参数: branch_id(分支UUID), folder_id(可选), status(可选: draft/published/deprecated)",
+)
+
+_register(
+    api_tests.get_api_test_scenario,
+    name="tb_get_api_test",
+    description="获取接口测试场景详情（含所有步骤、断言、变量提取）。参数: scenario_id(场景UUID)",
+)
+
+_register(
+    api_tests.run_api_test,
+    name="tb_run_api_test",
+    description="执行接口测试场景并返回结果汇总。参数: scenario_ids(逗号分隔的场景UUID列表)",
 )

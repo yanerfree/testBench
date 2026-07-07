@@ -26,6 +26,7 @@ class ApiTestScenario(Base):
     pre_steps: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # 场景级前置操作(如auth)
     source_api_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     env_variables: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    edited_after_generate: Mapped[bool] = mapped_column(Boolean, default=False)
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

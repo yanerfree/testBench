@@ -1,5 +1,4 @@
 """接口测试 API — 场景 CRUD + AI 生成"""
-from __future__ import annotations
 
 import json
 import logging
@@ -84,6 +83,84 @@ async def list_scenarios(
     return {"data": [_scenario_to_dict(s) for s in scenarios]}
 
 
+class BatchOperationRequest(BaseSchema):
+    ids: list[str]
+    action: str  # publish | deprecate | delete | move
+    folder_id: str | None = None
+
+
+@router.put("/batch")
+async def batch_operation(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    body: BatchOperationRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    from app.core.exceptions import AppError
+
+    scenario_ids = [uuid.UUID(sid) for sid in body.ids]
+    result = await session.execute(
+        select(ApiTestScenario)
+        .where(ApiTestScenario.id.in_(scenario_ids), ApiTestScenario.project_id == project_id)
+    )
+    scenarios = result.scalars().all()
+
+    if body.action == "publish":
+        for s in scenarios:
+            if s.status == "draft":
+                s.status = "published"
+    elif body.action == "deprecate":
+        for s in scenarios:
+            if s.status == "published":
+                s.status = "deprecated"
+    elif body.action == "delete":
+        for s in scenarios:
+            await session.delete(s)
+    elif body.action == "move":
+        if not body.folder_id:
+            raise AppError(code="MISSING_FOLDER", message="请指定目标文件夹", status_code=400)
+        fid = uuid.UUID(body.folder_id)
+        for s in scenarios:
+            s.folder_id = fid
+    else:
+        raise AppError(code="INVALID_ACTION", message=f"不支持的操作: {body.action}", status_code=400)
+
+    await session.commit()
+    return {"data": {"affected": len(scenarios)}}
+
+
+class RunBatchRequest(BaseSchema):
+    scenario_ids: list[str]
+
+
+@router.post("/run")
+async def run_batch_scenarios(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    body: RunBatchRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    from app.services.api_test_runner import run_batch
+
+    scenario_uuids = [uuid.UUID(sid) for sid in body.scenario_ids]
+
+    async def event_stream():
+        try:
+            async for event in run_batch(scenario_uuids, session, user_id=current_user.id):
+                yield f"data: {json.dumps({'type': event.type, **event.data}, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            logger.exception("run_batch failed")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)[:200]}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
 # ── 文件夹管理（必须在 /{scenario_id} 之前） ──
 
 @router.get("/folders")
@@ -106,13 +183,23 @@ async def list_api_test_folders(
 
     def build_tree(parent_id=None):
         children = [f for f in all_folders if f.parent_id == parent_id]
-        return [{
-            "id": str(f.id),
-            "name": f.name,
-            "parentId": str(f.parent_id) if f.parent_id else None,
-            "scenarioCount": scenario_counts.get(f.id, 0),
-            "children": build_tree(f.id),
-        } for f in children]
+        result = []
+        for f in children:
+            child_nodes = build_tree(f.id)
+            direct_count = scenario_counts.get(f.id, 0)
+            total_count = direct_count + sum(c.get("scenarioCount", 0) for c in child_nodes)
+            child_folder_ids = [f.id]
+            for c in child_nodes:
+                child_folder_ids.extend(c.get("descendantFolderIds", []))
+            result.append({
+                "id": str(f.id),
+                "name": f.name,
+                "parentId": str(f.parent_id) if f.parent_id else None,
+                "scenarioCount": total_count,
+                "children": child_nodes,
+                "descendantFolderIds": [str(fid) for fid in child_folder_ids],
+            })
+        return result
 
     return {"data": build_tree()}
 
@@ -196,6 +283,59 @@ async def delete_scenario(
     return {"data": {"deleted": True}}
 
 
+VALID_STATUS_TRANSITIONS = {
+    "draft": ["published"],
+    "published": ["deprecated"],
+    "deprecated": [],
+}
+
+
+class CreateScenarioRequest(BaseSchema):
+    title: str = Field(..., min_length=1, max_length=200)
+    priority: str = Field(default="P1")
+    folder_id: str | None = None
+    description: str | None = None
+
+
+@router.post("")
+async def create_scenario(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    body: CreateScenarioRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    from sqlalchemy import func as sa_func
+    max_result = await session.execute(
+        select(sa_func.max(ApiTestScenario.code))
+        .where(ApiTestScenario.branch_id == branch_id)
+    )
+    max_code = max_result.scalar()
+    next_num = 1
+    if max_code:
+        try:
+            next_num = int(max_code.split("-")[1]) + 1
+        except (IndexError, ValueError):
+            pass
+    code = f"AT-{next_num:04d}"
+
+    scenario = ApiTestScenario(
+        project_id=project_id,
+        branch_id=branch_id,
+        code=code,
+        title=body.title,
+        priority=body.priority,
+        source="manual",
+        status="draft",
+        folder_id=uuid.UUID(body.folder_id) if body.folder_id else None,
+        description=body.description,
+        created_by=current_user.id,
+    )
+    session.add(scenario)
+    await session.commit()
+    return {"data": _scenario_to_dict(scenario)}
+
+
 class UpdateScenarioRequest(BaseSchema):
     title: str | None = None
     status: str | None = None
@@ -214,17 +354,52 @@ async def update_scenario(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
+    from app.core.exceptions import AppError
+
     scenario = await session.get(ApiTestScenario, scenario_id)
     if not scenario or scenario.project_id != project_id:
         raise NotFoundError(code="NOT_FOUND", message="场景不存在")
+
+    if body.status is not None and body.status != scenario.status:
+        allowed = VALID_STATUS_TRANSITIONS.get(scenario.status, [])
+        if body.status not in allowed:
+            raise AppError(
+                code="INVALID_STATUS_TRANSITION",
+                message=f"不允许从 {scenario.status} 变更为 {body.status}",
+                status_code=400,
+            )
+        scenario.status = body.status
+
+    if scenario.status == "published" or scenario.status == "deprecated":
+        has_content_change = any([body.title, body.priority, body.description, body.pre_steps])
+        if has_content_change:
+            raise AppError(code="NOT_EDITABLE", message="已发布/已废弃的场景不可编辑", status_code=400)
+
     if body.title is not None: scenario.title = body.title
-    if body.status is not None: scenario.status = body.status
     if body.priority is not None: scenario.priority = body.priority
     if body.description is not None: scenario.description = body.description
     if body.pre_steps is not None: scenario.pre_steps = body.pre_steps
     if body.folder_id is not None: scenario.folder_id = uuid.UUID(body.folder_id) if body.folder_id else None
+
+    if scenario.source == "ai" and not scenario.edited_after_generate:
+        has_edit = any([body.title, body.priority, body.description, body.pre_steps])
+        if has_edit:
+            scenario.edited_after_generate = True
+
     await session.commit()
+    await session.refresh(scenario)
     return {"data": _scenario_to_dict(scenario)}
+    name: str | None = None
+    method: str | None = None
+    url: str | None = None
+    headers: dict | None = None
+    body: dict | None = None
+    assertions: list | None = None
+    variables_extract: dict | None = None
+    enabled: bool | None = None
+    group_name: str | None = None
+    pre_script: dict | None = None
+    post_script: dict | None = None
 
 
 class UpdateStepRequest(BaseSchema):
@@ -247,7 +422,7 @@ async def update_step(
     branch_id: uuid.UUID,
     scenario_id: uuid.UUID,
     step_id: uuid.UUID,
-    body: UpdateStepRequest,
+    payload: UpdateStepRequest,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
@@ -255,9 +430,14 @@ async def update_step(
     if not step or step.scenario_id != scenario_id:
         raise NotFoundError(code="NOT_FOUND", message="步骤不存在")
     for field in ['name', 'method', 'url', 'headers', 'body', 'assertions', 'variables_extract', 'enabled', 'group_name', 'pre_script', 'post_script']:
-        val = getattr(body, field, None)
+        val = getattr(payload, field, None)
         if val is not None:
             setattr(step, field, val)
+
+    scenario = await session.get(ApiTestScenario, scenario_id)
+    if scenario and scenario.source == "ai" and not scenario.edited_after_generate:
+        scenario.edited_after_generate = True
+
     await session.commit()
     return {"data": _step_to_dict(step)}
 
@@ -319,6 +499,7 @@ class GenerateRequest(BaseSchema):
     api_info: str = Field(default="", max_length=10000)
     api_ids: list[str] | None = None
     env_variables: dict | None = None
+    folder_id: str | None = None
 
 
 @router.post("/generate")
@@ -346,6 +527,7 @@ async def generate_api_tests(
                 api_info=body.api_info,
                 api_ids=body.api_ids,
                 env_variables=body.env_variables,
+                folder_id=uuid.UUID(body.folder_id) if body.folder_id else None,
                 ai_config=ai_config,
                 session=session,
                 user_id=current_user.id,
@@ -426,6 +608,11 @@ async def run_step(
     headers = resolve_obj(step.headers or {})
     body = resolve_obj(step.body)
 
+    if "Authorization" not in headers and "AUTH_TOKEN" in env:
+        headers["Authorization"] = f"Bearer {env['AUTH_TOKEN']}"
+    if "Content-Type" not in headers and body:
+        headers["Content-Type"] = "application/json"
+
     start = time.time()
     try:
         async with httpx.AsyncClient(timeout=30, verify=False) as client:
@@ -449,18 +636,20 @@ async def run_step(
             passed = False
             a_type = a.get("type")
             operator = a.get("operator", "==")
-            expected = a.get("value")
-            field = a.get("field")
+            expected = a.get("expected", a.get("value"))
+            field = a.get("field") or (a.get("value") if a.get("expected") is not None or operator == "not_empty" else None)
 
             if a_type == "status":
                 actual = resp.status_code
+                expected = a.get("value")
                 if operator == "==":
                     passed = actual == expected
                 elif operator == "in":
                     passed = actual in (expected if isinstance(expected, list) else [expected])
             elif a_type == "body_contains":
                 actual = str(resp_body)
-                passed = str(expected) in actual
+                contain_val = a.get("value", a.get("expected", ""))
+                passed = str(contain_val) in actual
             elif a_type == "body_field":
                 actual = resp_body
                 if field:
