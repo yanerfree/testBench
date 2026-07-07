@@ -195,7 +195,7 @@ button.ant-btn[class*="variant-dashed"] {
   background: transparent !important;
 }
 .ant-table-thead > tr > th {
-  background: rgba(255,255,255,0.45) !important;
+  background: rgba(0,0,0,0.02) !important;
   font-weight: 600 !important;
   color: var(--text-regular) !important;
   font-size: 13px !important;
@@ -203,7 +203,7 @@ button.ant-btn[class*="variant-dashed"] {
   letter-spacing: 0.5px !important;
 }
 .ant-table-tbody > tr > td {
-  background: rgba(255,255,255,0.25) !important;
+  background: transparent !important;
   border-bottom: 1px solid rgba(0,0,0,0.03) !important;
   transition: background 0.2s ease !important;
 }

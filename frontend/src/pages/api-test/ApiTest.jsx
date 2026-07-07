@@ -222,8 +222,18 @@ export default function ApiTest() {
         ids, action,
       })
       message.success('操作成功')
-      fetchScenarios()
+      fetchScenarios(); fetchFolders()
     } catch (e) { message.error(e.message || '操作失败') }
+  }
+
+  const handleMoveScenario = async (scenarioId, folderId) => {
+    try {
+      await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/${scenarioId}`, {
+        folderId: folderId || '',
+      })
+      message.success('已移动')
+      fetchScenarios(); fetchFolders()
+    } catch { message.error('移动失败') }
   }
 
   const buildParentSelect = (nodes) => nodes.map(n => ({
@@ -246,6 +256,7 @@ export default function ApiTest() {
         onDeleteScenario={handleDelete}
         onDeleteFolder={handleDeleteFolder}
         onCreateFolder={() => { setNewFolderName(''); setFolderModalOpen(true) }}
+        onMoveScenario={handleMoveScenario}
       />
 
       {!selectedScenario ? (

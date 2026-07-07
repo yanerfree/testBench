@@ -1,11 +1,11 @@
-import { Button, Tree, Tooltip, Popconfirm, Spin } from 'antd'
+import { Button, Tree, Tooltip, Popconfirm, Spin, message } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 
 export default function FolderTree({
   folderTree, scenarios, loading,
   selectedFolderId, selectedScenarioId,
   onSelectFolder, onSelectScenario, onDeleteScenario, onDeleteFolder,
-  onCreateFolder,
+  onCreateFolder, onMoveScenario,
 }) {
   const buildTreeData = (nodes) => nodes.map(n => ({
     key: n.id,
@@ -23,8 +23,33 @@ export default function FolderTree({
   const unassigned = scenarios.filter(s => !s.folderId)
   const treeData = [
     ...buildTreeData(folderTree),
-    ...unassigned.map(s => ({ key: s.id, title: s.title, isLeaf: true, scenario: s })),
+    ...(unassigned.length > 0 ? [{
+      key: '__unassigned__',
+      title: `未分类 (${unassigned.length})`,
+      isFolder: true,
+      folderId: null,
+      selectable: false,
+      children: unassigned.map(s => ({ key: s.id, title: s.title, isLeaf: true, scenario: s })),
+    }] : []),
   ]
+
+  const handleDrop = (info) => {
+    const dragNode = info.dragNode
+    const dropNode = info.node
+
+    if (!dragNode.isLeaf || !dragNode.scenario) return
+
+    let targetFolderId = null
+    if (dropNode.isFolder) {
+      targetFolderId = dropNode.folderId
+    } else if (dropNode.isLeaf && dropNode.scenario) {
+      targetFolderId = dropNode.scenario.folderId || null
+    }
+
+    if (dragNode.scenario.folderId === targetFolderId) return
+
+    onMoveScenario(dragNode.scenario.id, targetFolderId)
+  }
 
   return (
     <div style={{ width: 250, flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -43,11 +68,16 @@ export default function FolderTree({
               treeData={treeData}
               defaultExpandAll
               blockNode
+              draggable={{ icon: false }}
+              onDrop={handleDrop}
               style={{ fontSize: 12 }}
               selectedKeys={selectedScenarioId ? [selectedScenarioId] : selectedFolderId ? [selectedFolderId] : []}
               onSelect={(keys, { node }) => {
                 if (node.isLeaf && node.scenario) onSelectScenario(node.scenario.id)
-                else if (node.isFolder) onSelectFolder(node.folderId)
+                else if (node.isFolder && node.folderId) onSelectFolder(node.folderId)
+              }}
+              allowDrop={({ dropNode }) => {
+                return dropNode.isFolder || (dropNode.isLeaf && dropNode.scenario)
               }}
               titleRender={(node) => (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', overflow: 'hidden' }}>
@@ -59,7 +89,7 @@ export default function FolderTree({
                       <Button type="text" size="small" icon={<DeleteOutlined />} onClick={e => e.stopPropagation()}
                         style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-delete-btn" />
                     </Popconfirm>
-                  ) : node.isFolder ? (
+                  ) : (node.isFolder && node.folderId) ? (
                     <Popconfirm title="确定删除此文件夹？" description="仅允许删除空文件夹" onConfirm={e => { e?.stopPropagation(); onDeleteFolder(node.folderId) }} onCancel={e => e?.stopPropagation()}>
                       <Button type="text" size="small" icon={<DeleteOutlined />} onClick={e => e.stopPropagation()}
                         style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-delete-btn" />
