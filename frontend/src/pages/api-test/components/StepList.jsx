@@ -1,17 +1,23 @@
 import { useState } from 'react'
-import { Button, Tag, Space, Select, Tooltip, Typography } from 'antd'
+import { Button, Tag, Space, Select, Tooltip, Typography, Input, Drawer, Spin, message } from 'antd'
 import {
   PlusOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  PlayCircleOutlined, CaretRightOutlined,
+  PlayCircleOutlined, CaretRightOutlined, RobotOutlined,
 } from '@ant-design/icons'
 
 const { Text } = Typography
+const { TextArea } = Input
 const METHOD_COLORS = { GET: '#0ea5a0', POST: '#0ea5a0', PUT: '#faad14', DELETE: '#e8453c', PATCH: '#7c5cbf' }
 
 export default function StepList({
   scenario, selectedStepId, readonly,
   onSelectStep, onAddStep, onClose, onSaveScenario, onRunAll,
+  onAiOptimize, onApplyOptimize,
 }) {
+  const [optimizeOpen, setOptimizeOpen] = useState(false)
+  const [suggestion, setSuggestion] = useState('')
+  const [optimizing, setOptimizing] = useState(false)
+  const [plan, setPlan] = useState(null)
   return (
     <div style={{ width: 300, minWidth: 300, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
       <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
@@ -25,12 +31,18 @@ export default function StepList({
               style={{ fontSize: 11 }} variant="borderless"
               options={[
                 { value: 'draft', label: <Tag>草稿</Tag> },
-                { value: 'published', label: <Tag color="success">已发布</Tag> },
+                { value: 'published', label: <Tag color="#0ea5a0">已发布</Tag> },
                 { value: 'deprecated', label: <Tag color="default">已废弃</Tag> },
               ]}
             />
           </Space>
           <Space size={4}>
+            {!readonly && (
+              <Tooltip title="AI 优化">
+                <Button size="small" type="text" icon={<RobotOutlined style={{ color: '#4e8af0' }} />}
+                  onClick={() => { setOptimizeOpen(true); setPlan(null); setSuggestion('') }} />
+              </Tooltip>
+            )}
             <Tooltip title="运行全部">
               <Button size="small" type="text" icon={<PlayCircleOutlined style={{ color: '#0ea5a0' }} />} onClick={onRunAll} />
             </Tooltip>
@@ -83,6 +95,82 @@ export default function StepList({
           {!readonly && <Button type="dashed" size="small" icon={<PlusOutlined />} block style={{ fontSize: 12 }} onClick={onAddStep}>添加步骤</Button>}
         </div>
       </div>
+
+      <Drawer
+        title="AI 优化"
+        open={optimizeOpen}
+        onClose={() => setOptimizeOpen(false)}
+        width={420}
+        footer={
+          plan && plan.changes ? (
+            <Space>
+              <Button onClick={() => setPlan(null)}>重新分析</Button>
+              <Button type="primary" onClick={async () => {
+                const result = await onApplyOptimize(plan.changes)
+                if (result) {
+                  message.success(`已应用 ${result.applied} 项修改`)
+                  setOptimizeOpen(false)
+                }
+              }}>确认执行</Button>
+            </Space>
+          ) : null
+        }
+      >
+        {!plan ? (
+          <>
+            <div style={{ marginBottom: 12, fontSize: 13, color: '#595959' }}>
+              输入你的修改建议，AI 会分析并给出具体方案：
+            </div>
+            <TextArea
+              rows={4}
+              value={suggestion}
+              onChange={e => setSuggestion(e.target.value)}
+              placeholder="例如：增加中文用户名的测试、把超时时间改为10秒、增加并发测试步骤..."
+            />
+            <Button
+              type="primary"
+              icon={<RobotOutlined />}
+              loading={optimizing}
+              style={{ marginTop: 12 }}
+              onClick={async () => {
+                if (!suggestion.trim()) return
+                setOptimizing(true)
+                try {
+                  const result = await onAiOptimize(suggestion)
+                  setPlan(result)
+                } catch { message.error('分析失败') }
+                finally { setOptimizing(false) }
+              }}
+            >
+              分析方案
+            </Button>
+          </>
+        ) : plan.error ? (
+          <div style={{ color: '#e8453c' }}>{plan.error}</div>
+        ) : (
+          <>
+            <div style={{ marginBottom: 12, fontWeight: 600, fontSize: 14 }}>{plan.summary}</div>
+            {(plan.changes || []).map((c, i) => (
+              <div key={i} style={{
+                padding: '8px 12px', marginBottom: 8, borderRadius: 6,
+                border: '1px solid rgba(0,0,0,0.06)',
+                background: c.action === 'add' ? '#f6ffed' : c.action === 'delete' ? '#fff2f0' : '#e6f4ff',
+              }}>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                  {c.action === 'add' ? '➕ 新增' : c.action === 'delete' ? '🗑️ 删除' : '✏️ 修改'}
+                  {c.step?.name ? ` — ${c.step.name}` : c.stepIndex != null ? ` — 步骤 ${c.stepIndex + 1}` : ''}
+                </div>
+                {c.reason && <div style={{ fontSize: 11, color: '#8c8c8c' }}>{c.reason}</div>}
+                {c.step && c.action !== 'delete' && (
+                  <div style={{ fontSize: 11, marginTop: 4, fontFamily: 'monospace', color: '#595959' }}>
+                    {c.step.method} {c.step.url?.substring(0, 50)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+      </Drawer>
     </div>
   )
 }

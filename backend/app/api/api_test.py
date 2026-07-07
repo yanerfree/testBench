@@ -544,6 +544,50 @@ async def generate_api_tests(
     )
 
 
+class OptimizeRequest(BaseSchema):
+    suggestion: str = Field(..., min_length=1, max_length=2000)
+
+
+class ApplyOptimizeRequest(BaseSchema):
+    changes: list[dict]
+
+
+@router.post("/{scenario_id}/ai-optimize")
+async def ai_optimize(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    body: OptimizeRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    from app.services.ai_config_resolver import resolve_ai_config
+    from app.services.ai.api_test_optimizer import analyze_optimization
+    from app.core.exceptions import AppError
+
+    ai_config = await resolve_ai_config(project_id, session)
+    if not ai_config:
+        raise AppError(code="AI_NOT_CONFIGURED", message="AI 服务未配置", status_code=503)
+
+    result = await analyze_optimization(scenario_id, body.suggestion, ai_config, session)
+    return {"data": result}
+
+
+@router.post("/{scenario_id}/ai-optimize/apply")
+async def ai_optimize_apply(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    body: ApplyOptimizeRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    from app.services.ai.api_test_optimizer import apply_optimization
+
+    result = await apply_optimization(scenario_id, body.changes, session)
+    return {"data": result}
+
+
 @router.post("/{scenario_id}/run-step/{step_id}")
 async def run_step(
     project_id: uuid.UUID,

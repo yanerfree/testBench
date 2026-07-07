@@ -25,7 +25,7 @@ function EditableHeadersTable({ headers, onSave, readonly }) {
   }
 
   return (
-    <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+    <div style={{ background: 'transparent', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
         <thead>
           <tr>
@@ -43,7 +43,7 @@ function EditableHeadersTable({ headers, onSave, readonly }) {
                   onBlur={() => save(rows)} />
               </td>
               <td style={cellStyle}>
-                <Input size="small" variant="borderless" value={row.value} disabled={readonly} style={{ fontFamily: 'monospace', color: '#595959' }}
+                <Input size="small" variant="borderless" value={row.value} disabled={readonly} style={{ fontFamily: 'monospace', color: '#4e5969' }}
                   onChange={e => { const r = [...rows]; r[i] = { ...r[i], value: e.target.value }; setRows(r) }}
                   onBlur={() => save(rows)} />
               </td>
@@ -80,7 +80,7 @@ function EditableAssertionsTable({ assertions, onSave, readonly }) {
   const save = (updated) => onSave(updated)
 
   return (
-    <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+    <div style={{ background: 'transparent', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
         <thead>
           <tr>
@@ -110,7 +110,7 @@ function EditableAssertionsTable({ assertions, onSave, readonly }) {
                   onChange={v => { const r = [...rows]; r[j] = { ...r[j], type: v }; setRows(r); save(r) }} />
               </td>
               <td style={cellStyle}>
-                <Input size="small" variant="borderless" value={a.field || ''} style={{ fontFamily: 'monospace', color: '#595959' }}
+                <Input size="small" variant="borderless" value={a.field || ''} style={{ fontFamily: 'monospace', color: '#4e5969' }}
                   placeholder={a.type === 'status' ? '-' : 'data.id'}
                   onChange={e => { const r = [...rows]; r[j] = { ...r[j], field: e.target.value }; setRows(r) }}
                   onBlur={() => save(rows)} />
@@ -173,7 +173,7 @@ function EditableVariablesTable({ variables, onSave, readonly }) {
   }
 
   return (
-    <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+    <div style={{ background: 'transparent', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
         <thead>
           <tr>
@@ -274,7 +274,7 @@ export default function StepEditor({
             icon={running ? <LoadingOutlined /> : <CaretRightOutlined />}
             loading={running}
             onClick={onRunStep}
-            style={{ background: '#0ea5a0', borderColor: '#0ea5a0', fontWeight: 500 }}
+            style={{ fontWeight: 500 }}
           >
             运行
           </Button>
@@ -292,7 +292,7 @@ export default function StepEditor({
           value={step.url}
           variant="borderless"
           disabled={readonly}
-          style={{ fontFamily: "'SF Mono', Monaco, Consolas, monospace", fontSize: 13, color: '#333' }}
+          style={{ fontFamily: "'SF Mono', Monaco, Consolas, monospace", fontSize: 13, color: '#1d2129' }}
           onChange={e => onStepChange({ ...step, url: e.target.value })}
           onBlur={e => onSaveStep(step.id, { url: e.target.value })}
         />
@@ -309,7 +309,7 @@ export default function StepEditor({
               key: 'body',
               label: <span>Body {step.body && <span style={{ color: '#0ea5a0' }}>●</span>}</span>,
               children: (
-                <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                <div style={{ background: 'transparent', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                   <div style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 11, color: '#8c8c8c', display: 'flex', justifyContent: 'space-between' }}>
                     <span>JSON</span>
                     {!readonly && <Button size="small" type="text" style={{ fontSize: 11, height: 18, padding: '0 4px' }} onClick={handleBodySave}>保存</Button>}
@@ -321,7 +321,7 @@ export default function StepEditor({
                     style={{
                       width: '100%', border: 'none', outline: 'none', resize: 'vertical',
                       padding: 16, fontSize: 13, fontFamily: "'SF Mono', Monaco, Consolas, monospace",
-                      lineHeight: 1.6, minHeight: 100, maxHeight: 400, color: '#333', background: 'transparent',
+                      lineHeight: 1.6, minHeight: 100, maxHeight: 400, color: '#1d2129', background: 'transparent',
                     }}
                   />
                 </div>
@@ -340,7 +340,7 @@ export default function StepEditor({
             },
             {
               key: 'assertions',
-              label: <span>断言 {step.assertions?.length > 0 && <Tag color="green" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{step.assertions.length}</Tag>}</span>,
+              label: <span>断言 {step.assertions?.length > 0 && <Tag color="#0ea5a0" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{step.assertions.length}</Tag>}</span>,
               children: (
                 <EditableAssertionsTable
                   assertions={step.assertions}
@@ -364,7 +364,7 @@ export default function StepEditor({
               key: 'response',
               label: <span>响应 {step._runResponse && <span style={{ color: step._runResponse.error ? '#e8453c' : '#0ea5a0' }}>●</span>}</span>,
               children: (
-                <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                <div style={{ background: 'transparent', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                   {step._runResponse ? (
                     step._runResponse.error ? (
                       <div style={{ padding: 16, color: '#e8453c' }}>{step._runResponse.error}</div>

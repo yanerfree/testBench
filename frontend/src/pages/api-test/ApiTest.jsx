@@ -146,6 +146,19 @@ export default function ApiTest() {
     })
   }
 
+  const handleAiOptimize = async (suggestion) => {
+    const res = await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/ai-optimize`, { suggestion })
+    return res.data
+  }
+
+  const handleApplyOptimize = async (changes) => {
+    try {
+      const res = await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/ai-optimize/apply`, { changes })
+      loadScenario(selectedScenario.id)
+      return res.data
+    } catch { message.error('应用失败'); return null }
+  }
+
   const saveStep = async (stepId, updates) => {
     try {
       const res = await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/steps/${stepId}`, updates)
@@ -286,6 +299,8 @@ export default function ApiTest() {
             onClose={() => { setSelectedScenario(null); setSelectedStep(null) }}
             onSaveScenario={saveScenario}
             onRunAll={handleRunAll}
+            onAiOptimize={handleAiOptimize}
+            onApplyOptimize={handleApplyOptimize}
           />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'transparent' }}>
             <StepEditor

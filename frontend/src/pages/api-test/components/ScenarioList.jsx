@@ -109,7 +109,7 @@ export default function ScenarioList({
             },
             {
               title: '状态', dataIndex: 'status', width: 70,
-              render: v => <Tag color={v === 'published' ? 'success' : v === 'deprecated' ? 'default' : undefined}>
+              render: v => <Tag color={v === 'published' ? '#0ea5a0' : v === 'deprecated' ? 'default' : undefined}>
                 {v === 'published' ? '已发布' : v === 'deprecated' ? '已废弃' : '草稿'}
               </Tag>,
             },
