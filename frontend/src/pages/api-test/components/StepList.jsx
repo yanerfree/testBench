@@ -10,7 +10,7 @@ const METHOD_COLORS = { GET: '#0ea5a0', POST: '#0ea5a0', PUT: '#faad14', DELETE:
 
 export default function StepList({
   scenario, selectedStepId, readonly,
-  onSelectStep, onAddStep, onClose, onSaveScenario,
+  onSelectStep, onAddStep, onClose, onSaveScenario, onRunAll,
 }) {
   return (
     <div style={{ width: 300, minWidth: 300, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
@@ -32,7 +32,7 @@ export default function StepList({
           </Space>
           <Space size={4}>
             <Tooltip title="运行全部">
-              <Button size="small" type="text" icon={<PlayCircleOutlined style={{ color: '#0ea5a0' }} />} />
+              <Button size="small" type="text" icon={<PlayCircleOutlined style={{ color: '#0ea5a0' }} />} onClick={onRunAll} />
             </Tooltip>
             <Tooltip title="返回列表">
               <Button size="small" type="text" onClick={onClose}>✕</Button>

@@ -119,6 +119,32 @@ export default function ApiTest() {
     } finally { setRunning(false) }
   }
 
+  const handleRunAll = async () => {
+    if (!selectedScenario) return
+    setRunning(true)
+    api.stream(`/projects/${projectId}/branches/${branchId}/api-tests/run`, {
+      scenarioIds: [selectedScenario.id],
+    }, {
+      onChunk: (data) => {
+        if (data.type === 'step_result') {
+          const icon = data.status === 'pass' ? '✅' : data.status === 'skip' ? '⏭️' : '❌'
+          message.info(`${icon} ${data.stepName}`, 2)
+        }
+        if (data.type === 'scenario_done') {
+          message.success(`场景执行完成：通过 ${data.passCount}，失败 ${data.failCount}`)
+        }
+        if (data.type === 'report_created') {
+          message.success('测试报告已生成')
+        }
+      },
+      onDone: () => {
+        setRunning(false)
+        loadScenario(selectedScenario.id)
+      },
+      onError: (msg) => { message.error(msg); setRunning(false) },
+    })
+  }
+
   const saveStep = async (stepId, updates) => {
     try {
       const res = await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/steps/${stepId}`, updates)
@@ -247,6 +273,7 @@ export default function ApiTest() {
             onAddStep={addStep}
             onClose={() => { setSelectedScenario(null); setSelectedStep(null) }}
             onSaveScenario={saveScenario}
+            onRunAll={handleRunAll}
           />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'transparent' }}>
             <StepEditor
