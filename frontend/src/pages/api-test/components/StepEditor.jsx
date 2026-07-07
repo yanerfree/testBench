@@ -7,7 +7,7 @@ import {
 
 const { Text } = Typography
 const cellStyle = { padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }
-const thStyle = { ...cellStyle, fontWeight: 500, background: '#f6f7f9', textAlign: 'left' }
+const thStyle = { ...cellStyle, fontWeight: 500, background: 'rgba(255,255,255,0.3)', textAlign: 'left' }
 
 function EditableHeadersTable({ headers, onSave, readonly }) {
   const entries = headers ? Object.entries(headers) : []
@@ -311,7 +311,7 @@ export default function StepEditor({
               label: <span>Body {step.body && <span style={{ color: '#0ea5a0' }}>●</span>}</span>,
               children: (
                 <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                  <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 11, color: '#8c8c8c', display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 11, color: '#8c8c8c', display: 'flex', justifyContent: 'space-between' }}>
                     <span>JSON</span>
                     {!readonly && <Button size="small" type="text" style={{ fontSize: 11, height: 18, padding: '0 4px' }} onClick={handleBodySave}>保存</Button>}
                   </div>
@@ -371,7 +371,7 @@ export default function StepEditor({
                       <div style={{ padding: 16, color: '#e8453c' }}>{step._runResponse.error}</div>
                     ) : (
                       <>
-                        <div style={{ padding: '8px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', gap: 12, fontSize: 12 }}>
+                        <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', gap: 12, fontSize: 12 }}>
                           <Tag color={step._runResponse.statusCode < 400 ? 'success' : 'error'}>{step._runResponse.statusCode}</Tag>
                           <span style={{ color: '#8c8c8c' }}>{step._runResponse.duration}ms</span>
                         </div>

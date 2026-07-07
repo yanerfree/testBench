@@ -205,7 +205,7 @@ export default function ApiTest() {
     children: n.children?.length > 0 ? buildParentSelect(n.children) : undefined,
   }))
 
-  const stepWithResponse = selectedStep ? { ...selectedStep, _runResponse: runResponse } : null
+  const stepWithResponse = selectedStep ? { ...selectedStep, _runResponse: runResponse || selectedStep.lastResponse } : null
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>

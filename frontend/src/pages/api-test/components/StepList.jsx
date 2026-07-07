@@ -6,14 +6,14 @@ import {
 } from '@ant-design/icons'
 
 const { Text } = Typography
-const METHOD_COLORS = { GET: '#4e8af0', POST: '#0ea5a0', PUT: '#faad14', DELETE: '#e8453c', PATCH: '#7c5cbf' }
+const METHOD_COLORS = { GET: '#0ea5a0', POST: '#0ea5a0', PUT: '#faad14', DELETE: '#e8453c', PATCH: '#7c5cbf' }
 
 export default function StepList({
   scenario, selectedStepId, readonly,
   onSelectStep, onAddStep, onClose, onSaveScenario,
 }) {
   return (
-    <div style={{ width: 300, minWidth: 300, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
+    <div style={{ width: 300, minWidth: 300, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
       <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Space size={4}>
@@ -51,7 +51,7 @@ export default function StepList({
           return (
             <div key={step.id}>
               {showGroup && (
-                <div style={{ padding: '4px 12px', fontSize: 11, color: '#8c8c8c', background: '#f6f7f9' }}>
+                <div style={{ padding: '4px 12px', fontSize: 11, color: '#8c8c8c', background: 'rgba(255,255,255,0.3)' }}>
                   <CaretRightOutlined style={{ marginRight: 4 }} /> Group  {step.groupName}
                 </div>
               )}
@@ -59,8 +59,8 @@ export default function StepList({
                 onClick={() => onSelectStep(step)}
                 style={{
                   padding: '8px 12px', cursor: 'pointer',
-                  background: isSelected ? '#e6f4ff' : 'transparent',
-                  borderLeft: isSelected ? '3px solid #4e8af0' : '3px solid transparent',
+                  background: isSelected ? 'rgba(14,165,160,0.1)' : 'transparent',
+                  borderLeft: isSelected ? '3px solid #0ea5a0' : '3px solid transparent',
                   display: 'flex', alignItems: 'center', gap: 6,
                 }}
                 onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(0,0,0,0.02)' }}
