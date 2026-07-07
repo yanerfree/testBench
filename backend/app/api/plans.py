@@ -190,7 +190,9 @@ class ScenarioResponse(BaseSchema):
 
 class ReportResponse(BaseSchema):
     id: uuid.UUID
-    plan_id: uuid.UUID
+    plan_id: uuid.UUID | None = None
+    report_type: str | None = "plan"
+    report_name: str | None = None
     executed_at: datetime
     completed_at: datetime | None
     total_scenarios: int

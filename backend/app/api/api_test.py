@@ -507,6 +507,133 @@ async def delete_step(
     return {"data": {"deleted": True}}
 
 
+@router.post("/{scenario_id}/copy")
+async def copy_scenario(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """复制场景为新草稿"""
+    scenario = await session.get(ApiTestScenario, scenario_id)
+    if not scenario or scenario.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="场景不存在")
+
+    from sqlalchemy import func as sa_func
+    max_result = await session.execute(
+        select(sa_func.max(ApiTestScenario.code)).where(ApiTestScenario.branch_id == branch_id)
+    )
+    max_code = max_result.scalar()
+    next_num = int(max_code.split("-")[1]) + 1 if max_code else 1
+
+    new_scenario = ApiTestScenario(
+        project_id=project_id,
+        branch_id=branch_id,
+        code=f"AT-{next_num:04d}",
+        title=f"{scenario.title}(副本)",
+        priority=scenario.priority,
+        description=scenario.description,
+        status="draft",
+        source=scenario.source,
+        folder_id=scenario.folder_id,
+        env_variables=scenario.env_variables,
+        created_by=current_user.id,
+    )
+    session.add(new_scenario)
+    await session.flush()
+
+    steps_result = await session.execute(
+        select(ApiTestStep).where(ApiTestStep.scenario_id == scenario_id).order_by(ApiTestStep.sort_order)
+    )
+    for st in steps_result.scalars().all():
+        session.add(ApiTestStep(
+            scenario_id=new_scenario.id,
+            sort_order=st.sort_order,
+            name=st.name,
+            method=st.method,
+            url=st.url,
+            headers=st.headers,
+            body=st.body,
+            assertions=st.assertions,
+            variables_extract=st.variables_extract,
+            enabled=st.enabled,
+        ))
+
+    await session.commit()
+    await write_audit_log(session, action="copy", target_type="api_test_scenario",
+                          target_id=new_scenario.id, target_name=new_scenario.title,
+                          user_id=current_user.id, project_id=project_id)
+    return {"data": _scenario_to_dict(new_scenario)}
+
+
+class SplitRequest(BaseSchema):
+    step_ids: list[str]
+    title: str | None = None
+
+
+@router.post("/{scenario_id}/split")
+async def split_scenario(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    body: SplitRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """将选中的步骤拆分为新场景"""
+    scenario = await session.get(ApiTestScenario, scenario_id)
+    if not scenario or scenario.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="场景不存在")
+
+    step_uuids = [uuid.UUID(sid) for sid in body.step_ids]
+    steps_result = await session.execute(
+        select(ApiTestStep).where(ApiTestStep.id.in_(step_uuids)).order_by(ApiTestStep.sort_order)
+    )
+    steps_to_split = steps_result.scalars().all()
+    if not steps_to_split:
+        from app.core.exceptions import AppError
+        raise AppError(code="NO_STEPS", message="未选择步骤", status_code=400)
+
+    from sqlalchemy import func as sa_func
+    max_result = await session.execute(
+        select(sa_func.max(ApiTestScenario.code)).where(ApiTestScenario.branch_id == branch_id)
+    )
+    max_code = max_result.scalar()
+    next_num = int(max_code.split("-")[1]) + 1 if max_code else 1
+
+    new_scenario = ApiTestScenario(
+        project_id=project_id,
+        branch_id=branch_id,
+        code=f"AT-{next_num:04d}",
+        title=body.title or f"{scenario.title}(拆分)",
+        priority=scenario.priority,
+        status="draft",
+        source="manual",
+        folder_id=scenario.folder_id,
+        env_variables=scenario.env_variables,
+        created_by=current_user.id,
+    )
+    session.add(new_scenario)
+    await session.flush()
+
+    for i, st in enumerate(steps_to_split):
+        session.add(ApiTestStep(
+            scenario_id=new_scenario.id,
+            sort_order=i,
+            name=st.name, method=st.method, url=st.url,
+            headers=st.headers, body=st.body,
+            assertions=st.assertions, variables_extract=st.variables_extract,
+            enabled=st.enabled,
+        ))
+
+    await session.commit()
+    await write_audit_log(session, action="split", target_type="api_test_scenario",
+                          target_id=new_scenario.id, target_name=new_scenario.title,
+                          user_id=current_user.id, project_id=project_id)
+    return {"data": _scenario_to_dict(new_scenario)}
+
+
 class GenerateRequest(BaseSchema):
     api_info: str = Field(default="", max_length=10000)
     api_ids: list[str] | None = None

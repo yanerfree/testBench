@@ -159,6 +159,16 @@ export default function ApiTest() {
     } catch { message.error('应用失败'); return null }
   }
 
+  const handleCopyScenario = async () => {
+    if (!selectedScenario) return
+    try {
+      const res = await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/copy`)
+      message.success('场景已复制')
+      fetchScenarios(); fetchFolders()
+      loadScenario(res.data.id)
+    } catch { message.error('复制失败') }
+  }
+
   const saveStep = async (stepId, updates) => {
     try {
       const res = await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/steps/${stepId}`, updates)
@@ -301,6 +311,7 @@ export default function ApiTest() {
             onRunAll={handleRunAll}
             onAiOptimize={handleAiOptimize}
             onApplyOptimize={handleApplyOptimize}
+            onCopyScenario={handleCopyScenario}
           />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'transparent' }}>
             <StepEditor

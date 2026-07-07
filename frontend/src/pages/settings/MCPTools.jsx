@@ -34,6 +34,9 @@ export default function MCPTools() {
       testbench: {
         url: mcpUrl,
         transport: "streamable-http",
+        headers: {
+          Authorization: "Bearer <你的MCP_API_KEY>"
+        }
       }
     }
   }, null, 2)

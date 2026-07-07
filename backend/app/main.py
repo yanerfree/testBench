@@ -36,7 +36,32 @@ from app.core.middleware import CamelCaseResponse, TokenRefreshMiddleware, Trace
 
 # --- MCP Server ---
 from app.mcp import mcp
-_mcp_app = mcp.http_app(path="/")
+_mcp_raw = mcp.http_app(path="/")
+
+# MCP 认证中间件 — 外部 Claude Code 连接需要 API Key（设置 MCP_API_KEY 环境变量启用）
+from starlette.responses import JSONResponse
+
+class MCPAuthMiddleware:
+    def __init__(self, app):
+        self.app = app
+        import os
+        self.api_key = os.environ.get("MCP_API_KEY", "")
+
+    @property
+    def lifespan(self):
+        return getattr(self.app, 'lifespan', None)
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and self.api_key:
+            headers = dict(scope.get("headers", []))
+            auth = headers.get(b"authorization", b"").decode()
+            if not auth.startswith("Bearer ") or auth[7:] != self.api_key:
+                response = JSONResponse({"error": "Unauthorized"}, status_code=401)
+                await response(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+_mcp_app = MCPAuthMiddleware(_mcp_raw)
 
 from contextlib import asynccontextmanager
 import logging

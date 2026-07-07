@@ -34,7 +34,9 @@ async def get_report_dashboard(
     # L1 汇总
     summary = {
         "reportId": str(report.id),
-        "planId": str(report.plan_id),
+        "planId": str(report.plan_id) if report.plan_id else None,
+        "reportType": getattr(report, 'report_type', 'plan'),
+        "reportName": getattr(report, 'report_name', None),
         "executedAt": report.executed_at.isoformat() if report.executed_at else None,
         "completedAt": report.completed_at.isoformat() if report.completed_at else None,
         "totalScenarios": report.total_scenarios,

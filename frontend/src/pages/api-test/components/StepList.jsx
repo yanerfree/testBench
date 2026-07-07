@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Button, Tag, Space, Select, Tooltip, Typography, Input, Drawer, Spin, message } from 'antd'
+import { Button, Tag, Space, Select, Tooltip, Typography, Input, Drawer, Spin, Dropdown, message } from 'antd'
 import {
   PlusOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  PlayCircleOutlined, CaretRightOutlined, RobotOutlined,
+  PlayCircleOutlined, CaretRightOutlined, RobotOutlined, MoreOutlined, CopyOutlined,
 } from '@ant-design/icons'
 
 const { Text } = Typography
@@ -12,7 +12,7 @@ const METHOD_COLORS = { GET: '#0ea5a0', POST: '#0ea5a0', PUT: '#faad14', DELETE:
 export default function StepList({
   scenario, selectedStepId, readonly,
   onSelectStep, onAddStep, onClose, onSaveScenario, onRunAll,
-  onAiOptimize, onApplyOptimize,
+  onAiOptimize, onApplyOptimize, onCopyScenario,
 }) {
   const [optimizeOpen, setOptimizeOpen] = useState(false)
   const [suggestion, setSuggestion] = useState('')
@@ -46,6 +46,13 @@ export default function StepList({
             <Tooltip title="运行全部">
               <Button size="small" type="text" icon={<PlayCircleOutlined style={{ color: '#0ea5a0' }} />} onClick={onRunAll} />
             </Tooltip>
+            <Dropdown menu={{ items: [
+              { key: 'copy', icon: <CopyOutlined />, label: '复制场景' },
+            ], onClick: ({ key }) => {
+              if (key === 'copy') onCopyScenario()
+            }}} trigger={['click']}>
+              <Button size="small" type="text" icon={<MoreOutlined />} />
+            </Dropdown>
             <Tooltip title="返回列表">
               <Button size="small" type="text" onClick={onClose}>✕</Button>
             </Tooltip>
