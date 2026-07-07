@@ -536,6 +536,7 @@ async def list_reports(
     project_id: uuid.UUID,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100, alias="pageSize"),
+    report_type: str | None = Query(default=None, alias="reportType"),
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
 ):
@@ -543,15 +544,18 @@ async def list_reports(
     from app.models.report import TestReport
     from app.models.plan import Plan
     from app.models.environment import Environment
-    from sqlalchemy import func, select
+    from sqlalchemy import func, select, or_
 
     base = (
         select(TestReport, Plan.name.label("plan_name"), Plan.plan_type, Plan.test_type, Environment.name.label("env_name"))
-        .join(Plan, Plan.id == TestReport.plan_id)
+        .outerjoin(Plan, Plan.id == TestReport.plan_id)
         .outerjoin(Environment, Environment.id == TestReport.environment_id)
-        .where(Plan.project_id == project_id)
+        .where(or_(Plan.project_id == project_id, TestReport.project_id == project_id))
         .order_by(TestReport.created_at.desc())
     )
+
+    if report_type:
+        base = base.where(TestReport.report_type == report_type)
 
     count_result = await session.execute(select(func.count()).select_from(base.subquery()))
     total = count_result.scalar_one()
@@ -563,10 +567,12 @@ async def list_reports(
     for report, plan_name, plan_type, test_type, env_name in rows:
         data.append({
             "id": str(report.id),
-            "planId": str(report.plan_id),
+            "planId": str(report.plan_id) if report.plan_id else None,
             "planName": plan_name,
             "planType": plan_type,
             "testType": test_type,
+            "reportType": report.report_type,
+            "reportName": report.report_name or plan_name or "未命名报告",
             "environmentName": env_name,
             "executedAt": report.executed_at.isoformat() if report.executed_at else None,
             "completedAt": report.completed_at.isoformat() if report.completed_at else None,

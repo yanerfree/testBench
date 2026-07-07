@@ -232,6 +232,7 @@ async def run_batch(
     scenario_ids: list[uuid.UUID],
     session: AsyncSession,
     user_id: uuid.UUID | None = None,
+    project_id: uuid.UUID | None = None,
     report_name: str | None = None,
 ) -> AsyncIterator[RunEvent]:
     all_results: list[ScenarioResult] = []
@@ -272,7 +273,7 @@ async def run_batch(
             all_results.append(scenario_result)
 
     if all_results and user_id:
-        report_id = await _create_report(session, all_results, user_id, report_name)
+        report_id = await _create_report(session, all_results, user_id, project_id, report_name)
         yield RunEvent(type="report_created", data={"reportId": str(report_id)})
 
     yield RunEvent(type="run_done", data={"totalScenarios": len(scenario_ids)})
@@ -282,6 +283,7 @@ async def _create_report(
     session: AsyncSession,
     results: list[ScenarioResult],
     user_id: uuid.UUID,
+    project_id: uuid.UUID | None,
     report_name: str | None,
 ) -> uuid.UUID:
     from datetime import datetime, timezone
@@ -303,6 +305,7 @@ async def _create_report(
     report = TestReport(
         report_type="api_test",
         report_name=report_name,
+        project_id=project_id,
         executed_by=user_id,
         executed_at=now,
         completed_at=now,

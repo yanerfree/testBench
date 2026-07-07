@@ -148,7 +148,7 @@ async def run_batch_scenarios(
 
     async def event_stream():
         try:
-            async for event in run_batch(scenario_uuids, session, user_id=current_user.id):
+            async for event in run_batch(scenario_uuids, session, user_id=current_user.id, project_id=project_id):
                 yield f"data: {json.dumps({'type': event.type, **event.data}, ensure_ascii=False)}\n\n"
         except Exception as e:
             logger.exception("run_batch failed")

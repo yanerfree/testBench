@@ -28,16 +28,19 @@ export default function ReportList() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
+  const [typeFilter, setTypeFilter] = useState('')
 
   const fetchReports = useCallback(async () => {
     if (!projectId) return
     setLoading(true)
     try {
-      const res = await api.get(`/projects/${projectId}/reports?page=${page}&pageSize=${pageSize}`)
+      let url = `/projects/${projectId}/reports?page=${page}&pageSize=${pageSize}`
+      if (typeFilter) url += `&reportType=${typeFilter}`
+      const res = await api.get(url)
       setReports(res.data || [])
       setTotal(res.pagination?.total || 0)
     } catch { /* */ } finally { setLoading(false) }
-  }, [projectId, page, pageSize])
+  }, [projectId, page, pageSize, typeFilter])
 
   useEffect(() => { fetchReports() }, [fetchReports])
 
@@ -77,7 +80,7 @@ export default function ReportList() {
   }
 
   const filtered = keyword
-    ? reports.filter(r => r.planName.toLowerCase().includes(keyword.toLowerCase()))
+    ? reports.filter(r => (r.reportName || r.planName || '').toLowerCase().includes(keyword.toLowerCase()))
     : reports
 
   return (
@@ -86,6 +89,19 @@ export default function ReportList() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
         <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0, color: '#1d2129' }}>测试报告</h2>
         <Space size={8}>
+          <Space size={0}>
+            {[
+              { key: '', label: '全部' },
+              { key: 'plan', label: '测试计划' },
+              { key: 'api_test', label: '接口测试' },
+            ].map(f => (
+              <Button key={f.key} size="small" type={typeFilter === f.key ? 'primary' : 'default'}
+                onClick={() => { setTypeFilter(f.key); setPage(1) }}
+                style={{ borderRadius: 0, ...(f.key === '' ? { borderRadius: '6px 0 0 6px' } : f.key === 'api_test' ? { borderRadius: '0 6px 6px 0' } : {}) }}>
+                {f.label}
+              </Button>
+            ))}
+          </Space>
           <Input
             prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />}
             placeholder="搜索报告名称"
@@ -102,7 +118,7 @@ export default function ReportList() {
         <div style={{ background: 'rgba(255,255,255,0.3)', border: 'none', borderRadius: 14, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', height: 36, background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0 }}>
-            <div style={{ flex: 3, ...th }}>关联计划</div>
+            <div style={{ flex: 3, ...th }}>报告名称</div>
             <div style={{ width: 70, textAlign: 'center', ...th }}>类型</div>
             <div style={{ width: 90, textAlign: 'center', ...th }}>环境</div>
             <div style={{ width: 80, textAlign: 'center', ...th }}>状态</div>
@@ -125,10 +141,10 @@ export default function ReportList() {
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.02)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  {/* Plan name + time */}
+                  {/* Report name + time */}
                   <div style={{ flex: 3, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontWeight: 500, fontSize: 13, color: '#1d2129', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {r.planName}
+                      {r.reportName || r.planName}
                     </span>
                     <span style={{ fontSize: 11, color: '#c9cdd4', flexShrink: 0 }}>
                       {r.executedAt ? new Date(r.executedAt).toLocaleString('zh-CN') : '-'}
@@ -137,8 +153,12 @@ export default function ReportList() {
 
                   {/* Type */}
                   <div style={{ width: 70, textAlign: 'center' }}>
-                    <span style={{ fontSize: 12, color: '#86909c' }}>
-                      {r.planType === 'automated' ? '自动化' : '手动'}
+                    <span style={{
+                      fontSize: 11, padding: '1px 6px', borderRadius: 4,
+                      background: r.reportType === 'api_test' ? '#e6f4ff' : '#f0f5ff',
+                      color: r.reportType === 'api_test' ? '#0ea5a0' : '#4e8af0',
+                    }}>
+                      {r.reportType === 'api_test' ? '接口测试' : '测试计划'}
                     </span>
                   </div>
 
@@ -156,10 +176,10 @@ export default function ReportList() {
                     <span style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
                       fontSize: 11, padding: '2px 8px', borderRadius: 10,
-                      background: isCompleted ? '#0ea5a0' : '#0ea5a0',
+                      background: isCompleted ? '#0ea5a0' : '#faad14',
                       color: '#fff',
                     }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'transparent' }} />
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
                       {isCompleted ? '已完成' : '执行中'}
                     </span>
                   </div>
@@ -193,7 +213,7 @@ export default function ReportList() {
                     <Button type="text" size="small" style={{ fontSize: 12, color: '#0ea5a0' }}
                       onClick={e => handleExport(e, r.id)}>导出</Button>
                     <Button type="text" size="small" danger style={{ fontSize: 12 }}
-                      onClick={e => handleDelete(e, r.id, r.planName)}>删除</Button>
+                      onClick={e => handleDelete(e, r.id, r.reportName || r.planName)}>删除</Button>
                   </div>
                 </div>
               )
