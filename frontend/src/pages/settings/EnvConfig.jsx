@@ -109,7 +109,7 @@ function EnvironmentPanel() {
   return (
     <div style={{ display: 'flex', gap: 16, minHeight: 500 }}>
       {/* 左侧环境列表 */}
-      <div style={{ width: 200, background: 'rgba(255,255,255,0.3)', borderRadius: 14, border: 'none', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div style={{ width: 200, background: 'rgba(255,255,255,0.5)', borderRadius: 14, border: 'none', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {loading ? <div style={{ textAlign: 'center', padding: 20 }}><Spin size="small" /></div> :
             envs.map(env => (
@@ -132,7 +132,7 @@ function EnvironmentPanel() {
       </div>
 
       {/* 右侧环境详情 */}
-      <div style={{ flex: 1, background: 'rgba(255,255,255,0.3)', borderRadius: 14, border: 'none', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: '20px 24px' }}>
+      <div style={{ flex: 1, background: 'rgba(255,255,255,0.5)', borderRadius: 14, border: 'none', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: '20px 24px' }}>
         {selectedEnv ? (<>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div>
@@ -192,7 +192,7 @@ function GlobalVariablePanel() {
   }
 
   return (
-    <div style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 14, border: 'none', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: '20px 24px', maxWidth: 800 }}>
+    <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 14, border: 'none', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: '20px 24px', maxWidth: 800 }}>
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: '#1d2129' }}>全局变量</div>
         <div style={{ fontSize: 12, color: '#86909c', marginTop: 4 }}>
