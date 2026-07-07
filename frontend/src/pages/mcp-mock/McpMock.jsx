@@ -160,7 +160,7 @@ export default function McpMock() {
                 {t.label}
                 {activeTab === t.key && <div style={{
                   position: 'absolute', bottom: 0, left: 16, right: 16, height: 2,
-                  background: 'rgba(124,92,191,0.12)', color: '#7c5cbf', borderRadius: 4,
+                  background: 'rgba(124,92,191,0.12)', color: '#7c5cbf', borderRadius: 8,
                 }} />}
               </div>
             ))}

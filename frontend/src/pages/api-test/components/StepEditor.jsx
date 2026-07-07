@@ -1,18 +1,239 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button, Tag, Space, Input, Select, Tabs, Popconfirm, Typography, message } from 'antd'
 import {
   DeleteOutlined, CaretRightOutlined, LoadingOutlined,
-  CheckCircleOutlined, SendOutlined,
+  CheckCircleOutlined, CloseCircleOutlined, SendOutlined, PlusOutlined,
 } from '@ant-design/icons'
 
 const { Text } = Typography
+const cellStyle = { padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }
+const thStyle = { ...cellStyle, fontWeight: 500, background: '#f6f7f9', textAlign: 'left' }
+
+function EditableHeadersTable({ headers, onSave, readonly }) {
+  const entries = headers ? Object.entries(headers) : []
+  const [rows, setRows] = useState(entries.map(([k, v]) => ({ key: k, value: v })))
+
+  useEffect(() => {
+    const newEntries = headers ? Object.entries(headers) : []
+    setRows(newEntries.map(([k, v]) => ({ key: k, value: v })))
+  }, [headers])
+
+  const save = (updated) => {
+    const obj = {}
+    updated.forEach(r => { if (r.key.trim()) obj[r.key.trim()] = r.value })
+    onSave(obj)
+  }
+
+  return (
+    <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <thead>
+          <tr>
+            <th style={thStyle}>Key</th>
+            <th style={thStyle}>Value</th>
+            {!readonly && <th style={{ ...thStyle, width: 40 }}></th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i}>
+              <td style={cellStyle}>
+                <Input size="small" variant="borderless" value={row.key} disabled={readonly} style={{ fontWeight: 500 }}
+                  onChange={e => { const r = [...rows]; r[i] = { ...r[i], key: e.target.value }; setRows(r) }}
+                  onBlur={() => save(rows)} />
+              </td>
+              <td style={cellStyle}>
+                <Input size="small" variant="borderless" value={row.value} disabled={readonly} style={{ fontFamily: 'monospace', color: '#595959' }}
+                  onChange={e => { const r = [...rows]; r[i] = { ...r[i], value: e.target.value }; setRows(r) }}
+                  onBlur={() => save(rows)} />
+              </td>
+              {!readonly && (
+                <td style={cellStyle}>
+                  <Button type="text" size="small" danger icon={<DeleteOutlined />}
+                    onClick={() => { const r = rows.filter((_, j) => j !== i); setRows(r); save(r) }} />
+                </td>
+              )}
+            </tr>
+          ))}
+          {rows.length === 0 && (
+            <tr><td colSpan={readonly ? 2 : 3} style={{ padding: 12, color: '#bfbfbf', textAlign: 'center' }}>无自定义 Headers</td></tr>
+          )}
+        </tbody>
+      </table>
+      {!readonly && (
+        <div style={{ padding: '4px 12px', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+          <Button type="text" size="small" icon={<PlusOutlined />} style={{ fontSize: 11, color: '#8c8c8c' }}
+            onClick={() => { setRows([...rows, { key: '', value: '' }]) }}>
+            添加
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EditableAssertionsTable({ assertions, onSave, readonly }) {
+  const [rows, setRows] = useState(assertions || [])
+
+  useEffect(() => { setRows(assertions || []) }, [assertions])
+
+  const save = (updated) => onSave(updated)
+
+  return (
+    <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <thead>
+          <tr>
+            <th style={{ ...thStyle, width: 30 }}></th>
+            <th style={thStyle}>类型</th>
+            <th style={thStyle}>字段</th>
+            <th style={thStyle}>操作</th>
+            <th style={thStyle}>期望值</th>
+            <th style={{ ...thStyle, width: 40 }}></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((a, j) => (
+            <tr key={j}>
+              <td style={cellStyle}>
+                {a.passed === true ? <CheckCircleOutlined style={{ color: '#0ea5a0' }} /> :
+                 a.passed === false ? <CloseCircleOutlined style={{ color: '#e8453c' }} /> :
+                 <span style={{ color: '#d9d9d9' }}>○</span>}
+              </td>
+              <td style={cellStyle}>
+                <Select size="small" variant="borderless" value={a.type} style={{ width: '100%' }}
+                  options={[
+                    { value: 'status', label: '状态码' },
+                    { value: 'body_field', label: 'JSON字段' },
+                    { value: 'body_contains', label: '包含文本' },
+                  ]}
+                  onChange={v => { const r = [...rows]; r[j] = { ...r[j], type: v }; setRows(r); save(r) }} />
+              </td>
+              <td style={cellStyle}>
+                <Input size="small" variant="borderless" value={a.field || ''} style={{ fontFamily: 'monospace', color: '#595959' }}
+                  placeholder={a.type === 'status' ? '-' : 'data.id'}
+                  onChange={e => { const r = [...rows]; r[j] = { ...r[j], field: e.target.value }; setRows(r) }}
+                  onBlur={() => save(rows)} />
+              </td>
+              <td style={cellStyle}>
+                <Select size="small" variant="borderless" value={a.operator} style={{ width: '100%' }}
+                  options={[
+                    { value: '==', label: '==' },
+                    { value: '!=', label: '!=' },
+                    { value: '>', label: '>' },
+                    { value: '<', label: '<' },
+                    { value: 'contains', label: '包含' },
+                    { value: 'not_empty', label: '非空' },
+                  ]}
+                  onChange={v => { const r = [...rows]; r[j] = { ...r[j], operator: v }; setRows(r); save(r) }} />
+              </td>
+              <td style={cellStyle}>
+                <Input size="small" variant="borderless" value={typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value ?? '')}
+                  onChange={e => {
+                    let val = e.target.value
+                    try { val = JSON.parse(val) } catch { /* keep string */ }
+                    const r = [...rows]; r[j] = { ...r[j], value: val }; setRows(r)
+                  }}
+                  onBlur={() => save(rows)} />
+              </td>
+              <td style={cellStyle}>
+                <Button type="text" size="small" danger icon={<DeleteOutlined />}
+                  onClick={() => { const r = rows.filter((_, k) => k !== j); setRows(r); save(r) }} />
+              </td>
+            </tr>
+          ))}
+          {rows.length === 0 && (
+            <tr><td colSpan={6} style={{ padding: 12, color: '#bfbfbf', textAlign: 'center' }}>无断言</td></tr>
+          )}
+        </tbody>
+      </table>
+      <div style={{ padding: '4px 12px', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+        <Button type="text" size="small" icon={<PlusOutlined />} style={{ fontSize: 11, color: '#8c8c8c' }}
+          onClick={() => { setRows([...rows, { type: 'status', operator: '==', value: 200 }]) }}>
+          添加断言
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function EditableVariablesTable({ variables, onSave, readonly }) {
+  const entries = variables ? Object.entries(variables) : []
+  const [rows, setRows] = useState(entries.map(([k, v]) => ({ key: k, value: v })))
+
+  useEffect(() => {
+    const newEntries = variables ? Object.entries(variables) : []
+    setRows(newEntries.map(([k, v]) => ({ key: k, value: v })))
+  }, [variables])
+
+  const save = (updated) => {
+    const obj = {}
+    updated.forEach(r => { if (r.key.trim()) obj[r.key.trim()] = r.value })
+    onSave(obj)
+  }
+
+  return (
+    <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <thead>
+          <tr>
+            <th style={thStyle}>变量名</th>
+            <th style={thStyle}>JSONPath</th>
+            <th style={{ ...thStyle, width: 40 }}></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i}>
+              <td style={cellStyle}>
+                <Input size="small" variant="borderless" value={row.key}
+                  style={{ color: '#d46b08', fontWeight: 500 }}
+                  prefix={<span style={{ color: '#d46b08' }}>$&#123;</span>}
+                  suffix={<span style={{ color: '#d46b08' }}>&#125;</span>}
+                  onChange={e => { const r = [...rows]; r[i] = { ...r[i], key: e.target.value }; setRows(r) }}
+                  onBlur={() => save(rows)} />
+              </td>
+              <td style={cellStyle}>
+                <Input size="small" variant="borderless" value={row.value}
+                  style={{ fontFamily: 'monospace' }}
+                  placeholder="data.token"
+                  onChange={e => { const r = [...rows]; r[i] = { ...r[i], value: e.target.value }; setRows(r) }}
+                  onBlur={() => save(rows)} />
+              </td>
+              <td style={cellStyle}>
+                <Button type="text" size="small" danger icon={<DeleteOutlined />}
+                  onClick={() => { const r = rows.filter((_, j) => j !== i); setRows(r); save(r) }} />
+              </td>
+            </tr>
+          ))}
+          {rows.length === 0 && (
+            <tr><td colSpan={3} style={{ padding: 12, color: '#bfbfbf', textAlign: 'center' }}>无变量提取</td></tr>
+          )}
+        </tbody>
+      </table>
+      <div style={{ padding: '4px 12px', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+        <Button type="text" size="small" icon={<PlusOutlined />} style={{ fontSize: 11, color: '#8c8c8c' }}
+          onClick={() => { setRows([...rows, { key: '', value: '' }]) }}>
+          添加变量
+        </Button>
+      </div>
+      <div style={{ padding: '4px 12px', fontSize: 11, color: '#8c8c8c' }}>
+        从响应中提取变量，后续步骤可用 ${'{变量名}'} 引用
+      </div>
+    </div>
+  )
+}
 
 export default function StepEditor({
-  step, running,
+  step, running, readonly,
   onSaveStep, onRemoveStep, onRunStep,
   onStepChange,
 }) {
-  const [bodyText, setBodyText] = useState(step?.body ? JSON.stringify(step.body, null, 2) : '')
+  const [bodyText, setBodyText] = useState('')
+
+  useEffect(() => {
+    setBodyText(step?.body ? JSON.stringify(step.body, null, 2) : '')
+  }, [step?.id])
 
   const handleBodySave = () => {
     try {
@@ -38,14 +259,17 @@ export default function StepEditor({
         <Input
           value={step.name}
           variant="borderless"
+          disabled={readonly}
           style={{ fontWeight: 600, fontSize: 14, flex: 1, padding: 0 }}
           onBlur={e => onSaveStep(step.id, { name: e.target.value })}
           onChange={e => onStepChange({ ...step, name: e.target.value })}
         />
         <Space size={4}>
-          <Popconfirm title="删除此步骤？" onConfirm={() => onRemoveStep(step.id)}>
-            <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
+          {!readonly && (
+            <Popconfirm title="删除此步骤？" onConfirm={() => onRemoveStep(step.id)}>
+              <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+            </Popconfirm>
+          )}
           <Button
             type="primary"
             icon={running ? <LoadingOutlined /> : <CaretRightOutlined />}
@@ -60,6 +284,7 @@ export default function StepEditor({
 
       <div style={{ padding: '10px 20px', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', gap: 8, alignItems: 'center' }}>
         <Select value={step.method} size="small"
+          disabled={readonly}
           style={{ width: 90, fontWeight: 600 }}
           onChange={v => { onStepChange({ ...step, method: v }); onSaveStep(step.id, { method: v }) }}
           options={['GET','POST','PUT','DELETE','PATCH'].map(m => ({ value: m, label: m }))}
@@ -67,11 +292,12 @@ export default function StepEditor({
         <Input
           value={step.url}
           variant="borderless"
+          disabled={readonly}
           style={{ fontFamily: "'SF Mono', Monaco, Consolas, monospace", fontSize: 13, color: '#333' }}
           onChange={e => onStepChange({ ...step, url: e.target.value })}
           onBlur={e => onSaveStep(step.id, { url: e.target.value })}
         />
-        <Button size="small" style={{ fontSize: 12 }}>发送</Button>
+        <Button size="small" style={{ fontSize: 12 }} onClick={onRunStep}>发送</Button>
       </div>
 
       <div style={{ flex: 1, overflow: 'auto' }}>
@@ -87,11 +313,12 @@ export default function StepEditor({
                 <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                   <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 11, color: '#8c8c8c', display: 'flex', justifyContent: 'space-between' }}>
                     <span>JSON</span>
-                    <Button size="small" type="text" style={{ fontSize: 11, height: 18, padding: '0 4px' }} onClick={handleBodySave}>保存</Button>
+                    {!readonly && <Button size="small" type="text" style={{ fontSize: 11, height: 18, padding: '0 4px' }} onClick={handleBodySave}>保存</Button>}
                   </div>
                   <textarea
                     value={bodyText}
                     onChange={e => setBodyText(e.target.value)}
+                    readOnly={readonly}
                     style={{
                       width: '100%', border: 'none', outline: 'none', resize: 'vertical',
                       padding: 16, fontSize: 13, fontFamily: "'SF Mono', Monaco, Consolas, monospace",
@@ -105,79 +332,33 @@ export default function StepEditor({
               key: 'headers',
               label: <span>Headers {step.headers && Object.keys(step.headers).length > 0 && <Tag style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{Object.keys(step.headers).length}</Tag>}</span>,
               children: (
-                <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ background: '#f6f7f9' }}>
-                        <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>Key</th>
-                        <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {step.headers && Object.entries(step.headers).map(([k, v]) => (
-                        <tr key={k}>
-                          <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontWeight: 500, color: '#333' }}>{k}</td>
-                          <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontFamily: 'monospace', color: '#595959', wordBreak: 'break-all' }}>{v}</td>
-                        </tr>
-                      ))}
-                      {(!step.headers || Object.keys(step.headers).length === 0) && (
-                        <tr><td colSpan={2} style={{ padding: 16, color: '#bfbfbf', textAlign: 'center' }}>无自定义 Headers</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                <EditableHeadersTable
+                  headers={step.headers}
+                  readonly={readonly}
+                  onSave={h => onSaveStep(step.id, { headers: h })}
+                />
               ),
             },
             {
               key: 'assertions',
               label: <span>断言 {step.assertions?.length > 0 && <Tag color="green" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{step.assertions.length}</Tag>}</span>,
               children: (
-                <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ background: '#f6f7f9' }}>
-                        <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)', width: 30 }}></th>
-                        <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>类型</th>
-                        <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>字段</th>
-                        <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>操作</th>
-                        <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>期望值</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(step.assertions || []).map((a, j) => (
-                        <tr key={j}>
-                          <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}><CheckCircleOutlined style={{ color: '#0ea5a0' }} /></td>
-                          <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontWeight: 500 }}>{a.type}</td>
-                          <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontFamily: 'monospace', color: '#595959' }}>{a.field || '-'}</td>
-                          <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', color: '#4e8af0' }}>{a.operator}</td>
-                          <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                            <code style={{ background: '#f0f5ff', padding: '2px 8px', borderRadius: 3, color: '#1d39c4' }}>{JSON.stringify(a.value)}</code>
-                          </td>
-                        </tr>
-                      ))}
-                      {(!step.assertions || step.assertions.length === 0) && (
-                        <tr><td colSpan={5} style={{ padding: 16, color: '#bfbfbf', textAlign: 'center' }}>无断言</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                <EditableAssertionsTable
+                  assertions={step.assertions}
+                  readonly={readonly}
+                  onSave={a => onSaveStep(step.id, { assertions: a })}
+                />
               ),
             },
             {
               key: 'variables',
-              label: '变量提取',
+              label: <span>变量提取 {step.variablesExtract && Object.keys(step.variablesExtract).length > 0 && <Tag style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{Object.keys(step.variablesExtract).length}</Tag>}</span>,
               children: (
-                <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', padding: 16 }}>
-                  {step.variablesExtract && Object.keys(step.variablesExtract).length > 0 ? (
-                    Object.entries(step.variablesExtract).map(([k, v]) => (
-                      <div key={k} style={{ padding: '4px 0', fontSize: 13 }}>
-                        <code style={{ color: '#d46b08', fontWeight: 500 }}>${`{${k}}`}</code>
-                        <span style={{ margin: '0 8px', color: '#8c8c8c' }}>←</span>
-                        <code style={{ color: '#333' }}>{v}</code>
-                      </div>
-                    ))
-                  ) : <Text type="secondary" style={{ fontSize: 12 }}>无变量提取</Text>}
-                </div>
+                <EditableVariablesTable
+                  variables={step.variablesExtract}
+                  readonly={readonly}
+                  onSave={v => onSaveStep(step.id, { variablesExtract: v })}
+                />
               ),
             },
             {

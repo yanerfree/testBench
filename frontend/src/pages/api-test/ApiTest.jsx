@@ -174,6 +174,32 @@ export default function ApiTest() {
     } catch { /* */ }
   }
 
+  const handleCreateScenario = async () => {
+    try {
+      const v = await createForm.validateFields()
+      await api.post(`/projects/${projectId}/branches/${branchId}/api-tests`, {
+        title: v.title,
+        priority: v.priority || 'P1',
+        folderId: v.folderId || undefined,
+      })
+      message.success('场景已创建')
+      setCreateScenarioOpen(false)
+      createForm.resetFields()
+      fetchScenarios()
+    } catch { /* */ }
+  }
+
+  const handleBatchOperation = async (action, ids) => {
+    if (!ids?.length) { message.warning('请先选择场景'); return }
+    try {
+      await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/batch`, {
+        ids, action,
+      })
+      message.success('操作成功')
+      fetchScenarios()
+    } catch (e) { message.error(e.message || '操作失败') }
+  }
+
   const buildParentSelect = (nodes) => nodes.map(n => ({
     value: n.id, title: n.name,
     children: n.children?.length > 0 ? buildParentSelect(n.children) : undefined,
@@ -208,13 +234,15 @@ export default function ApiTest() {
           onSelectScenario={(id) => loadScenario(id)}
           onDelete={handleDelete}
           onGenerate={() => { setGenOpen(true); form.resetFields() }}
-          onCreate={() => {/* TODO */}}
+          onCreate={() => { setCreateScenarioOpen(true); createForm.resetFields() }}
+          onBatch={handleBatchOperation}
         />
       ) : (
         <>
           <StepList
             scenario={selectedScenario}
             selectedStepId={selectedStep?.id}
+            readonly={selectedScenario?.status !== 'draft'}
             onSelectStep={(step) => { setSelectedStep(step); setRunResponse(null) }}
             onAddStep={addStep}
             onClose={() => { setSelectedScenario(null); setSelectedStep(null) }}
@@ -224,6 +252,7 @@ export default function ApiTest() {
             <StepEditor
               step={stepWithResponse}
               running={running}
+              readonly={selectedScenario?.status !== 'draft'}
               onSaveStep={saveStep}
               onRemoveStep={removeStep}
               onRunStep={handleRunStep}
@@ -267,6 +296,38 @@ export default function ApiTest() {
               onChange={setNewFolderParent}
               treeData={buildParentSelect(folderTree)}
               placeholder="顶级模块（不选则为一级模块）"
+              allowClear
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="新建场景"
+        open={createScenarioOpen}
+        onOk={handleCreateScenario}
+        onCancel={() => setCreateScenarioOpen(false)}
+        okText="创建"
+        cancelText="取消"
+        width={480}
+      >
+        <Form form={createForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="title" label="场景标题" rules={[{ required: true, message: '请输入标题' }]}>
+            <Input placeholder="如：创建用户-正向测试" />
+          </Form.Item>
+          <Form.Item name="priority" label="优先级" initialValue="P1">
+            <Select options={[
+              { value: 'P0', label: 'P0 - 最高' },
+              { value: 'P1', label: 'P1 - 高' },
+              { value: 'P2', label: 'P2 - 中' },
+              { value: 'P3', label: 'P3 - 低' },
+            ]} />
+          </Form.Item>
+          <Form.Item name="folderId" label="目标文件夹（可选）">
+            <TreeSelect
+              treeData={buildParentSelect(folderTree)}
+              placeholder="不选则不归入文件夹"
               allowClear
               style={{ width: '100%' }}
             />

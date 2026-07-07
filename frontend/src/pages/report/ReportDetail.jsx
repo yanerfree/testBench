@@ -170,7 +170,7 @@ function StepDetailDrawer({ step, open, onClose }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           {step.stepPhase && (
             <span style={{
-              fontSize: 11, fontWeight: 600, padding: '1px 8px', borderRadius: 3,
+              fontSize: 11, fontWeight: 600, padding: '1px 8px', borderRadius: 6,
               background: `${phaseColor[step.stepPhase] || '#86909c'}15`,
               color: phaseColor[step.stepPhase] || '#86909c',
             }}>{phaseLabel[step.stepPhase] || step.stepPhase}</span>
@@ -382,7 +382,7 @@ function ScenarioExpanded({ scenario }) {
                 }}>{step.seq || i + 1}</span>
                 {step.phase && (
                   <span style={{
-                    fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 3, flexShrink: 0, marginTop: 2,
+                    fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 6, flexShrink: 0, marginTop: 2,
                     background: `${phaseColor[step.phase] || '#86909c'}15`,
                     color: phaseColor[step.phase] || '#86909c',
                   }}>{phaseLabel[step.phase] || step.phase}</span>
@@ -634,7 +634,7 @@ export default function ReportDetail() {
                     <StatusDot status={step.status} />
                     {step.stepPhase && (
                       <span style={{
-                        fontSize: 10, fontWeight: 600, padding: '0px 6px', borderRadius: 3, flexShrink: 0,
+                        fontSize: 10, fontWeight: 600, padding: '0px 6px', borderRadius: 6, flexShrink: 0,
                         background: `${phaseColor[step.stepPhase] || '#86909c'}15`,
                         color: phaseColor[step.stepPhase] || '#86909c',
                       }}>{phaseLabel[step.stepPhase] || step.stepPhase}</span>
@@ -647,7 +647,7 @@ export default function ReportDetail() {
                         {step.httpMethod && (
                           <span style={{
                             fontSize: 10, fontWeight: 700, fontFamily: 'monospace', flexShrink: 0,
-                            padding: '0px 5px', borderRadius: 3,
+                            padding: '0px 5px', borderRadius: 6,
                             background: `${methodColor[step.httpMethod] || '#86909c'}18`,
                             color: methodColor[step.httpMethod] || '#86909c',
                           }}>{step.httpMethod}</span>
@@ -663,7 +663,7 @@ export default function ReportDetail() {
                         {step.httpMethod && (
                           <span style={{
                             fontSize: 11, fontWeight: 700, fontFamily: 'monospace', flexShrink: 0,
-                            padding: '1px 6px', borderRadius: 3,
+                            padding: '1px 6px', borderRadius: 6,
                             background: `${methodColor[step.httpMethod] || '#86909c'}18`,
                             color: methodColor[step.httpMethod] || '#86909c',
                           }}>{step.httpMethod}</span>
@@ -681,7 +681,7 @@ export default function ReportDetail() {
                     {step.statusCode && (
                       <span style={{
                         fontFamily: 'monospace', fontSize: 12, fontWeight: 600,
-                        padding: '1px 6px', borderRadius: 3,
+                        padding: '1px 6px', borderRadius: 6,
                         background: step.statusCode >= 400 ? '#fff2f0' : '#e0f7f6',
                         color: step.statusCode >= 400 ? '#e8453c' : '#0ea5a0',
                       }}>{step.statusCode}</span>

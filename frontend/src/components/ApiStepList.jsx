@@ -110,7 +110,7 @@ function SnippetPicker({ snippets, onInsert }) {
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#1d2129' }}>{item.label}</span>
                 <span style={{ fontSize: 10, color: '#86909c' }}>{item.desc}</span>
               </div>
-              <pre style={{ margin: 0, padding: '4px 8px', background: 'rgba(0,0,0,0.02)', borderRadius: 4, fontSize: 10, color: '#4e5969', fontFamily: 'monospace', lineHeight: 1.5, whiteSpace: 'pre-wrap', border: '1px solid rgba(0,0,0,0.05)', maxHeight: 80, overflow: 'hidden' }}>{item.code}</pre>
+              <pre style={{ margin: 0, padding: '4px 8px', background: 'rgba(0,0,0,0.02)', borderRadius: 8, fontSize: 10, color: '#4e5969', fontFamily: 'monospace', lineHeight: 1.5, whiteSpace: 'pre-wrap', border: '1px solid rgba(0,0,0,0.05)', maxHeight: 80, overflow: 'hidden' }}>{item.code}</pre>
             </div>
           ))}
         </div>
@@ -130,7 +130,7 @@ function VarPicker({ onInsert }) {
           <div style={{ fontSize: 11, color: '#86909c', padding: '4px 8px', fontWeight: 600 }}>点击插入动态变量</div>
           {dynamicVars.map(v => (
             <div key={v.key} onClick={() => onInsert(`{{${v.key}}}`)}
-              style={{ padding: '6px 8px', cursor: 'pointer', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              style={{ padding: '6px 8px', cursor: 'pointer', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               onMouseEnter={e => e.currentTarget.style.background = '#f0f5ff'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <div>
@@ -951,7 +951,7 @@ function ResponsePanel({ response, onAddAssertion }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', marginBottom: 8, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
         <Tooltip title={onAddAssertion ? '点击添加状态码断言' : ''}>
           <span onClick={() => onAddAssertion?.('status', sc)} style={{
-            fontWeight: 700, fontSize: 14, color: statusColor, background: statusColor + '10', padding: '2px 8px', borderRadius: 4,
+            fontWeight: 700, fontSize: 14, color: statusColor, background: statusColor + '10', padding: '2px 8px', borderRadius: 8,
             cursor: onAddAssertion ? 'pointer' : 'default',
           }}>
             {sc} {r.status_text || r.statusText || ''}
@@ -982,7 +982,7 @@ function ResponsePanel({ response, onAddAssertion }) {
             <div style={{ display: 'flex', gap: 0 }}>
               {isJson && ['pretty', 'raw'].map(m => (
                 <div key={m} onClick={() => setBodyMode(m)} style={{
-                  padding: '2px 8px', fontSize: 10, cursor: 'pointer', borderRadius: 3,
+                  padding: '2px 8px', fontSize: 10, cursor: 'pointer', borderRadius: 6,
                   background: bodyMode === m ? '#e0f7f6' : 'transparent',
                   color: bodyMode === m ? '#0ea5a0' : '#86909c', fontWeight: bodyMode === m ? 600 : 400,
                 }}>{m === 'pretty' ? 'Pretty' : 'Raw'}</div>
@@ -1202,7 +1202,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
             {baseUrl && !urlHasOwnBase(step.url) && (
               <Tooltip title={baseUrl}>
                 <span style={{ fontSize: 11, color: '#86909c', background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.08)', borderRight: 'none',
-                  borderRadius: '4px 0 0 4px', padding: '3px 8px', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis',
+                  borderRadius: '8px 0 0 8px', padding: '3px 8px', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis',
                   display: 'inline-block', lineHeight: '16px', fontFamily: 'monospace', flexShrink: 0 }}>
                   <GlobalOutlined style={{ marginRight: 4, fontSize: 10 }} />{baseUrl}
                 </span>
@@ -1379,7 +1379,7 @@ function StepDetailPanel({ step, onChange, baseUrl }) {
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
                 {['curl', 'python', 'javascript'].map(l => (
                   <div key={l} onClick={() => setCodeLang(l)} style={{
-                    padding: '3px 10px', fontSize: 11, cursor: 'pointer', borderRadius: 4,
+                    padding: '3px 10px', fontSize: 11, cursor: 'pointer', borderRadius: 8,
                     background: codeLang === l ? '#0ea5a0' : 'rgba(0,0,0,0.02)', color: codeLang === l ? '#fff' : '#4e5969',
                     fontWeight: codeLang === l ? 600 : 400, transition: 'all 0.12s',
                   }}>{l === 'curl' ? 'cURL' : l === 'python' ? 'Python' : 'JavaScript'}</div>

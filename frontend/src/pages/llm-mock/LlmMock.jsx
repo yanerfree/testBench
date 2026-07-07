@@ -744,7 +744,7 @@ export default function LlmMock() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {isDef && <LockOutlined style={{ fontSize: 10, color: '#bfbfbf' }} />}
                     <Tag color={r.statusCode >= 400 ? 'red' : 'blue'} style={{
-                      margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 3,
+                      margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 6,
                     }}>{r.method}</Tag>
                     <span style={{
                       flex: 1, fontSize: 11, fontFamily: MONO,
@@ -757,7 +757,7 @@ export default function LlmMock() {
                       <Tag style={{
                         margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 5px',
                         color: STATUS_COLOR(r.statusCode), borderColor: STATUS_COLOR(r.statusCode),
-                        background: 'transparent', borderRadius: 3,
+                        background: 'transparent', borderRadius: 6,
                       }}>{r.statusCode}</Tag>
                     </div>
                   </div>

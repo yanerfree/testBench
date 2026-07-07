@@ -1,5 +1,6 @@
-import { Button, Tag, Space, Input, Table, Popconfirm } from 'antd'
-import { PlusOutlined, RobotOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons'
+import { useState } from 'react'
+import { Button, Tag, Space, Input, Table, Popconfirm, Dropdown, message } from 'antd'
+import { PlusOutlined, RobotOutlined, DeleteOutlined, SearchOutlined, DownOutlined } from '@ant-design/icons'
 
 const PRIORITY_COLORS = { P0: 'red', P1: 'orange', P2: 'blue', P3: 'default' }
 
@@ -8,14 +9,22 @@ export default function ScenarioList({
   searchKeyword, onSearchChange,
   statusFilter, onStatusChange,
   onSelectScenario, onDelete,
-  onGenerate, onCreate,
+  onGenerate, onCreate, onBatch,
 }) {
+  const [selectedIds, setSelectedIds] = useState([])
+
   const filtered = (() => {
     let data = selectedFolderId ? scenarios.filter(s => s.folderId === selectedFolderId) : scenarios
     if (statusFilter !== 'all') data = data.filter(s => s.status === statusFilter)
     if (searchKeyword) data = data.filter(s => s.title.includes(searchKeyword) || s.code?.includes(searchKeyword))
     return data
   })()
+
+  const batchItems = [
+    { key: 'publish', label: '批量发布（草稿→已发布）' },
+    { key: 'deprecate', label: '批量废弃（已发布→已废弃）' },
+    { key: 'delete', label: '批量删除', danger: true },
+  ]
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -38,11 +47,24 @@ export default function ScenarioList({
               { key: 'deprecated', label: '已废弃' },
             ].map(f => (
               <Button key={f.key} size="small" type={statusFilter === f.key ? 'primary' : 'default'}
-                onClick={() => onStatusChange(f.key)} style={{ borderRadius: 0, ...(f.key === 'all' ? { borderRadius: '4px 0 0 4px' } : f.key === 'deprecated' ? { borderRadius: '0 4px 4px 0' } : {}) }}>
+                onClick={() => onStatusChange(f.key)} style={{ borderRadius: 0, ...(f.key === 'all' ? { borderRadius: '8px 0 0 8px' } : f.key === 'deprecated' ? { borderRadius: '0 8px 8px 0' } : {}) }}>
                 {f.label}
               </Button>
             ))}
           </Space>
+          {selectedIds.length > 0 && (
+            <Dropdown menu={{ items: batchItems, onClick: ({ key }) => {
+              if (key === 'delete') {
+                if (!confirm(`确认删除 ${selectedIds.length} 个场景？`)) return
+              }
+              onBatch(key, selectedIds)
+              setSelectedIds([])
+            }}} trigger={['click']}>
+              <Button size="small">
+                批量操作 ({selectedIds.length}) <DownOutlined />
+              </Button>
+            </Dropdown>
+          )}
         </Space>
         <Space size={8}>
           <Button icon={<RobotOutlined />} type="primary" onClick={onGenerate}>
@@ -60,6 +82,10 @@ export default function ScenarioList({
           size="small"
           loading={loading}
           dataSource={filtered}
+          rowSelection={{
+            selectedRowKeys: selectedIds,
+            onChange: setSelectedIds,
+          }}
           pagination={{ pageSize: 20, size: 'small', showTotal: t => `共 ${t} 条` }}
           onRow={r => ({ onClick: () => onSelectScenario(r.id), style: { cursor: 'pointer' } })}
           columns={[

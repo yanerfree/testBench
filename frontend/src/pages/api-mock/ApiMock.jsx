@@ -741,7 +741,7 @@ export default function ApiMock() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {isDef && <LockOutlined style={{ fontSize: 10, color: '#bfbfbf' }} />}
                     <Tag style={{
-                      margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 3,
+                      margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 6,
                       fontWeight: 600, color: METHOD_COLOR(r.method), borderColor: METHOD_COLOR(r.method),
                       background: 'transparent',
                     }}>{r.method}</Tag>
@@ -756,7 +756,7 @@ export default function ApiMock() {
                       <Tag style={{
                         margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 5px',
                         color: STATUS_COLOR(r.statusCode), borderColor: STATUS_COLOR(r.statusCode),
-                        background: 'transparent', borderRadius: 3,
+                        background: 'transparent', borderRadius: 6,
                       }}>{r.statusCode}</Tag>
                       <Tag color={CT_COLOR(r.contentType)} style={{ margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 3 }}>
                         {CT_SHORT(r.contentType)}

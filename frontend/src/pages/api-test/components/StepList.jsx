@@ -9,7 +9,7 @@ const { Text } = Typography
 const METHOD_COLORS = { GET: '#4e8af0', POST: '#0ea5a0', PUT: '#faad14', DELETE: '#e8453c', PATCH: '#7c5cbf' }
 
 export default function StepList({
-  scenario, selectedStepId,
+  scenario, selectedStepId, readonly,
   onSelectStep, onAddStep, onClose, onSaveScenario,
 }) {
   return (
@@ -80,7 +80,7 @@ export default function StepList({
           )
         })}
         <div style={{ padding: '8px 12px' }}>
-          <Button type="dashed" size="small" icon={<PlusOutlined />} block style={{ fontSize: 12 }} onClick={onAddStep}>添加步骤</Button>
+          {!readonly && <Button type="dashed" size="small" icon={<PlusOutlined />} block style={{ fontSize: 12 }} onClick={onAddStep}>添加步骤</Button>}
         </div>
       </div>
     </div>

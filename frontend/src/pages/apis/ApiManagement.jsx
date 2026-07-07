@@ -250,7 +250,7 @@ function ResponsePanel({ response, onUseAsBody }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <div style={{ display: 'flex', gap: 0 }}>
               {isJson && ['pretty', 'raw'].map(m => (
-                <div key={m} onClick={() => setBodyMode(m)} style={{ padding: '2px 8px', fontSize: 10, cursor: 'pointer', borderRadius: 3, background: bodyMode === m ? '#e0f7f6' : 'transparent', color: bodyMode === m ? '#0ea5a0' : '#666' }}>{m === 'pretty' ? 'Pretty' : 'Raw'}</div>
+                <div key={m} onClick={() => setBodyMode(m)} style={{ padding: '2px 8px', fontSize: 10, cursor: 'pointer', borderRadius: 6, background: bodyMode === m ? '#e0f7f6' : 'transparent', color: bodyMode === m ? '#0ea5a0' : '#666' }}>{m === 'pretty' ? 'Pretty' : 'Raw'}</div>
               ))}
             </div>
             <Space size={4}>
