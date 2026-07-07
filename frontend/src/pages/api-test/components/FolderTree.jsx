@@ -1,5 +1,6 @@
-import { Button, Tree, Tooltip, Popconfirm, Spin, message } from 'antd'
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
+import { useState } from 'react'
+import { Button, Tree, Tooltip, Popconfirm, Spin, Dropdown, Modal, TreeSelect } from 'antd'
+import { PlusOutlined, DeleteOutlined, MoreOutlined } from '@ant-design/icons'
 
 export default function FolderTree({
   folderTree, scenarios, loading,
@@ -7,9 +8,13 @@ export default function FolderTree({
   onSelectFolder, onSelectScenario, onDeleteScenario, onDeleteFolder,
   onCreateFolder, onMoveScenario,
 }) {
+  const [moveModal, setMoveModal] = useState({ open: false, scenarioId: null, scenarioTitle: '' })
+  const [moveTarget, setMoveTarget] = useState(null)
+
   const buildTreeData = (nodes) => nodes.map(n => ({
     key: n.id,
-    title: `${n.name} (${n.scenarioCount || 0})`,
+    title: n.name,
+    scenarioCount: n.scenarioCount || 0,
     isFolder: true,
     folderId: n.id,
     children: [
@@ -25,7 +30,8 @@ export default function FolderTree({
     ...buildTreeData(folderTree),
     ...(unassigned.length > 0 ? [{
       key: '__unassigned__',
-      title: `未分类 (${unassigned.length})`,
+      title: '未分类',
+      scenarioCount: unassigned.length,
       isFolder: true,
       folderId: null,
       selectable: false,
@@ -36,20 +42,31 @@ export default function FolderTree({
   const handleDrop = (info) => {
     const dragNode = info.dragNode
     const dropNode = info.node
-
     if (!dragNode.isLeaf || !dragNode.scenario) return
-
     let targetFolderId = null
     if (dropNode.isFolder) {
       targetFolderId = dropNode.folderId
     } else if (dropNode.isLeaf && dropNode.scenario) {
       targetFolderId = dropNode.scenario.folderId || null
     }
-
     if (dragNode.scenario.folderId === targetFolderId) return
-
     onMoveScenario(dragNode.scenario.id, targetFolderId)
   }
+
+  const buildFolderSelect = (nodes) => nodes.map(n => ({
+    value: n.id, title: n.name,
+    children: n.children?.length > 0 ? buildFolderSelect(n.children) : undefined,
+  }))
+
+  const scenarioMenuItems = (scenario) => [
+    { key: 'move', label: '移动到文件夹' },
+    { type: 'divider' },
+    { key: 'delete', label: '删除', danger: true },
+  ]
+
+  const folderMenuItems = (folderId) => [
+    { key: 'delete', label: '删除文件夹', danger: true },
+  ]
 
   return (
     <div style={{ width: 250, flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -76,24 +93,29 @@ export default function FolderTree({
                 if (node.isLeaf && node.scenario) onSelectScenario(node.scenario.id)
                 else if (node.isFolder && node.folderId) onSelectFolder(node.folderId)
               }}
-              allowDrop={({ dropNode }) => {
-                return dropNode.isFolder || (dropNode.isLeaf && dropNode.scenario)
-              }}
+              allowDrop={({ dropNode }) => dropNode.isFolder || (dropNode.isLeaf && dropNode.scenario)}
               titleRender={(node) => (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', overflow: 'hidden' }}>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                    {node.title}
+                    {node.isFolder ? `${node.title} (${node.scenarioCount || node.children?.filter(c => c.isLeaf)?.length || 0})` : node.title}
                   </span>
                   {(node.isLeaf && node.scenario) ? (
-                    <Popconfirm title="确定删除此场景？" onConfirm={e => { e?.stopPropagation(); onDeleteScenario(node.scenario.id) }} onCancel={e => e?.stopPropagation()}>
-                      <Button type="text" size="small" icon={<DeleteOutlined />} onClick={e => e.stopPropagation()}
-                        style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-delete-btn" />
-                    </Popconfirm>
+                    <Dropdown menu={{ items: scenarioMenuItems(node.scenario), onClick: ({ key, domEvent }) => {
+                      domEvent.stopPropagation()
+                      if (key === 'move') setMoveModal({ open: true, scenarioId: node.scenario.id, scenarioTitle: node.title })
+                      if (key === 'delete') onDeleteScenario(node.scenario.id)
+                    }}} trigger={['click']}>
+                      <Button type="text" size="small" icon={<MoreOutlined />} onClick={e => e.stopPropagation()}
+                        style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-action-btn" />
+                    </Dropdown>
                   ) : (node.isFolder && node.folderId) ? (
-                    <Popconfirm title="确定删除此文件夹？" description="仅允许删除空文件夹" onConfirm={e => { e?.stopPropagation(); onDeleteFolder(node.folderId) }} onCancel={e => e?.stopPropagation()}>
-                      <Button type="text" size="small" icon={<DeleteOutlined />} onClick={e => e.stopPropagation()}
-                        style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-delete-btn" />
-                    </Popconfirm>
+                    <Dropdown menu={{ items: folderMenuItems(node.folderId), onClick: ({ key, domEvent }) => {
+                      domEvent.stopPropagation()
+                      if (key === 'delete') onDeleteFolder(node.folderId)
+                    }}} trigger={['click']}>
+                      <Button type="text" size="small" icon={<MoreOutlined />} onClick={e => e.stopPropagation()}
+                        style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-action-btn" />
+                    </Dropdown>
                   ) : null}
                 </div>
               )}
@@ -101,7 +123,35 @@ export default function FolderTree({
           )
         }
       </div>
-      <style>{`.ant-tree-treenode:hover .tree-delete-btn { opacity: 0.6 !important; } .ant-tree-treenode:hover .tree-delete-btn:hover { opacity: 1 !important; }`}</style>
+
+      <Modal
+        title="移动到文件夹"
+        open={moveModal.open}
+        onOk={() => {
+          onMoveScenario(moveModal.scenarioId, moveTarget)
+          setMoveModal({ open: false, scenarioId: null, scenarioTitle: '' })
+          setMoveTarget(null)
+        }}
+        onCancel={() => { setMoveModal({ open: false, scenarioId: null, scenarioTitle: '' }); setMoveTarget(null) }}
+        okText="移动" cancelText="取消" width={400}
+      >
+        <div style={{ marginBottom: 12, fontSize: 13 }}>
+          将 <b>{moveModal.scenarioTitle}</b> 移动到：
+        </div>
+        <TreeSelect
+          value={moveTarget}
+          onChange={setMoveTarget}
+          treeData={buildFolderSelect(folderTree)}
+          placeholder="选择目标文件夹"
+          allowClear
+          style={{ width: '100%' }}
+        />
+      </Modal>
+
+      <style>{`
+        .ant-tree-treenode:hover .tree-action-btn { opacity: 0.6 !important; }
+        .ant-tree-treenode:hover .tree-action-btn:hover { opacity: 1 !important; }
+      `}</style>
     </div>
   )
 }

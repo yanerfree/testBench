@@ -129,6 +129,18 @@ button.ant-btn[class*="color-default"][class*="variant-outlined"]:hover,
   background: rgba(14,165,160,0.15) !important;
   color: #0d908c !important;
 }
+button.ant-btn[class*="color-danger"],
+.ant-btn-default.ant-btn-dangerous,
+.ant-btn[class*="danger"] {
+  color: #e8453c !important;
+  background: rgba(232,69,60,0.06) !important;
+}
+button.ant-btn[class*="color-danger"]:hover,
+.ant-btn-default.ant-btn-dangerous:hover,
+.ant-btn[class*="danger"]:hover {
+  color: #d03830 !important;
+  background: rgba(232,69,60,0.12) !important;
+}
 .ant-btn-sm {
   border-radius: 6px !important;
 }
