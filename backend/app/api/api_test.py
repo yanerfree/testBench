@@ -10,6 +10,7 @@ from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit import write_audit_log
 from app.schemas.common import BaseSchema
 from app.core.exceptions import NotFoundError
 from app.deps.auth import get_current_user, require_project_role
@@ -278,8 +279,12 @@ async def delete_scenario(
     scenario = await session.get(ApiTestScenario, scenario_id)
     if not scenario or scenario.project_id != project_id:
         raise NotFoundError(code="NOT_FOUND", message="场景不存在")
+    title = scenario.title
     await session.delete(scenario)
     await session.commit()
+    await write_audit_log(session, action="delete", target_type="api_test_scenario",
+                          target_id=scenario_id, target_name=title,
+                          user_id=current_user.id, project_id=project_id)
     return {"data": {"deleted": True}}
 
 
@@ -333,6 +338,9 @@ async def create_scenario(
     )
     session.add(scenario)
     await session.commit()
+    await write_audit_log(session, action="create", target_type="api_test_scenario",
+                          target_id=scenario.id, target_name=scenario.title,
+                          user_id=current_user.id, project_id=project_id)
     return {"data": _scenario_to_dict(scenario)}
 
 
@@ -388,6 +396,10 @@ async def update_scenario(
 
     await session.commit()
     await session.refresh(scenario)
+    if body.status is not None:
+        await write_audit_log(session, action=f"status_{body.status}", target_type="api_test_scenario",
+                              target_id=scenario.id, target_name=scenario.title,
+                              user_id=current_user.id, project_id=project_id)
     return {"data": _scenario_to_dict(scenario)}
     name: str | None = None
     method: str | None = None
