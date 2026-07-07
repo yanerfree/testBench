@@ -174,11 +174,11 @@ export default function McpMock() {
             <div style={{ height: '100%', overflow: 'auto' }}>
               <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ background: 'transparent', position: 'sticky', top: 0, zIndex: 1 }}>
+                  <tr style={{ background: 'rgba(255,255,255,0.45)', position: 'sticky', top: 0, zIndex: 1 }}>
                     {['工具名称', '说明', '响应模式', ''].map((h, i) => (
                       <th key={h || 'op'} style={{
                         padding: '8px 16px', textAlign: 'left',
-                        fontWeight: 500, fontSize: 12, color: '#8c8c8c', borderBottom: '1px solid rgba(0,0,0,0.04)',
+                        fontWeight: 600, fontSize: 12, color: '#4e5969', borderBottom: '1px solid rgba(0,0,0,0.04)',
                       }}>{h}</th>
                     ))}
                   </tr>
@@ -230,7 +230,7 @@ export default function McpMock() {
               <div style={{ flex: 1, overflow: 'auto' }}>
                 <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ background: 'transparent', position: 'sticky', top: 0, zIndex: 1 }}>
+                    <tr style={{ background: 'rgba(255,255,255,0.45)', position: 'sticky', top: 0, zIndex: 1 }}>
                       {['时间', '工具', '来源', '模式', '状态', '耗时', ''].map((h, i) => (
                         <th key={h || 'op'} style={{
                           padding: '6px 10px', textAlign: i >= 5 ? 'right' : 'left',

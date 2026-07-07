@@ -582,7 +582,7 @@ export default function ApiMock() {
       <div style={{ flex: 1, overflow: 'auto' }}>
         <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ background: 'transparent', position: 'sticky', top: 0, zIndex: 1 }}>
+            <tr style={{ background: 'rgba(255,255,255,0.45)', position: 'sticky', top: 0, zIndex: 1 }}>
               {['时间', '状态', '方法', '路径', '类型', '耗时', ''].map((h, i) => (
                 <th key={h || 'op'} style={{
                   padding: '6px 10px', textAlign: i >= 5 ? 'right' : 'left',

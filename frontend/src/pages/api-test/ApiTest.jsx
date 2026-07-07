@@ -1,22 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
-import {
-  Button, Tag, Space, Typography, Modal, Form, Input, Select, Tabs, Table,
-  message, Popconfirm, Spin, Tree, Tooltip, TreeSelect,
-} from 'antd'
-import {
-  PlusOutlined, ThunderboltOutlined, DeleteOutlined, RobotOutlined,
-  LoadingOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  PlayCircleOutlined, FileTextOutlined, CaretRightOutlined, SendOutlined,
-  SearchOutlined,
-} from '@ant-design/icons'
+import { Modal, Form, Input, TreeSelect, message, Select } from 'antd'
 import { api } from '../../utils/request'
-
-const { Text } = Typography
-const { TextArea } = Input
-
-const METHOD_COLORS = { GET: '#4e8af0', POST: '#0ea5a0', PUT: '#faad14', DELETE: '#e8453c', PATCH: '#7c5cbf' }
-const PRIORITY_COLORS = { P0: 'red', P1: 'orange', P2: 'blue', P3: 'default' }
+import FolderTree from './components/FolderTree'
+import ScenarioList from './components/ScenarioList'
+import StepList from './components/StepList'
+import StepEditor from './components/StepEditor'
+import GenerateModal from './components/GenerateModal'
 
 export default function ApiTest() {
   const { projectId } = useParams()
@@ -30,8 +20,6 @@ export default function ApiTest() {
   const [genProgress, setGenProgress] = useState([])
   const [form] = Form.useForm()
   const [running, setRunning] = useState(false)
-  const [runResponse, setRunResponse] = useState(null)
-  const [bodyText, setBodyText] = useState('')
   const [searchKeyword, setSearchKeyword] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [folderModalOpen, setFolderModalOpen] = useState(false)
@@ -39,6 +27,9 @@ export default function ApiTest() {
   const [newFolderParent, setNewFolderParent] = useState(null)
   const [folderTree, setFolderTree] = useState([])
   const [selectedFolderId, setSelectedFolderId] = useState(null)
+  const [runResponse, setRunResponse] = useState(null)
+  const [createScenarioOpen, setCreateScenarioOpen] = useState(false)
+  const [createForm] = Form.useForm()
 
   useEffect(() => {
     if (!projectId) return
@@ -54,7 +45,6 @@ export default function ApiTest() {
       const res = await api.get(`/projects/${projectId}/branches/${branchId}/api-tests/folders`)
       const tree = res.data || []
       setFolderTree(tree)
-      // 默认选中第一个文件夹
       if (!selectedFolderId && !selectedScenario && tree.length > 0) {
         setSelectedFolderId(tree[0].id)
       }
@@ -79,11 +69,9 @@ export default function ApiTest() {
       const res = await api.get(`/projects/${projectId}/branches/${branchId}/api-tests/${id}`)
       setSelectedScenario(res.data)
       setRunResponse(null)
-      // 自动选中第一个步骤
       const steps = res.data?.steps || []
       const firstStep = steps.length > 0 ? steps[0] : null
       setSelectedStep(firstStep)
-      setBodyText(firstStep?.body ? JSON.stringify(firstStep.body, null, 2) : '')
     } catch { /* */ }
   }
 
@@ -100,6 +88,7 @@ export default function ApiTest() {
       setGenerating(true); setGenProgress([])
       api.stream(`/projects/${projectId}/branches/${branchId}/api-tests/generate`, {
         apiInfo: v.apiInfo,
+        folderId: v.targetFolder || undefined,
         envVariables: v.envVars ? JSON.parse(v.envVars) : undefined,
       }, {
         onChunk: (data) => {
@@ -111,7 +100,7 @@ export default function ApiTest() {
         onDone: () => {
           message.success('测试场景已生成')
           setGenerating(false); setGenOpen(false); form.resetFields()
-          fetchScenarios()
+          fetchScenarios(); fetchFolders()
         },
         onError: (msg) => { message.error(msg); setGenerating(false) },
       })
@@ -124,7 +113,6 @@ export default function ApiTest() {
     try {
       const res = await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/run-step/${selectedStep.id}`)
       setRunResponse(res.data)
-      // 刷新场景更新步骤状态
       loadScenario(selectedScenario.id)
     } catch (e) {
       setRunResponse({ error: e.message || '执行失败' })
@@ -135,11 +123,9 @@ export default function ApiTest() {
     try {
       const res = await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/steps/${stepId}`, updates)
       message.success('已保存')
-      // 更新 selectedStep 而不重置
       if (selectedStep?.id === stepId) {
         setSelectedStep(prev => ({ ...prev, ...res.data }))
       }
-      // 刷新场景步骤列表但保持选中
       const scRes = await api.get(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}`)
       setSelectedScenario(scRes.data)
     } catch { message.error('保存失败') }
@@ -168,33 +154,6 @@ export default function ApiTest() {
     } catch { message.error('删除失败') }
   }
 
-  // 构建目录树：真实文件夹 + 场景叶子节点
-  const buildTreeData = (nodes) => nodes.map(n => ({
-    key: n.id,
-    title: `${n.name} (${n.scenarioCount || 0})`,
-    isFolder: true,
-    folderId: n.id,
-    children: [
-      ...(n.children?.length > 0 ? buildTreeData(n.children) : []),
-      ...scenarios.filter(s => s.folderId === n.id).map(s => ({
-        key: s.id, title: s.title, isLeaf: true, scenario: s,
-      })),
-    ],
-  }))
-
-  // 未分配文件夹的场景
-  const unassigned = scenarios.filter(s => !s.folderId)
-  const treeData = [
-    ...buildTreeData(folderTree),
-    ...unassigned.map(s => ({ key: s.id, title: s.title, isLeaf: true, scenario: s })),
-  ]
-
-  // 构建父模块 TreeSelect
-  const buildParentSelect = (nodes) => nodes.map(n => ({
-    value: n.id, title: n.name,
-    children: n.children?.length > 0 ? buildParentSelect(n.children) : undefined,
-  }))
-
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return
     try {
@@ -215,467 +174,75 @@ export default function ApiTest() {
     } catch { /* */ }
   }
 
+  const buildParentSelect = (nodes) => nodes.map(n => ({
+    value: n.id, title: n.name,
+    children: n.children?.length > 0 ? buildParentSelect(n.children) : undefined,
+  }))
+
+  const stepWithResponse = selectedStep ? { ...selectedStep, _runResponse: runResponse } : null
+
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
-      {/* 左栏：目录树 */}
-      <div style={{ width: 250, flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>测试场景</span>
-          <Tooltip title="新建文件夹">
-            <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => { setNewFolderName(''); setFolderModalOpen(true) }} style={{ color: '#0ea5a0' }} />
-          </Tooltip>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
-          {loading ? <Spin style={{ display: 'block', margin: '40px auto' }} /> :
-            treeData.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 20, color: '#86909c', fontSize: 12 }}>暂无场景</div>
-            ) : (
-              <Tree
-                treeData={treeData}
-                defaultExpandAll
-                blockNode
-                style={{ fontSize: 12 }}
-                selectedKeys={selectedScenario ? [selectedScenario.id] : selectedFolderId ? [selectedFolderId] : []}
-                onSelect={(keys, { node }) => {
-                  if (node.isLeaf && node.scenario) {
-                    setSelectedFolderId(null)
-                    loadScenario(node.scenario.id)
-                  } else if (node.isFolder) {
-                    setSelectedFolderId(node.folderId)
-                    setSelectedScenario(null)
-                    setSelectedStep(null)
-                  }
-                }}
-                titleRender={(node) => (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', overflow: 'hidden' }}>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                      {node.title}
-                    </span>
-                    {(node.isLeaf && node.scenario) ? (
-                      <Popconfirm title="确定删除此场景？" onConfirm={async (e) => { e?.stopPropagation(); handleDelete(node.scenario.id) }} onCancel={e => e?.stopPropagation()}>
-                        <Button type="text" size="small" icon={<DeleteOutlined />} onClick={e => e.stopPropagation()}
-                          style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-delete-btn" />
-                      </Popconfirm>
-                    ) : node.isFolder ? (
-                      <Popconfirm title="确定删除此文件夹？" description="仅允许删除空文件夹" onConfirm={async (e) => { e?.stopPropagation(); handleDeleteFolder(node.folderId) }} onCancel={e => e?.stopPropagation()}>
-                        <Button type="text" size="small" icon={<DeleteOutlined />} onClick={e => e.stopPropagation()}
-                          style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-delete-btn" />
-                      </Popconfirm>
-                    ) : null}
-                  </div>
-                )}
-              />
-            )
-          }
-        </div>
-        <style>{`.ant-tree-treenode:hover .tree-delete-btn { opacity: 0.6 !important; } .ant-tree-treenode:hover .tree-delete-btn:hover { opacity: 1 !important; }`}</style>
-      </div>
+      <FolderTree
+        folderTree={folderTree}
+        scenarios={scenarios}
+        loading={loading}
+        selectedFolderId={selectedFolderId}
+        selectedScenarioId={selectedScenario?.id}
+        onSelectFolder={(folderId) => { setSelectedFolderId(folderId); setSelectedScenario(null); setSelectedStep(null) }}
+        onSelectScenario={(id) => { setSelectedFolderId(null); loadScenario(id) }}
+        onDeleteScenario={handleDelete}
+        onDeleteFolder={handleDeleteFolder}
+        onCreateFolder={() => { setNewFolderName(''); setFolderModalOpen(true) }}
+      />
 
       {!selectedScenario ? (
-        /* 没选场景：右侧显示场景表格（对标用例管理） */
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {/* 工具栏 */}
-          <div style={{ padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <Space size={8} wrap>
-              <Input
-                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                placeholder="搜索场景ID或标题"
-                value={searchKeyword}
-                onChange={e => setSearchKeyword(e.target.value)}
-                style={{ width: 200 }}
-                size="small"
-                allowClear
-              />
-              <Space size={0}>
-                {[
-                  { key: 'all', label: '全部' },
-                  { key: 'draft', label: '草稿' },
-                  { key: 'published', label: '已发布' },
-                  { key: 'deprecated', label: '已废弃' },
-                ].map(f => (
-                  <Button key={f.key} size="small" type={statusFilter === f.key ? 'primary' : 'default'}
-                    onClick={() => setStatusFilter(f.key)} style={{ borderRadius: 0, ...(f.key === 'all' ? { borderRadius: '4px 0 0 4px' } : f.key === 'deprecated' ? { borderRadius: '0 4px 4px 0' } : {}) }}>
-                    {f.label}
-                  </Button>
-                ))}
-              </Space>
-            </Space>
-            <Space size={8}>
-              <Button icon={<RobotOutlined />} type="primary" onClick={() => { setGenOpen(true); form.resetFields() }}>
-                AI 生成测试
-              </Button>
-              <Button icon={<PlusOutlined />} onClick={() => {/* TODO: 手动创建场景 */}}>
-                新建场景
-              </Button>
-            </Space>
-          </div>
-
-          {/* 表格 */}
-          <div style={{ flex: 1, overflow: 'auto', padding: '0 16px 16px' }}>
-            <Table
-              rowKey="id"
-              size="small"
-              dataSource={(() => {
-                let data = selectedFolderId ? scenarios.filter(s => s.folderId === selectedFolderId) : scenarios
-                if (statusFilter !== 'all') data = data.filter(s => s.status === statusFilter)
-                if (searchKeyword) data = data.filter(s => s.title.includes(searchKeyword) || s.code?.includes(searchKeyword))
-                return data
-              })()}
-              pagination={{ pageSize: 20, size: 'small', showTotal: t => `共 ${t} 条` }}
-              onRow={r => ({ onClick: () => loadScenario(r.id), style: { cursor: 'pointer' } })}
-              columns={[
-                {
-                  title: '场景ID', dataIndex: 'code', width: 120,
-                  render: v => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#86909c' }}>{v}</span>,
-                },
-                {
-                  title: '标题', dataIndex: 'title', ellipsis: true,
-                  render: (t, r) => <span style={{ fontWeight: 500 }}>{t}</span>,
-                },
-                {
-                  title: '来源', dataIndex: 'source', width: 60,
-                  render: v => <Tag color={v === 'ai' ? 'blue' : 'default'} style={{ fontSize: 11 }}>{v === 'ai' ? 'AI' : '手动'}</Tag>,
-                },
-                {
-                  title: '优先级', dataIndex: 'priority', width: 70,
-                  render: v => <Tag color={PRIORITY_COLORS[v]}>{v}</Tag>,
-                },
-                {
-                  title: '状态', dataIndex: 'status', width: 70,
-                  render: v => <Tag color={v === 'published' ? 'success' : v === 'deprecated' ? 'default' : undefined}>
-                    {v === 'published' ? '已发布' : v === 'deprecated' ? '已废弃' : '草稿'}
-                  </Tag>,
-                },
-                {
-                  title: '操作', width: 80,
-                  render: (_, r) => (
-                    <Space size={4} onClick={e => e.stopPropagation()}>
-                      <Popconfirm title="确认删除？" onConfirm={() => handleDelete(r.id)}>
-                        <Button type="text" size="small" danger icon={<DeleteOutlined />} />
-                      </Popconfirm>
-                    </Space>
-                  ),
-                },
-              ]}
-            />
-          </div>
-        </div>
+        <ScenarioList
+          scenarios={scenarios}
+          selectedFolderId={selectedFolderId}
+          loading={loading}
+          searchKeyword={searchKeyword}
+          onSearchChange={setSearchKeyword}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          onSelectScenario={(id) => loadScenario(id)}
+          onDelete={handleDelete}
+          onGenerate={() => { setGenOpen(true); form.resetFields() }}
+          onCreate={() => {/* TODO */}}
+        />
       ) : (
-        /* 选了场景：中栏步骤列表 + 右栏请求编辑器 */
         <>
-          {/* 中栏：步骤列表 */}
-          <div style={{ width: 300, minWidth: 300, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
-            <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Space size={4}>
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedScenario.code}</span>
-                  <Tag color={selectedScenario.source === 'ai' ? 'blue' : 'default'} style={{ fontSize: 10 }}>
-                    {selectedScenario.source === 'ai' ? 'AI' : '手动'}
-                  </Tag>
-                  <Select size="small" value={selectedScenario.status} onChange={v => saveScenario({ status: v })}
-                    style={{ fontSize: 11 }} variant="borderless"
-                    options={[
-                      { value: 'draft', label: <Tag>草稿</Tag> },
-                      { value: 'published', label: <Tag color="success">已发布</Tag> },
-                      { value: 'deprecated', label: <Tag color="default">已废弃</Tag> },
-                    ]}
-                  />
-                </Space>
-                <Space size={4}>
-                  <Tooltip title="运行全部">
-                    <Button size="small" type="text" icon={<PlayCircleOutlined style={{ color: '#0ea5a0' }} />} />
-                  </Tooltip>
-                  <Tooltip title="返回列表">
-                    <Button size="small" type="text" onClick={() => { setSelectedScenario(null); setSelectedStep(null) }}>✕</Button>
-                  </Tooltip>
-                </Space>
-              </div>
-              <Text type="secondary" style={{ fontSize: 12 }}>{selectedScenario.title}</Text>
-              <div style={{ marginTop: 4, fontSize: 11, color: '#8c8c8c' }}>
-                {selectedScenario.steps?.length || 0} 个步骤
-              </div>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-              {(selectedScenario.steps || []).map((step, i) => {
-                const isSelected = selectedStep?.id === step.id
-                const showGroup = step.groupName && (i === 0 || selectedScenario.steps[i-1]?.groupName !== step.groupName)
-                return (
-                  <div key={step.id}>
-                    {showGroup && (
-                      <div style={{ padding: '4px 12px', fontSize: 11, color: '#8c8c8c', background: '#f6f7f9' }}>
-                        <CaretRightOutlined style={{ marginRight: 4 }} /> Group  {step.groupName}
-                      </div>
-                    )}
-                    <div
-                      onClick={() => {
-                        setSelectedStep(step)
-                        setBodyText(step.body ? JSON.stringify(step.body, null, 2) : '')
-                        setRunResponse(null)
-                      }}
-                      style={{
-                        padding: '8px 12px', cursor: 'pointer',
-                        background: isSelected ? '#e6f4ff' : 'transparent',
-                        borderLeft: isSelected ? '3px solid #4e8af0' : '3px solid transparent',
-                        display: 'flex', alignItems: 'center', gap: 6,
-                      }}
-                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(0,0,0,0.02)' }}
-                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
-                    >
-                      {step.lastStatus === 'pass' ? <CheckCircleOutlined style={{ color: '#0ea5a0', fontSize: 12 }} /> :
-                       step.lastStatus === 'fail' ? <CloseCircleOutlined style={{ color: '#e8453c', fontSize: 12 }} /> :
-                       <span style={{ width: 12, height: 12, borderRadius: 6, border: '1.5px solid rgba(0,0,0,0.15)', display: 'inline-block', flexShrink: 0 }} />}
-                      <Tag color={METHOD_COLORS[step.method]} style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '18px' }}>
-                        {step.method}
-                      </Tag>
-                      <span style={{ fontSize: 12, flex: 1 }}>
-                        {step.name}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-              <div style={{ padding: '8px 12px' }}>
-                <Button type="dashed" size="small" icon={<PlusOutlined />} block style={{ fontSize: 12 }} onClick={addStep}>添加步骤</Button>
-              </div>
-            </div>
-          </div>
-
-          {/* 右栏：请求编辑器 */}
+          <StepList
+            scenario={selectedScenario}
+            selectedStepId={selectedStep?.id}
+            onSelectStep={(step) => { setSelectedStep(step); setRunResponse(null) }}
+            onAddStep={addStep}
+            onClose={() => { setSelectedScenario(null); setSelectedStep(null) }}
+            onSaveScenario={saveScenario}
+          />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'transparent' }}>
-            {selectedStep ? (
-          <>
-            {/* 顶部：步骤名(可编辑) + 运行/删除按钮 */}
-            <div style={{ padding: '10px 20px', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Input
-                value={selectedStep.name}
-                variant="borderless"
-                style={{ fontWeight: 600, fontSize: 14, flex: 1, padding: 0 }}
-                onBlur={e => saveStep(selectedStep.id, { name: e.target.value })}
-                onChange={e => setSelectedStep({ ...selectedStep, name: e.target.value })}
-              />
-              <Space size={4}>
-                <Popconfirm title="删除此步骤？" onConfirm={() => removeStep(selectedStep.id)}>
-                  <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-                </Popconfirm>
-                <Button
-                  type="primary"
-                  icon={running ? <LoadingOutlined /> : <CaretRightOutlined />}
-                  loading={running}
-                  onClick={handleRunStep}
-                  style={{ background: '#0ea5a0', borderColor: '#0ea5a0', fontWeight: 500 }}
-                >
-                  运行
-                </Button>
-              </Space>
-            </div>
-
-            {/* URL 栏(可编辑) */}
-            <div style={{ padding: '10px 20px', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', gap: 8, alignItems: 'center' }}>
-              <Select value={selectedStep.method} size="small"
-                style={{ width: 90, fontWeight: 600 }}
-                onChange={v => { setSelectedStep({ ...selectedStep, method: v }); saveStep(selectedStep.id, { method: v }) }}
-                options={['GET','POST','PUT','DELETE','PATCH'].map(m => ({ value: m, label: m }))}
-              />
-              <Input
-                value={selectedStep.url}
-                variant="borderless"
-                style={{ fontFamily: "'SF Mono', Monaco, Consolas, monospace", fontSize: 13, color: '#333' }}
-                onChange={e => setSelectedStep({ ...selectedStep, url: e.target.value })}
-                onBlur={e => saveStep(selectedStep.id, { url: e.target.value })}
-              />
-              <Button size="small" style={{ fontSize: 12 }}>发送</Button>
-            </div>
-
-            {/* Tab 栏 */}
-            <div style={{ flex: 1, overflow: 'auto' }}>
-              <Tabs
-                defaultActiveKey="body"
-                size="small"
-                style={{ padding: '0 20px' }}
-                items={[
-                  {
-                    key: 'body',
-                    label: <span>Body {selectedStep.body && <span style={{ color: '#0ea5a0' }}>●</span>}</span>,
-                    children: (
-                      <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                        <div style={{ padding: '6px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 11, color: '#8c8c8c', display: 'flex', justifyContent: 'space-between' }}>
-                          <span>JSON</span>
-                          <Button size="small" type="text" style={{ fontSize: 11, height: 18, padding: '0 4px' }}
-                            onClick={() => {
-                              try {
-                                const parsed = JSON.parse(bodyText || '{}')
-                                saveStep(selectedStep.id, { body: parsed })
-                              } catch { message.error('JSON 格式错误') }
-                            }}>保存</Button>
-                        </div>
-                        <textarea
-                          value={bodyText}
-                          onChange={e => setBodyText(e.target.value)}
-                          style={{
-                            width: '100%', border: 'none', outline: 'none', resize: 'vertical',
-                            padding: 16, fontSize: 13, fontFamily: "'SF Mono', Monaco, Consolas, monospace",
-                            lineHeight: 1.6, minHeight: 100, maxHeight: 400, color: '#333', background: 'transparent',
-                          }}
-                        />
-                      </div>
-                    ),
-                  },
-                  {
-                    key: 'headers',
-                    label: <span>Headers {selectedStep.headers && Object.keys(selectedStep.headers).length > 0 && <Tag style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{Object.keys(selectedStep.headers).length}</Tag>}</span>,
-                    children: (
-                      <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                          <thead>
-                            <tr style={{ background: '#f6f7f9' }}>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>Key</th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>Value</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {selectedStep.headers && Object.entries(selectedStep.headers).map(([k, v]) => (
-                              <tr key={k}>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontWeight: 500, color: '#333' }}>{k}</td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontFamily: 'monospace', color: '#595959', wordBreak: 'break-all' }}>{v}</td>
-                              </tr>
-                            ))}
-                            {(!selectedStep.headers || Object.keys(selectedStep.headers).length === 0) && (
-                              <tr><td colSpan={2} style={{ padding: 16, color: '#bfbfbf', textAlign: 'center' }}>无自定义 Headers</td></tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    ),
-                  },
-                  {
-                    key: 'assertions',
-                    label: <span>断言 {selectedStep.assertions?.length > 0 && <Tag color="green" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>{selectedStep.assertions.length}</Tag>}</span>,
-                    children: (
-                      <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                          <thead>
-                            <tr style={{ background: '#f6f7f9' }}>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)', width: 30 }}></th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>类型</th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>字段</th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>操作</th>
-                              <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>期望值</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(selectedStep.assertions || []).map((a, j) => (
-                              <tr key={j}>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}><CheckCircleOutlined style={{ color: '#0ea5a0' }} /></td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontWeight: 500 }}>{a.type}</td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontFamily: 'monospace', color: '#595959' }}>{a.field || '-'}</td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', color: '#4e8af0' }}>{a.operator}</td>
-                                <td style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                                  <code style={{ background: '#f0f5ff', padding: '2px 8px', borderRadius: 3, color: '#1d39c4' }}>{JSON.stringify(a.value)}</code>
-                                </td>
-                              </tr>
-                            ))}
-                            {(!selectedStep.assertions || selectedStep.assertions.length === 0) && (
-                              <tr><td colSpan={5} style={{ padding: 16, color: '#bfbfbf', textAlign: 'center' }}>无断言</td></tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    ),
-                  },
-                  {
-                    key: 'variables',
-                    label: '变量提取',
-                    children: (
-                      <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', padding: 16 }}>
-                        {selectedStep.variablesExtract && Object.keys(selectedStep.variablesExtract).length > 0 ? (
-                          Object.entries(selectedStep.variablesExtract).map(([k, v]) => (
-                            <div key={k} style={{ padding: '4px 0', fontSize: 13 }}>
-                              <code style={{ color: '#d46b08', fontWeight: 500 }}>${`{${k}}`}</code>
-                              <span style={{ margin: '0 8px', color: '#8c8c8c' }}>←</span>
-                              <code style={{ color: '#333' }}>{v}</code>
-                            </div>
-                          ))
-                        ) : <Text type="secondary" style={{ fontSize: 12 }}>无变量提取</Text>}
-                      </div>
-                    ),
-                  },
-                  {
-                    key: 'response',
-                    label: <span>响应 {runResponse && <span style={{ color: runResponse.error ? '#e8453c' : '#0ea5a0' }}>●</span>}</span>,
-                    children: (
-                      <div style={{ background: 'transparent', borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                        {runResponse ? (
-                          runResponse.error ? (
-                            <div style={{ padding: 16, color: '#e8453c' }}>{runResponse.error}</div>
-                          ) : (
-                            <>
-                              <div style={{ padding: '8px 12px', background: '#f6f7f9', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', gap: 12, fontSize: 12 }}>
-                                <Tag color={runResponse.statusCode < 400 ? 'success' : 'error'}>{runResponse.statusCode}</Tag>
-                                <span style={{ color: '#8c8c8c' }}>{runResponse.duration}ms</span>
-                              </div>
-                              <pre style={{ margin: 0, padding: 16, fontSize: 12, fontFamily: 'monospace', lineHeight: 1.5, overflow: 'auto', maxHeight: 400 }}>
-                                {JSON.stringify(runResponse.body, null, 2)}
-                              </pre>
-                            </>
-                          )
-                        ) : (
-                          <div style={{ padding: 24, textAlign: 'center', color: '#bfbfbf', fontSize: 12 }}>
-                            点击「运行」查看响应
-                          </div>
-                        )}
-                      </div>
-                    ),
-                  },
-                ]}
-              />
-            </div>
-          </>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#bfbfbf' }}>
-            <div style={{ textAlign: 'center' }}>
-              <SendOutlined style={{ fontSize: 40, marginBottom: 12 }} />
-              <div style={{ fontSize: 13 }}>选择左侧步骤查看请求详情</div>
-            </div>
-          </div>
-        )}
+            <StepEditor
+              step={stepWithResponse}
+              running={running}
+              onSaveStep={saveStep}
+              onRemoveStep={removeStep}
+              onRunStep={handleRunStep}
+              onStepChange={setSelectedStep}
+            />
           </div>
         </>
       )}
 
-      {/* 生成弹窗 */}
-      <Modal
-        title="生成接口测试"
+      <GenerateModal
         open={genOpen}
-        onCancel={() => { if (!generating) setGenOpen(false) }}
-        width={600}
-        footer={!generating ? [
-          <Button key="cancel" onClick={() => setGenOpen(false)}>取消</Button>,
-          <Button key="gen" type="primary" icon={<RobotOutlined />} onClick={handleGenerate}>开始生成</Button>,
-        ] : null}
-      >
-        {!generating ? (
-          <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
-            <Form.Item name="apiInfo" label="接口定义" rules={[{ required: true, message: '请输入' }]}>
-              <TextArea rows={8} placeholder={"粘贴接口定义，例如：\n\n### POST /api/users — 创建用户\n参数:\n- username (string, required, 3-100位)\n- password (string, required, ≥6位)\n- role (string, required, enum: admin/user)\n需要认证：Bearer Token"} />
-            </Form.Item>
-            <Form.Item name="envVars" label="环境变量 (JSON)">
-              <TextArea rows={3} placeholder={'{"BASE_URL": "http://localhost:8000", "ADMIN_USER": "admin"}'} />
-            </Form.Item>
-          </Form>
-        ) : (
-          <div>
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              <LoadingOutlined style={{ fontSize: 24 }} />
-              <div style={{ marginTop: 8, fontWeight: 500 }}>正在生成...</div>
-            </div>
-            <div style={{ padding: '8px 12px', background: '#f6f7f9', borderRadius: 6, maxHeight: 200, overflow: 'auto' }}>
-              {genProgress.map((p, i) => <div key={i} style={{ fontSize: 12, color: '#595959', padding: '2px 0' }}>{p}</div>)}
-            </div>
-          </div>
-        )}
-      </Modal>
+        onClose={() => setGenOpen(false)}
+        form={form}
+        generating={generating}
+        genProgress={genProgress}
+        onGenerate={handleGenerate}
+        folderTree={folderTree}
+      />
 
-      {/* 新建模块弹窗 — 和用例管理一致 */}
       <Modal
         title="新建模块"
         open={folderModalOpen}
