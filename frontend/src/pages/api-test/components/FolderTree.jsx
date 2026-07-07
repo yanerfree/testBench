@@ -17,6 +17,7 @@ export default function FolderTree({
     scenarioCount: n.scenarioCount || 0,
     isFolder: true,
     folderId: n.id,
+    descendantFolderIds: n.descendantFolderIds || [n.id],
     children: [
       ...(n.children?.length > 0 ? buildTreeData(n.children) : []),
       ...scenarios.filter(s => s.folderId === n.id).map(s => ({
@@ -91,7 +92,7 @@ export default function FolderTree({
               selectedKeys={selectedScenarioId ? [selectedScenarioId] : selectedFolderId ? [selectedFolderId] : []}
               onSelect={(keys, { node }) => {
                 if (node.isLeaf && node.scenario) onSelectScenario(node.scenario.id)
-                else if (node.isFolder && node.folderId) onSelectFolder(node.folderId)
+                else if (node.isFolder && node.folderId) onSelectFolder(node.folderId, node.descendantFolderIds)
               }}
               allowDrop={({ dropNode }) => dropNode.isFolder || (dropNode.isLeaf && dropNode.scenario)}
               titleRender={(node) => (

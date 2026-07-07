@@ -95,15 +95,16 @@ body {
   background: transparent !important;
 }
 
-/* --- Button: 强制覆盖 antd v6 CSS-in-JS --- */
+/* --- Button: 精确匹配 antd v6 类名 --- */
 .ant-btn {
   border-radius: 8px !important;
   font-weight: 500 !important;
   transition: all 0.2s ease !important;
   letter-spacing: 0.3px !important;
 }
-button.ant-btn[class*="color-primary"][class*="variant-solid"],
-.ant-btn-primary {
+
+/* 主按钮 */
+.ant-btn.ant-btn-color-primary.ant-btn-variant-solid {
   border-radius: 20px !important;
   background: linear-gradient(135deg, #2ec4b6, #0ea5a0) !important;
   border: none !important;
@@ -111,36 +112,76 @@ button.ant-btn[class*="color-primary"][class*="variant-solid"],
   color: #fff !important;
   letter-spacing: 0.5px !important;
 }
-button.ant-btn[class*="color-primary"][class*="variant-solid"]:hover,
-.ant-btn-primary:hover {
+.ant-btn.ant-btn-color-primary.ant-btn-variant-solid:hover {
   background: linear-gradient(135deg, #0ea5a0, #0d908c) !important;
   box-shadow: 0 4px 14px rgba(14,165,160,0.25) !important;
   transform: translateY(-1px) !important;
 }
-button.ant-btn[class*="color-default"][class*="variant-outlined"],
-.ant-btn-default {
+
+/* 默认按钮（outlined） */
+.ant-btn.ant-btn-color-default.ant-btn-variant-outlined {
   background: rgba(14,165,160,0.08) !important;
   border: none !important;
   color: #0ea5a0 !important;
   border-radius: 20px !important;
 }
-button.ant-btn[class*="color-default"][class*="variant-outlined"]:hover,
-.ant-btn-default:hover {
+.ant-btn.ant-btn-color-default.ant-btn-variant-outlined:hover {
   background: rgba(14,165,160,0.15) !important;
   color: #0d908c !important;
 }
-button.ant-btn[class*="color-danger"],
-.ant-btn-default.ant-btn-dangerous,
-.ant-btn[class*="danger"] {
+
+/* 文字按钮 */
+.ant-btn.ant-btn-color-default.ant-btn-variant-text {
+  color: var(--text-regular) !important;
+  background: transparent !important;
+}
+.ant-btn.ant-btn-color-default.ant-btn-variant-text:hover {
+  background: rgba(0,0,0,0.04) !important;
+}
+
+/* 危险按钮 — 所有变体 */
+.ant-btn.ant-btn-color-dangerous,
+.ant-btn.ant-btn-color-dangerous.ant-btn-variant-outlined,
+.ant-btn.ant-btn-color-dangerous.ant-btn-variant-text {
   color: #e8453c !important;
-  background: rgba(232,69,60,0.06) !important;
 }
-button.ant-btn[class*="color-danger"]:hover,
-.ant-btn-default.ant-btn-dangerous:hover,
-.ant-btn[class*="danger"]:hover {
+.ant-btn.ant-btn-color-dangerous.ant-btn-variant-solid {
+  background: #e8453c !important;
+  border-color: #e8453c !important;
+  color: #fff !important;
+  border-radius: 20px !important;
+}
+.ant-btn.ant-btn-color-dangerous:hover {
   color: #d03830 !important;
-  background: rgba(232,69,60,0.12) !important;
 }
+
+/* 虚线按钮 */
+.ant-btn.ant-btn-color-default.ant-btn-variant-dashed {
+  color: #0ea5a0 !important;
+  border-color: rgba(14,165,160,0.3) !important;
+  border-radius: 20px !important;
+}
+.ant-btn.ant-btn-color-default.ant-btn-variant-dashed:hover {
+  border-color: #0ea5a0 !important;
+  background: rgba(14,165,160,0.06) !important;
+}
+
+/* 链接按钮 */
+.ant-btn.ant-btn-variant-link {
+  color: #0ea5a0 !important;
+}
+.ant-btn.ant-btn-variant-link:hover {
+  color: #0d908c !important;
+}
+
+/* ghost 按钮 */
+.ant-btn.ant-btn-color-primary.ant-btn-background-ghost {
+  color: #0ea5a0 !important;
+  border-color: #0ea5a0 !important;
+  background: transparent !important;
+  border-radius: 20px !important;
+}
+
 .ant-btn-sm {
   border-radius: 6px !important;
 }

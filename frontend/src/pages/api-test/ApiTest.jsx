@@ -27,6 +27,7 @@ export default function ApiTest() {
   const [newFolderParent, setNewFolderParent] = useState(null)
   const [folderTree, setFolderTree] = useState([])
   const [selectedFolderId, setSelectedFolderId] = useState(null)
+  const [selectedFolderIds, setSelectedFolderIds] = useState([])
   const [runResponse, setRunResponse] = useState(null)
   const [createScenarioOpen, setCreateScenarioOpen] = useState(false)
   const [createForm] = Form.useForm()
@@ -251,7 +252,7 @@ export default function ApiTest() {
         loading={loading}
         selectedFolderId={selectedFolderId}
         selectedScenarioId={selectedScenario?.id}
-        onSelectFolder={(folderId) => { setSelectedFolderId(folderId); setSelectedScenario(null); setSelectedStep(null) }}
+        onSelectFolder={(folderId, descendantIds) => { setSelectedFolderId(folderId); setSelectedFolderIds(descendantIds || [folderId]); setSelectedScenario(null); setSelectedStep(null) }}
         onSelectScenario={(id) => { setSelectedFolderId(null); loadScenario(id) }}
         onDeleteScenario={handleDelete}
         onDeleteFolder={handleDeleteFolder}
@@ -262,7 +263,7 @@ export default function ApiTest() {
       {!selectedScenario ? (
         <ScenarioList
           scenarios={scenarios}
-          selectedFolderId={selectedFolderId}
+          selectedFolderIds={selectedFolderIds}
           loading={loading}
           searchKeyword={searchKeyword}
           onSearchChange={setSearchKeyword}

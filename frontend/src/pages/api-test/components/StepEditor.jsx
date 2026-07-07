@@ -187,9 +187,8 @@ function EditableVariablesTable({ variables, onSave, readonly }) {
             <tr key={i}>
               <td style={cellStyle}>
                 <Input size="small" variant="borderless" value={row.key}
-                  style={{ color: '#d46b08', fontWeight: 500 }}
-                  prefix={<span style={{ color: '#d46b08' }}>$&#123;</span>}
-                  suffix={<span style={{ color: '#d46b08' }}>&#125;</span>}
+                  style={{ color: '#d46b08', fontWeight: 500, fontFamily: 'monospace' }}
+                  placeholder="变量名"
                   onChange={e => { const r = [...rows]; r[i] = { ...r[i], key: e.target.value }; setRows(r) }}
                   onBlur={() => save(rows)} />
               </td>

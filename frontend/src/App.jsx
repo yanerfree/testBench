@@ -154,33 +154,6 @@ function AppLayout() {
   return (
     <Layout className="app-layout-root" style={{ minHeight: '100vh' }}>
       <style>{`
-        button.ant-btn[class*="color-primary"][class*="variant-solid"] {
-          border-radius: 20px !important;
-          background: linear-gradient(135deg, #2ec4b6, #0ea5a0) !important;
-          border: none !important;
-          box-shadow: 0 2px 8px rgba(14,165,160,0.15) !important;
-          color: #fff !important;
-        }
-        button.ant-btn[class*="color-primary"][class*="variant-solid"]:hover {
-          background: linear-gradient(135deg, #0ea5a0, #0d908c) !important;
-          box-shadow: 0 4px 14px rgba(14,165,160,0.25) !important;
-          transform: translateY(-1px);
-        }
-        button.ant-btn[class*="color-default"][class*="variant-outlined"] {
-          background: rgba(14,165,160,0.08) !important;
-          border: none !important;
-          color: #0ea5a0 !important;
-          border-radius: 20px !important;
-        }
-        button.ant-btn[class*="color-default"][class*="variant-outlined"]:hover {
-          background: rgba(14,165,160,0.15) !important;
-          color: #0d908c !important;
-        }
-        button.ant-btn[class*="variant-dashed"] {
-          color: #0ea5a0 !important;
-          border-color: #a8e6c3 !important;
-          border-radius: 20px !important;
-        }
         .app-layout-root {
           position: relative;
         }

@@ -5,7 +5,7 @@ import { PlusOutlined, RobotOutlined, DeleteOutlined, SearchOutlined, DownOutlin
 const PRIORITY_COLORS = { P0: 'red', P1: 'orange', P2: 'blue', P3: 'default' }
 
 export default function ScenarioList({
-  scenarios, selectedFolderId, loading,
+  scenarios, selectedFolderIds, loading,
   searchKeyword, onSearchChange,
   statusFilter, onStatusChange,
   onSelectScenario, onDelete,
@@ -14,7 +14,9 @@ export default function ScenarioList({
   const [selectedIds, setSelectedIds] = useState([])
 
   const filtered = (() => {
-    let data = selectedFolderId ? scenarios.filter(s => s.folderId === selectedFolderId) : scenarios
+    let data = selectedFolderIds?.length > 0
+      ? scenarios.filter(s => selectedFolderIds.includes(s.folderId))
+      : scenarios
     if (statusFilter !== 'all') data = data.filter(s => s.status === statusFilter)
     if (searchKeyword) data = data.filter(s => s.title.includes(searchKeyword) || s.code?.includes(searchKeyword))
     return data
