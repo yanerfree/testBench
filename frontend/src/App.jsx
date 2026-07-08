@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons'
 import { api } from './utils/request'
 import { useLang } from './utils/i18n.jsx'
+import BranchSelector from './components/BranchSelector'
 import ProjectList from './pages/projects/ProjectList'
 import CaseManagement from './pages/cases/CaseManagement'
 import CaseDetail from './pages/cases/CaseDetail'
@@ -172,6 +173,7 @@ function AppLayout() {
             <>
               <span style={{ color: '#e0e0e3', margin: '0 4px' }}>/</span>
               <span style={{ color: '#8c919e', fontSize: 13 }}>{projectName}</span>
+              <BranchSelector projectId={projectId} />
             </>
           )}
         </div>

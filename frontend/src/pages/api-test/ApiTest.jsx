@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { Modal, Form, Input, TreeSelect, message, Select } from 'antd'
 import { api } from '../../utils/request'
+import { useBranch } from '../../utils/branch'
 import FolderTree from './components/FolderTree'
 import ScenarioList from './components/ScenarioList'
 import StepList from './components/StepList'
@@ -10,6 +11,7 @@ import GenerateModal from './components/GenerateModal'
 
 export default function ApiTest() {
   const { projectId } = useParams()
+  const [globalBranchId] = useBranch(projectId)
   const [branchId, setBranchId] = useState(null)
   const [scenarios, setScenarios] = useState([])
   const [loading, setLoading] = useState(false)
@@ -34,11 +36,21 @@ export default function ApiTest() {
 
   useEffect(() => {
     if (!projectId) return
+    // 优先使用全局分支；没有则取第一个分支
+    if (globalBranchId) {
+      setBranchId(globalBranchId)
+      // 切换分支时清空选中状态
+      setSelectedScenario(null)
+      setSelectedStep(null)
+      setSelectedFolderId(null)
+      setSelectedFolderIds([])
+      return
+    }
     api.get(`/projects/${projectId}/branches`).then(res => {
       const b = (res.data || [])[0]
       if (b) setBranchId(b.id)
     }).catch(() => {})
-  }, [projectId])
+  }, [projectId, globalBranchId])
 
   const fetchFolders = useCallback(async () => {
     if (!branchId) return

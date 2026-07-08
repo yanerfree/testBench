@@ -11,6 +11,8 @@ class CreateBranchRequest(BaseSchema):
     name: str = Field(min_length=1, max_length=50, pattern=r"^[a-zA-Z0-9_\-]+$")
     description: str | None = None
     branch: str = Field(default="main", max_length=100)
+    source_branch_id: str | None = None  # 从此分支复制数据
+    copy_modules: list[str] | None = None  # ["cases", "api_test"]
 
 
 class UpdateBranchRequest(BaseSchema):

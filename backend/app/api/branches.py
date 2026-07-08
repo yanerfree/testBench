@@ -39,13 +39,28 @@ async def create_branch(
     project_id: uuid.UUID,
     body: CreateBranchRequest,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_project_role("project_admin")),
+    current_user: User = Depends(require_project_role("project_admin")),
 ):
-    """创建分支配置（project_admin 或系统 admin）"""
+    """创建分支配置（project_admin 或系统 admin）。
+    如果指定 source_branch_id + copy_modules，从源分支深拷贝数据。"""
     branch = await branch_service.create_branch(session, project_id, body)
-    return {
-        "data": BranchResponse.model_validate(branch, from_attributes=True).model_dump(by_alias=True)
-    }
+
+    copy_stats = None
+    if body.source_branch_id and body.copy_modules:
+        from app.services.branch_copy_service import copy_branch_data
+        copy_stats = await copy_branch_data(
+            session,
+            source_branch_id=uuid.UUID(body.source_branch_id),
+            target_branch_id=branch.id,
+            project_id=project_id,
+            modules=body.copy_modules,
+            user_id=current_user.id,
+        )
+
+    result = BranchResponse.model_validate(branch, from_attributes=True).model_dump(by_alias=True)
+    if copy_stats:
+        result["copyStats"] = copy_stats
+    return {"data": result}
 
 
 @router.put("/{branch_id}")

@@ -48,7 +48,7 @@ export default function GenerateModal({
             <LoadingOutlined style={{ fontSize: 24 }} />
             <div style={{ marginTop: 8, fontWeight: 500 }}>正在生成...</div>
           </div>
-          <div style={{ padding: '8px 12px', background: '#f6f7f9', borderRadius: 6, maxHeight: 200, overflow: 'auto' }}>
+          <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.03)', borderRadius: 8, maxHeight: 200, overflow: 'auto' }}>
             {genProgress.map((p, i) => <div key={i} style={{ fontSize: 12, color: '#595959', padding: '2px 0' }}>{p}</div>)}
           </div>
         </div>
