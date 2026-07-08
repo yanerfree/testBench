@@ -537,6 +537,8 @@ async def copy_scenario(
         status="draft",
         source=scenario.source,
         folder_id=scenario.folder_id,
+        pre_steps=scenario.pre_steps,
+        source_api_ids=scenario.source_api_ids,
         env_variables=scenario.env_variables,
         created_by=current_user.id,
     )
@@ -550,6 +552,7 @@ async def copy_scenario(
         session.add(ApiTestStep(
             scenario_id=new_scenario.id,
             sort_order=st.sort_order,
+            group_name=st.group_name,
             name=st.name,
             method=st.method,
             url=st.url,
@@ -558,6 +561,8 @@ async def copy_scenario(
             assertions=st.assertions,
             variables_extract=st.variables_extract,
             enabled=st.enabled,
+            pre_script=st.pre_script,
+            post_script=st.post_script,
         ))
 
     await session.commit()
@@ -588,7 +593,10 @@ async def split_scenario(
 
     step_uuids = [uuid.UUID(sid) for sid in body.step_ids]
     steps_result = await session.execute(
-        select(ApiTestStep).where(ApiTestStep.id.in_(step_uuids)).order_by(ApiTestStep.sort_order)
+        select(ApiTestStep).where(
+            ApiTestStep.id.in_(step_uuids),
+            ApiTestStep.scenario_id == scenario_id,
+        ).order_by(ApiTestStep.sort_order)
     )
     steps_to_split = steps_result.scalars().all()
     if not steps_to_split:
@@ -617,15 +625,27 @@ async def split_scenario(
     session.add(new_scenario)
     await session.flush()
 
+    split_step_ids = {st.id for st in steps_to_split}
     for i, st in enumerate(steps_to_split):
         session.add(ApiTestStep(
             scenario_id=new_scenario.id,
             sort_order=i,
+            group_name=st.group_name,
             name=st.name, method=st.method, url=st.url,
             headers=st.headers, body=st.body,
             assertions=st.assertions, variables_extract=st.variables_extract,
             enabled=st.enabled,
+            pre_script=st.pre_script, post_script=st.post_script,
         ))
+
+    for st in steps_to_split:
+        await session.delete(st)
+
+    remaining_result = await session.execute(
+        select(ApiTestStep).where(ApiTestStep.scenario_id == scenario_id).order_by(ApiTestStep.sort_order)
+    )
+    for i, st in enumerate(remaining_result.scalars().all()):
+        st.sort_order = i
 
     await session.commit()
     await write_audit_log(session, action="split", target_type="api_test_scenario",

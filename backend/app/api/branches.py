@@ -47,10 +47,14 @@ async def create_branch(
 
     copy_stats = None
     if body.source_branch_id and body.copy_modules:
+        source_bid = uuid.UUID(body.source_branch_id)
+        source_branch = await session.get(Branch, source_bid)
+        if not source_branch or source_branch.project_id != project_id:
+            raise ValidationError(code="INVALID_SOURCE", message="源分支不属于当前项目")
         from app.services.branch_copy_service import copy_branch_data
         copy_stats = await copy_branch_data(
             session,
-            source_branch_id=uuid.UUID(body.source_branch_id),
+            source_branch_id=source_bid,
             target_branch_id=branch.id,
             project_id=project_id,
             modules=body.copy_modules,
