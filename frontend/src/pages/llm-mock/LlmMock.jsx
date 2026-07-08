@@ -362,7 +362,7 @@ export default function LlmMock() {
               padding: '6px 12px', background: '#e0f7f6', border: '1px solid rgba(14,165,160,0.3)', borderRadius: 10,
             }}>
               <LinkOutlined style={{ color: '#0ea5a0', fontSize: 12 }} />
-              <span style={{ fontSize: 12, fontFamily: MONO, color: '#389e0d', flex: 1, userSelect: 'all' }}>{fullUrl}</span>
+              <span style={{ fontSize: 12, fontFamily: MONO, color: '#0ea5a0', flex: 1, userSelect: 'all' }}>{fullUrl}</span>
               <Button size="small" type="text" icon={<CopyOutlined />} style={{ color: '#0ea5a0' }}
                 onClick={() => { copyToClipboard(fullUrl); message.success('已复制访问地址') }} />
             </div>
@@ -593,7 +593,7 @@ export default function LlmMock() {
               <Fragment key={l.id}>
               <tr key={l.id} onClick={() => handleToggleLogDetail(l.id)} style={{
                 cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.03)', background: 'rgba(255,255,255,0.25)',
-                background: expandedLogId === l.id ? '#e6f4ff' : 'transparent',
+                background: expandedLogId === l.id ? 'rgba(14,165,160,0.08)' : 'transparent',
               }}>
                 <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', fontSize: 11, color: '#8c8c8c' }}>
                   {new Date(l.timestamp).toLocaleTimeString('zh-CN', { hour12: false })}
@@ -626,7 +626,7 @@ export default function LlmMock() {
                             {expandedLogDetail.requestBody.messages.map((m, i) => (
                               <div key={i} style={{
                                 marginBottom: 2, padding: '3px 8px', borderRadius: 12, fontSize: 11,
-                                background: m.role === 'user' ? '#fff7e6' : m.role === 'system' ? '#f0f0f5' : '#e0f7f6',
+                                background: m.role === 'user' ? '#fff7e6' : m.role === 'system' ? 'rgba(0,0,0,0.03)' : '#e0f7f6',
                                 overflow: 'hidden', textOverflow: 'ellipsis',
                               }}>
                                 <span style={{ color: '#8c8c8c', fontSize: 10 }}>{m.role}</span>{' '}
@@ -684,11 +684,11 @@ export default function LlmMock() {
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '2px 10px', borderRadius: 12,
-            background: serviceStatus.running ? '#e0f7f6' : '#f5f5f5',
+            background: serviceStatus.running ? '#e0f7f6' : 'rgba(0,0,0,0.04)',
             border: `1px solid ${serviceStatus.running ? 'rgba(14,165,160,0.3)' : 'rgba(0,0,0,0.1)'}`,
           }}>
             <Badge status={serviceStatus.running ? 'success' : 'default'} />
-            <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: serviceStatus.running ? '#389e0d' : '#999' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: serviceStatus.running ? '#0ea5a0' : '#999' }}>
               {serviceStatus.running ? `LIVE :${serviceStatus.port}` : 'STOPPED'}
             </span>
           </div>
@@ -737,14 +737,14 @@ export default function LlmMock() {
               return (
                 <div key={r.id} onClick={() => selectRoute(r)} style={{
                   padding: '10px 12px', marginBottom: 4, borderRadius: 10, cursor: 'pointer',
-                  background: sel ? '#e6f4ff' : 'transparent',
+                  background: sel ? 'rgba(14,165,160,0.08)' : 'transparent',
                   borderLeft: `3px solid ${sel ? '#4e8af0' : r.enabled ? '#0ea5a0' : 'rgba(0,0,0,0.1)'}`,
                   transition: 'all .15s',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {isDef && <LockOutlined style={{ fontSize: 10, color: '#bfbfbf' }} />}
                     <Tag color={r.statusCode >= 400 ? 'red' : 'blue'} style={{
-                      margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 6,
+                      margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 8,
                     }}>{r.method}</Tag>
                     <span style={{
                       flex: 1, fontSize: 11, fontFamily: MONO,
@@ -757,7 +757,7 @@ export default function LlmMock() {
                       <Tag style={{
                         margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 5px',
                         color: STATUS_COLOR(r.statusCode), borderColor: STATUS_COLOR(r.statusCode),
-                        background: 'transparent', borderRadius: 6,
+                        background: 'transparent', borderRadius: 8,
                       }}>{r.statusCode}</Tag>
                     </div>
                   </div>

@@ -677,13 +677,13 @@ export default function ApiMock() {
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '2px 10px', borderRadius: 12,
-            background: serviceStatus.running ? '#e0f7f6' : '#f5f5f5',
+            background: serviceStatus.running ? '#e0f7f6' : 'rgba(0,0,0,0.04)',
             border: `1px solid ${serviceStatus.running ? 'rgba(14,165,160,0.3)' : 'rgba(0,0,0,0.1)'}`,
           }}>
             <Badge status={serviceStatus.running ? 'success' : 'default'} />
             <span style={{
               fontSize: 12, fontWeight: 600, fontFamily: 'monospace',
-              color: serviceStatus.running ? '#389e0d' : '#999',
+              color: serviceStatus.running ? '#0ea5a0' : '#999',
             }}>
               {serviceStatus.running ? `LIVE :${serviceStatus.port}` : 'STOPPED'}
             </span>
@@ -741,7 +741,7 @@ export default function ApiMock() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {isDef && <LockOutlined style={{ fontSize: 10, color: '#bfbfbf' }} />}
                     <Tag style={{
-                      margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 6,
+                      margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 8,
                       fontWeight: 600, color: METHOD_COLOR(r.method), borderColor: METHOD_COLOR(r.method),
                       background: 'transparent',
                     }}>{r.method}</Tag>
@@ -756,9 +756,9 @@ export default function ApiMock() {
                       <Tag style={{
                         margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 5px',
                         color: STATUS_COLOR(r.statusCode), borderColor: STATUS_COLOR(r.statusCode),
-                        background: 'transparent', borderRadius: 6,
+                        background: 'transparent', borderRadius: 8,
                       }}>{r.statusCode}</Tag>
-                      <Tag color={CT_COLOR(r.contentType)} style={{ margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 3 }}>
+                      <Tag color={CT_COLOR(r.contentType)} style={{ margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 6 }}>
                         {CT_SHORT(r.contentType)}
                       </Tag>
                     </div>

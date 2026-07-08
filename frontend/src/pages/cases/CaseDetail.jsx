@@ -14,11 +14,11 @@ import ScriptEditor from '../../components/ScriptEditor'
 import ApiStepList, { generateApiCodeFromSteps } from '../../components/ApiStepList'
 
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
-const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: 'rgba(0,0,0,0.08)' }
+const priorityBg = { P0: '#e8453c', P1: '#ff7d00', P2: '#4e8af0', P3: 'rgba(0,0,0,0.08)' }
 const statusColors = { automated: '#0ea5a0', pending: '#faad14', removed: '#e8453c' }
 const statusBg = { automated: '#e0f7f6', pending: '#fffbe6', removed: '#fff2f0' }
 const statusLabels = { automated: '已自动化', pending: '待自动化', removed: '脚本已移除' }
-const dotColors = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: 'rgba(0,0,0,0.15)', automated: '#0ea5a0', pending: '#faad14', removed: '#e8453c' }
+const dotColors = { P0: '#e8453c', P1: '#ff7d00', P2: '#4e8af0', P3: 'rgba(0,0,0,0.15)', automated: '#0ea5a0', pending: '#faad14', removed: '#e8453c' }
 const phaseColor = { setup: '#7c5cbf', action: '#0ea5a0', verify: '#0ea5a0' }
 const phaseLabel = { setup: '准备', action: '操作', verify: '验证' }
 const scenarioStatusMap = {
@@ -113,7 +113,7 @@ function ScenarioStepsView({ steps, extraCol, extraColLabel, extraPlaceholder, e
         <div key={i} style={{
           display: 'flex', gap: 10, padding: '8px 14px', fontSize: 13,
           background: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)',
-          borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none', alignItems: 'center',
+          borderBottom: i < steps.length - 1 ? '1px solid rgba(0,0,0,0.03)' : 'none', alignItems: 'center',
         }}>
           <span style={{
             width: 28, height: 24, borderRadius: 10, background: '#e0f7f6', color: '#0ea5a0',
@@ -229,7 +229,7 @@ function ScenarioCard({ scenario, type, accentColor, icon, scriptContent, script
           <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>依赖参数</h4>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {scenario.variablesUsed.map((v, i) => (
-              <Tag key={i} style={{ fontFamily: 'monospace', fontSize: 12, background: '#f0f5ff', border: '1px solid #adc6ff', color: '#1d39c4', borderRadius: 12, padding: '2px 8px' }}>{v}</Tag>
+              <Tag key={i} style={{ fontFamily: 'monospace', fontSize: 12, background: '#edf3ff', border: '1px solid rgba(78,138,240,0.3)', color: '#4e8af0', borderRadius: 12, padding: '2px 8px' }}>{v}</Tag>
             ))}
           </div>
         </div>
@@ -406,7 +406,7 @@ function ScenarioEditor({
                   <div key={i} style={{
                     display: 'flex', gap: 6, padding: '6px 14px', fontSize: 13,
                     background: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)',
-                    borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none', alignItems: 'center',
+                    borderBottom: i < steps.length - 1 ? '1px solid rgba(0,0,0,0.03)' : 'none', alignItems: 'center',
                   }}>
                     <HolderOutlined style={{ color: 'rgba(0,0,0,0.15)', cursor: 'grab', flexShrink: 0 }} />
                     <span style={{
@@ -484,7 +484,7 @@ function TemplateModal({ open, onClose, projectId, branchId, scenarioType, onSel
                   padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.04)',
                   marginBottom: 8, cursor: 'pointer', transition: 'all 0.15s',
                 }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = '#91d5ff'}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(14,165,160,0.3)'}
                   onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(0,0,0,0.04)'}
                   onClick={() => { onSelect(sc); onClose() }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -775,7 +775,7 @@ export default function CaseDetail() {
                 borderRadius: 12, fontSize: 11, fontWeight: 500,
                 background: hasApi ? '#e0f7f6' : 'rgba(0,0,0,0.02)',
                 color: hasApi ? (scenarioStatusMap[apiScenarioStatus] || {}).color || '#0ea5a0' : '#c9cdd4',
-                border: `1px solid ${hasApi ? '#91d5ff' : 'rgba(0,0,0,0.06)'}`,
+                border: `1px solid ${hasApi ? 'rgba(14,165,160,0.2)' : 'rgba(0,0,0,0.06)'}`,
               }}>
                 {isApiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14' }} />}
                 <ApiOutlined style={{ fontSize: 10 }} /> API
@@ -786,9 +786,9 @@ export default function CaseDetail() {
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px',
                 borderRadius: 12, fontSize: 11, fontWeight: 500,
-                background: hasUi ? '#f0f5ff' : 'rgba(0,0,0,0.02)',
+                background: hasUi ? '#f5f0ff' : 'rgba(0,0,0,0.02)',
                 color: hasUi ? (scenarioStatusMap[uiScenarioStatus] || {}).color || '#7c5cbf' : '#c9cdd4',
-                border: `1px solid ${hasUi ? '#d3adf7' : 'rgba(0,0,0,0.06)'}`,
+                border: `1px solid ${hasUi ? 'rgba(124,92,191,0.3)' : 'rgba(0,0,0,0.06)'}`,
               }}>
                 {isUiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14' }} />}
                 <DesktopOutlined style={{ fontSize: 10 }} /> UI
@@ -830,7 +830,7 @@ export default function CaseDetail() {
                       <div key={i} style={{
                         display: 'flex', gap: 10, padding: '8px 14px', fontSize: 13,
                         background: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)',
-                        borderBottom: i < steps.length - 1 ? '1px solid #f8f8f8' : 'none', alignItems: 'center',
+                        borderBottom: i < steps.length - 1 ? '1px solid rgba(0,0,0,0.03)' : 'none', alignItems: 'center',
                       }}>
                         <HolderOutlined style={{ color: 'rgba(0,0,0,0.15)', cursor: 'grab', flexShrink: 0 }} />
                         <span style={{
@@ -971,7 +971,7 @@ export default function CaseDetail() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
               {variablesUsed.map((v, i) => (
                 <Tag key={i} closable onClose={() => setVariablesUsed(prev => prev.filter((_, j) => j !== i))}
-                  style={{ fontFamily: 'monospace', fontSize: 11, background: '#f0f5ff', border: '1px solid #adc6ff', color: '#1d39c4', borderRadius: 12, padding: '1px 6px' }}>
+                  style={{ fontFamily: 'monospace', fontSize: 11, background: '#edf3ff', border: '1px solid rgba(78,138,240,0.3)', color: '#4e8af0', borderRadius: 12, padding: '1px 6px' }}>
                   {v}
                 </Tag>
               ))}
@@ -1074,7 +1074,7 @@ export default function CaseDetail() {
           ) : (
             <div style={{ textAlign: 'center', padding: '12px 0' }}>
               <div style={{ color: '#86909c', marginBottom: 12 }}>当前用例没有关联脚本</div>
-              <div style={{ fontSize: 12, color: '#8c8c8c' }}>请先在「接口测试」→「代码视图」中生成并保存脚本</div>
+              <div style={{ fontSize: 12, color: '#86909c' }}>请先在「接口测试」→「代码视图」中生成并保存脚本</div>
             </div>
           )}
         </div>

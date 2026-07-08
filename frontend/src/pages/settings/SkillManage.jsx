@@ -218,7 +218,7 @@ export default function SkillManage() {
               <div style={{ marginTop: 8 }}>
                 <Text strong style={{ fontSize: 13 }}>覆盖维度：</Text>
                 <Space size={4} style={{ marginLeft: 8 }}>
-                  {skill.dimensions.map(d => <Tag key={d} color="green">{d}</Tag>)}
+                  {skill.dimensions.map(d => <Tag key={d} color="#0ea5a0">{d}</Tag>)}
                 </Space>
               </div>
             )}

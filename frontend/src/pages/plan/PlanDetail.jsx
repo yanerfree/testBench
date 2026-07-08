@@ -311,7 +311,7 @@ export default function PlanDetail() {
                     {isRunning ? (
                       <Tag icon={<SyncOutlined spin />} color="processing">执行中</Tag>
                     ) : (
-                      <Tag style={{ background: isCompleted ? '#0ea5a0' : '#0ea5a0', color: '#fff', border: 'none' }}>
+                      <Tag style={{ background: isCompleted ? '#0ea5a0' : '#faad14', color: '#fff', border: 'none' }}>
                         {isCompleted ? '已完成' : '进行中'}
                       </Tag>
                     )}

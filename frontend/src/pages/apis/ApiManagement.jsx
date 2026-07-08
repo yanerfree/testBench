@@ -113,7 +113,7 @@ function VarInsertBtn({ envVars, onInsert }) {
           {envVars.map(v => (
             <div key={v.key} onClick={() => onInsert(`{{${v.key}}}`)}
               style={{ padding: '6px 10px', cursor: 'pointer', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#f0f5ff'}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(14,165,160,0.06)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#fa8c16', fontWeight: 600 }}>{`{{${v.key}}}`}</span>
               <span style={{ fontSize: 10, color: '#999', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.value}</span>
@@ -157,7 +157,7 @@ function KvEditor({ items = [], onChange, keyPh = 'Key', valPh = 'Value' }) {
   if (bulkMode) return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 11, color: '#666' }}>格式: <code style={{ fontSize: 10, background: '#f5f5f5', padding: '1px 4px', borderRadius: 3 }}>key: value  // 描述</code></span>
+        <span style={{ fontSize: 11, color: '#666' }}>格式: <code style={{ fontSize: 10, background: 'rgba(0,0,0,0.04)', padding: '1px 4px', borderRadius: 4 }}>key: value  // 描述</code></span>
         <Space size={4}><Button size="small" onClick={() => setBulkMode(false)}>取消</Button><Button size="small" type="primary" onClick={fromBulk}>确定</Button></Space>
       </div>
       <Input.TextArea value={bulkText} onChange={e => setBulkText(e.target.value)} autoSize={{ minRows: 5, maxRows: 14 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
@@ -265,7 +265,7 @@ function ResponsePanel({ response, onUseAsBody }) {
       {viewTab === 'headers' && respHeaders.map((h, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, padding: '5px 8px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 11, borderRadius: 12, cursor: 'pointer' }}
           onClick={() => copyToClipboard(`${h.key}: ${h.value}`).then(() => message.success('已复制'))}
-          onMouseEnter={e => e.currentTarget.style.background = '#f5f7fa'}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.02)'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
           <span style={{ fontWeight: 600, color: '#4e5969', width: 200, flexShrink: 0, fontFamily: 'monospace' }}>{h.key}</span>
           <span style={{ color: '#666', fontFamily: 'monospace', wordBreak: 'break-all' }}>{h.value}</span>
@@ -582,7 +582,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
           <VarInsertBtn envVars={envVars} onInsert={v => { const cur = data.url || ''; up('url', cur + v) }} />
           <Tooltip title="Ctrl+Enter 发送">
             <Button type="primary" icon={sending ? <LoadingOutlined /> : <SendOutlined />} loading={sending} onClick={handleSend}
-              style={{ background: '#0ea5a0', borderColor: '#0ea5a0', fontWeight: 600, minWidth: 72, height: 32 }}>发送</Button>
+              style={{ fontWeight: 600, minWidth: 72, height: 32 }}>发送</Button>
           </Tooltip>
         </div>
         {urlHasVars && (
@@ -628,7 +628,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
         )}
         {activeTab === 'body' && (
           <div>
-            {isGet && <div style={{ marginBottom: 8, padding: '4px 10px', background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 12, fontSize: 11, color: '#ad8b00' }}>GET 请求通常不携带 Body，如需要请切换 Method</div>}
+            {isGet && <div style={{ marginBottom: 8, padding: '4px 10px', background: '#fff7e8', border: '1px solid rgba(255,125,0,0.2)', borderRadius: 12, fontSize: 11, color: '#ff7d00' }}>GET 请求通常不携带 Body，如需要请切换 Method</div>}
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
               <Select size="small" value={data.bodyType || 'json'} onChange={v => up('bodyType', v)} style={{ width: 140 }}
                 options={[{ value: 'json', label: 'JSON' }, { value: 'form', label: 'x-www-form-urlencoded' }, { value: 'form-data', label: 'form-data' }, { value: 'raw', label: 'Raw' }, { value: 'none', label: '无 Body' }]} />
@@ -642,7 +642,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
                         {bodySnippets.map(s => (
                           <div key={s.key} onClick={() => { up('body', s.code); up('bodyType', 'json') }}
                             style={{ padding: '6px 10px', cursor: 'pointer', borderRadius: 12, marginBottom: 2 }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#f0f5ff'}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(14,165,160,0.06)'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                             <div style={{ fontSize: 12, fontWeight: 600, color: '#1d2129', marginBottom: 2 }}>{s.label}</div>
                             <pre style={{ margin: 0, fontSize: 10, color: '#666', fontFamily: 'monospace', lineHeight: 1.4, maxHeight: 60, overflow: 'hidden', whiteSpace: 'pre-wrap' }}>{s.code}</pre>
@@ -984,7 +984,7 @@ export default function ApiManagement() {
                     display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', cursor: 'pointer',
                     borderBottom: isActive ? `2px solid ${mc.color}` : '2px solid transparent',
                     background: isActive ? 'rgba(255,255,255,0.5)' : 'transparent', whiteSpace: 'nowrap', fontSize: 12,
-                    borderRight: '1px solid #eee',
+                    borderRight: '1px solid rgba(0,0,0,0.06)',
                   }}>
                   <Tag style={{ margin: 0, fontWeight: 700, fontSize: 8, background: mc.bg, color: mc.color, border: 'none', padding: '0 3px', lineHeight: '13px' }}>{tn.method || 'GET'}</Tag>
                   <span style={{ color: isActive ? '#1d2129' : '#666', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1042,9 +1042,9 @@ export default function ApiManagement() {
       {/* 右键菜单 */}
       {ctxMenu && (
         <div style={{ position: 'fixed', left: ctxMenu.x, top: ctxMenu.y, zIndex: 1000 }} onClick={() => setCtxMenu(null)}>
-          <div style={{ background: 'transparent', borderRadius: 12, boxShadow: '0 6px 16px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 160 }}>
+          <div style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', borderRadius: 12, boxShadow: '0 6px 16px rgba(0,0,0,0.12)', padding: '4px 0', minWidth: 160 }}>
             {ctxMenu.items.map((item, i) => item.type === 'divider'
-              ? <div key={i} style={{ height: 1, background: '#e0e0e0', margin: '4px 0' }} />
+              ? <div key={i} style={{ height: 1, background: 'rgba(0,0,0,0.06)', margin: '4px 0' }} />
               : <div key={item.key} onClick={item.onClick} style={{
                   padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
                   color: item.danger ? '#e8453c' : '#4e5969',

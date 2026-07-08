@@ -204,7 +204,7 @@ export default function AICapabilities() {
         <Space><ApiOutlined /> MCP 工具（AI 读写平台数据的接口）</Space>
       </Divider>
 
-      <Card size="small" style={{ marginBottom: 12, background: '#f6f7f9' }}>
+      <Card size="small" style={{ marginBottom: 12, background: 'rgba(0,0,0,0.02)' }}>
         <div style={{ fontSize: 13, lineHeight: 2 }}>
           <b>MCP Server 地址：</b><Text code>{`http://${window.location.hostname}:8000/mcp/`}</Text>
           <br/>
@@ -230,7 +230,7 @@ export default function AICapabilities() {
         <Card size="small" style={{ borderLeft: '3px solid #0ea5a0' }}>
           <Space style={{ marginBottom: 8 }}>
             <Text strong style={{ fontSize: 15 }}>Web 引擎（浏览器）</Text>
-            <Tag color="green">推荐</Tag>
+            <Tag color="#0ea5a0">推荐</Tag>
           </Space>
           <div style={{ fontSize: 13, lineHeight: 2 }}>
             <div>直接在平台页面操作，零安装</div>

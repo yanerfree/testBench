@@ -7,7 +7,7 @@ import TestForgeModal from './TestForgeModal'
 import AIScriptModal from '../../components/AIScriptModal'
 
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
-const priorityBg = { P0: '#ff7875', P1: '#ffc069', P2: '#85a5ff', P3: 'rgba(0,0,0,0.08)' }
+const priorityBg = { P0: '#e8453c', P1: '#ff7d00', P2: '#4e8af0', P3: 'rgba(0,0,0,0.08)' }
 const statusMap = { automated: '已自动化', pending: '待自动化', script_removed: '脚本已移除', archived: '已归档' }
 const statusColors = { automated: '#0ea5a0', pending: '#faad14', script_removed: '#e8453c', archived: '#bfbfbf' }
 const statusBg = { automated: 'transparent', pending: 'transparent', script_removed: 'transparent', archived: 'transparent' }
@@ -457,7 +457,7 @@ export default function CaseManagement() {
           {row.apiScenario && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e0f7f6', color: apiColor }}>
             {row.isApiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14', marginRight: 2 }} />}API
           </Tag>}
-          {row.uiScenario && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#f9f0ff', color: uiColor }}>
+          {row.uiScenario && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#f5f0ff', color: uiColor }}>
             {row.isUiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14', marginRight: 2 }} />}UI
           </Tag>}
         </Space>
@@ -750,7 +750,7 @@ export default function CaseManagement() {
               { label: '新增', count: importResult.new, color: '#0ea5a0', bg: '#e0f7f6' },
               { label: '更新', count: importResult.updated, color: '#0ea5a0', bg: '#e0f7f6' },
               { label: '移除', count: importResult.removed, color: '#e8453c', bg: '#fff2f0' },
-              { label: '跳过', count: importResult.skipped, color: '#8c8c8c', bg: 'rgba(0,0,0,0.03)' },
+              { label: '跳过', count: importResult.skipped, color: '#86909c', bg: 'rgba(0,0,0,0.03)' },
             ].map(s => (
               <div key={s.label} style={{ flex: 1, textAlign: 'center', padding: '16px 0', background: s.bg, borderRadius: 12 }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.count}</div>

@@ -124,11 +124,11 @@ export default function McpMock() {
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '2px 10px', borderRadius: 12,
-            background: enabled ? '#e0f7f6' : '#f5f5f5',
+            background: enabled ? '#e0f7f6' : 'rgba(0,0,0,0.04)',
             border: `1px solid ${enabled ? 'rgba(14,165,160,0.3)' : 'rgba(0,0,0,0.1)'}`,
           }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: enabled ? '#0ea5a0' : '#bfbfbf' }} />
-            <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: enabled ? '#389e0d' : '#999' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: enabled ? '#0ea5a0' : '#999' }}>
               {enabled ? 'LIVE' : 'STOPPED'}
             </span>
           </div>
@@ -245,7 +245,7 @@ export default function McpMock() {
                       <Fragment key={l.id}>
                         <tr onClick={() => setExpandedLogId(expandedLogId === l.id ? null : l.id)} style={{
                           cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.03)',
-                          background: expandedLogId === l.id ? '#e6f4ff' : 'transparent',
+                          background: expandedLogId === l.id ? 'rgba(14,165,160,0.08)' : 'transparent',
                         }}>
                           <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', fontSize: 11, color: '#8c8c8c' }}>
                             {new Date(l.timestamp).toLocaleTimeString('zh-CN', { hour12: false })}

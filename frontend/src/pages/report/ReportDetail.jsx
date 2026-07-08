@@ -131,7 +131,7 @@ function HeadersTable({ headers }) {
       </thead>
       <tbody>
         {entries.map(([k, v]) => (
-          <tr key={k} style={{ borderBottom: '1px solid #f5f5f5' }}>
+          <tr key={k} style={{ borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
             <td style={{ padding: '8px 0', color: '#4e5969', fontFamily: "Menlo, Monaco, monospace", fontSize: 12, verticalAlign: 'top' }}>{k}</td>
             <td style={{ padding: '8px 0', color: '#86909c', fontFamily: "Menlo, Monaco, monospace", fontSize: 12, wordBreak: 'break-all' }}>{v}</td>
           </tr>
@@ -170,7 +170,7 @@ function StepDetailDrawer({ step, open, onClose }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           {step.stepPhase && (
             <span style={{
-              fontSize: 11, fontWeight: 600, padding: '1px 8px', borderRadius: 6,
+              fontSize: 11, fontWeight: 600, padding: '1px 8px', borderRadius: 8,
               background: `${phaseColor[step.stepPhase] || '#86909c'}15`,
               color: phaseColor[step.stepPhase] || '#86909c',
             }}>{phaseLabel[step.stepPhase] || step.stepPhase}</span>
@@ -308,7 +308,7 @@ function ScenarioExpanded({ scenario }) {
   return (
     <div style={{ padding: '16px 20px 16px 48px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* 执行信息卡片 */}
-      <div style={{ padding: '12px 16px', background: isPassed ? '#e0f7f6' : isFailed ? '#fff2f0' : 'rgba(0,0,0,0.02)', borderRadius: 12, border: `1px solid ${isPassed ? '#d4edda' : isFailed ? '#fde2e4' : 'rgba(0,0,0,0.04)'}` }}>
+      <div style={{ padding: '12px 16px', background: isPassed ? '#e0f7f6' : isFailed ? '#fff2f0' : 'rgba(0,0,0,0.02)', borderRadius: 12, border: `1px solid ${isPassed ? 'rgba(14,165,160,0.2)' : isFailed ? 'rgba(232,69,60,0.15)' : 'rgba(0,0,0,0.04)'}` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <StatusIcon status={status} size={18} />
@@ -341,7 +341,7 @@ function ScenarioExpanded({ scenario }) {
         <div>
           <div style={{ fontSize: 12, color: '#e8453c', marginBottom: 6, fontWeight: 600 }}>失败原因</div>
           {errorSummary && (
-            <div style={{ fontSize: 13, color: '#e8453c', padding: '10px 14px', background: '#fff2f0', borderRadius: 10, border: '1px solid #fde2e4', marginBottom: parsed.errorLines.length > 0 ? 8 : 0, lineHeight: 1.6 }}>
+            <div style={{ fontSize: 13, color: '#e8453c', padding: '10px 14px', background: '#fff2f0', borderRadius: 10, border: '1px solid rgba(232,69,60,0.15)', marginBottom: parsed.errorLines.length > 0 ? 8 : 0, lineHeight: 1.6 }}>
               {errorSummary}
             </div>
           )}
@@ -357,7 +357,7 @@ function ScenarioExpanded({ scenario }) {
       )}
 
       {isFailed && (
-        <div style={{ padding: '8px 12px', background: '#f0f5ff', borderRadius: 10, border: '1px solid #d6e4ff' }}>
+        <div style={{ padding: '8px 12px', background: '#edf3ff', borderRadius: 10, border: '1px solid rgba(78,138,240,0.2)' }}>
           <span style={{ fontSize: 12, color: '#4e8af0' }}>
             💡 可在用例管理页使用「AI 评审」分析失败原因，或通过 API 调用失败诊断 Skill
           </span>
@@ -382,7 +382,7 @@ function ScenarioExpanded({ scenario }) {
                 }}>{step.seq || i + 1}</span>
                 {step.phase && (
                   <span style={{
-                    fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 6, flexShrink: 0, marginTop: 2,
+                    fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 8, flexShrink: 0, marginTop: 2,
                     background: `${phaseColor[step.phase] || '#86909c'}15`,
                     color: phaseColor[step.phase] || '#86909c',
                   }}>{phaseLabel[step.phase] || step.phase}</span>
@@ -416,7 +416,7 @@ function ScenarioExpanded({ scenario }) {
       {expectedResult && (
         <div>
           <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4, fontWeight: 600 }}>预期结果</div>
-          <div style={{ fontSize: 13, color: '#4e5969', padding: '8px 14px', background: '#e0f7f6', borderRadius: 10, border: '1px solid #d4edda', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, color: '#4e5969', padding: '8px 14px', background: '#e0f7f6', borderRadius: 10, border: '1px solid rgba(14,165,160,0.2)', lineHeight: 1.5 }}>
             {expectedResult}
           </div>
         </div>
@@ -634,7 +634,7 @@ export default function ReportDetail() {
                     <StatusDot status={step.status} />
                     {step.stepPhase && (
                       <span style={{
-                        fontSize: 10, fontWeight: 600, padding: '0px 6px', borderRadius: 6, flexShrink: 0,
+                        fontSize: 10, fontWeight: 600, padding: '0px 6px', borderRadius: 8, flexShrink: 0,
                         background: `${phaseColor[step.stepPhase] || '#86909c'}15`,
                         color: phaseColor[step.stepPhase] || '#86909c',
                       }}>{phaseLabel[step.stepPhase] || step.stepPhase}</span>
@@ -647,7 +647,7 @@ export default function ReportDetail() {
                         {step.httpMethod && (
                           <span style={{
                             fontSize: 10, fontWeight: 700, fontFamily: 'monospace', flexShrink: 0,
-                            padding: '0px 5px', borderRadius: 6,
+                            padding: '0px 5px', borderRadius: 8,
                             background: `${methodColor[step.httpMethod] || '#86909c'}18`,
                             color: methodColor[step.httpMethod] || '#86909c',
                           }}>{step.httpMethod}</span>
@@ -663,7 +663,7 @@ export default function ReportDetail() {
                         {step.httpMethod && (
                           <span style={{
                             fontSize: 11, fontWeight: 700, fontFamily: 'monospace', flexShrink: 0,
-                            padding: '1px 6px', borderRadius: 6,
+                            padding: '1px 6px', borderRadius: 8,
                             background: `${methodColor[step.httpMethod] || '#86909c'}18`,
                             color: methodColor[step.httpMethod] || '#86909c',
                           }}>{step.httpMethod}</span>
@@ -681,7 +681,7 @@ export default function ReportDetail() {
                     {step.statusCode && (
                       <span style={{
                         fontFamily: 'monospace', fontSize: 12, fontWeight: 600,
-                        padding: '1px 6px', borderRadius: 6,
+                        padding: '1px 6px', borderRadius: 8,
                         background: step.statusCode >= 400 ? '#fff2f0' : '#e0f7f6',
                         color: step.statusCode >= 400 ? '#e8453c' : '#0ea5a0',
                       }}>{step.statusCode}</span>

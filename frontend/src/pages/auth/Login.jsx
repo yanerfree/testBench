@@ -35,7 +35,7 @@ export default function Login() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(160deg, #e8f5e9 0%, #f0ecfb 40%, #edf5f0 70%, #fff3e0 100%)',
+      background: 'linear-gradient(135deg, #ddf0ed 0%, #dfedf5 22%, #e6e3f3 44%, #f0e4ec 66%, #e8e0f2 88%, #e2e6f0 100%)',
     }}>
       <div style={{
         width: 380,
@@ -43,7 +43,7 @@ export default function Login() {
         background: 'rgba(255,255,255,0.75)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         borderRadius: 20,
-        boxShadow: '0 8px 40px rgba(54, 179, 126, 0.08)',
+        boxShadow: '0 8px 40px rgba(14, 165, 160, 0.08)',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <img src="/favicon.svg" alt="" style={{ width: 48, height: 48, marginBottom: 16 }} />
@@ -60,7 +60,7 @@ export default function Login() {
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
             <Button type="primary" htmlType="submit" loading={loading} block
-              style={{ height: 44, fontSize: 15, letterSpacing: 2, borderRadius: 22, background: 'linear-gradient(135deg, #2ec4b6, #7cacf8)', border: 'none', boxShadow: '0 4px 16px rgba(46,196,182,0.2)' }}>
+              style={{ height: 44, fontSize: 15, letterSpacing: 2, borderRadius: 22, border: 'none' }}>
               {t('login.submit')}
             </Button>
           </Form.Item>

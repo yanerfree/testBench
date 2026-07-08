@@ -181,7 +181,7 @@ export default function Exploratory() {
                   <Text strong>检查点 ({activeSession.completedCheckpoints}/{activeSession.totalCheckpoints})：</Text>
                   <div style={{ marginTop: 8 }}>
                     {(activeSession.checkpoints || []).map((cp, i) => (
-                      <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid #f5f5f5', display: 'flex', justifyContent: 'space-between' }}>
+                      <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'space-between' }}>
                         <Space>
                           {i < activeSession.completedCheckpoints
                             ? <CheckCircleOutlined style={{ color: '#0ea5a0' }} />
@@ -237,7 +237,7 @@ export default function Exploratory() {
             <Card size="small" title={`发现列表 (${findings.length})`}>
               {findings.length === 0 ? <Empty description="暂无发现" image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
                 findings.map(f => (
-                  <div key={f.id} style={{ padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
+                  <div key={f.id} style={{ padding: '8px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                     <Space>
                       {FINDING_TYPES[f.findingType]?.icon}
                       <Tag color={FINDING_TYPES[f.findingType]?.color}>{FINDING_TYPES[f.findingType]?.label}</Tag>

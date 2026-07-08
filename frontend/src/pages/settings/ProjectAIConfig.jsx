@@ -162,7 +162,7 @@ export default function ProjectAIConfig() {
       </div>
 
       {/* 功能说明 */}
-      <Card size="small" style={{ marginBottom: 16, background: '#f6f7f9' }}>
+      <Card size="small" style={{ marginBottom: 16, background: 'rgba(0,0,0,0.02)' }}>
         <div style={{ fontSize: 13, lineHeight: 2 }}>
           <b>配置 AI 后可用的功能：</b>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 24px', marginTop: 4 }}>
@@ -181,7 +181,7 @@ export default function ProjectAIConfig() {
 
       {/* 当前状态横幅 */}
       {hasActiveConfig ? (
-        <Card size="small" style={{ borderColor: '#0ea5a0', background: '#e0f7f6', marginBottom: 16 }}>
+        <Card size="small" style={{ borderColor: '#0ea5a0', background: 'rgba(14,165,160,0.08)', marginBottom: 16 }}>
           <Space>
             <CheckCircleOutlined style={{ color: '#0ea5a0', fontSize: 16 }} />
             <Text strong>当前使用：</Text>
@@ -190,7 +190,7 @@ export default function ProjectAIConfig() {
           </Space>
         </Card>
       ) : (
-        <Card size="small" style={{ borderColor: '#faad14', background: '#fffbe6', marginBottom: 16 }}>
+        <Card size="small" style={{ borderColor: '#faad14', background: 'rgba(250,173,20,0.08)', marginBottom: 16 }}>
           <Space>
             <span style={{ fontSize: 16 }}>&#9888;&#65039;</span>
             <Text>尚未选择 AI 服务。请从下方选择一个系统配置，或创建项目专属配置。</Text>
@@ -221,7 +221,7 @@ export default function ProjectAIConfig() {
                           {config.isSystemDefault && (
                             <Tag color="gold" icon={<StarFilled />} style={{ fontSize: 11 }}>推荐</Tag>
                           )}
-                          {isActive && <Tag color="green">当前使用</Tag>}
+                          {isActive && <Tag color="#0ea5a0">当前使用</Tag>}
                         </Space>
                         <div style={{ marginTop: 4 }}>
                           <Space size={12}>
@@ -264,7 +264,7 @@ export default function ProjectAIConfig() {
                     <Space size={4}>
                       <Text strong>{config.name}</Text>
                       <Tag color="blue">项目自建</Tag>
-                      {isActive && <Tag color="green">当前使用</Tag>}
+                      {isActive && <Tag color="#0ea5a0">当前使用</Tag>}
                     </Space>
                     <div style={{ marginTop: 4 }}>
                       <Text type="secondary">
@@ -321,7 +321,7 @@ export default function ProjectAIConfig() {
             {usage.bySkill.length > 0 && (
               <div>
                 {usage.bySkill.map(s => (
-                  <div key={s.skillName} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #f5f5f5' }}>
+                  <div key={s.skillName} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                     <Tag>{s.skillName}</Tag>
                     <Text type="secondary">{s.calls} 次 · {s.tokens.toLocaleString()} tokens</Text>
                   </div>

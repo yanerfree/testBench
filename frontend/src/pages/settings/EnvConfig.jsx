@@ -297,7 +297,7 @@ function CommonVarHint() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {COMMON_VARS.map(v => (
           <div key={v.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-            <code style={{ background: 'rgba(14,165,160,0.1)', padding: '2px 8px', borderRadius: 6, color: '#0ea5a0', fontWeight: 500, fontSize: 11 }}>{v.key}</code>
+            <code style={{ background: 'rgba(14,165,160,0.1)', padding: '2px 8px', borderRadius: 8, color: '#0ea5a0', fontWeight: 500, fontSize: 11 }}>{v.key}</code>
             <span style={{ color: '#86909c' }}>{v.desc}</span>
             <span style={{ color: '#c9cdd4' }}>如 {v.example}</span>
             {v.required && <Tag color="orange" style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none' }}>必填</Tag>}

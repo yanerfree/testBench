@@ -174,7 +174,7 @@ export default function Documents() {
         </span>
       </div>
 
-      <Card size="small" style={{ marginBottom: 12, background: '#f6f7f9' }}>
+      <Card size="small" style={{ marginBottom: 12, background: 'rgba(0,0,0,0.02)' }}>
         <div style={{ fontSize: 13, lineHeight: 2 }}>
           <b>文档生成流程：</b>
           <span style={{ marginLeft: 12 }}>① 填写系统地址和账号 → ② 自动打开系统截图 → ③ AI 根据截图写文档 → ④ 预览/导出</span>
@@ -278,7 +278,7 @@ export default function Documents() {
               <div style={{ marginTop: 8, fontWeight: 500 }}>正在生成文档...</div>
             </div>
             {platProgress.length > 0 && (
-              <div style={{ padding: '8px 12px', background: '#f6f7f9', borderRadius: 10, maxHeight: 150, overflow: 'auto', marginBottom: 12 }}>
+              <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 10, maxHeight: 150, overflow: 'auto', marginBottom: 12 }}>
                 {platProgress.map((p, i) => <div key={i} style={{ fontSize: 12, color: '#595959', padding: '2px 0' }}>{p}</div>)}
               </div>
             )}
@@ -375,12 +375,12 @@ export default function Documents() {
 
           /* Blockquote */
           .markdown-body blockquote {
-            border-left: 4px solid #1a7f37; padding: 12px 20px;
-            margin: 16px 0; background: #dafbe1;
+            border-left: 4px solid #0ea5a0; padding: 12px 20px;
+            margin: 16px 0; background: #e0f7f6;
             color: #1f2328; border-radius: 0 6px 6px 0;
           }
           .markdown-body blockquote p { margin: 4px 0; }
-          .markdown-body blockquote strong { color: #1a7f37; }
+          .markdown-body blockquote strong { color: #0ea5a0; }
 
           /* Inline code */
           .markdown-body code {
@@ -464,7 +464,7 @@ function DocPreviewWithToc({ content }) {
                 fontWeight: h.level === 1 ? 600 : 400,
                 fontSize: h.level === 1 ? 13 : 12,
               }}
-              onMouseEnter={(e) => { e.target.style.background = '#e6f4ff'; e.target.style.color = '#4e8af0' }}
+              onMouseEnter={(e) => { e.target.style.background = 'rgba(14,165,160,0.08)'; e.target.style.color = '#0ea5a0' }}
               onMouseLeave={(e) => { e.target.style.background = ''; e.target.style.color = '#333' }}
             >
               {h.text}
