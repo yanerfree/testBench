@@ -181,6 +181,16 @@ export default function ApiTest() {
     } catch { message.error('复制失败') }
   }
 
+  const handleNewVersion = async () => {
+    if (!selectedScenario) return
+    try {
+      const res = await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/new-version`)
+      message.success('已创建新版本（草稿），原版本已废弃')
+      fetchScenarios(); fetchFolders()
+      loadScenario(res.data.id)
+    } catch (e) { message.error(e.message || '更新版本失败') }
+  }
+
   const saveStep = async (stepId, updates) => {
     try {
       const res = await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/steps/${stepId}`, updates)
@@ -324,6 +334,7 @@ export default function ApiTest() {
             onAiOptimize={handleAiOptimize}
             onApplyOptimize={handleApplyOptimize}
             onCopyScenario={handleCopyScenario}
+            onNewVersion={handleNewVersion}
           />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'transparent' }}>
             <StepEditor

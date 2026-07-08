@@ -401,17 +401,6 @@ async def update_scenario(
                               target_id=scenario.id, target_name=scenario.title,
                               user_id=current_user.id, project_id=project_id)
     return {"data": _scenario_to_dict(scenario)}
-    name: str | None = None
-    method: str | None = None
-    url: str | None = None
-    headers: dict | None = None
-    body: dict | None = None
-    assertions: list | None = None
-    variables_extract: dict | None = None
-    enabled: bool | None = None
-    group_name: str | None = None
-    pre_script: dict | None = None
-    post_script: dict | None = None
 
 
 class UpdateStepRequest(BaseSchema):
@@ -567,6 +556,82 @@ async def copy_scenario(
 
     await session.commit()
     await write_audit_log(session, action="copy", target_type="api_test_scenario",
+                          target_id=new_scenario.id, target_name=new_scenario.title,
+                          user_id=current_user.id, project_id=project_id)
+    return {"data": _scenario_to_dict(new_scenario)}
+
+
+@router.post("/{scenario_id}/new-version")
+async def new_version(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """已发布场景 → 复制为新草稿（v2），原版本自动废弃"""
+    scenario = await session.get(ApiTestScenario, scenario_id)
+    if not scenario or scenario.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="场景不存在")
+    if scenario.status != "published":
+        from app.core.exceptions import AppError
+        raise AppError(code="NOT_PUBLISHED", message="仅已发布的场景可更新版本", status_code=400)
+
+    from sqlalchemy import func as sa_func
+    max_result = await session.execute(
+        select(sa_func.max(ApiTestScenario.code)).where(ApiTestScenario.branch_id == branch_id)
+    )
+    max_code = max_result.scalar()
+    next_num = int(max_code.split("-")[1]) + 1 if max_code else 1
+
+    import re
+    base_title = re.sub(r'\(v\d+\)$', '', scenario.title).strip()
+    version_match = re.search(r'\(v(\d+)\)$', scenario.title)
+    next_ver = int(version_match.group(1)) + 1 if version_match else 2
+
+    new_scenario = ApiTestScenario(
+        project_id=project_id,
+        branch_id=branch_id,
+        code=f"AT-{next_num:04d}",
+        title=f"{base_title}(v{next_ver})",
+        priority=scenario.priority,
+        description=scenario.description,
+        status="draft",
+        source=scenario.source,
+        folder_id=scenario.folder_id,
+        pre_steps=scenario.pre_steps,
+        source_api_ids=scenario.source_api_ids,
+        env_variables=scenario.env_variables,
+        edited_after_generate=False,
+        created_by=current_user.id,
+    )
+    session.add(new_scenario)
+    await session.flush()
+
+    steps_result = await session.execute(
+        select(ApiTestStep).where(ApiTestStep.scenario_id == scenario_id).order_by(ApiTestStep.sort_order)
+    )
+    for st in steps_result.scalars().all():
+        session.add(ApiTestStep(
+            scenario_id=new_scenario.id,
+            sort_order=st.sort_order,
+            group_name=st.group_name,
+            name=st.name,
+            method=st.method,
+            url=st.url,
+            headers=st.headers,
+            body=st.body,
+            assertions=st.assertions,
+            variables_extract=st.variables_extract,
+            enabled=st.enabled,
+            pre_script=st.pre_script,
+            post_script=st.post_script,
+        ))
+
+    scenario.status = "deprecated"
+
+    await session.commit()
+    await write_audit_log(session, action="new_version", target_type="api_test_scenario",
                           target_id=new_scenario.id, target_name=new_scenario.title,
                           user_id=current_user.id, project_id=project_id)
     return {"data": _scenario_to_dict(new_scenario)}
