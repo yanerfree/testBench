@@ -103,7 +103,7 @@ async def batch_operation(
     scenario_ids = [uuid.UUID(sid) for sid in body.ids]
     result = await session.execute(
         select(ApiTestScenario)
-        .where(ApiTestScenario.id.in_(scenario_ids), ApiTestScenario.project_id == project_id)
+        .where(ApiTestScenario.id.in_(scenario_ids), ApiTestScenario.project_id == project_id, ApiTestScenario.branch_id == branch_id)
     )
     scenarios = result.scalars().all()
 
@@ -232,6 +232,9 @@ async def delete_api_test_folder(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
+    folder = await session.get(ApiTestFolder, folder_id)
+    if not folder or folder.branch_id != branch_id:
+        raise NotFoundError(code="NOT_FOUND", message="文件夹不存在")
     children = await session.execute(select(ApiTestFolder).where(ApiTestFolder.parent_id == folder_id))
     if children.scalars().first():
         from app.core.exceptions import AppError
@@ -240,10 +243,8 @@ async def delete_api_test_folder(
     if sc.scalars().first():
         from app.core.exceptions import AppError
         raise AppError(code="HAS_SCENARIOS", message="该文件夹下有测试场景，请先移动或删除", status_code=400)
-    folder = await session.get(ApiTestFolder, folder_id)
-    if folder:
-        await session.delete(folder)
-        await session.commit()
+    await session.delete(folder)
+    await session.commit()
     return {"data": {"deleted": True}}
 
 
@@ -427,6 +428,14 @@ async def update_step(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
+    from app.core.exceptions import AppError
+
+    scenario = await session.get(ApiTestScenario, scenario_id)
+    if not scenario or scenario.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="场景不存在")
+    if scenario.status != "draft":
+        raise AppError(code="NOT_EDITABLE", message="已发布/已废弃的场景不可编辑步骤", status_code=400)
+
     step = await session.get(ApiTestStep, step_id)
     if not step or step.scenario_id != scenario_id:
         raise NotFoundError(code="NOT_FOUND", message="步骤不存在")
@@ -435,8 +444,7 @@ async def update_step(
         if val is not None:
             setattr(step, field, val)
 
-    scenario = await session.get(ApiTestScenario, scenario_id)
-    if scenario and scenario.source == "ai" and not scenario.edited_after_generate:
+    if scenario.source == "ai" and not scenario.edited_after_generate:
         scenario.edited_after_generate = True
 
     await session.commit()
@@ -458,9 +466,13 @@ async def create_step(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
+    from app.core.exceptions import AppError
+
     scenario = await session.get(ApiTestScenario, scenario_id)
     if not scenario or scenario.project_id != project_id:
         raise NotFoundError(code="NOT_FOUND", message="场景不存在")
+    if scenario.status != "draft":
+        raise AppError(code="NOT_EDITABLE", message="已发布/已废弃的场景不可添加步骤", status_code=400)
     from sqlalchemy import func as sa_func
     max_result = await session.execute(
         select(sa_func.max(ApiTestStep.sort_order)).where(ApiTestStep.scenario_id == scenario_id)
@@ -488,6 +500,14 @@ async def delete_step(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
+    from app.core.exceptions import AppError
+
+    scenario = await session.get(ApiTestScenario, scenario_id)
+    if not scenario or scenario.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="场景不存在")
+    if scenario.status != "draft":
+        raise AppError(code="NOT_EDITABLE", message="已发布/已废弃的场景不可删除步骤", status_code=400)
+
     step = await session.get(ApiTestStep, step_id)
     if not step or step.scenario_id != scenario_id:
         raise NotFoundError(code="NOT_FOUND", message="步骤不存在")
@@ -514,7 +534,12 @@ async def copy_scenario(
         select(sa_func.max(ApiTestScenario.code)).where(ApiTestScenario.branch_id == branch_id)
     )
     max_code = max_result.scalar()
-    next_num = int(max_code.split("-")[1]) + 1 if max_code else 1
+    next_num = 1
+    if max_code:
+        try:
+            next_num = int(max_code.split("-")[1]) + 1
+        except (IndexError, ValueError):
+            pass
 
     new_scenario = ApiTestScenario(
         project_id=project_id,
@@ -582,7 +607,12 @@ async def new_version(
         select(sa_func.max(ApiTestScenario.code)).where(ApiTestScenario.branch_id == branch_id)
     )
     max_code = max_result.scalar()
-    next_num = int(max_code.split("-")[1]) + 1 if max_code else 1
+    next_num = 1
+    if max_code:
+        try:
+            next_num = int(max_code.split("-")[1]) + 1
+        except (IndexError, ValueError):
+            pass
 
     import re
     base_title = re.sub(r'\(v\d+\)$', '', scenario.title).strip()
@@ -673,7 +703,12 @@ async def split_scenario(
         select(sa_func.max(ApiTestScenario.code)).where(ApiTestScenario.branch_id == branch_id)
     )
     max_code = max_result.scalar()
-    next_num = int(max_code.split("-")[1]) + 1 if max_code else 1
+    next_num = 1
+    if max_code:
+        try:
+            next_num = int(max_code.split("-")[1]) + 1
+        except (IndexError, ValueError):
+            pass
 
     new_scenario = ApiTestScenario(
         project_id=project_id,
@@ -681,9 +716,11 @@ async def split_scenario(
         code=f"AT-{next_num:04d}",
         title=body.title or f"{scenario.title}(拆分)",
         priority=scenario.priority,
+        description=scenario.description,
         status="draft",
         source="manual",
         folder_id=scenario.folder_id,
+        pre_steps=scenario.pre_steps,
         env_variables=scenario.env_variables,
         created_by=current_user.id,
     )
@@ -910,6 +947,10 @@ async def run_step(
             if a_type == "status":
                 actual = resp.status_code
                 expected = a.get("value")
+                try:
+                    expected = int(expected)
+                except (TypeError, ValueError):
+                    pass
                 if operator == "==":
                     passed = actual == expected
                 elif operator == "in":

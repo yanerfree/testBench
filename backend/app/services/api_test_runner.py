@@ -96,6 +96,10 @@ def _check_assertions(assertions: list[dict], status_code: int, resp_body) -> li
 
         if a_type == "status":
             expected = a.get("value")
+            try:
+                expected = int(expected)
+            except (TypeError, ValueError):
+                pass
             actual = status_code
             if operator == "==":
                 passed = actual == expected

@@ -89,7 +89,7 @@ function EditableAssertionsTable({ assertions, onSave, readonly }) {
             <th style={thStyle}>字段</th>
             <th style={thStyle}>操作</th>
             <th style={thStyle}>期望值</th>
-            <th style={{ ...thStyle, width: 40 }}></th>
+            {!readonly && <th style={{ ...thStyle, width: 40 }}></th>}
           </tr>
         </thead>
         <tbody>
@@ -102,6 +102,7 @@ function EditableAssertionsTable({ assertions, onSave, readonly }) {
               </td>
               <td style={cellStyle}>
                 <Select size="small" variant="borderless" value={a.type} style={{ width: '100%' }}
+                  disabled={readonly}
                   options={[
                     { value: 'status', label: '状态码' },
                     { value: 'body_field', label: 'JSON字段' },
@@ -111,12 +112,14 @@ function EditableAssertionsTable({ assertions, onSave, readonly }) {
               </td>
               <td style={cellStyle}>
                 <Input size="small" variant="borderless" value={a.field || ''} style={{ fontFamily: 'monospace', color: '#4e5969' }}
+                  disabled={readonly}
                   placeholder={a.type === 'status' ? '-' : 'data.id'}
                   onChange={e => { const r = [...rows]; r[j] = { ...r[j], field: e.target.value }; setRows(r) }}
                   onBlur={() => save(rows)} />
               </td>
               <td style={cellStyle}>
                 <Select size="small" variant="borderless" value={a.operator} style={{ width: '100%' }}
+                  disabled={readonly}
                   options={[
                     { value: '==', label: '==' },
                     { value: '!=', label: '!=' },
@@ -129,6 +132,7 @@ function EditableAssertionsTable({ assertions, onSave, readonly }) {
               </td>
               <td style={cellStyle}>
                 <Input size="small" variant="borderless" value={typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value ?? '')}
+                  disabled={readonly}
                   onChange={e => {
                     let val = e.target.value
                     try { val = JSON.parse(val) } catch { /* keep string */ }
@@ -136,23 +140,27 @@ function EditableAssertionsTable({ assertions, onSave, readonly }) {
                   }}
                   onBlur={() => save(rows)} />
               </td>
-              <td style={cellStyle}>
-                <Button type="text" size="small" danger icon={<DeleteOutlined />}
-                  onClick={() => { const r = rows.filter((_, k) => k !== j); setRows(r); save(r) }} />
-              </td>
+              {!readonly && (
+                <td style={cellStyle}>
+                  <Button type="text" size="small" danger icon={<DeleteOutlined />}
+                    onClick={() => { const r = rows.filter((_, k) => k !== j); setRows(r); save(r) }} />
+                </td>
+              )}
             </tr>
           ))}
           {rows.length === 0 && (
-            <tr><td colSpan={6} style={{ padding: 12, color: '#bfbfbf', textAlign: 'center' }}>无断言</td></tr>
+            <tr><td colSpan={readonly ? 5 : 6} style={{ padding: 12, color: '#bfbfbf', textAlign: 'center' }}>无断言</td></tr>
           )}
         </tbody>
       </table>
-      <div style={{ padding: '4px 12px', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
-        <Button type="text" size="small" icon={<PlusOutlined />} style={{ fontSize: 11, color: '#8c8c8c' }}
-          onClick={() => { setRows([...rows, { type: 'status', operator: '==', value: 200 }]) }}>
-          添加断言
-        </Button>
-      </div>
+      {!readonly && (
+        <div style={{ padding: '4px 12px', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+          <Button type="text" size="small" icon={<PlusOutlined />} style={{ fontSize: 11, color: '#8c8c8c' }}
+            onClick={() => { setRows([...rows, { type: 'status', operator: '==', value: 200 }]) }}>
+            添加断言
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -187,6 +195,7 @@ function EditableVariablesTable({ variables, onSave, readonly }) {
             <tr key={i}>
               <td style={cellStyle}>
                 <Input size="small" variant="borderless" value={row.key}
+                  disabled={readonly}
                   style={{ color: '#d46b08', fontWeight: 500, fontFamily: 'monospace' }}
                   placeholder="变量名"
                   onChange={e => { const r = [...rows]; r[i] = { ...r[i], key: e.target.value }; setRows(r) }}
@@ -194,28 +203,33 @@ function EditableVariablesTable({ variables, onSave, readonly }) {
               </td>
               <td style={cellStyle}>
                 <Input size="small" variant="borderless" value={row.value}
+                  disabled={readonly}
                   style={{ fontFamily: 'monospace' }}
                   placeholder="data.token"
                   onChange={e => { const r = [...rows]; r[i] = { ...r[i], value: e.target.value }; setRows(r) }}
                   onBlur={() => save(rows)} />
               </td>
-              <td style={cellStyle}>
-                <Button type="text" size="small" danger icon={<DeleteOutlined />}
-                  onClick={() => { const r = rows.filter((_, j) => j !== i); setRows(r); save(r) }} />
-              </td>
+              {!readonly && (
+                <td style={cellStyle}>
+                  <Button type="text" size="small" danger icon={<DeleteOutlined />}
+                    onClick={() => { const r = rows.filter((_, j) => j !== i); setRows(r); save(r) }} />
+                </td>
+              )}
             </tr>
           ))}
           {rows.length === 0 && (
-            <tr><td colSpan={3} style={{ padding: 12, color: '#bfbfbf', textAlign: 'center' }}>无变量提取</td></tr>
+            <tr><td colSpan={readonly ? 2 : 3} style={{ padding: 12, color: '#bfbfbf', textAlign: 'center' }}>无变量提取</td></tr>
           )}
         </tbody>
       </table>
-      <div style={{ padding: '4px 12px', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
-        <Button type="text" size="small" icon={<PlusOutlined />} style={{ fontSize: 11, color: '#8c8c8c' }}
-          onClick={() => { setRows([...rows, { key: '', value: '' }]) }}>
-          添加变量
-        </Button>
-      </div>
+      {!readonly && (
+        <div style={{ padding: '4px 12px', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+          <Button type="text" size="small" icon={<PlusOutlined />} style={{ fontSize: 11, color: '#8c8c8c' }}
+            onClick={() => { setRows([...rows, { key: '', value: '' }]) }}>
+            添加变量
+          </Button>
+        </div>
+      )}
       <div style={{ padding: '4px 12px', fontSize: 11, color: '#8c8c8c' }}>
         从响应中提取变量，后续步骤可用 ${'{变量名}'} 引用
       </div>

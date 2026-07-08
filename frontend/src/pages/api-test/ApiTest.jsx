@@ -89,10 +89,12 @@ export default function ApiTest() {
   }
 
   const handleDelete = async (id) => {
-    await api.del(`/projects/${projectId}/branches/${branchId}/api-tests/${id}`).catch(() => {})
-    message.success('已删除')
-    if (selectedScenario?.id === id) { setSelectedScenario(null); setSelectedStep(null) }
-    fetchScenarios()
+    try {
+      await api.del(`/projects/${projectId}/branches/${branchId}/api-tests/${id}`)
+      message.success('已删除')
+      if (selectedScenario?.id === id) { setSelectedScenario(null); setSelectedStep(null) }
+      fetchScenarios()
+    } catch { message.error('删除失败') }
   }
 
   const handleGenerate = async () => {

@@ -104,7 +104,10 @@ export default function FolderTree({
                     <Dropdown menu={{ items: scenarioMenuItems(node.scenario), onClick: ({ key, domEvent }) => {
                       domEvent.stopPropagation()
                       if (key === 'move') setMoveModal({ open: true, scenarioId: node.scenario.id, scenarioTitle: node.title })
-                      if (key === 'delete') onDeleteScenario(node.scenario.id)
+                      if (key === 'delete') Modal.confirm({
+                        title: '确认删除', content: `确定要删除场景「${node.title}」吗？`, okText: '删除', cancelText: '取消', okButtonProps: { danger: true },
+                        onOk: () => onDeleteScenario(node.scenario.id),
+                      })
                     }}} trigger={['click']}>
                       <Button type="text" size="small" icon={<MoreOutlined />} onClick={e => e.stopPropagation()}
                         style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-action-btn" />
@@ -112,7 +115,10 @@ export default function FolderTree({
                   ) : (node.isFolder && node.folderId) ? (
                     <Dropdown menu={{ items: folderMenuItems(node.folderId), onClick: ({ key, domEvent }) => {
                       domEvent.stopPropagation()
-                      if (key === 'delete') onDeleteFolder(node.folderId)
+                      if (key === 'delete') Modal.confirm({
+                        title: '确认删除', content: `确定要删除文件夹「${node.title}」吗？`, okText: '删除', cancelText: '取消', okButtonProps: { danger: true },
+                        onOk: () => onDeleteFolder(node.folderId),
+                      })
                     }}} trigger={['click']}>
                       <Button type="text" size="small" icon={<MoreOutlined />} onClick={e => e.stopPropagation()}
                         style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-action-btn" />

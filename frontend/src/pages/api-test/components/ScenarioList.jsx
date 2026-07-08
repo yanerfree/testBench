@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Tag, Space, Input, Table, Popconfirm, Dropdown, message } from 'antd'
+import { Button, Tag, Space, Input, Table, Popconfirm, Dropdown, Modal, message } from 'antd'
 import { PlusOutlined, RobotOutlined, DeleteOutlined, SearchOutlined, DownOutlined } from '@ant-design/icons'
 
 const PRIORITY_COLORS = { P0: 'red', P1: 'orange', P2: 'blue', P3: 'default' }
@@ -18,7 +18,10 @@ export default function ScenarioList({
       ? scenarios.filter(s => selectedFolderIds.includes(s.folderId))
       : scenarios
     if (statusFilter !== 'all') data = data.filter(s => s.status === statusFilter)
-    if (searchKeyword) data = data.filter(s => s.title.includes(searchKeyword) || s.code?.includes(searchKeyword))
+    if (searchKeyword) {
+      const kw = searchKeyword.toLowerCase()
+      data = data.filter(s => (s.title || '').toLowerCase().includes(kw) || (s.code || '').toLowerCase().includes(kw))
+    }
     return data
   })()
 
@@ -57,7 +60,11 @@ export default function ScenarioList({
           {selectedIds.length > 0 && (
             <Dropdown menu={{ items: batchItems, onClick: ({ key }) => {
               if (key === 'delete') {
-                if (!confirm(`确认删除 ${selectedIds.length} 个场景？`)) return
+                Modal.confirm({
+                  title: '确认批量删除', content: `确定要删除选中的 ${selectedIds.length} 个场景吗？`, okText: '删除', cancelText: '取消', okButtonProps: { danger: true },
+                  onOk: () => { onBatch(key, selectedIds); setSelectedIds([]) },
+                })
+                return
               }
               onBatch(key, selectedIds)
               setSelectedIds([])
