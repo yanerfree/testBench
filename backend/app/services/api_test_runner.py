@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import re
+import string
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -32,12 +34,15 @@ class StepResult:
     assertions: list[dict] = field(default_factory=list)
     response_body: dict | None = None
     error: str | None = None
+    request_data: dict | None = None  # {method, url, headers, body} — 报告下钻展示
 
 
 @dataclass
 class ScenarioResult:
     scenario_id: str
     scenario_title: str
+    scenario_status: str = "draft"  # draft | published | deprecated — 草稿调试不进报告
+    folder_id: str | None = None
     steps: list[StepResult] = field(default_factory=list)
 
     @property
@@ -57,6 +62,80 @@ class ScenarioResult:
 class RunEvent:
     type: str  # scenario_start | step_result | scenario_done | run_done | error
     data: dict
+
+
+class TokenCache:
+    """环境级 Token 缓存 — 多角色支持 + 401 被动刷新（ADR-3）。
+
+    凭据来源：env 中的 `{ROLE}_USER` / `{ROLE}_PASS`（默认角色 ADMIN）。
+    登录端点：env 中的 `LOGIN_URL`，缺省 `{BASE_URL}/api/auth/login`。
+    运行结束随对象销毁。
+    """
+
+    def __init__(self, env: dict):
+        self._env = env
+        self._tokens: dict[str, str] = {}
+        self._lock = asyncio.Lock()
+
+    def _login_url(self) -> str | None:
+        if self._env.get("LOGIN_URL"):
+            return self._env["LOGIN_URL"]
+        base = self._env.get("BASE_URL")
+        return f"{base.rstrip('/')}/api/auth/login" if base else None
+
+    async def get_token(self, client: httpx.AsyncClient, role: str = "ADMIN") -> str | None:
+        async with self._lock:
+            if role in self._tokens:
+                return self._tokens[role]
+            return await self._login(client, role)
+
+    async def refresh_token(self, client: httpx.AsyncClient, role: str = "ADMIN") -> str | None:
+        """401 被动刷新 — 丢弃缓存重新登录。"""
+        async with self._lock:
+            self._tokens.pop(role, None)
+            return await self._login(client, role)
+
+    async def _login(self, client: httpx.AsyncClient, role: str) -> str | None:
+        url = self._login_url()
+        user = self._env.get(f"{role}_USER")
+        password = self._env.get(f"{role}_PASS")
+        if not url or not user or not password:
+            return None
+        try:
+            resp = await client.post(url, json={"username": user, "password": password}, timeout=15)
+            if resp.status_code != 200:
+                logger.warning("TokenCache 登录失败 role=%s status=%s", role, resp.status_code)
+                return None
+            body = resp.json()
+            token = None
+            for path in (("data", "token"), ("token",), ("access_token",), ("data", "access_token")):
+                val = body
+                for key in path:
+                    val = val.get(key) if isinstance(val, dict) else None
+                if isinstance(val, str) and val:
+                    token = val
+                    break
+            if token:
+                self._tokens[role] = token
+            return token
+        except Exception as e:
+            logger.warning("TokenCache 登录异常 role=%s: %s", role, e)
+            return None
+
+
+def _inject_runtime_variables(env: dict) -> None:
+    """场景级运行时变量 — 同一场景内引用同一个值（便于创建+清理配套使用）。"""
+    env.setdefault("RANDOM_8", "".join(random.choices(string.ascii_lowercase + string.digits, k=8)))
+    env.setdefault("TIMESTAMP", str(int(time.time())))
+
+
+def _mask_authorization(headers: dict) -> dict:
+    """报告持久化时脱敏 Authorization，避免 token 泄漏。"""
+    masked = dict(headers)
+    for key in masked:
+        if key.lower() == "authorization" and isinstance(masked[key], str) and len(masked[key]) > 24:
+            masked[key] = masked[key][:16] + "..." + masked[key][-4:]
+    return masked
 
 
 def _resolve_variables(text, env: dict) -> str:
@@ -85,6 +164,18 @@ def _extract_value(body, path: str):
     return val
 
 
+def _expects_status(assertions: list[dict], code: int) -> bool:
+    """断言是否预期该状态码（401 重试判断用）。"""
+    for a in assertions or []:
+        if a.get("type") == "status":
+            try:
+                if int(a.get("value")) == code:
+                    return True
+            except (TypeError, ValueError):
+                pass
+    return False
+
+
 def _check_assertions(assertions: list[dict], status_code: int, resp_body) -> list[dict]:
     results = []
     for a in assertions:
@@ -109,7 +200,9 @@ def _check_assertions(assertions: list[dict], status_code: int, resp_body) -> li
                 passed = actual in (expected if isinstance(expected, list) else [expected])
         elif a_type == "body_contains":
             contain_val = a.get("value", a.get("expected", ""))
-            passed = str(contain_val) in str(resp_body)
+            op = operator if operator in ("contains", "not_contains") else "contains"
+            hit = str(contain_val) in str(resp_body)
+            passed = hit if op == "contains" else not hit
         elif a_type == "body_field":
             actual = _extract_value(resp_body, field_path) if field_path else resp_body
             if operator == "==":
@@ -118,6 +211,10 @@ def _check_assertions(assertions: list[dict], status_code: int, resp_body) -> li
                 passed = actual != expected
             elif operator == "not_empty":
                 passed = actual is not None and actual != ""
+            elif operator == "contains":
+                passed = expected is not None and str(expected) in str(actual)
+            elif operator == "not_contains":
+                passed = expected is not None and str(expected) not in str(actual)
 
         results.append({**a, "passed": passed})
     return results
@@ -127,6 +224,7 @@ async def run_single_step(
     step: ApiTestStep,
     env: dict,
     client: httpx.AsyncClient,
+    token_cache: TokenCache | None = None,
 ) -> StepResult:
     if not step.enabled:
         return StepResult(
@@ -138,14 +236,34 @@ async def run_single_step(
     headers = _resolve_obj(step.headers or {}, env)
     body = _resolve_obj(step.body, env)
 
-    if "Authorization" not in headers and "AUTH_TOKEN" in env:
-        headers["Authorization"] = f"Bearer {env['AUTH_TOKEN']}"
+    if "Authorization" not in headers:
+        if "AUTH_TOKEN" in env:
+            headers["Authorization"] = f"Bearer {env['AUTH_TOKEN']}"
+        elif token_cache:
+            token = await token_cache.get_token(client)
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
     if "Content-Type" not in headers and body:
         headers["Content-Type"] = "application/json"
+
+    request_data = {
+        "method": step.method, "url": url,
+        "headers": _mask_authorization(headers),
+        "body": body,
+    }
 
     start = time.time()
     try:
         resp = await client.request(method=step.method, url=url, headers=headers, json=body if body else None)
+
+        # 401 被动重试：断言不预期 401 且有 TokenCache → 刷新 token 重试一次
+        if resp.status_code == 401 and token_cache and not _expects_status(step.assertions, 401):
+            token = await token_cache.refresh_token(client)
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+                request_data["headers"] = _mask_authorization(headers)
+                resp = await client.request(method=step.method, url=url, headers=headers, json=body if body else None)
+
         duration = int((time.time() - start) * 1000)
 
         try:
@@ -169,6 +287,7 @@ async def run_single_step(
             status_code=resp.status_code, duration=duration,
             assertions=assertion_results,
             response_body=resp_body if isinstance(resp_body, (dict, list)) else {"_text": str(resp_body)},
+            request_data=request_data,
         )
     except Exception as e:
         duration = int((time.time() - start) * 1000)
@@ -176,6 +295,7 @@ async def run_single_step(
             step_id=str(step.id), step_name=step.name,
             method=step.method, url=url,
             status="fail", duration=duration, error=str(e)[:500],
+            request_data=request_data,
         )
 
 
@@ -183,9 +303,16 @@ async def run_scenario(
     scenario: ApiTestScenario,
     steps: list[ApiTestStep],
     session: AsyncSession,
+    base_env: dict | None = None,
+    token_cache: TokenCache | None = None,
 ) -> AsyncIterator[RunEvent]:
     async with _run_semaphore:
-        env = dict(scenario.env_variables or {})
+        # 变量优先级：步骤提取 > 运行时 > 场景 env_variables > 环境/全局（base_env）
+        env = dict(base_env or {})
+        env.update(scenario.env_variables or {})
+        _inject_runtime_variables(env)
+        if token_cache is None:
+            token_cache = TokenCache(env)
 
         yield RunEvent(type="scenario_start", data={
             "scenarioId": str(scenario.id),
@@ -196,7 +323,7 @@ async def run_scenario(
         results = []
         async with httpx.AsyncClient(timeout=30, verify=False) as client:
             for step in steps:
-                result = await run_single_step(step, env, client)
+                result = await run_single_step(step, env, client, token_cache)
                 results.append(result)
 
                 step.last_status = result.status
@@ -205,7 +332,8 @@ async def run_scenario(
                     "duration": result.duration,
                     "body": result.response_body,
                     "assertions": result.assertions,
-                } if not result.error else {"error": result.error}
+                    "request": result.request_data,
+                } if not result.error else {"error": result.error, "request": result.request_data}
 
                 yield RunEvent(type="step_result", data={
                     "scenarioId": str(scenario.id),
@@ -221,6 +349,8 @@ async def run_scenario(
         scenario_result = ScenarioResult(
             scenario_id=str(scenario.id),
             scenario_title=scenario.title,
+            scenario_status=scenario.status,
+            folder_id=str(scenario.folder_id) if scenario.folder_id else None,
             steps=results,
         )
         yield RunEvent(type="scenario_done", data={
@@ -238,8 +368,13 @@ async def run_batch(
     user_id: uuid.UUID | None = None,
     project_id: uuid.UUID | None = None,
     report_name: str | None = None,
+    base_env: dict | None = None,
+    branch_id: uuid.UUID | None = None,
 ) -> AsyncIterator[RunEvent]:
     all_results: list[ScenarioResult] = []
+    # 批量执行共享 TokenCache：同一角色只登录一次（ADR-3）
+    shared_env = dict(base_env or {})
+    token_cache = TokenCache(shared_env)
 
     for sid in scenario_ids:
         scenario = await session.get(ApiTestScenario, sid)
@@ -254,12 +389,14 @@ async def run_batch(
         steps = steps_result.scalars().all()
 
         scenario_result = None
-        async for event in run_scenario(scenario, steps, session):
+        async for event in run_scenario(scenario, steps, session, base_env=base_env, token_cache=token_cache):
             yield event
             if event.type == "scenario_done":
                 scenario_result = ScenarioResult(
                     scenario_id=str(scenario.id),
                     scenario_title=scenario.title,
+                    scenario_status=scenario.status,
+                    folder_id=str(scenario.folder_id) if scenario.folder_id else None,
                 )
                 scenario_result.steps = [
                     StepResult(
@@ -271,16 +408,33 @@ async def run_batch(
                         assertions=s.last_response.get("assertions", []) if s.last_response else [],
                         response_body=s.last_response.get("body") if s.last_response else None,
                         error=s.last_response.get("error") if s.last_response else None,
+                        request_data=s.last_response.get("request") if s.last_response else None,
                     ) for s in steps
                 ]
         if scenario_result:
             all_results.append(scenario_result)
 
-    if all_results and user_id:
-        report_id = await _create_report(session, all_results, user_id, project_id, report_name)
+    # 草稿场景调试执行不进报告，已发布场景执行才生成（FR31）
+    reportable = [r for r in all_results if r.scenario_status == "published"]
+    if reportable and user_id:
+        folder_name = await _resolve_common_folder_name(session, reportable)
+        report_id = await _create_report(session, reportable, user_id, project_id, report_name, folder_name, branch_id)
         yield RunEvent(type="report_created", data={"reportId": str(report_id)})
 
     yield RunEvent(type="run_done", data={"totalScenarios": len(scenario_ids)})
+
+
+async def _resolve_common_folder_name(session: AsyncSession, results: list[ScenarioResult]) -> str | None:
+    """所有场景同属一个文件夹时返回文件夹名（报告命名用）。"""
+    folder_ids = {r.folder_id for r in results}
+    if len(folder_ids) != 1:
+        return None
+    folder_id = folder_ids.pop()
+    if not folder_id:
+        return None
+    from app.models.api_test_folder import ApiTestFolder
+    folder = await session.get(ApiTestFolder, uuid.UUID(folder_id))
+    return folder.name if folder else None
 
 
 async def _create_report(
@@ -289,6 +443,8 @@ async def _create_report(
     user_id: uuid.UUID,
     project_id: uuid.UUID | None,
     report_name: str | None,
+    folder_name: str | None = None,
+    branch_id: uuid.UUID | None = None,
 ) -> uuid.UUID:
     from datetime import datetime, timezone
     from app.models.report import TestReport, TestReportScenario, TestReportStep
@@ -303,6 +459,8 @@ async def _create_report(
     if not report_name:
         if len(results) == 1:
             report_name = results[0].scenario_title
+        elif folder_name:
+            report_name = f"{folder_name} {now.strftime('%Y-%m-%d %H:%M')}"
         else:
             report_name = f"接口测试回归 {now.strftime('%Y-%m-%d %H:%M')}"
 
@@ -310,6 +468,7 @@ async def _create_report(
         report_type="api_test",
         report_name=report_name,
         project_id=project_id,
+        branch_id=branch_id,
         executed_by=user_id,
         executed_at=now,
         completed_at=now,
@@ -345,6 +504,7 @@ async def _create_report(
                 status_code=step.status_code,
                 duration_ms=step.duration,
                 sort_order=j,
+                request_data=step.request_data,
                 response_data=step.response_body,
                 assertions=step.assertions,
                 error_summary=step.error,

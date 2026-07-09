@@ -3,6 +3,7 @@ import { Button, Space, Spin, Empty, Input, Pagination, Modal, message } from 'a
 import { SearchOutlined, ReloadOutlined, DownloadOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
+import { useBranch } from '../../utils/branch'
 
 function fmt(ms) {
   if (!ms && ms !== 0) return '-'
@@ -22,6 +23,7 @@ const th = { fontSize: 12, color: '#86909c', fontWeight: 500, whiteSpace: 'nowra
 export default function ReportList() {
   const navigate = useNavigate()
   const { projectId } = useParams()
+  const [globalBranchId] = useBranch(projectId)
   const [reports, setReports] = useState([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -36,11 +38,12 @@ export default function ReportList() {
     try {
       let url = `/projects/${projectId}/reports?page=${page}&pageSize=${pageSize}`
       if (typeFilter) url += `&reportType=${typeFilter}`
+      if (globalBranchId) url += `&branchId=${globalBranchId}`
       const res = await api.get(url)
       setReports(res.data || [])
       setTotal(res.pagination?.total || 0)
     } catch { /* */ } finally { setLoading(false) }
-  }, [projectId, page, pageSize, typeFilter])
+  }, [projectId, page, pageSize, typeFilter, globalBranchId])
 
   useEffect(() => { fetchReports() }, [fetchReports])
 

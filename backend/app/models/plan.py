@@ -14,6 +14,7 @@ class Plan(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=func.gen_random_uuid())
     project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    branch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id", ondelete="SET NULL"), nullable=True, index=True)  # NULL = 历史数据（全分支可见）
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     plan_type: Mapped[str] = mapped_column(String(20), nullable=False)  # automated / manual
     test_type: Mapped[str] = mapped_column(String(10), nullable=False)  # api / e2e

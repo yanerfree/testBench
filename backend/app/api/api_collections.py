@@ -22,10 +22,11 @@ router = APIRouter(
 @router.get("")
 async def list_nodes(
     project_id: uuid.UUID,
+    branch_id: uuid.UUID | None = None,
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
 ):
-    nodes = await svc.list_tree(session, project_id)
+    nodes = await svc.list_tree(session, project_id, branch_id)
     return {"data": nodes}
 
 
@@ -46,10 +47,13 @@ async def get_node(
 async def create_node(
     project_id: uuid.UUID,
     body: CreateNodeRequest,
+    branch_id: uuid.UUID | None = None,
     session: AsyncSession = Depends(get_db),
     user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
-    node = await svc.create_node(session, project_id, user.id, body.model_dump(by_alias=False))
+    data = body.model_dump(by_alias=False)
+    data["branch_id"] = branch_id
+    node = await svc.create_node(session, project_id, user.id, data)
     return {"data": node}
 
 
@@ -92,10 +96,11 @@ async def duplicate_node(
 async def import_postman(
     project_id: uuid.UUID,
     body: ImportPostmanRequest,
+    branch_id: uuid.UUID | None = None,
     session: AsyncSession = Depends(get_db),
     user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
-    count = await svc.import_postman(session, project_id, user.id, body.collection)
+    count = await svc.import_postman(session, project_id, user.id, body.collection, branch_id)
     return {"data": {"imported": count}, "message": f"成功导入 {count} 个接口"}
 
 

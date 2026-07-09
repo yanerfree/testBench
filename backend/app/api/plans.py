@@ -36,7 +36,7 @@ async def create_plan(
         name=body.name, plan_type=body.plan_type, test_type=body.test_type,
         case_ids=body.case_ids, environment_id=body.environment_id,
         channel_id=body.channel_id, retry_count=body.retry_count,
-        circuit_breaker=body.circuit_breaker,
+        circuit_breaker=body.circuit_breaker, branch_id=body.branch_id,
     )
     return {"data": PlanResponse.model_validate(plan, from_attributes=True).model_dump(by_alias=True)}
 
@@ -45,13 +45,14 @@ async def create_plan(
 async def list_plans(
     project_id: uuid.UUID,
     status: str | None = Query(default=None),
+    branch_id: uuid.UUID | None = Query(default=None, alias="branchId"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100, alias="pageSize"),
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
 ):
     """计划列表"""
-    items, total = await plan_service.list_plans(session, project_id, status, page, page_size)
+    items, total = await plan_service.list_plans(session, project_id, status, page, page_size, branch_id)
     return {
         "data": [
             PlanListItem(
@@ -539,6 +540,7 @@ async def list_reports(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100, alias="pageSize"),
     report_type: str | None = Query(default=None, alias="reportType"),
+    branch_id: uuid.UUID | None = Query(default=None, alias="branchId"),
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
 ):
@@ -558,6 +560,8 @@ async def list_reports(
 
     if report_type:
         base = base.where(TestReport.report_type == report_type)
+    if branch_id:
+        base = base.where(or_(TestReport.branch_id == branch_id, TestReport.branch_id == None))
 
     count_result = await session.execute(select(func.count()).select_from(base.subquery()))
     total = count_result.scalar_one()

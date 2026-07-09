@@ -20,21 +20,81 @@ async def copy_branch_data(
 ) -> dict:
     """深拷贝源分支数据到目标分支。
 
-    modules: ["cases", "api_test"] 中的子集
+    modules: ["cases", "api_test", "apis"] 中的子集
     所有 ID 映射为新 ID，分支间完全独立。
     返回各模块复制的数量统计。
     """
     stats = {}
+    api_node_map: dict[uuid.UUID, uuid.UUID] = {}
 
     if "cases" in modules:
         stats["cases"] = await _copy_cases(session, source_branch_id, target_branch_id, user_id)
 
+    if "apis" in modules:
+        stats["apis"], api_node_map = await _copy_api_nodes(session, source_branch_id, target_branch_id, project_id, user_id)
+
     if "api_test" in modules:
-        stats["apiTest"] = await _copy_api_tests(session, source_branch_id, target_branch_id, project_id, user_id)
+        stats["apiTest"] = await _copy_api_tests(session, source_branch_id, target_branch_id, project_id, user_id, api_node_map)
 
     await session.commit()
     logger.info("Branch copy done: %s -> %s, stats=%s", source_branch_id, target_branch_id, stats)
     return stats
+
+
+async def _copy_api_nodes(
+    session: AsyncSession,
+    source_branch_id: uuid.UUID,
+    target_branch_id: uuid.UUID,
+    project_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> tuple[dict, dict[uuid.UUID, uuid.UUID]]:
+    """复制 API 接口树（含历史无分支数据），返回 (统计, 旧ID→新ID 映射)。"""
+    from app.models.api_collection import ApiNode
+
+    nodes_result = await session.execute(
+        select(ApiNode).where(
+            ApiNode.project_id == project_id,
+            (ApiNode.branch_id == source_branch_id) | (ApiNode.branch_id == None),
+        ).order_by(ApiNode.sort_order, ApiNode.created_at)
+    )
+    nodes = nodes_result.scalars().all()
+
+    node_map: dict[uuid.UUID, uuid.UUID] = {}
+    pending = list(nodes)
+    while pending:
+        progressed = False
+        remaining = []
+        for n in pending:
+            if n.parent_id is None or n.parent_id in node_map:
+                new_node = ApiNode(
+                    project_id=project_id,
+                    branch_id=target_branch_id,
+                    parent_id=node_map.get(n.parent_id) if n.parent_id else None,
+                    node_type=n.node_type,
+                    name=n.name,
+                    sort_order=n.sort_order,
+                    method=n.method,
+                    url=n.url,
+                    params=n.params,
+                    headers=n.headers,
+                    body=n.body,
+                    body_type=n.body_type,
+                    auth=n.auth,
+                    description=n.description,
+                    created_by=user_id,
+                )
+                session.add(new_node)
+                await session.flush()
+                node_map[n.id] = new_node.id
+                progressed = True
+            else:
+                remaining.append(n)
+        if not progressed:
+            logger.warning("ApiNode copy stuck, orphan parents: %s", [str(n.id) for n in remaining])
+            break
+        pending = remaining
+
+    return {"nodes": len(node_map)}, node_map
 
 
 async def _copy_cases(
@@ -107,8 +167,12 @@ async def _copy_api_tests(
     target_branch_id: uuid.UUID,
     project_id: uuid.UUID,
     user_id: uuid.UUID,
+    api_node_map: dict[uuid.UUID, uuid.UUID] | None = None,
 ) -> dict:
-    """复制接口测试文件夹 + 场景 + 步骤。状态重置为 draft，执行历史清空。"""
+    """复制接口测试文件夹 + 场景 + 步骤。状态重置为 draft，执行历史清空。
+
+    api_node_map: 同时复制了 API 接口时，source_api_ids 重映射到新接口 ID（FR40）。
+    """
     from app.models.api_test import ApiTestScenario, ApiTestStep
     from app.models.api_test_folder import ApiTestFolder
 
@@ -150,6 +214,12 @@ async def _copy_api_tests(
     scenario_count = 0
     step_count = 0
     for sc in scenarios:
+        # source_api_ids 重映射：接口也被复制时指向新 ID，否则保留原值
+        new_api_ids = sc.source_api_ids
+        if api_node_map and sc.source_api_ids:
+            new_api_ids = [
+                str(api_node_map.get(uuid.UUID(aid), aid)) for aid in sc.source_api_ids
+            ]
         new_scenario = ApiTestScenario(
             project_id=project_id,
             branch_id=target_branch_id,
@@ -161,7 +231,7 @@ async def _copy_api_tests(
             status="draft",
             source=sc.source,
             pre_steps=sc.pre_steps,
-            source_api_ids=sc.source_api_ids,
+            source_api_ids=new_api_ids,
             env_variables=sc.env_variables,
             created_by=user_id,
         )

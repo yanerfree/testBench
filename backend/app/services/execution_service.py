@@ -51,6 +51,7 @@ async def start_execution(
 
     report = TestReport(
         plan_id=plan_id,
+        branch_id=plan.branch_id,
         environment_id=plan.environment_id,
         executed_by=executed_by,
         executed_at=now,

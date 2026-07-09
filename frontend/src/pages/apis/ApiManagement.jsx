@@ -10,6 +10,7 @@ import {
   ThunderboltOutlined, ClockCircleOutlined, CloseOutlined, SwapOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
+import { useBranch } from '../../utils/branch'
 import { copyToClipboard } from '../../utils/clipboard'
 
 const methodColors = {
@@ -702,6 +703,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
 // =========== 主页面 ===========
 export default function ApiManagement() {
   const { projectId } = useParams()
+  const [branchId] = useBranch(projectId)
   const [nodes, setNodes] = useState([])
   const [loading, setLoading] = useState(true)
   const [openTabs, setOpenTabs] = useState([])
@@ -721,7 +723,7 @@ export default function ApiManagement() {
 
   const loadNodes = async () => {
     try {
-      const res = await api.get(`/projects/${projectId}/api-nodes`)
+      const res = await api.get(`/projects/${projectId}/api-nodes${branchId ? `?branch_id=${branchId}` : ''}`)
       setNodes(res.data || [])
     } catch { message.error('加载失败') }
     setLoading(false)
@@ -741,7 +743,7 @@ export default function ApiManagement() {
         }).catch(() => {})
       }
     }).catch(() => {})
-  }, [projectId])
+  }, [projectId, branchId])
 
   const selected = nodes.find(n => n.id === activeTabId)
   const tree = useMemo(() => buildTree(nodes), [nodes])
@@ -788,7 +790,7 @@ export default function ApiManagement() {
       ? { parentId, nodeType: 'folder', name: '新建文件夹', sortOrder: nodes.length }
       : { parentId, nodeType: 'endpoint', name: '新建接口', method: 'GET', url: '', sortOrder: nodes.length }
     try {
-      const res = await api.post(`/projects/${projectId}/api-nodes`, body)
+      const res = await api.post(`/projects/${projectId}/api-nodes${branchId ? `?branch_id=${branchId}` : ''}`, body)
       setNodes(prev => [...prev, res.data])
       if (type === 'endpoint') openTab(res.data)
       setNewNodeId(res.data.id)
@@ -868,7 +870,7 @@ export default function ApiManagement() {
     try {
       const text = await importFile.text()
       const collection = JSON.parse(text)
-      await api.post(`/projects/${projectId}/api-nodes/import/postman`, { collection })
+      await api.post(`/projects/${projectId}/api-nodes/import/postman${branchId ? `?branch_id=${branchId}` : ''}`, { collection })
       await loadNodes()
       setImportOpen(false)
       setImportFile(null)

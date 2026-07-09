@@ -12,12 +12,15 @@ const METHOD_COLORS = { GET: '#0ea5a0', POST: '#0ea5a0', PUT: '#faad14', DELETE:
 export default function StepList({
   scenario, selectedStepId, readonly,
   onSelectStep, onAddStep, onClose, onSaveScenario, onRunAll,
-  onAiOptimize, onApplyOptimize, onCopyScenario, onNewVersion,
+  onAiOptimize, onApplyOptimize, onCopyScenario, onNewVersion, onSplitScenario,
+  environments, envId, onEnvChange,
 }) {
   const [optimizeOpen, setOptimizeOpen] = useState(false)
   const [suggestion, setSuggestion] = useState('')
   const [optimizing, setOptimizing] = useState(false)
   const [plan, setPlan] = useState(null)
+  const [splitMode, setSplitMode] = useState(false)
+  const [splitSelected, setSplitSelected] = useState(new Set())
   return (
     <div style={{ width: 300, minWidth: 300, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
       <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
@@ -48,10 +51,12 @@ export default function StepList({
             </Tooltip>
             <Dropdown menu={{ items: [
               { key: 'copy', icon: <CopyOutlined />, label: '复制场景' },
+              ...(!readonly ? [{ key: 'split', icon: <CopyOutlined />, label: '拆分步骤' }] : []),
               ...(scenario.status === 'published' ? [{ key: 'newVersion', icon: <BranchesOutlined />, label: '更新版本' }] : []),
             ], onClick: ({ key }) => {
               if (key === 'copy') onCopyScenario()
               if (key === 'newVersion') onNewVersion()
+              if (key === 'split') { setSplitMode(true); setSplitSelected(new Set()) }
             }}} trigger={['click']}>
               <Button size="small" type="text" icon={<MoreOutlined />} />
             </Dropdown>
@@ -64,6 +69,20 @@ export default function StepList({
         <div style={{ marginTop: 4, fontSize: 11, color: '#8c8c8c' }}>
           {scenario.steps?.length || 0} 个步骤
         </div>
+        {environments?.length > 0 && (
+          <Select size="small" value={envId} onChange={onEnvChange} allowClear
+            placeholder="选择环境" style={{ width: '100%', marginTop: 4 }} variant="borderless"
+            options={environments.map(e => ({ value: e.id, label: e.name }))} />
+        )}
+        {splitMode && (
+          <div style={{ marginTop: 6, display: 'flex', gap: 4 }}>
+            <Button size="small" type="primary" disabled={splitSelected.size === 0}
+              onClick={() => { onSplitScenario?.([...splitSelected]); setSplitMode(false) }}>
+              拆分选中 ({splitSelected.size})
+            </Button>
+            <Button size="small" onClick={() => setSplitMode(false)}>取消</Button>
+          </div>
+        )}
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {(scenario.steps || []).map((step, i) => {
@@ -87,6 +106,11 @@ export default function StepList({
                 onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(0,0,0,0.02)' }}
                 onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
               >
+                {splitMode && (
+                  <input type="checkbox" checked={splitSelected.has(step.id)}
+                    onChange={e => { e.stopPropagation(); const s = new Set(splitSelected); e.target.checked ? s.add(step.id) : s.delete(step.id); setSplitSelected(s) }}
+                    style={{ marginRight: 4 }} />
+                )}
                 {step.lastStatus === 'pass' ? <CheckCircleOutlined style={{ color: '#0ea5a0', fontSize: 12 }} /> :
                  step.lastStatus === 'fail' ? <CloseCircleOutlined style={{ color: '#e8453c', fontSize: 12 }} /> :
                  <span style={{ width: 12, height: 12, borderRadius: 6, border: '1.5px solid rgba(0,0,0,0.15)', display: 'inline-block', flexShrink: 0 }} />}

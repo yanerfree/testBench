@@ -32,11 +32,16 @@ from app.api.skill_manage import router as skill_manage_router
 from app.api.knowledge import router as knowledge_router
 from app.api.screenshots import router as screenshots_router
 from app.api.toolbox import router as toolbox_router
+from app.api.scenario_gen import router as scenario_gen_router
 from app.core.middleware import CamelCaseResponse, TokenRefreshMiddleware, TraceIdMiddleware
 
 # --- MCP Server ---
 from app.mcp import mcp
 _mcp_raw = mcp.http_app(path="/")
+
+# --- MCP Mock Server（独立端点，返回可配置模拟数据，与真实 MCP 解耦） ---
+from app.mcp.mock_server import mock_mcp
+_mock_mcp_app = mock_mcp.http_app(path="/")
 
 # MCP 认证中间件 — 外部 Claude Code 连接需要 API Key（设置 MCP_API_KEY 环境变量启用）
 from starlette.responses import JSONResponse
@@ -70,9 +75,17 @@ _startup_logger = logging.getLogger("mock_startup")
 
 @asynccontextmanager
 async def lifespan(app):
+    import asyncio
+    from app.services.scenario_gen import pipeline as scenario_gen_pipeline
     async with _mcp_app.lifespan(app):
-        await _restore_mock_services()
-        yield
+        async with _mock_mcp_app.lifespan(app):
+            # mock 恢复放后台执行，不阻塞服务启动（恢复慢时曾导致启动卡 10s+）
+            restore_task = asyncio.create_task(_restore_mock_services())
+            # 功能场景测试模块：孤儿任务扫描 + 看门狗（NFR17）
+            maintenance_task = scenario_gen_pipeline.start_background_maintenance()
+            yield
+            restore_task.cancel()
+            maintenance_task.cancel()
 
 
 async def _restore_mock_services():
@@ -142,6 +155,7 @@ app.include_router(mcp_mock_router)
 app.include_router(exploratory_router)
 app.include_router(documents_router)
 app.include_router(api_test_router)
+app.include_router(scenario_gen_router)
 app.include_router(case_file_router)
 app.include_router(skill_manage_router)
 app.include_router(knowledge_router)
@@ -150,3 +164,6 @@ app.include_router(toolbox_router)
 
 # --- MCP Server 挂载 ---
 app.mount("/mcp", _mcp_app)
+
+# --- MCP Mock Server 挂载（独立地址，外部客户端联调用） ---
+app.mount("/mcp-mock-server", _mock_mcp_app)

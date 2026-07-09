@@ -133,6 +133,7 @@ async def batch_operation(
 
 class RunBatchRequest(BaseSchema):
     scenario_ids: list[str]
+    env_id: str | None = None
 
 
 @router.post("/run")
@@ -147,9 +148,19 @@ async def run_batch_scenarios(
 
     scenario_uuids = [uuid.UUID(sid) for sid in body.scenario_ids]
 
+    # 选择环境时合并 全局变量+环境变量 作为基础 env（优先级低于场景自身 env_variables）
+    base_env: dict = {}
+    if body.env_id:
+        from app.services import environment_service
+        try:
+            merged = await environment_service.get_merged_variables(session, uuid.UUID(body.env_id))
+            base_env = {item["key"]: item["value"] for item in merged}
+        except Exception:
+            logger.warning("加载环境变量失败 env_id=%s", body.env_id)
+
     async def event_stream():
         try:
-            async for event in run_batch(scenario_uuids, session, user_id=current_user.id, project_id=project_id):
+            async for event in run_batch(scenario_uuids, session, user_id=current_user.id, project_id=project_id, base_env=base_env, branch_id=branch_id):
                 yield f"data: {json.dumps({'type': event.type, **event.data}, ensure_ascii=False)}\n\n"
         except Exception as e:
             logger.exception("run_batch failed")
@@ -220,6 +231,27 @@ async def create_api_test_folder(
         parent_id=uuid.UUID(parent_id) if parent_id else None,
     )
     session.add(folder)
+    await session.commit()
+    return {"data": {"id": str(folder.id), "name": folder.name}}
+
+
+@router.put("/folders/{folder_id}")
+async def rename_api_test_folder(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    folder_id: uuid.UUID,
+    name: str,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    folder = await session.get(ApiTestFolder, folder_id)
+    if not folder or folder.branch_id != branch_id:
+        raise NotFoundError(code="NOT_FOUND", message="文件夹不存在")
+    name = name.strip()
+    if not name:
+        from app.core.exceptions import AppError
+        raise AppError(code="INVALID_NAME", message="文件夹名不能为空", status_code=400)
+    folder.name = name
     await session.commit()
     return {"data": {"id": str(folder.id), "name": folder.name}}
 
@@ -849,19 +881,25 @@ async def ai_optimize_apply(
     return {"data": result}
 
 
+class RunStepRequest(BaseSchema):
+    env_id: str | None = None
+
+
 @router.post("/{scenario_id}/run-step/{step_id}")
 async def run_step(
     project_id: uuid.UUID,
     branch_id: uuid.UUID,
     scenario_id: uuid.UUID,
     step_id: uuid.UUID,
+    body: RunStepRequest | None = None,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
-    """执行单个测试步骤 — 发送 HTTP 请求并返回结果"""
+    """执行单个测试步骤 — 复用执行引擎（变量解析/TokenCache/断言/request 持久化）"""
     import httpx
-    import time
-    import re
+    from app.services.api_test_runner import (
+        TokenCache, _extract_value, _inject_runtime_variables, run_single_step,
+    )
 
     scenario = await session.get(ApiTestScenario, scenario_id)
     if not scenario or scenario.project_id != project_id:
@@ -871,8 +909,18 @@ async def run_step(
     if not step or step.scenario_id != scenario_id:
         raise NotFoundError(code="NOT_FOUND", message="步骤不存在")
 
-    # 替换环境变量
-    env = scenario.env_variables or {}
+    # 变量优先级：步骤提取 > 运行时 > 场景 env_variables > 环境/全局
+    env: dict = {}
+    if body and body.env_id:
+        from app.services import environment_service
+        try:
+            merged = await environment_service.get_merged_variables(session, uuid.UUID(body.env_id))
+            env.update({item["key"]: item["value"] for item in merged})
+        except Exception:
+            logger.warning("加载环境变量失败 env_id=%s", body.env_id)
+    env.update(scenario.env_variables or {})
+    _inject_runtime_variables(env)
+
     # 从同场景已执行步骤中收集提取的变量
     steps_result = await session.execute(
         select(ApiTestStep)
@@ -883,114 +931,21 @@ async def run_step(
         if prev.variables_extract and prev.last_response:
             resp_body = prev.last_response.get("body", {})
             for var_name, path in prev.variables_extract.items():
-                val = resp_body
-                for key in path.split("."):
-                    if isinstance(val, dict):
-                        val = val.get(key)
-                    else:
-                        val = None
-                        break
+                val = _extract_value(resp_body, path)
                 if val is not None:
                     env[var_name] = str(val)
 
-    def resolve(text):
-        if not isinstance(text, str):
-            return text
-        def replacer(m):
-            return env.get(m.group(1), m.group(0))
-        return re.sub(r'\$\{(\w+)\}', replacer, text)
+    async with httpx.AsyncClient(timeout=30, verify=False) as client:
+        result = await run_single_step(step, env, client, TokenCache(env))
 
-    def resolve_obj(obj):
-        if isinstance(obj, str):
-            return resolve(obj)
-        if isinstance(obj, dict):
-            return {k: resolve_obj(v) for k, v in obj.items()}
-        if isinstance(obj, list):
-            return [resolve_obj(v) for v in obj]
-        return obj
+    step.last_status = result.status
+    step.last_response = {
+        "statusCode": result.status_code,
+        "duration": result.duration,
+        "body": result.response_body,
+        "assertions": result.assertions,
+        "request": result.request_data,
+    } if not result.error else {"error": result.error, "request": result.request_data}
+    await session.commit()
 
-    url = resolve(step.url)
-    headers = resolve_obj(step.headers or {})
-    body = resolve_obj(step.body)
-
-    if "Authorization" not in headers and "AUTH_TOKEN" in env:
-        headers["Authorization"] = f"Bearer {env['AUTH_TOKEN']}"
-    if "Content-Type" not in headers and body:
-        headers["Content-Type"] = "application/json"
-
-    start = time.time()
-    try:
-        async with httpx.AsyncClient(timeout=30, verify=False) as client:
-            resp = await client.request(
-                method=step.method,
-                url=url,
-                headers=headers,
-                json=body if body else None,
-            )
-        duration = int((time.time() - start) * 1000)
-
-        try:
-            resp_body = resp.json()
-        except Exception:
-            resp_body = resp.text[:2000]
-
-        # 检查断言
-        assertion_results = []
-        all_pass = True
-        for a in (step.assertions or []):
-            passed = False
-            a_type = a.get("type")
-            operator = a.get("operator", "==")
-            expected = a.get("expected", a.get("value"))
-            field = a.get("field") or (a.get("value") if a.get("expected") is not None or operator == "not_empty" else None)
-
-            if a_type == "status":
-                actual = resp.status_code
-                expected = a.get("value")
-                try:
-                    expected = int(expected)
-                except (TypeError, ValueError):
-                    pass
-                if operator == "==":
-                    passed = actual == expected
-                elif operator == "in":
-                    passed = actual in (expected if isinstance(expected, list) else [expected])
-            elif a_type == "body_contains":
-                actual = str(resp_body)
-                contain_val = a.get("value", a.get("expected", ""))
-                passed = str(contain_val) in actual
-            elif a_type == "body_field":
-                actual = resp_body
-                if field:
-                    for key in field.split("."):
-                        if isinstance(actual, dict):
-                            actual = actual.get(key)
-                        else:
-                            actual = None
-                            break
-                if operator == "==":
-                    passed = actual == expected
-                elif operator == "not_empty":
-                    passed = actual is not None and actual != ""
-
-            if not passed:
-                all_pass = False
-            assertion_results.append({**a, "passed": passed})
-
-        # 保存结果
-        step.last_status = "pass" if all_pass else "fail"
-        step.last_response = {
-            "statusCode": resp.status_code,
-            "duration": duration,
-            "body": resp_body if isinstance(resp_body, (dict, list)) else {"_text": resp_body},
-            "assertions": assertion_results,
-        }
-        await session.commit()
-
-        return {"data": step.last_response}
-
-    except Exception as e:
-        step.last_status = "fail"
-        step.last_response = {"error": str(e)[:500]}
-        await session.commit()
-        return {"data": step.last_response}
+    return {"data": step.last_response}

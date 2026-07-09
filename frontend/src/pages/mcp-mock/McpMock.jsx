@@ -106,7 +106,7 @@ export default function McpMock() {
     try { await api.delete('/mcp-mock/logs'); message.success('日志已清空'); setLogs([]); setLogsTotal(0); setLogPage(1) } catch {}
   }
 
-  const mcpUrl = `http://${window.location.hostname}:8000/mcp/`
+  const mcpUrl = `http://${window.location.hostname}:8000/mcp-mock-server/`
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', background: 'transparent' }}>

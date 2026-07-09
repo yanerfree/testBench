@@ -1,15 +1,31 @@
-import { useState } from 'react'
-import { Button, Tree, Tooltip, Popconfirm, Spin, Dropdown, Modal, TreeSelect } from 'antd'
-import { PlusOutlined, DeleteOutlined, MoreOutlined } from '@ant-design/icons'
+import { useState, useRef } from 'react'
+import { Button, Tree, Tooltip, Spin, Dropdown, Modal, TreeSelect, Input } from 'antd'
+import { PlusOutlined, MoreOutlined, EditOutlined } from '@ant-design/icons'
 
 export default function FolderTree({
   folderTree, scenarios, loading,
   selectedFolderId, selectedScenarioId,
   onSelectFolder, onSelectScenario, onDeleteScenario, onDeleteFolder,
-  onCreateFolder, onMoveScenario,
+  onCreateFolder, onMoveScenario, onRenameFolder,
 }) {
   const [moveModal, setMoveModal] = useState({ open: false, scenarioId: null, scenarioTitle: '' })
   const [moveTarget, setMoveTarget] = useState(null)
+  const [editingFolderId, setEditingFolderId] = useState(null)
+  const [editingName, setEditingName] = useState('')
+  const renameRef = useRef(null)
+
+  const startRename = (folderId, currentName) => {
+    setEditingFolderId(folderId)
+    setEditingName(currentName)
+    setTimeout(() => renameRef.current?.focus(), 50)
+  }
+
+  const commitRename = () => {
+    if (editingFolderId && editingName.trim() && onRenameFolder) {
+      onRenameFolder(editingFolderId, editingName.trim())
+    }
+    setEditingFolderId(null)
+  }
 
   const buildTreeData = (nodes) => nodes.map(n => ({
     key: n.id,
@@ -59,13 +75,15 @@ export default function FolderTree({
     children: n.children?.length > 0 ? buildFolderSelect(n.children) : undefined,
   }))
 
-  const scenarioMenuItems = (scenario) => [
+  const scenarioMenuItems = () => [
     { key: 'move', label: '移动到文件夹' },
     { type: 'divider' },
     { key: 'delete', label: '删除', danger: true },
   ]
 
-  const folderMenuItems = (folderId) => [
+  const folderMenuItems = () => [
+    { key: 'rename', icon: <EditOutlined />, label: '重命名' },
+    { type: 'divider' },
     { key: 'delete', label: '删除文件夹', danger: true },
   ]
 
@@ -96,12 +114,28 @@ export default function FolderTree({
               }}
               allowDrop={({ dropNode }) => dropNode.isFolder || (dropNode.isLeaf && dropNode.scenario)}
               titleRender={(node) => (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', overflow: 'hidden' }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                    {node.isFolder ? `${node.title} (${node.scenarioCount || node.children?.filter(c => c.isLeaf)?.length || 0})` : node.title}
-                  </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', overflow: 'hidden' }}
+                  onDoubleClick={(e) => {
+                    if (node.isFolder && node.folderId) {
+                      e.stopPropagation()
+                      startRename(node.folderId, node.title)
+                    }
+                  }}
+                >
+                  {editingFolderId === node.folderId ? (
+                    <Input ref={renameRef} size="small" value={editingName}
+                      onChange={e => setEditingName(e.target.value)}
+                      onBlur={commitRename}
+                      onPressEnter={commitRename}
+                      onClick={e => e.stopPropagation()}
+                      style={{ flex: 1, fontSize: 12 }} />
+                  ) : (
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      {node.isFolder ? `${node.title} (${node.scenarioCount || node.children?.filter(c => c.isLeaf)?.length || 0})` : node.title}
+                    </span>
+                  )}
                   {(node.isLeaf && node.scenario) ? (
-                    <Dropdown menu={{ items: scenarioMenuItems(node.scenario), onClick: ({ key, domEvent }) => {
+                    <Dropdown menu={{ items: scenarioMenuItems(), onClick: ({ key, domEvent }) => {
                       domEvent.stopPropagation()
                       if (key === 'move') setMoveModal({ open: true, scenarioId: node.scenario.id, scenarioTitle: node.title })
                       if (key === 'delete') Modal.confirm({
@@ -112,9 +146,10 @@ export default function FolderTree({
                       <Button type="text" size="small" icon={<MoreOutlined />} onClick={e => e.stopPropagation()}
                         style={{ color: '#c9cdd4', opacity: 0, fontSize: 11, transition: 'opacity 0.2s' }} className="tree-action-btn" />
                     </Dropdown>
-                  ) : (node.isFolder && node.folderId) ? (
-                    <Dropdown menu={{ items: folderMenuItems(node.folderId), onClick: ({ key, domEvent }) => {
+                  ) : (node.isFolder && node.folderId && editingFolderId !== node.folderId) ? (
+                    <Dropdown menu={{ items: folderMenuItems(), onClick: ({ key, domEvent }) => {
                       domEvent.stopPropagation()
+                      if (key === 'rename') startRename(node.folderId, node.title)
                       if (key === 'delete') Modal.confirm({
                         title: '确认删除', content: `确定要删除文件夹「${node.title}」吗？`, okText: '删除', cancelText: '取消', okButtonProps: { danger: true },
                         onOk: () => onDeleteFolder(node.folderId),

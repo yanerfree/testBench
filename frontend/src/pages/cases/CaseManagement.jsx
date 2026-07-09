@@ -3,6 +3,7 @@ import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select
 import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined, CodeOutlined, LoadingOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
+import { useBranch } from '../../utils/branch'
 import TestForgeModal from './TestForgeModal'
 import AIScriptModal from '../../components/AIScriptModal'
 
@@ -117,6 +118,12 @@ export default function CaseManagement() {
   const [branches, setBranches] = useState([])
   const [currentBranch, setCurrentBranch] = useState(null)
   const [branchManageOpen, setBranchManageOpen] = useState(false)
+  const [globalBranchId] = useBranch(projectId)
+
+  // 顶部栏全局分支切换 → 本页数据跟随刷新
+  useEffect(() => {
+    if (globalBranchId && globalBranchId !== currentBranch) setCurrentBranch(globalBranchId)
+  }, [globalBranchId])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // 目录树
   const [folderTree, setFolderTree] = useState([])

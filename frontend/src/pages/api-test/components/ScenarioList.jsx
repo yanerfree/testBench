@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Tag, Space, Input, Table, Popconfirm, Dropdown, Modal, message } from 'antd'
+import { Button, Tag, Space, Input, Table, Popconfirm, Dropdown, Modal, TreeSelect, message } from 'antd'
 import { PlusOutlined, RobotOutlined, DeleteOutlined, SearchOutlined, DownOutlined } from '@ant-design/icons'
 
 const PRIORITY_COLORS = { P0: 'red', P1: 'orange', P2: 'blue', P3: 'default' }
@@ -10,8 +10,16 @@ export default function ScenarioList({
   statusFilter, onStatusChange,
   onSelectScenario, onDelete,
   onGenerate, onCreate, onBatch,
+  folderTree,
 }) {
   const [selectedIds, setSelectedIds] = useState([])
+  const [moveOpen, setMoveOpen] = useState(false)
+  const [moveTarget, setMoveTarget] = useState(null)
+
+  const buildFolderSelect = (nodes) => (nodes || []).map(n => ({
+    value: n.id, title: n.name,
+    children: n.children?.length > 0 ? buildFolderSelect(n.children) : undefined,
+  }))
 
   const filtered = (() => {
     let data = selectedFolderIds?.length > 0
@@ -28,6 +36,7 @@ export default function ScenarioList({
   const batchItems = [
     { key: 'publish', label: '批量发布（草稿→已发布）' },
     { key: 'deprecate', label: '批量废弃（已发布→已废弃）' },
+    { key: 'move', label: '批量移动到文件夹' },
     { key: 'delete', label: '批量删除', danger: true },
   ]
 
@@ -66,6 +75,7 @@ export default function ScenarioList({
                 })
                 return
               }
+              if (key === 'move') { setMoveOpen(true); setMoveTarget(null); return }
               onBatch(key, selectedIds)
               setSelectedIds([])
             }}} trigger={['click']}>
@@ -133,6 +143,15 @@ export default function ScenarioList({
           ]}
         />
       </div>
+
+      <Modal title="批量移动到文件夹" open={moveOpen}
+        onOk={() => { onBatch('move', selectedIds, moveTarget); setMoveOpen(false); setSelectedIds([]) }}
+        onCancel={() => setMoveOpen(false)}
+        okText="移动" cancelText="取消" width={400}>
+        <TreeSelect value={moveTarget} onChange={setMoveTarget}
+          treeData={buildFolderSelect(folderTree)}
+          placeholder="选择目标文件夹" allowClear style={{ width: '100%' }} />
+      </Modal>
     </div>
   )
 }

@@ -12,7 +12,7 @@ class CreateBranchRequest(BaseSchema):
     description: str | None = None
     branch: str = Field(default="main", max_length=100)
     source_branch_id: str | None = None  # 从此分支复制数据
-    copy_modules: list[str] | None = None  # ["cases", "api_test"]
+    copy_modules: list[str] | None = None  # ["cases", "api_test", "apis"]
 
 
 class UpdateBranchRequest(BaseSchema):

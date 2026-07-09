@@ -83,6 +83,20 @@ def get_mock_response(tool_name: str):
     """MCP 工具 wrapper 调用。返回 None 表示不 mock，返回带 error+code 的 dict 表示错误。"""
     if not _config.enabled:
         return None
+    return _compute_mock_response(tool_name)
+
+
+def get_mock_response_always(tool_name: str):
+    """独立 Mock MCP Server（/mcp-mock-server/）使用 — 不受全局开关影响，始终返回配置的模拟响应并记录日志。"""
+    t0 = time.perf_counter()
+    result = _compute_mock_response(tool_name)
+    tool_cfg = _config.tools.get(tool_name) or {}
+    is_error = isinstance(result, dict) and result.get("code") in ("MOCK_ERROR", "MOCK_CUSTOM_ERROR")
+    _log_call(tool_name, {}, result, "mock-server", tool_cfg.get("mode", "success"), is_error, t0)
+    return result
+
+
+def _compute_mock_response(tool_name: str):
     tool_cfg = _config.tools.get(tool_name)
     if not tool_cfg:
         return None

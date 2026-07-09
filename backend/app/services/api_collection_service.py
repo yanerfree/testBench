@@ -8,13 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.api_collection import ApiNode
 
 
-async def list_tree(session: AsyncSession, project_id: uuid.UUID) -> list[dict]:
-    """获取项目下全部节点（前端自行组装树）"""
-    result = await session.execute(
-        select(ApiNode)
-        .where(ApiNode.project_id == project_id)
-        .order_by(ApiNode.sort_order, ApiNode.created_at)
-    )
+async def list_tree(session: AsyncSession, project_id: uuid.UUID, branch_id: uuid.UUID | None = None) -> list[dict]:
+    """获取项目下全部节点（前端自行组装树）。branch_id 给定时过滤该分支 + 历史数据（branch_id 为空）。"""
+    query = select(ApiNode).where(ApiNode.project_id == project_id)
+    if branch_id:
+        query = query.where((ApiNode.branch_id == branch_id) | (ApiNode.branch_id == None))
+    result = await session.execute(query.order_by(ApiNode.sort_order, ApiNode.created_at))
     nodes = result.scalars().all()
     return [_to_dict(n) for n in nodes]
 
@@ -29,6 +28,7 @@ async def create_node(
 ) -> dict:
     node = ApiNode(
         project_id=project_id,
+        branch_id=data.get("branch_id"),
         parent_id=data.get("parent_id"),
         node_type=data.get("node_type", "endpoint"),
         name=data["name"],
@@ -81,6 +81,7 @@ async def duplicate_node(
         return None
     node = ApiNode(
         project_id=src.project_id,
+        branch_id=src.branch_id,
         parent_id=src.parent_id,
         node_type=src.node_type,
         name=f"{src.name} (副本)",
@@ -103,6 +104,7 @@ async def duplicate_node(
 
 async def import_postman(
     session: AsyncSession, project_id: uuid.UUID, user_id: uuid.UUID, collection: dict,
+    branch_id: uuid.UUID | None = None,
 ) -> int:
     """解析 Postman Collection v2.1 JSON，导入为 api_nodes 树"""
     count = 0
@@ -112,7 +114,7 @@ async def import_postman(
         for i, item in enumerate(items_list):
             if "item" in item:
                 folder = ApiNode(
-                    project_id=project_id, parent_id=parent_id,
+                    project_id=project_id, branch_id=branch_id, parent_id=parent_id,
                     node_type="folder", name=item.get("name", "Folder"),
                     sort_order=sort_start + i, created_by=user_id,
                 )
@@ -124,7 +126,7 @@ async def import_postman(
                 req = item["request"]
                 if isinstance(req, str):
                     ep = ApiNode(
-                        project_id=project_id, parent_id=parent_id,
+                        project_id=project_id, branch_id=branch_id, parent_id=parent_id,
                         node_type="endpoint", name=item.get("name", "Request"),
                         method="GET", url=req,
                         sort_order=sort_start + i, created_by=user_id,
@@ -176,7 +178,7 @@ async def import_postman(
                             auth_data = {"type": "basic", "username": u, "password": p}
 
                     ep = ApiNode(
-                        project_id=project_id, parent_id=parent_id,
+                        project_id=project_id, branch_id=branch_id, parent_id=parent_id,
                         node_type="endpoint", name=item.get("name", "Request"),
                         method=method, url=raw_url,
                         params=params or None, headers=headers or None,
@@ -192,7 +194,7 @@ async def import_postman(
     if items:
         root_name = info.get("name", "Postman Import")
         root = ApiNode(
-            project_id=project_id, parent_id=None,
+            project_id=project_id, branch_id=branch_id, parent_id=None,
             node_type="folder", name=root_name,
             sort_order=0, created_by=user_id,
         )
@@ -223,6 +225,7 @@ def _to_dict(node: ApiNode) -> dict:
     return {
         "id": str(node.id),
         "project_id": str(node.project_id),
+        "branch_id": str(node.branch_id) if node.branch_id else None,
         "parent_id": str(node.parent_id) if node.parent_id else None,
         "node_type": node.node_type,
         "name": node.name,

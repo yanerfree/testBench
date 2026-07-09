@@ -33,6 +33,18 @@ export default function ApiTest() {
   const [runResponse, setRunResponse] = useState(null)
   const [createScenarioOpen, setCreateScenarioOpen] = useState(false)
   const [createForm] = Form.useForm()
+  const [environments, setEnvironments] = useState([])
+  const [envId, setEnvId] = useState(() => localStorage.getItem(`apitest_env_${projectId}`) || null)
+
+  useEffect(() => {
+    api.get('/environments').then(res => setEnvironments(res.data || [])).catch(() => {})
+  }, [])
+
+  const changeEnv = (id) => {
+    setEnvId(id)
+    if (id) localStorage.setItem(`apitest_env_${projectId}`, id)
+    else localStorage.removeItem(`apitest_env_${projectId}`)
+  }
 
   useEffect(() => {
     if (!projectId) return
@@ -126,7 +138,7 @@ export default function ApiTest() {
     if (!selectedStep) return
     setRunning(true); setRunResponse(null)
     try {
-      const res = await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/run-step/${selectedStep.id}`)
+      const res = await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/run-step/${selectedStep.id}`, envId ? { envId } : {})
       setRunResponse(res.data)
       loadScenario(selectedScenario.id)
     } catch (e) {
@@ -139,6 +151,7 @@ export default function ApiTest() {
     setRunning(true)
     api.stream(`/projects/${projectId}/branches/${branchId}/api-tests/run`, {
       scenarioIds: [selectedScenario.id],
+      envId: envId || undefined,
     }, {
       onChunk: (data) => {
         if (data.type === 'step_result') {
@@ -248,6 +261,24 @@ export default function ApiTest() {
     } catch { /* */ }
   }
 
+  const handleRenameFolder = async (folderId, name) => {
+    try {
+      await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/folders/${folderId}?name=${encodeURIComponent(name)}`)
+      message.success('已重命名')
+      fetchFolders()
+    } catch (e) { message.error(e.message || '重命名失败') }
+  }
+
+  const handleSplitScenario = async (stepIds) => {
+    if (!selectedScenario || !stepIds?.length) return
+    try {
+      const res = await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/split`, { stepIds })
+      message.success('已拆分为新场景')
+      fetchScenarios(); fetchFolders()
+      loadScenario(res.data.id)
+    } catch (e) { message.error(e.message || '拆分失败') }
+  }
+
   const handleCreateScenario = async () => {
     try {
       const v = await createForm.validateFields()
@@ -263,11 +294,11 @@ export default function ApiTest() {
     } catch { /* */ }
   }
 
-  const handleBatchOperation = async (action, ids) => {
+  const handleBatchOperation = async (action, ids, folderId) => {
     if (!ids?.length) { message.warning('请先选择场景'); return }
     try {
       await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/batch`, {
-        ids, action,
+        ids, action, ...(action === 'move' ? { folderId: folderId || null } : {}),
       })
       message.success('操作成功')
       fetchScenarios(); fetchFolders()
@@ -305,6 +336,7 @@ export default function ApiTest() {
         onDeleteFolder={handleDeleteFolder}
         onCreateFolder={() => { setNewFolderName(''); setFolderModalOpen(true) }}
         onMoveScenario={handleMoveScenario}
+        onRenameFolder={handleRenameFolder}
       />
 
       {!selectedScenario ? (
@@ -321,6 +353,7 @@ export default function ApiTest() {
           onGenerate={() => { setGenOpen(true); form.resetFields() }}
           onCreate={() => { setCreateScenarioOpen(true); createForm.resetFields() }}
           onBatch={handleBatchOperation}
+          folderTree={folderTree}
         />
       ) : (
         <>
@@ -337,6 +370,10 @@ export default function ApiTest() {
             onApplyOptimize={handleApplyOptimize}
             onCopyScenario={handleCopyScenario}
             onNewVersion={handleNewVersion}
+            onSplitScenario={handleSplitScenario}
+            environments={environments}
+            envId={envId}
+            onEnvChange={changeEnv}
           />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'transparent' }}>
             <StepEditor

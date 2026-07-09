@@ -17,6 +17,7 @@ class CreatePlanRequest(BaseSchema):
     channel_id: uuid.UUID | None = None
     retry_count: int = Field(default=0, ge=0, le=3)
     circuit_breaker: dict | None = None
+    branch_id: uuid.UUID | None = None
 
 
 class UpdatePlanRequest(BaseSchema):

@@ -3,6 +3,7 @@ import { Tag, Button, Radio, Input, Space, Modal, Form, Select, InputNumber, mes
 import { PlusOutlined, SearchOutlined, ReloadOutlined, PlayCircleOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
+import { useBranch } from '../../utils/branch'
 import CasePicker from '../../components/CasePicker'
 
 const statusMap = {
@@ -19,6 +20,7 @@ const th = { fontSize: 12, color: '#86909c', fontWeight: 500, whiteSpace: 'nowra
 export default function PlanList() {
   const navigate = useNavigate()
   const { projectId } = useParams()
+  const [globalBranchId] = useBranch(projectId)
   const [plans, setPlans] = useState([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -46,11 +48,12 @@ export default function PlanList() {
     try {
       const params = new URLSearchParams({ page, pageSize })
       if (tab) params.set('status', tab)
+      if (globalBranchId) params.set('branchId', globalBranchId)
       const res = await api.get(`/projects/${projectId}/plans?${params}`)
       setPlans(res.data || [])
       setTotal(res.pagination?.total || 0)
     } catch { /* */ } finally { setLoading(false) }
-  }, [projectId, tab, page, pageSize])
+  }, [projectId, tab, page, pageSize, globalBranchId])
 
   useEffect(() => { fetchPlans() }, [fetchPlans])
 
@@ -66,9 +69,11 @@ export default function PlanList() {
       setBranches(brRes.data || [])
       setEnvironments(envRes.data || [])
       setChannels(chRes.data || [])
-      const active = (brRes.data || []).find(b => b.status === 'active')
-      if (active) {
-        setSelectedBranch(active.id)
+      // 默认选中全局分支，退回第一个 active 分支
+      const list = brRes.data || []
+      const preferred = list.find(b => b.id === globalBranchId) || list.find(b => b.status === 'active')
+      if (preferred) {
+        setSelectedBranch(preferred.id)
       }
     } catch { /* */ }
   }
@@ -88,6 +93,7 @@ export default function PlanList() {
         planType: values.planType,
         testType: values.testType,
         caseIds: values.caseIds,
+        branchId: selectedBranch || globalBranchId || null,
         environmentId: values.environmentId || null,
         channelId: values.channelId || null,
         retryCount: values.retryCount || 0,

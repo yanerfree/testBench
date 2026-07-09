@@ -22,6 +22,7 @@ async def create_plan(
     channel_id: uuid.UUID | None = None,
     retry_count: int = 0,
     circuit_breaker: dict | None = None,
+    branch_id: uuid.UUID | None = None,
 ) -> Plan:
     """创建测试计划 + 关联用例。"""
     if not case_ids:
@@ -31,6 +32,7 @@ async def create_plan(
 
     plan = Plan(
         project_id=project_id,
+        branch_id=branch_id,
         name=name,
         plan_type=plan_type,
         test_type=test_type,
@@ -56,11 +58,14 @@ async def list_plans(
     status: str | None = None,
     page: int = 1,
     page_size: int = 20,
+    branch_id: uuid.UUID | None = None,
 ) -> tuple[list[dict], int]:
-    """查询计划列表（含用例数）。"""
+    """查询计划列表（含用例数）。branch_id 给定时过滤该分支 + 历史数据。"""
     base = select(Plan).where(Plan.project_id == project_id)
     if status:
         base = base.where(Plan.status == status)
+    if branch_id:
+        base = base.where((Plan.branch_id == branch_id) | (Plan.branch_id == None))
 
     count_result = await session.execute(select(func.count()).select_from(base.subquery()))
     total = count_result.scalar_one()
