@@ -8,6 +8,7 @@ import Stage1Input from './components/Stage1Input'
 import Stage2Requirements from './components/Stage2Requirements'
 import Stage3ScenarioModel from './components/Stage3ScenarioModel'
 import Stage4Generation from './components/Stage4Generation'
+import Stage5Review from './components/Stage5Review'
 
 const STATUS_MAP = {
   extracting: { color: 'processing', label: '提取中' },
@@ -219,9 +220,11 @@ function TaskDetail({ projectId, taskId }) {
           />
         )}
         {stage === 'review' && (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: '#8c919e' }}>
-            <p>阶段⑤ 评审工作台 — S5.2 将在此实现</p>
-          </div>
+          <Stage5Review
+            projectId={projectId}
+            branchId={branchId}
+            taskId={taskId}
+          />
         )}
       </div>
     </div>
