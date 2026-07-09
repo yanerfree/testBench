@@ -422,35 +422,33 @@ export default function ApiTest() {
             <Button size="small" type="text" onClick={() => { setSelectedScenario(null); setSelectedStep(null); setShowRunPanel(false) }}>✕ 返回</Button>
           </div>
           {/* ── 操作工具栏 ── */}
-          <div style={{ padding: '6px 16px', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', background: 'rgba(255,255,255,0.3)' }}>
-            <Tooltip title="运行全部步骤">
-              <Button size="small" type="primary" icon={<PlayCircleOutlined />} onClick={handleRunAll} loading={running}>运行</Button>
-            </Tooltip>
-            {selectedScenario.status === 'draft' && (
-              <Tooltip title="AI 分析并优化步骤">
-                <Button size="small" icon={<RobotOutlined />}
+          <div style={{ padding: '6px 16px', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0, display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.3)' }}>
+            {/* 左侧：执行相关（高频） */}
+            <Space size={6}>
+              {environments?.length > 0 && (
+                <Select size="small" value={envId} onChange={changeEnv} allowClear
+                  placeholder="运行环境" style={{ width: 140 }}
+                  options={environments.map(e => ({ value: e.id, label: e.name }))} />
+              )}
+              <Button size="small" type="primary" icon={<PlayCircleOutlined />} onClick={handleRunAll} loading={running}>运行全部</Button>
+            </Space>
+
+            <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.08)', margin: '0 12px' }} />
+
+            {/* 中间：编辑相关（中频） */}
+            <Space size={6}>
+              {selectedScenario.status === 'draft' && (
+                <Button size="small" type="text" icon={<RobotOutlined style={{ color: '#4e8af0' }} />}
                   onClick={() => setOptimizeOpen(true)}>AI 优化</Button>
-              </Tooltip>
-            )}
-            <Tooltip title="复制为新的草稿场景">
-              <Button size="small" icon={<CopyOutlined />} onClick={handleCopyScenario}>复制</Button>
-            </Tooltip>
-            {selectedScenario.status === 'draft' && (
-              <Tooltip title="选择部分步骤拆分为新场景">
-                <Button size="small" icon={<ScissorOutlined />} onClick={() => setSplitMode(prev => !prev)}>拆分</Button>
-              </Tooltip>
-            )}
-            {selectedScenario.status === 'published' && (
-              <Tooltip title="基于当前版本创建新草稿">
-                <Button size="small" icon={<BranchesOutlined />} onClick={handleNewVersion}>更新版本</Button>
-              </Tooltip>
-            )}
-            <div style={{ flex: 1 }} />
-            {environments?.length > 0 && (
-              <Select size="small" value={envId} onChange={changeEnv} allowClear
-                placeholder="选择运行环境" style={{ width: 160 }}
-                options={environments.map(e => ({ value: e.id, label: e.name }))} />
-            )}
+              )}
+              <Button size="small" type="text" icon={<CopyOutlined />} onClick={handleCopyScenario}>复制</Button>
+              {selectedScenario.status === 'draft' && (
+                <Button size="small" type="text" icon={<ScissorOutlined />} onClick={() => setSplitMode(prev => !prev)}>拆分</Button>
+              )}
+              {selectedScenario.status === 'published' && (
+                <Button size="small" type="text" icon={<BranchesOutlined />} onClick={handleNewVersion}>更新版本</Button>
+              )}
+            </Space>
           </div>
           {/* ── 步骤列表 + 编辑器/结果面板 ── */}
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
