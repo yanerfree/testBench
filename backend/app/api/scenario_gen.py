@@ -24,6 +24,7 @@ from app.deps.db import async_session_factory, get_db
 from app.models.scenario_gen import GenerationTask, RequirementDoc, TaskEvent
 from app.models.user import User
 from app.services.scenario_gen import pipeline
+from app.services.scenario_gen.preprocessor import preprocess
 from app.core.audit import write_audit_log
 
 router = APIRouter(
@@ -100,7 +101,7 @@ async def create_task(
         source=body.source,
         filename=body.filename,
         content_markdown=content,
-        content_meta={"char_count": len(content)},
+        content_meta=preprocess(content),
         created_by=current_user.id,
     )
     session.add(doc)

@@ -4,6 +4,7 @@ import { Button, Table, Tag, Space, Empty, message } from 'antd'
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import WizardStepper from './components/WizardStepper'
+import Stage1Input from './components/Stage1Input'
 
 const STATUS_MAP = {
   extracting: { color: 'processing', label: '提取中' },
@@ -171,10 +172,14 @@ function TaskDetail({ projectId, taskId }) {
       <div style={{ marginTop: 24, padding: 24, background: 'rgba(255,255,255,0.6)', borderRadius: 10,
         border: '1px solid rgba(0,0,0,0.04)', minHeight: 400 }}>
         {taskId === 'new' && stage === 'input' && (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: '#8c919e' }}>
-            <p style={{ fontSize: 14 }}>阶段① 需求输入 — S2.1 将在此实现</p>
-            <p style={{ fontSize: 12 }}>粘贴需求文档 / 上传 .md / 增强上下文 / 成本预估</p>
-          </div>
+          <Stage1Input
+            projectId={projectId}
+            branchId={branchId}
+            onTaskCreated={(data) => {
+              setTask(data)
+              setSearchParams({ taskId: data.id, stage: 'requirements' }, { replace: true })
+            }}
+          />
         )}
         {taskId !== 'new' && stage === 'requirements' && (
           <div style={{ textAlign: 'center', padding: '80px 0', color: '#8c919e' }}>
