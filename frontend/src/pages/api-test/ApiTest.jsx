@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
-import { Modal, Form, Input, TreeSelect, message, Select } from 'antd'
+import { Modal, Form, Input, TreeSelect, message, Select, Tag, Button, Tooltip, Drawer, Space } from 'antd'
+import { PlayCircleOutlined, RobotOutlined, CopyOutlined, ScissorOutlined, BranchesOutlined } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { useBranch } from '../../utils/branch'
 import RunResultPanel from './components/RunResultPanel'
@@ -36,6 +37,11 @@ export default function ApiTest() {
   const [showRunPanel, setShowRunPanel] = useState(false)
   const [runStepResults, setRunStepResults] = useState([])
   const [runReportId, setRunReportId] = useState(null)
+  const [splitMode, setSplitMode] = useState(false)
+  const [optimizeOpen, setOptimizeOpen] = useState(false)
+  const [optimizeSuggestion, setOptimizeSuggestion] = useState('')
+  const [optimizing, setOptimizing] = useState(false)
+  const [optimizePlan, setOptimizePlan] = useState(null)
   const [createForm] = Form.useForm()
   const [environments, setEnvironments] = useState([])
   const [envId, setEnvId] = useState(() => localStorage.getItem(`apitest_env_${projectId}`) || null)
@@ -190,6 +196,10 @@ export default function ApiTest() {
         }
         if (data.type === 'report_created') {
           setRunReportId(data.reportId)
+        }
+        if (data.type === 'run_done' || data.type === 'scenario_done') {
+          setRunning(false)
+          loadScenario(selectedScenario.id)
         }
       },
       onDone: () => {
@@ -391,51 +401,140 @@ export default function ApiTest() {
           folderTree={folderTree}
         />
       ) : (
-        <>
-          <StepList
-            scenario={selectedScenario}
-            selectedStepId={selectedStep?.id}
-            readonly={selectedScenario?.status !== 'draft'}
-            onSelectStep={(step) => { setSelectedStep(step); setRunResponse(null) }}
-            onAddStep={addStep}
-            onClose={() => { setSelectedScenario(null); setSelectedStep(null) }}
-            onSaveScenario={saveScenario}
-            onRunAll={handleRunAll}
-            onAiOptimize={handleAiOptimize}
-            onApplyOptimize={handleApplyOptimize}
-            onCopyScenario={handleCopyScenario}
-            onNewVersion={handleNewVersion}
-            onSplitScenario={handleSplitScenario}
-            onReorderSteps={handleReorderSteps}
-            environments={environments}
-            envId={envId}
-            onEnvChange={changeEnv}
-          />
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'transparent' }}>
-            {showRunPanel ? (
-              <RunResultPanel
-                results={runStepResults}
-                scenario={selectedScenario}
-                running={running}
-                onClose={() => setShowRunPanel(false)}
-                reportId={runReportId}
-                envName={environments.find(e => e.id === envId)?.name}
-                projectId={projectId}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* ── 场景标题栏 ── */}
+          <div style={{ padding: '8px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.5)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>{selectedScenario.code}</span>
+              <span style={{ color: '#595959', fontSize: 13 }}>{selectedScenario.title}</span>
+              <Tag color={selectedScenario.source === 'ai' ? 'blue' : 'default'} style={{ fontSize: 10 }}>
+                {selectedScenario.source === 'ai' ? 'AI' : '手动'}
+              </Tag>
+              <Select size="small" value={selectedScenario.status} onChange={v => saveScenario({ status: v })}
+                variant="borderless" style={{ fontSize: 11 }}
+                options={[
+                  { value: 'draft', label: <Tag>草稿</Tag> },
+                  { value: 'published', label: <Tag color="#0ea5a0">已发布</Tag> },
+                  { value: 'deprecated', label: <Tag color="default">已废弃</Tag> },
+                ]}
               />
-            ) : (
-              <StepEditor
-                step={stepWithResponse}
-                running={running}
-                readonly={selectedScenario?.status !== 'draft'}
-                onSaveStep={saveStep}
-                onRemoveStep={removeStep}
-                onRunStep={handleRunStep}
-                onStepChange={setSelectedStep}
-              />
+            </div>
+            <Button size="small" type="text" onClick={() => { setSelectedScenario(null); setSelectedStep(null); setShowRunPanel(false) }}>✕ 返回</Button>
+          </div>
+          {/* ── 操作工具栏 ── */}
+          <div style={{ padding: '6px 16px', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', background: 'rgba(255,255,255,0.3)' }}>
+            <Tooltip title="运行全部步骤">
+              <Button size="small" type="primary" icon={<PlayCircleOutlined />} onClick={handleRunAll} loading={running}>运行</Button>
+            </Tooltip>
+            {selectedScenario.status === 'draft' && (
+              <Tooltip title="AI 分析并优化步骤">
+                <Button size="small" icon={<RobotOutlined />}
+                  onClick={() => setOptimizeOpen(true)}>AI 优化</Button>
+              </Tooltip>
+            )}
+            <Tooltip title="复制为新的草稿场景">
+              <Button size="small" icon={<CopyOutlined />} onClick={handleCopyScenario}>复制</Button>
+            </Tooltip>
+            {selectedScenario.status === 'draft' && (
+              <Tooltip title="选择部分步骤拆分为新场景">
+                <Button size="small" icon={<ScissorOutlined />} onClick={() => setSplitMode(prev => !prev)}>拆分</Button>
+              </Tooltip>
+            )}
+            {selectedScenario.status === 'published' && (
+              <Tooltip title="基于当前版本创建新草稿">
+                <Button size="small" icon={<BranchesOutlined />} onClick={handleNewVersion}>更新版本</Button>
+              </Tooltip>
+            )}
+            <div style={{ flex: 1 }} />
+            {environments?.length > 0 && (
+              <Select size="small" value={envId} onChange={changeEnv} allowClear
+                placeholder="选择运行环境" style={{ width: 160 }}
+                options={environments.map(e => ({ value: e.id, label: e.name }))} />
             )}
           </div>
-        </>
+          {/* ── 步骤列表 + 编辑器/结果面板 ── */}
+          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+            <StepList
+              scenario={selectedScenario}
+              selectedStepId={selectedStep?.id}
+              readonly={selectedScenario?.status !== 'draft'}
+              onSelectStep={(step) => { setSelectedStep(step); setRunResponse(null); setShowRunPanel(false) }}
+              onAddStep={addStep}
+              onReorderSteps={handleReorderSteps}
+              splitMode={splitMode}
+              onSplitModeChange={setSplitMode}
+              onSplitScenario={handleSplitScenario}
+            />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'transparent' }}>
+              {showRunPanel ? (
+                <RunResultPanel
+                  results={runStepResults}
+                  scenario={selectedScenario}
+                  running={running}
+                  onClose={() => setShowRunPanel(false)}
+                  reportId={runReportId}
+                  envName={environments.find(e => e.id === envId)?.name}
+                  projectId={projectId}
+                />
+              ) : (
+                <StepEditor
+                  step={stepWithResponse}
+                  running={running}
+                  readonly={selectedScenario?.status !== 'draft'}
+                  onSaveStep={saveStep}
+                  onRemoveStep={removeStep}
+                  onRunStep={handleRunStep}
+                  onStepChange={setSelectedStep}
+                />
+              )}
+            </div>
+          </div>
+        </div>
       )}
+
+      {/* AI 优化抽屉 */}
+      <Drawer title="AI 优化" open={optimizeOpen} onClose={() => setOptimizeOpen(false)} width={420}
+        footer={optimizePlan?.changes ? (
+          <Space>
+            <Button onClick={() => setOptimizePlan(null)}>重新分析</Button>
+            <Button type="primary" onClick={async () => {
+              const result = await handleApplyOptimize(optimizePlan.changes)
+              if (result) { message.success(`已应用 ${result.applied} 项修改`); setOptimizeOpen(false) }
+            }}>确认执行</Button>
+          </Space>
+        ) : null}
+      >
+        {!optimizePlan ? (
+          <>
+            <div style={{ marginBottom: 12, fontSize: 13, color: '#595959' }}>输入修改建议，AI 分析后给出方案：</div>
+            <Input.TextArea rows={4} value={optimizeSuggestion} onChange={e => setOptimizeSuggestion(e.target.value)}
+              placeholder="例如：增加中文用户名的测试、把超时时间改为10秒..." />
+            <Button type="primary" icon={<RobotOutlined />} loading={optimizing} style={{ marginTop: 12 }}
+              onClick={async () => {
+                if (!optimizeSuggestion.trim()) return
+                setOptimizing(true)
+                try { setOptimizePlan(await handleAiOptimize(optimizeSuggestion)) }
+                catch { message.error('分析失败') }
+                finally { setOptimizing(false) }
+              }}>分析方案</Button>
+          </>
+        ) : optimizePlan.error ? (
+          <div style={{ color: '#e8453c' }}>{optimizePlan.error}</div>
+        ) : (
+          <>
+            <div style={{ marginBottom: 12, fontWeight: 600 }}>{optimizePlan.summary}</div>
+            {(optimizePlan.changes || []).map((c, i) => (
+              <div key={i} style={{ padding: '8px 12px', marginBottom: 8, borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', background: c.action === 'add' ? '#f6ffed' : c.action === 'delete' ? '#fff2f0' : '#e6f4ff' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                  {c.action === 'add' ? '+ 新增' : c.action === 'delete' ? '- 删除' : '~ 修改'}
+                  {c.step?.name ? ` — ${c.step.name}` : ''}
+                </div>
+                {c.reason && <div style={{ fontSize: 11, color: '#8c8c8c' }}>{c.reason}</div>}
+              </div>
+            ))}
+          </>
+        )}
+      </Drawer>
 
       <GenerateModal
         open={genOpen}
