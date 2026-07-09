@@ -113,6 +113,7 @@ async def llm_structured(
     project_id: uuid.UUID | None = None,
     skill_name: str = "scenario-gen",
     settings: ScenarioGenDefaults | None = None,
+    max_tokens: int | None = None,
 ) -> T:
     """调用 LLM 并校验为 Pydantic 模型。失败定向重试，耗尽抛 StructuredOutputError。
 
@@ -136,7 +137,7 @@ async def llm_structured(
 
     for attempt in range(max_retry + 1):
         try:
-            resp: LLMResponse = await llm_client.complete(messages, config=config)
+            resp: LLMResponse = await llm_client.complete(messages, config=config, max_tokens=max_tokens)
         except LLMError:
             raise  # LLM 网络/鉴权错误直接抛，不重试
 

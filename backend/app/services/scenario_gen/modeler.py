@@ -63,23 +63,19 @@ class ScenarioModelResult(BaseModel):
 MODELER_SYSTEM_PROMPT = """你是一位资深测试架构师。根据提供的需求点清单，生成完整的场景模型。
 
 场景模型包含四个区块：
-1. **flows**: 业务流程步骤 [{seq, action, actor, note}]
-2. **state_transitions**: 状态转换表 [{from, to, trigger, requirement_point}] — from/to 是业务状态名
-3. **role_matrix**: 角色权限矩阵 [{role, action, allowed}]
+1. **flows**: 业务流程步骤 [{seq, action, actor, note}]（保持精简，note 可为空）
+2. **state_transitions**: 状态转换表 [{from, to, trigger, requirement_point}]
+3. **role_matrix**: 角色权限矩阵 [{role, action, allowed}]（如无明确角色需求可为空数组）
 4. **test_points**: 测试点清单 [{ref, requirement_point_code, dimension, priority, title, note}]
 
 测试点的 dimension 必须是以下封闭白名单之一（严禁输出白名单以外的值）：
-- positive: 正向验证
-- negative: 异常/反向
-- boundary: 边界值
-- permission: 权限
-- data: 数据
-- state: 状态流转
+- positive / negative / boundary / permission / data / state
 
-requirement_point_code 引用需求点编号（如 R1、R2）。
-priority 取值 P0/P1/P2/P3。每个需求点至少有 1 个测试点。
+requirement_point_code 引用需求点编号（如 R1、R2）。priority 取值 P0/P1/P2/P3。
+每个需求点至少有 1 个测试点。ref 格式为 tp-1, tp-2, ...
 
-输出严格 JSON 格式。"""
+重要：输出必须是完整的、可解析的 JSON。note 字段保持简短或为空字符串以控制输出长度。
+输出严格 JSON 格式，不要添加任何解释文字。"""
 
 
 def _validate_test_points(points: list[TestPoint]) -> list[TestPoint]:
@@ -116,6 +112,7 @@ async def generate_scenario_model(
     model_result = await llm_structured(
         config, messages, ScenarioModelResult,
         session=session, project_id=task.project_id, skill_name="scenario-model",
+        max_tokens=8192,
     )
 
     validated_points = _validate_test_points(model_result.test_points)

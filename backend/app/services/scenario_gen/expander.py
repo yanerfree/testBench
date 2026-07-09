@@ -80,6 +80,7 @@ async def expand_single_test_point(
         result = await llm_structured(
             config, messages, ExpandResult,
             session=session, project_id=task.project_id, skill_name="scenario-expand",
+            max_tokens=4096,
         )
     except (StructuredOutputError, Exception) as e:
         item.status = "failed"

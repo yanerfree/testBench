@@ -25,6 +25,7 @@ from app.models.scenario_gen import GenerationTask, GenerationItem, RequirementD
 from app.models.user import User
 from app.services.scenario_gen import pipeline
 from app.services.scenario_gen.preprocessor import preprocess
+from app.services.scenario_gen import runner as gen_runner
 from app.core.audit import write_audit_log
 
 router = APIRouter(
@@ -126,6 +127,10 @@ async def create_task(
         target_id=task.id, target_name=task.title,
         user_id=current_user.id, project_id=project_id,
     )
+
+    # 后台触发 AI 需求点提取
+    pipeline.spawn(gen_runner.run_extraction(task.id, project_id), name=f"extract-{task.id}", gen_task_id=task.id)
+
     return {"data": _task_to_dict(task, last_seq=seq)}
 
 
@@ -363,6 +368,10 @@ async def confirm_requirements(
         raise AppError(code="INVALID_TRANSITION", message=str(e), status_code=409)
     await session.commit()
     await session.refresh(task)
+
+    # 后台触发 AI 场景模型生成
+    pipeline.spawn(gen_runner.run_modeling(task.id, project_id), name=f"model-{task.id}", gen_task_id=task.id)
+
     return {"data": _task_to_dict(task)}
 
 
@@ -477,6 +486,18 @@ async def confirm_model(
         target_id=task.id, target_name=task.title,
         user_id=current_user.id, project_id=project_id,
     )
+
+    # 后台触发 AI 用例批量展开（状态需先推进到 generating）
+    async def _start_expansion():
+        async with async_session_factory() as s:
+            t = await s.get(GenerationTask, task_id)
+            if t and t.status == "confirmed":
+                await pipeline.transition(s, t, "generating")
+                await s.commit()
+        await gen_runner.run_expansion(task_id, project_id)
+
+    pipeline.spawn(_start_expansion(), name=f"expand-{task.id}", gen_task_id=task.id)
+
     return {"data": {**_task_to_dict(task), "testPointCount": tp_count}}
 
 
@@ -510,6 +531,9 @@ async def resume_task(
         raise AppError(code="INVALID_TRANSITION", message=str(e), status_code=409)
     await session.commit()
     await session.refresh(task)
+
+    # 后台触发续跑展开
+    pipeline.spawn(gen_runner.run_expansion(task_id, project_id), name=f"resume-{task.id}", gen_task_id=task.id)
 
     return {"data": {**_task_to_dict(task), "pendingItems": pending_count}}
 
