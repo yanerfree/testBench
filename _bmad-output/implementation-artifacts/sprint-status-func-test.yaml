@@ -49,33 +49,33 @@ development_status:
   ft-3-3-persistence-resume-verification: backlog
   ft-epic-3-retrospective: optional
 
-  ft-epic-4: backlog
-  ft-4-1-expansion-pipeline-loop: backlog
-  ft-4-2-static-validator: backlog
-  ft-4-3-ai-self-review-loop: backlog
+  ft-epic-4: in-progress
+  ft-4-1-expansion-pipeline-loop: review
+  ft-4-2-static-validator: review
+  ft-4-3-ai-self-review-loop: review
   ft-4-4-dedup-check: backlog
   ft-4-5-auto-folder-and-style-samples: backlog
   ft-4-6-resume-and-fault-tolerance: backlog
-  ft-4-7-generation-dual-panel-ui: backlog
+  ft-4-7-generation-dual-panel-ui: review
   ft-4-8-reflection-coverage-supplement: backlog
   ft-epic-4-retrospective: optional
 
-  ft-epic-5: backlog
-  ft-5-1-review-state-machine-backend: backlog
-  ft-5-2-review-workbench-ui: backlog
-  ft-5-3-reject-reason-feedback-loop: backlog
-  ft-5-4-case-management-integration: backlog
+  ft-epic-5: in-progress
+  ft-5-1-review-state-machine-backend: review
+  ft-5-2-review-workbench-ui: review
+  ft-5-3-reject-reason-feedback-loop: review
+  ft-5-4-case-management-integration: review
   ft-epic-5-retrospective: optional
 
-  ft-epic-6: backlog
-  ft-6-1-coverage-matrix-backend: backlog
-  ft-6-2-coverage-matrix-ui: backlog
-  ft-6-3-case-detail-panorama: backlog
+  ft-epic-6: in-progress
+  ft-6-1-coverage-matrix-backend: review
+  ft-6-2-coverage-matrix-ui: review
+  ft-6-3-case-detail-panorama: review
   ft-epic-6-retrospective: optional
 
-  ft-epic-7: backlog
-  ft-7-1-plan-report-integration: backlog
-  ft-7-2-generation-quality-stats: backlog
+  ft-epic-7: in-progress
+  ft-7-1-plan-report-integration: review
+  ft-7-2-generation-quality-stats: review
   ft-7-3-audit-and-security: backlog
   ft-epic-7-retrospective: optional
 
@@ -84,7 +84,7 @@ development_status:
   ft-8-2-claude-code-skill-distribution: backlog
   ft-epic-8-retrospective: optional
 
-  ft-epic-9: backlog
-  ft-9-1-prompt-skills-authoring: backlog
+  ft-epic-9: in-progress
+  ft-9-1-prompt-skills-authoring: review
   ft-9-2-skill-versioning: backlog
   ft-epic-9-retrospective: optional
