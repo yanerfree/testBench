@@ -43,7 +43,7 @@ export default function ApiTest() {
 
   useEffect(() => {
     if (!projectId || !branchId) return
-    api.get(`/projects/${projectId}/branches/${branchId}/api-nodes`).then(res => {
+    api.get(`/projects/${projectId}/api-nodes?branch_id=${branchId}`).then(res => {
       const nodes = res.data || []
       setApiList(nodes.filter(n => n.nodeType === 'endpoint'))
     }).catch(() => {})
