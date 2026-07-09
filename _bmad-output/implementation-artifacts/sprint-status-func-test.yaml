@@ -53,11 +53,11 @@ development_status:
   ft-4-1-expansion-pipeline-loop: review
   ft-4-2-static-validator: review
   ft-4-3-ai-self-review-loop: review
-  ft-4-4-dedup-check: backlog
-  ft-4-5-auto-folder-and-style-samples: backlog
-  ft-4-6-resume-and-fault-tolerance: backlog
+  ft-4-4-dedup-check: review
+  ft-4-5-auto-folder-and-style-samples: review
+  ft-4-6-resume-and-fault-tolerance: review
   ft-4-7-generation-dual-panel-ui: review
-  ft-4-8-reflection-coverage-supplement: backlog
+  ft-4-8-reflection-coverage-supplement: review
   ft-epic-4-retrospective: optional
 
   ft-epic-5: in-progress
@@ -76,11 +76,11 @@ development_status:
   ft-epic-7: in-progress
   ft-7-1-plan-report-integration: review
   ft-7-2-generation-quality-stats: review
-  ft-7-3-audit-and-security: backlog
+  ft-7-3-audit-and-security: review
   ft-epic-7-retrospective: optional
 
-  ft-epic-8: backlog
-  ft-8-1-mcp-toolset: backlog
+  ft-epic-8: in-progress
+  ft-8-1-mcp-toolset: review
   ft-8-2-claude-code-skill-distribution: backlog
   ft-epic-8-retrospective: optional
 
