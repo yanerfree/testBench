@@ -472,6 +472,11 @@ async def confirm_model(
         raise AppError(code="INVALID_TRANSITION", message=str(e), status_code=409)
     await session.commit()
     await session.refresh(task)
+    await write_audit_log(
+        session, action="confirm_model", target_type="generation_task",
+        target_id=task.id, target_name=task.title,
+        user_id=current_user.id, project_id=project_id,
+    )
     return {"data": {**_task_to_dict(task), "testPointCount": tp_count}}
 
 
