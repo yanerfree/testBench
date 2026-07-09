@@ -414,11 +414,10 @@ async def run_batch(
         if scenario_result:
             all_results.append(scenario_result)
 
-    # 草稿场景调试执行不进报告，已发布场景执行才生成（FR31）
-    reportable = [r for r in all_results if r.scenario_status == "published"]
-    if reportable and user_id:
-        folder_name = await _resolve_common_folder_name(session, reportable)
-        report_id = await _create_report(session, reportable, user_id, project_id, report_name, folder_name, branch_id)
+    # 批量执行统一生成报告（不区分草稿/已发布，单步调试走 run-step 不经过这里）
+    if all_results and user_id:
+        folder_name = await _resolve_common_folder_name(session, all_results)
+        report_id = await _create_report(session, all_results, user_id, project_id, report_name, folder_name, branch_id)
         yield RunEvent(type="report_created", data={"reportId": str(report_id)})
 
     yield RunEvent(type="run_done", data={"totalScenarios": len(scenario_ids)})

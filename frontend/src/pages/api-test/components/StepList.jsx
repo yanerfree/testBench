@@ -72,7 +72,8 @@ export default function StepList({
         </div>
         {environments?.length > 0 && (
           <Select size="small" value={envId} onChange={onEnvChange} allowClear
-            placeholder="选择环境" style={{ width: '100%', marginTop: 4 }} variant="borderless"
+            placeholder="选择运行环境"
+            style={{ width: '100%', marginTop: 6 }}
             options={environments.map(e => ({ value: e.id, label: e.name }))} />
         )}
         {splitMode && (
