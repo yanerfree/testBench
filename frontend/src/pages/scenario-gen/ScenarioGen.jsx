@@ -6,6 +6,7 @@ import { api } from '../../utils/request'
 import WizardStepper from './components/WizardStepper'
 import Stage1Input from './components/Stage1Input'
 import Stage2Requirements from './components/Stage2Requirements'
+import Stage3ScenarioModel from './components/Stage3ScenarioModel'
 
 const STATUS_MAP = {
   extracting: { color: 'processing', label: '提取中' },
@@ -196,9 +197,15 @@ function TaskDetail({ projectId, taskId }) {
           />
         )}
         {stage === 'model' && (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: '#8c919e' }}>
-            <p>阶段③ 确认场景模型 — S3.2 将在此实现</p>
-          </div>
+          <Stage3ScenarioModel
+            projectId={projectId}
+            branchId={branchId}
+            taskId={taskId}
+            onConfirm={(data) => {
+              setTask(data)
+              setSearchParams({ taskId, stage: 'generate' }, { replace: true })
+            }}
+          />
         )}
         {stage === 'generate' && (
           <div style={{ textAlign: 'center', padding: '80px 0', color: '#8c919e' }}>
