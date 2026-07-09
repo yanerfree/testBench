@@ -759,6 +759,15 @@ export default function CaseDetail() {
             </div>
           </InlineProp>
           <ReadonlyProp label="来源" value={caseData.source || 'manual'} />
+          {caseData.reviewStatus && (
+            <ReadonlyProp label="审核" value={
+              caseData.reviewStatus === 'approved' ? '✓ 已审核' :
+              caseData.reviewStatus === 'rejected' ? '✕ 已拒绝' : '◐ 待审核'
+            } />
+          )}
+          {caseData.qualityScore?.total != null && (
+            <ReadonlyProp label="评分" value={caseData.qualityScore.total} />
+          )}
 
           {/* 场景覆盖指示器 — 显示状态 + 模板 */}
           <div style={{ display: 'inline-flex', gap: 4, marginLeft: 8 }}>
@@ -936,6 +945,36 @@ export default function CaseDetail() {
             )},
 
             { key: 'casefile', label: '病历', children: <CaseFileTab caseId={caseId} /> },
+            ...(caseData.source === 'ai' || caseData.reviewStatus ? [
+              { key: 'trace', label: '需求溯源', children: (
+                <Card styles={{ body: { padding: 16 } }}>
+                  {caseData.requirementPointIds?.length > 0 ? (
+                    <div>
+                      <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>关联需求点</h4>
+                      {caseData.requirementPointIds.map((rp, i) => (
+                        <Tag key={i} color="blue" style={{ marginBottom: 4 }}>{rp}</Tag>
+                      ))}
+                    </div>
+                  ) : (
+                    <Empty description="无关联需求点" />
+                  )}
+                  {caseData.generationTaskId && (
+                    <div style={{ marginTop: 12 }}>
+                      <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>生成任务</h4>
+                      <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{caseData.generationTaskId}</span>
+                    </div>
+                  )}
+                </Card>
+              )},
+              { key: 'archive', label: '生成档案', children: (
+                <Card styles={{ body: { padding: 16 } }}>
+                  <div style={{ textAlign: 'center', padding: 40, color: '#bfc4cd' }}>
+                    <p>生成档案时间线 — 基于 case_gen_events 的事件序列</p>
+                    <p style={{ fontSize: 12 }}>（generated/scored/reviewed/rejected/regenerated 事件将在此展示）</p>
+                  </div>
+                </Card>
+              )},
+            ] : []),
           ]} />
         </div>
 

@@ -311,6 +311,17 @@ export default function CaseManagement() {
     { key: 'automationStatus', title: '状态', dataIndex: 'automationStatus', width: 100, defaultVisible: true, render: v => <Tag style={{ background: statusBg[v] || 'rgba(0,0,0,0.03)', color: statusColors[v] || '#8c8c8c', border: 'none' }}>{statusMap[v] || v}</Tag> },
     { key: 'source', title: '来源', dataIndex: 'source', width: 60, align: 'center', defaultVisible: true, render: v => <span style={{ fontSize: 12, color: '#c9cdd4' }}>{v === 'imported' ? '导入' : '手动'}</span> },
     { key: 'isFlaky', title: 'Flaky', dataIndex: 'isFlaky', width: 46, align: 'center', defaultVisible: true, render: v => v ? <Tag color="#fff7e6" style={{ color: '#faad14', border: 'none' }}>F</Tag> : null },
+    { key: 'reviewStatus', title: '审核', dataIndex: 'reviewStatus', width: 70, align: 'center', defaultVisible: true, render: v => {
+      if (!v) return null
+      if (v === 'approved') return <Tag color="success" style={{ fontSize: 10 }}>已审</Tag>
+      if (v === 'rejected') return <Tag color="error" style={{ fontSize: 10 }}>已拒</Tag>
+      return <Tag color="processing" style={{ fontSize: 10 }}>待审</Tag>
+    }},
+    { key: 'qualityScore', title: '评分', dataIndex: 'qualityScore', width: 55, align: 'center', defaultVisible: false, render: v => {
+      if (!v || v.total == null) return <span style={{ color: '#c9cdd4' }}>—</span>
+      const color = v.total >= 85 ? '#52c41a' : v.total >= 70 ? '#4e8af0' : '#faad14'
+      return <span style={{ color, fontWeight: 600, fontSize: 12 }}>{v.total}</span>
+    }},
     { key: 'scriptRefFile', title: '脚本文件', dataIndex: 'scriptRefFile', width: 200, ellipsis: true, defaultVisible: false, render: v => <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#86909c' }}>{v || '-'}</span> },
     { key: 'teaId', title: 'TEA ID', dataIndex: 'teaId', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v || '-'}</span> },
     { key: 'createdAt', title: '创建时间', dataIndex: 'createdAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
