@@ -7,6 +7,7 @@ import WizardStepper from './components/WizardStepper'
 import Stage1Input from './components/Stage1Input'
 import Stage2Requirements from './components/Stage2Requirements'
 import Stage3ScenarioModel from './components/Stage3ScenarioModel'
+import Stage4Generation from './components/Stage4Generation'
 
 const STATUS_MAP = {
   extracting: { color: 'processing', label: '提取中' },
@@ -208,9 +209,14 @@ function TaskDetail({ projectId, taskId }) {
           />
         )}
         {stage === 'generate' && (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: '#8c919e' }}>
-            <p>阶段④ 双栏生成 — S4.7 将在此实现</p>
-          </div>
+          <Stage4Generation
+            projectId={projectId}
+            branchId={branchId}
+            taskId={taskId}
+            onDone={(data) => {
+              setSearchParams({ taskId, stage: 'review' }, { replace: true })
+            }}
+          />
         )}
         {stage === 'review' && (
           <div style={{ textAlign: 'center', padding: '80px 0', color: '#8c919e' }}>
