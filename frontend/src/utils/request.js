@@ -147,4 +147,89 @@ export const api = {
 
     return { abort: () => controller.abort() }
   },
+
+  /**
+   * SSE GET 事件流 — 用于场景生成任务进度（ADR-3 回放契约）
+   * 支持 afterSeq 断线续传：断线后自动以最后 seq 重连。
+   *
+   * @param {string} url   端点路径（不含 BASE_URL）
+   * @param {{ afterSeq?: number, onEvent?: (data: object) => void, onEnd?: (data: object) => void,
+   *           onError?: (msg: string) => void, reconnectMs?: number, maxRetries?: number }} opts
+   * @returns {{ abort: () => void }}
+   */
+  sseStream: (url, { afterSeq = 0, onEvent, onEnd, onError, reconnectMs = 3000, maxRetries = 30 } = {}) => {
+    const token = localStorage.getItem('token')
+    let controller = new AbortController()
+    let cursor = afterSeq
+    let retries = 0
+    let stopped = false
+
+    const connect = async () => {
+      if (stopped) return
+      controller = new AbortController()
+      const sep = url.includes('?') ? '&' : '?'
+      const fullUrl = `${BASE_URL}${url}${sep}afterSeq=${cursor}`
+      try {
+        const res = await fetch(fullUrl, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          signal: controller.signal,
+        })
+        if (!res.ok) {
+          onError?.(`SSE 连接失败 (${res.status})`)
+          return
+        }
+        retries = 0
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n\n')
+          buffer = lines.pop()
+
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed || trimmed.startsWith(':')) continue  // 心跳 ping
+            if (!trimmed.startsWith('data: ')) continue
+            try {
+              const data = JSON.parse(trimmed.slice(6))
+              if (data.seq) cursor = data.seq
+              if (data.type === 'stream_end') {
+                onEnd?.(data)
+                stopped = true
+                return
+              }
+              onEvent?.(data)
+            } catch { /* skip */ }
+          }
+        }
+        // 流正常关闭但未收到 stream_end → 重连
+        if (!stopped) scheduleReconnect()
+      } catch (err) {
+        if (err.name === 'AbortError') return
+        if (!stopped) scheduleReconnect()
+      }
+    }
+
+    const scheduleReconnect = () => {
+      if (stopped || retries >= maxRetries) {
+        onError?.('SSE 重连次数超限')
+        return
+      }
+      retries++
+      setTimeout(connect, reconnectMs)
+    }
+
+    connect()
+
+    return {
+      abort: () => {
+        stopped = true
+        controller.abort()
+      },
+    }
+  },
 }
