@@ -102,6 +102,14 @@ async def update_case(
         case.is_flaky = data.is_flaky
     if data.remark is not None:
         case.remark = data.remark
+    # AI 审核扩展（FR21-FR28）
+    if data.review_status is not None:
+        if data.review_status == "rejected" and not (data.review_reason and data.review_reason.get("category")):
+            from app.core.exceptions import AppError
+            raise AppError(code="REASON_REQUIRED", message="拒绝必须填写理由", status_code=400)
+        case.review_status = data.review_status
+    if data.review_reason is not None:
+        case.review_reason = data.review_reason
 
     # module 变更时更新 folder
     if data.module is not None:

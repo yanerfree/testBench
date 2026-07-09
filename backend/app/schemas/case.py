@@ -50,10 +50,9 @@ class UpdateCaseRequest(BaseSchema):
     script_ref_func: str | None = None
     is_flaky: bool | None = None
     remark: str | None = None
-    api_scenario_status: Literal["draft", "debugging", "completed"] | None = None
-    ui_scenario_status: Literal["draft", "debugging", "completed"] | None = None
-    is_api_template: bool | None = None
-    is_ui_template: bool | None = None
+    # AI 审核扩展（FR21-FR28）
+    review_status: Literal["pending_review", "approved", "rejected"] | None = None
+    review_reason: dict | None = None
 
 
 class BatchCaseRequest(BaseSchema):
@@ -96,5 +95,12 @@ class CaseResponse(BaseSchema):
     script_ref_func: str | None
     is_flaky: bool
     remark: str | None
+    # AI 审核扩展
+    review_status: str | None = None
+    review_reason: dict | None = None
+    quality_score: dict | None = None
+    generation_task_id: uuid.UUID | None = None
+    requirement_point_ids: list | None = None
+    version: int = 1
     created_at: datetime
     updated_at: datetime
