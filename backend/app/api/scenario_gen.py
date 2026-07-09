@@ -21,7 +21,7 @@ from app.core.exceptions import AppError, NotFoundError
 from app.schemas.common import BaseSchema
 from app.deps.auth import require_project_role
 from app.deps.db import async_session_factory, get_db
-from app.models.scenario_gen import GenerationTask, RequirementDoc, RequirementPoint, TaskEvent
+from app.models.scenario_gen import GenerationTask, RequirementDoc, RequirementPoint, ScenarioModel, TaskEvent
 from app.models.user import User
 from app.services.scenario_gen import pipeline
 from app.services.scenario_gen.preprocessor import preprocess
@@ -364,6 +364,115 @@ async def confirm_requirements(
     await session.commit()
     await session.refresh(task)
     return {"data": _task_to_dict(task)}
+
+
+# ── 场景模型（S3.1-S3.2 / FR7-FR12）─────────────────────────────────
+
+def _model_to_dict(m: ScenarioModel) -> dict:
+    return {
+        "id": str(m.id),
+        "taskId": str(m.task_id),
+        "flows": m.flows,
+        "stateTransitions": m.state_transitions,
+        "roleMatrix": m.role_matrix,
+        "testPoints": m.test_points,
+        "status": m.status,
+        "editedFields": m.edited_fields,
+        "confirmedAt": m.confirmed_at.isoformat() if m.confirmed_at else None,
+    }
+
+
+@router.get("/tasks/{task_id}/scenario-model")
+async def get_scenario_model(
+    project_id: uuid.UUID, branch_id: uuid.UUID, task_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role(*READ_ROLES)),
+):
+    await _get_task_checked(session, project_id, branch_id, task_id)
+    result = await session.execute(
+        select(ScenarioModel).where(ScenarioModel.task_id == task_id)
+    )
+    model = result.scalar_one_or_none()
+    if not model:
+        raise NotFoundError(code="NOT_FOUND", message="场景模型尚未生成")
+    return {"data": _model_to_dict(model)}
+
+
+class UpdateModelRequest(BaseSchema):
+    flows: list | None = None
+    state_transitions: list | None = None
+    role_matrix: list | None = None
+    test_points: list | None = None
+    edited_fields: dict | None = None
+
+
+@router.put("/tasks/{task_id}/scenario-model")
+async def update_scenario_model(
+    project_id: uuid.UUID, branch_id: uuid.UUID, task_id: uuid.UUID,
+    body: UpdateModelRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role(*EDIT_ROLES)),
+):
+    """用户编辑场景模型（FR9）"""
+    await _get_task_checked(session, project_id, branch_id, task_id)
+    result = await session.execute(
+        select(ScenarioModel).where(ScenarioModel.task_id == task_id)
+    )
+    model = result.scalar_one_or_none()
+    if not model:
+        raise NotFoundError(code="NOT_FOUND", message="场景模型尚未生成")
+    if model.status not in ("draft", "confirmed"):
+        raise AppError(code="MODEL_LOCKED", message="模型已锁定，不可编辑", status_code=409)
+    if body.flows is not None:
+        model.flows = body.flows
+    if body.state_transitions is not None:
+        model.state_transitions = body.state_transitions
+    if body.role_matrix is not None:
+        model.role_matrix = body.role_matrix
+    if body.test_points is not None:
+        from app.services.scenario_gen.modeler import DIMENSION_WHITELIST
+        for tp in body.test_points:
+            if isinstance(tp, dict) and tp.get("dimension") not in DIMENSION_WHITELIST:
+                tp["dimension"] = "positive"
+        model.test_points = body.test_points
+    if body.edited_fields is not None:
+        model.edited_fields = {**(model.edited_fields or {}), **body.edited_fields}
+    await session.commit()
+    await session.refresh(model)
+    return {"data": _model_to_dict(model)}
+
+
+@router.post("/tasks/{task_id}/confirm-model")
+async def confirm_model(
+    project_id: uuid.UUID, branch_id: uuid.UUID, task_id: uuid.UUID,
+    skip: bool = Query(default=False, description="跳过确认直接生成（FR10/FR69）"),
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role(*EDIT_ROLES)),
+):
+    """确认场景模型 → 推进任务到 confirmed（S3.2 前端调用）"""
+    task = await _get_task_checked(session, project_id, branch_id, task_id)
+    if task.status != "model_ready":
+        raise AppError(code="INVALID_STATUS", message=f"当前状态 {task.status} 不支持确认模型", status_code=409)
+    result = await session.execute(select(ScenarioModel).where(ScenarioModel.task_id == task_id))
+    model = result.scalar_one_or_none()
+    if not model:
+        raise AppError(code="NO_MODEL", message="场景模型尚未生成", status_code=400)
+    tp_count = len(model.test_points) if model.test_points else 0
+    if tp_count == 0:
+        raise AppError(code="NO_TEST_POINTS", message="场景模型中无测试点", status_code=400)
+
+    from datetime import datetime, timezone
+    model.status = "skipped" if skip else "confirmed"
+    model.confirmed_by = current_user.id
+    model.confirmed_at = datetime.now(timezone.utc)
+
+    try:
+        await pipeline.transition(session, task, "confirmed")
+    except pipeline.InvalidTransition as e:
+        raise AppError(code="INVALID_TRANSITION", message=str(e), status_code=409)
+    await session.commit()
+    await session.refresh(task)
+    return {"data": {**_task_to_dict(task), "testPointCount": tp_count}}
 
 
 # ── SSE：回放 + 实时（ADR-3）────────────────────────────────────────
