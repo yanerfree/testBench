@@ -519,6 +519,35 @@ class UpdateStepRequest(BaseSchema):
     post_script: dict | None = None
 
 
+class ReorderStepsRequest(BaseSchema):
+    step_ids: list[str]
+
+
+@router.put("/{scenario_id}/steps/reorder")
+async def reorder_steps(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    body: ReorderStepsRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    from app.core.exceptions import AppError
+
+    scenario = await session.get(ApiTestScenario, scenario_id)
+    if not scenario or scenario.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="场景不存在")
+    if scenario.status != "draft":
+        raise AppError(code="NOT_EDITABLE", message="已发布/已废弃的场景不可排序步骤", status_code=400)
+
+    for i, sid in enumerate(body.step_ids):
+        step = await session.get(ApiTestStep, uuid.UUID(sid))
+        if step and step.scenario_id == scenario_id:
+            step.sort_order = i
+    await session.commit()
+    return {"data": {"reordered": len(body.step_ids)}}
+
+
 @router.put("/{scenario_id}/steps/{step_id}")
 async def update_step(
     project_id: uuid.UUID,
@@ -615,35 +644,6 @@ async def delete_step(
     await session.delete(step)
     await session.commit()
     return {"data": {"deleted": True}}
-
-
-class ReorderStepsRequest(BaseSchema):
-    step_ids: list[str]
-
-
-@router.put("/{scenario_id}/steps/reorder")
-async def reorder_steps(
-    project_id: uuid.UUID,
-    branch_id: uuid.UUID,
-    scenario_id: uuid.UUID,
-    body: ReorderStepsRequest,
-    session: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
-):
-    from app.core.exceptions import AppError
-
-    scenario = await session.get(ApiTestScenario, scenario_id)
-    if not scenario or scenario.project_id != project_id:
-        raise NotFoundError(code="NOT_FOUND", message="场景不存在")
-    if scenario.status != "draft":
-        raise AppError(code="NOT_EDITABLE", message="已发布/已废弃的场景不可排序步骤", status_code=400)
-
-    for i, sid in enumerate(body.step_ids):
-        step = await session.get(ApiTestStep, uuid.UUID(sid))
-        if step and step.scenario_id == scenario_id:
-            step.sort_order = i
-    await session.commit()
-    return {"data": {"reordered": len(body.step_ids)}}
 
 
 @router.post("/{scenario_id}/copy")
