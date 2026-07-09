@@ -339,6 +339,7 @@ async def run_scenario(
                     "scenarioId": str(scenario.id),
                     "stepId": result.step_id,
                     "stepName": result.step_name,
+                    "method": result.method,
                     "status": result.status,
                     "statusCode": result.status_code,
                     "duration": result.duration,

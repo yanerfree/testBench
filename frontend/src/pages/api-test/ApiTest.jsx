@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Modal, Form, Input, TreeSelect, message, Select } from 'antd'
 import { api } from '../../utils/request'
 import { useBranch } from '../../utils/branch'
+import RunResultPanel from './components/RunResultPanel'
 import FolderTree from './components/FolderTree'
 import ScenarioList from './components/ScenarioList'
 import StepList from './components/StepList'
@@ -32,6 +33,9 @@ export default function ApiTest() {
   const [selectedFolderIds, setSelectedFolderIds] = useState([])
   const [runResponse, setRunResponse] = useState(null)
   const [createScenarioOpen, setCreateScenarioOpen] = useState(false)
+  const [showRunPanel, setShowRunPanel] = useState(false)
+  const [runStepResults, setRunStepResults] = useState([])
+  const [runReportId, setRunReportId] = useState(null)
   const [createForm] = Form.useForm()
   const [environments, setEnvironments] = useState([])
   const [envId, setEnvId] = useState(() => localStorage.getItem(`apitest_env_${projectId}`) || null)
@@ -166,20 +170,26 @@ export default function ApiTest() {
   const handleRunAll = async () => {
     if (!selectedScenario) return
     setRunning(true)
+    setShowRunPanel(true)
+    setRunStepResults([])
+    setRunReportId(null)
     api.stream(`/projects/${projectId}/branches/${branchId}/api-tests/run`, {
       scenarioIds: [selectedScenario.id],
       envId: envId || undefined,
     }, {
       onChunk: (data) => {
         if (data.type === 'step_result') {
-          const icon = data.status === 'pass' ? '✅' : data.status === 'skip' ? '⏭️' : '❌'
-          message.info(`${icon} ${data.stepName}`, 2)
-        }
-        if (data.type === 'scenario_done') {
-          message.success(`场景执行完成：通过 ${data.passCount}，失败 ${data.failCount}`)
+          setRunStepResults(prev => [...prev, {
+            stepId: data.stepId,
+            stepName: data.stepName,
+            method: data.method || '',
+            status: data.status,
+            statusCode: data.statusCode,
+            duration: data.duration,
+          }])
         }
         if (data.type === 'report_created') {
-          message.success('测试报告已生成')
+          setRunReportId(data.reportId)
         }
       },
       onDone: () => {
@@ -402,15 +412,27 @@ export default function ApiTest() {
             onEnvChange={changeEnv}
           />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'transparent' }}>
-            <StepEditor
-              step={stepWithResponse}
-              running={running}
-              readonly={selectedScenario?.status !== 'draft'}
-              onSaveStep={saveStep}
-              onRemoveStep={removeStep}
-              onRunStep={handleRunStep}
-              onStepChange={setSelectedStep}
-            />
+            {showRunPanel ? (
+              <RunResultPanel
+                results={runStepResults}
+                scenario={selectedScenario}
+                running={running}
+                onClose={() => setShowRunPanel(false)}
+                reportId={runReportId}
+                envName={environments.find(e => e.id === envId)?.name}
+                projectId={projectId}
+              />
+            ) : (
+              <StepEditor
+                step={stepWithResponse}
+                running={running}
+                readonly={selectedScenario?.status !== 'draft'}
+                onSaveStep={saveStep}
+                onRemoveStep={removeStep}
+                onRunStep={handleRunStep}
+                onStepChange={setSelectedStep}
+              />
+            )}
           </div>
         </>
       )}
