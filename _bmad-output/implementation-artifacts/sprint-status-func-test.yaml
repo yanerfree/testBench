@@ -1,0 +1,90 @@
+# generated: 2026-07-08
+# last_updated: 2026-07-08
+# project: testBench 功能场景测试模块 (func-test)
+# project_key: FT
+# tracking_system: file-system
+# story_location: {project-root}/_bmad-output/implementation-artifacts
+# epics_source: {project-root}/_bmad-output/planning-artifacts/epics-func-test.md
+#
+# 说明：平台历史模块的 sprint-status.yaml 键位（epic-1..N）已占用，
+# 本模块使用独立状态文件 + ft- 前缀键，避免冲突。状态机定义与平台文件一致：
+#   Epic:  backlog → in-progress → done
+#   Story: backlog → ready-for-dev → in-progress → review → done
+#   Retro: optional ↔ done
+#
+# Sprint 划分（epics-func-test.md）：
+#   Sprint 1: E1 全部 + S2.1/S2.2
+#   Sprint 2: E2 完成 + E3 + S9.1 初版
+#   Sprint 3: E4 + S9.1 调优
+#   Sprint 4: E5 + E6 + S9.2
+#   Sprint 5: E7 + E8（E8 可按裁剪线后置）
+
+generated: 2026-07-08
+last_updated: 2026-07-08
+project: testBench 功能场景测试模块 (func-test)
+project_key: FT
+tracking_system: file-system
+story_location: "{project-root}/_bmad-output/implementation-artifacts"
+
+development_status:
+  ft-epic-1: in-progress
+  ft-1-1-data-models-and-migration: review
+  ft-1-2-threshold-settings-chain: review
+  ft-1-3-llm-structured-wrapper: review
+  ft-1-4-task-orchestration-sse-replay: review
+  ft-1-5-frontend-skeleton-task-center: backlog
+  ft-epic-1-retrospective: optional
+
+  ft-epic-2: backlog
+  ft-2-1-requirement-input-stage1: backlog
+  ft-2-2-doc-preprocess-pipeline: backlog
+  ft-2-3-requirement-point-extraction-anchoring: backlog
+  ft-2-4-requirement-health-check: backlog
+  ft-2-5-requirement-confirm-ui: backlog
+  ft-epic-2-retrospective: optional
+
+  ft-epic-3: backlog
+  ft-3-1-scenario-model-backend: backlog
+  ft-3-2-scenario-model-confirm-ui: backlog
+  ft-3-3-persistence-resume-verification: backlog
+  ft-epic-3-retrospective: optional
+
+  ft-epic-4: backlog
+  ft-4-1-expansion-pipeline-loop: backlog
+  ft-4-2-static-validator: backlog
+  ft-4-3-ai-self-review-loop: backlog
+  ft-4-4-dedup-check: backlog
+  ft-4-5-auto-folder-and-style-samples: backlog
+  ft-4-6-resume-and-fault-tolerance: backlog
+  ft-4-7-generation-dual-panel-ui: backlog
+  ft-4-8-reflection-coverage-supplement: backlog
+  ft-epic-4-retrospective: optional
+
+  ft-epic-5: backlog
+  ft-5-1-review-state-machine-backend: backlog
+  ft-5-2-review-workbench-ui: backlog
+  ft-5-3-reject-reason-feedback-loop: backlog
+  ft-5-4-case-management-integration: backlog
+  ft-epic-5-retrospective: optional
+
+  ft-epic-6: backlog
+  ft-6-1-coverage-matrix-backend: backlog
+  ft-6-2-coverage-matrix-ui: backlog
+  ft-6-3-case-detail-panorama: backlog
+  ft-epic-6-retrospective: optional
+
+  ft-epic-7: backlog
+  ft-7-1-plan-report-integration: backlog
+  ft-7-2-generation-quality-stats: backlog
+  ft-7-3-audit-and-security: backlog
+  ft-epic-7-retrospective: optional
+
+  ft-epic-8: backlog
+  ft-8-1-mcp-toolset: backlog
+  ft-8-2-claude-code-skill-distribution: backlog
+  ft-epic-8-retrospective: optional
+
+  ft-epic-9: backlog
+  ft-9-1-prompt-skills-authoring: backlog
+  ft-9-2-skill-versioning: backlog
+  ft-epic-9-retrospective: optional

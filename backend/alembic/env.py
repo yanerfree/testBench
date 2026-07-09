@@ -15,6 +15,15 @@ from app.models.audit_log import AuditLog  # noqa: F401
 from app.models.api_collection import ApiNode  # noqa: F401
 from app.models.llm_mock import MockRoute, MockRequestLog  # noqa: F401
 from app.models.script import Script, ScriptRun  # noqa: F401
+from app.models.scenario_gen import (  # noqa: F401 — 功能场景测试模块
+    RequirementDoc,
+    GenerationTask,
+    RequirementPoint,
+    ScenarioModel,
+    GenerationItem,
+    CaseGenEvent,
+    TaskEvent,
+)
 
 config = context.config
 if config.config_file_name is not None:

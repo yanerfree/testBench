@@ -30,6 +30,7 @@ async def db_session():
         yield None
         return
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+    import app.main  # noqa: F401 — 先导入完整应用，确保全部模型注册进 Base.metadata（否则 create_all 建表不全）
     from app.config import settings
     from app.models.user import Base
 

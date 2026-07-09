@@ -33,6 +33,7 @@ from app.api.knowledge import router as knowledge_router
 from app.api.screenshots import router as screenshots_router
 from app.api.toolbox import router as toolbox_router
 from app.api.scenario_gen import router as scenario_gen_router
+from app.api.mcp_keys import router as mcp_keys_router
 from app.core.middleware import CamelCaseResponse, TokenRefreshMiddleware, TraceIdMiddleware
 
 # --- MCP Server ---
@@ -43,28 +44,62 @@ _mcp_raw = mcp.http_app(path="/")
 from app.mcp.mock_server import mock_mcp
 _mock_mcp_app = mock_mcp.http_app(path="/")
 
-# MCP 认证中间件 — 外部 Claude Code 连接需要 API Key（设置 MCP_API_KEY 环境变量启用）
+# MCP 认证中间件 — 支持环境变量 MCP_API_KEY 或数据库 API Key（SHA-256 校验）
 from starlette.responses import JSONResponse
 
 class MCPAuthMiddleware:
     def __init__(self, app):
         self.app = app
         import os
-        self.api_key = os.environ.get("MCP_API_KEY", "")
+        self.env_key = os.environ.get("MCP_API_KEY", "")
 
     @property
     def lifespan(self):
         return getattr(self.app, 'lifespan', None)
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] == "http" and self.api_key:
-            headers = dict(scope.get("headers", []))
-            auth = headers.get(b"authorization", b"").decode()
-            if not auth.startswith("Bearer ") or auth[7:] != self.api_key:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        headers = dict(scope.get("headers", []))
+        auth = headers.get(b"authorization", b"").decode()
+        bearer_token = auth[7:] if auth.startswith("Bearer ") else ""
+
+        if not bearer_token:
+            if self.env_key:
                 response = JSONResponse({"error": "Unauthorized"}, status_code=401)
                 await response(scope, receive, send)
                 return
-        await self.app(scope, receive, send)
+            await self.app(scope, receive, send)
+            return
+
+        if self.env_key and bearer_token == self.env_key:
+            await self.app(scope, receive, send)
+            return
+
+        import hashlib
+        key_hash = hashlib.sha256(bearer_token.encode()).hexdigest()
+        from app.deps.db import async_session_factory
+        from sqlalchemy import select, update
+        from app.models.mcp_api_key import McpApiKey
+        try:
+            async with async_session_factory() as session:
+                result = await session.execute(
+                    select(McpApiKey).where(McpApiKey.key_hash == key_hash, McpApiKey.is_active == True)
+                )
+                api_key = result.scalar_one_or_none()
+                if api_key:
+                    from datetime import datetime, timezone
+                    api_key.last_used_at = datetime.now(timezone.utc)
+                    await session.commit()
+                    await self.app(scope, receive, send)
+                    return
+        except Exception:
+            pass
+
+        response = JSONResponse({"error": "Unauthorized"}, status_code=401)
+        await response(scope, receive, send)
 
 _mcp_app = MCPAuthMiddleware(_mcp_raw)
 
@@ -161,6 +196,7 @@ app.include_router(skill_manage_router)
 app.include_router(knowledge_router)
 app.include_router(screenshots_router)
 app.include_router(toolbox_router)
+app.include_router(mcp_keys_router)
 
 # --- MCP Server 挂载 ---
 app.mount("/mcp", _mcp_app)

@@ -86,6 +86,25 @@ class Case(Base):
     script_ref_func: Mapped[str | None] = mapped_column(String(200), nullable=True)
     is_flaky: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     remark: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # —— AI 生成用例扩展（功能场景测试模块，仅 source=ai 使用；旧数据全部为 NULL）——
+    # pending_review / approved / rejected
+    review_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # {category, text, reviewer, at}
+    review_reason: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # {total, static, ai_self, warnings: []}；未评分为 NULL（前端显示 "—"）
+    quality_score: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    generation_task_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("generation_tasks.id", ondelete="SET NULL"), nullable=True
+    )
+    # 需求点 UUID 数组（GIN 索引，覆盖矩阵聚合用）
+    requirement_point_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # 并发审核乐观锁（FR22）
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# Case.generation_task_id 外键依赖 generation_tasks 表；确保任何导入 Case 的
+# 场景（含测试 create_all）metadata 中都有目标表，避免 NoReferencedTableError
+from app.models import scenario_gen  # noqa: E402, F401
