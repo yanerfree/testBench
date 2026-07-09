@@ -475,6 +475,21 @@ async def confirm_model(
     return {"data": {**_task_to_dict(task), "testPointCount": tp_count}}
 
 
+# ── 覆盖矩阵（S6.1 / FR29-FR33）─────────────────────────────────────
+
+@router.get("/tasks/{task_id}/coverage-matrix")
+async def get_coverage_matrix_endpoint(
+    project_id: uuid.UUID, branch_id: uuid.UUID, task_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role(*READ_ROLES)),
+):
+    """覆盖矩阵：需求点 × 维度，含零覆盖告警"""
+    task = await _get_task_checked(session, project_id, branch_id, task_id)
+    from app.services.scenario_gen.matrix import get_coverage_matrix
+    matrix = await get_coverage_matrix(session, task.id, task.branch_id)
+    return {"data": matrix}
+
+
 # ── SSE：回放 + 实时（ADR-3）────────────────────────────────────────
 
 SSE_POLL_INTERVAL = 0.5      # 秒；轮询 DB 增量（NFR4 <2s 余量充足）
