@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin, TreeSelect, Checkbox } from 'antd'
-import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, BranchesOutlined, SyncOutlined, InboxOutlined, SettingOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined, CodeOutlined, LoadingOutlined } from '@ant-design/icons'
+import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, InboxOutlined, SettingOutlined, EditOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined, CodeOutlined, LoadingOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 import { useBranch } from '../../utils/branch'
@@ -13,117 +13,13 @@ const statusMap = { automated: '已自动化', pending: '待自动化', script_r
 const statusColors = { automated: '#0ea5a0', pending: '#faad14', script_removed: '#e8453c', archived: '#bfbfbf' }
 const statusBg = { automated: 'transparent', pending: 'transparent', script_removed: 'transparent', archived: 'transparent' }
 
-// ---- 分支管理弹窗（保持不变） ----
-function BranchManageModal({ projectId, open, onClose, onBranchesChanged }) {
-  const [branches, setBranches] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [editBranch, setEditBranch] = useState(null)
-  const [createForm] = Form.useForm()
-  const [editForm] = Form.useForm()
-  const [saving, setSaving] = useState(false)
-
-  const fetchBranches = useCallback(async () => {
-    if (!projectId) return
-    setLoading(true)
-    try {
-      const res = await api.get(`/projects/${projectId}/branches`)
-      setBranches(res.data || [])
-    } catch { /* */ } finally { setLoading(false) }
-  }, [projectId])
-
-  useEffect(() => { if (open) fetchBranches() }, [open, fetchBranches])
-
-  const activeBranches = branches.filter(b => b.status === 'active')
-  const archivedBranches = branches.filter(b => b.status === 'archived')
-
-  const handleCreate = async () => {
-    let values
-    try { values = await createForm.validateFields() } catch { return }
-    setSaving(true)
-    try {
-      await api.post(`/projects/${projectId}/branches`, { name: values.name, branch: values.branch || 'main', description: values.description || null })
-      message.success('分支配置创建成功')
-      setCreateOpen(false); createForm.resetFields(); fetchBranches(); onBranchesChanged?.()
-    } catch { /* */ } finally { setSaving(false) }
-  }
-
-  const handleEdit = async () => {
-    let values
-    try { values = await editForm.validateFields() } catch { return }
-    setSaving(true)
-    try {
-      await api.put(`/projects/${projectId}/branches/${editBranch.id}`, { branch: values.branch, description: values.description || null })
-      message.success('分支配置已更新')
-      setEditBranch(null); fetchBranches(); onBranchesChanged?.()
-    } catch { /* */ } finally { setSaving(false) }
-  }
-
-  const handleArchive = async (b) => { try { await api.post(`/projects/${projectId}/branches/${b.id}/archive`); message.success(`「${b.name}」已归档`); fetchBranches(); onBranchesChanged?.() } catch { /* */ } }
-  const handleActivate = async (b) => { try { await api.post(`/projects/${projectId}/branches/${b.id}/activate`); message.success(`「${b.name}」已恢复`); fetchBranches(); onBranchesChanged?.() } catch { /* */ } }
-  const openEdit = (b) => { setEditBranch(b); editForm.setFieldsValue({ branch: b.branch, description: b.description }) }
-
-  const renderBranchItem = (b) => (
-    <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 12, background: 'rgba(0,0,0,0.02)', marginBottom: 6 }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 500, fontSize: 14 }}>{b.name}<span style={{ fontSize: 12, color: '#86909c', marginLeft: 8 }}>({b.branch})</span></div>
-        {b.description && <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>{b.description}</div>}
-      </div>
-      <Space size={4}>
-        <Tooltip title="编辑"><Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(b)} /></Tooltip>
-        {b.status === 'active' ? (
-          <Popconfirm title={`确定归档「${b.name}」？`} onConfirm={() => handleArchive(b)}><Tooltip title="归档"><Button size="small" type="text" icon={<PauseCircleOutlined />} style={{ color: '#faad14' }} /></Tooltip></Popconfirm>
-        ) : (
-          <Tooltip title="恢复"><Button size="small" type="text" icon={<PlayCircleOutlined />} style={{ color: '#0ea5a0' }} onClick={() => handleActivate(b)} /></Tooltip>
-        )}
-      </Space>
-    </div>
-  )
-
-  return (
-    <>
-      <Modal title="分支配置管理" open={open} onCancel={onClose} footer={null} width={560}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => { createForm.resetFields(); setCreateOpen(true) }}>新建分支配置</Button>
-        </div>
-        {loading ? <div style={{ textAlign: 'center', padding: 24 }}>加载中...</div> : (<>
-          {activeBranches.length > 0 && <div style={{ marginBottom: 16 }}><div style={{ fontSize: 12, color: '#86909c', marginBottom: 6, fontWeight: 600 }}>活跃（{activeBranches.length}）</div>{activeBranches.map(renderBranchItem)}</div>}
-          {archivedBranches.length > 0 && <div><div style={{ fontSize: 12, color: '#86909c', marginBottom: 6, fontWeight: 600 }}>已归档（{archivedBranches.length}）</div>{archivedBranches.map(renderBranchItem)}</div>}
-        </>)}
-      </Modal>
-      <Modal title="新建分支配置" open={createOpen} onOk={handleCreate} onCancel={() => setCreateOpen(false)} okText="创建" cancelText="取消" confirmLoading={saving} width={420}>
-        <Form form={createForm} layout="vertical" style={{ marginTop: 12 }}>
-          <Form.Item name="name" label="配置名称" rules={[{ required: true, message: '请输入名称' }, { pattern: /^[a-zA-Z0-9_-]+$/, message: '仅允许字母、数字、下划线、中划线' }, { max: 50 }]}><Input placeholder="如 release-v2（创建后不可修改）" /></Form.Item>
-          <Form.Item name="branch" label="Git 分支名" initialValue="main"><Input placeholder="如 main、release/2.0" /></Form.Item>
-          <Form.Item name="description" label="描述"><Input placeholder="可选" /></Form.Item>
-        </Form>
-      </Modal>
-      <Modal title={`编辑分支配置 — ${editBranch?.name || ''}`} open={!!editBranch} onOk={handleEdit} onCancel={() => setEditBranch(null)} okText="保存" cancelText="取消" confirmLoading={saving} width={420}>
-        <Form form={editForm} layout="vertical" style={{ marginTop: 12 }}>
-          <Form.Item label="配置名称"><Input value={editBranch?.name} disabled /></Form.Item>
-          <Form.Item name="branch" label="Git 分支名" rules={[{ required: true }]}><Input /></Form.Item>
-          <Form.Item name="description" label="描述"><Input placeholder="可选" /></Form.Item>
-        </Form>
-      </Modal>
-    </>
-  )
-}
-
 // ---- 主页面 ----
 export default function CaseManagement() {
   const navigate = useNavigate()
   const { projectId } = useParams()
 
   // 分支
-  const [branches, setBranches] = useState([])
-  const [currentBranch, setCurrentBranch] = useState(null)
-  const [branchManageOpen, setBranchManageOpen] = useState(false)
   const [globalBranchId] = useBranch(projectId)
-
-  // 顶部栏全局分支切换 → 本页数据跟随刷新
-  useEffect(() => {
-    if (globalBranchId && globalBranchId !== currentBranch) setCurrentBranch(globalBranchId)
-  }, [globalBranchId])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // 目录树
   const [folderTree, setFolderTree] = useState([])
@@ -145,7 +41,6 @@ export default function CaseManagement() {
   const [scriptModalOpen, setScriptModalOpen] = useState(false)
   const [importResult, setImportResult] = useState(null)
   const [importing, setImporting] = useState(false)
-  const [syncing, setSyncing] = useState(false)
 
   // 新建用例
   const [createCaseOpen, setCreateCaseOpen] = useState(false)
@@ -158,32 +53,16 @@ export default function CaseManagement() {
   const [savingFolder, setSavingFolder] = useState(false)
 
   // ---- 数据加载 ----
-  const fetchBranches = useCallback(async () => {
-    if (!projectId) return
-    try {
-      const res = await api.get(`/projects/${projectId}/branches`)
-      const list = res.data || []
-      setBranches(list)
-      if (list.length > 0 && !list.find(b => b.id === currentBranch)) {
-        const storageKey = `branch_${projectId}`
-        const saved = localStorage.getItem(storageKey)
-        const savedBranch = saved && list.find(b => b.id === saved)
-        const active = savedBranch || list.find(b => b.status === 'active') || list[0]
-        if (active) setCurrentBranch(active.id)
-      }
-    } catch { /* */ }
-  }, [projectId])
-
   const fetchFolders = useCallback(async () => {
-    if (!projectId || !currentBranch) return
+    if (!projectId || !globalBranchId) return
     try {
-      const res = await api.get(`/projects/${projectId}/branches/${currentBranch}/folders`)
+      const res = await api.get(`/projects/${projectId}/branches/${globalBranchId}/folders`)
       setFolderTree(res.data || [])
     } catch { /* */ }
-  }, [projectId, currentBranch])
+  }, [projectId, globalBranchId])
 
   const fetchCases = useCallback(async () => {
-    if (!projectId || !currentBranch) return
+    if (!projectId || !globalBranchId) return
     setLoading(true)
     try {
       const params = new URLSearchParams({ page, pageSize })
@@ -194,29 +73,25 @@ export default function CaseManagement() {
         params.set('automationStatus', statusFilter)
       }
       if (selectedFolderId) params.set('folderId', selectedFolderId)
-      const res = await api.get(`/projects/${projectId}/branches/${currentBranch}/cases?${params}`)
+      const res = await api.get(`/projects/${projectId}/branches/${globalBranchId}/cases?${params}`)
       setCases(res.data || [])
       setTotal(res.pagination?.total || 0)
     } catch { /* */ } finally { setLoading(false) }
-  }, [projectId, currentBranch, page, pageSize, keyword, statusFilter, selectedFolderId])
+  }, [projectId, globalBranchId, page, pageSize, keyword, statusFilter, selectedFolderId])
 
-  useEffect(() => { fetchBranches() }, [fetchBranches])
   useEffect(() => { fetchFolders() }, [fetchFolders])
   useEffect(() => { fetchCases() }, [fetchCases])
-
-  const activeBranches = branches.filter(b => b.status === 'active')
-  const branch = branches.find(b => b.id === currentBranch)
 
   // ---- 新建模块 ----
   const handleCreateFolder = async () => {
     let values
     try { values = await folderForm.validateFields() } catch { return }
-    if (!currentBranch) { message.warning('请先选择分支'); return }
+    if (!globalBranchId) { message.warning('请先选择分支'); return }
     setSavingFolder(true)
     try {
       const params = new URLSearchParams({ name: values.name })
       if (values.parentId) params.set('parentId', values.parentId)
-      await api.post(`/projects/${projectId}/branches/${currentBranch}/folders?${params}`)
+      await api.post(`/projects/${projectId}/branches/${globalBranchId}/folders?${params}`)
       message.success('模块创建成功')
       setFolderModalOpen(false)
       folderForm.resetFields()
@@ -264,10 +139,10 @@ export default function CaseManagement() {
   const handleCreateCase = async () => {
     let values
     try { values = await createCaseForm.validateFields() } catch { return }
-    if (!currentBranch) { message.warning('请先选择分支'); return }
+    if (!globalBranchId) { message.warning('请先选择分支'); return }
     setSavingCase(true)
     try {
-      await api.post(`/projects/${projectId}/branches/${currentBranch}/cases`, {
+      await api.post(`/projects/${projectId}/branches/${globalBranchId}/cases`, {
         title: values.title,
         type: values.type,
         module: values.module,
@@ -293,13 +168,13 @@ export default function CaseManagement() {
   const [reviewSteps, setReviewSteps] = useState([])
 
   const handleQualityReview = () => {
-    if (!currentBranch) { message.warning('请先选择分支'); return }
+    if (!globalBranchId) { message.warning('请先选择分支'); return }
     setReviewOpen(true)
     setReviewResult(null)
     setReviewSteps([])
     setReviewLoading(true)
 
-    const url = `/projects/${projectId}/branches/${currentBranch}/skills/tb-quality-review`
+    const url = `/projects/${projectId}/branches/${globalBranchId}/skills/tb-quality-review`
     const body = { folderId: selectedFolderId || undefined }
 
     api.stream(url, body, {
@@ -322,7 +197,7 @@ export default function CaseManagement() {
     })
   }
   const handleExport = async () => {
-    if (!currentBranch) { message.warning('请先选择分支'); return }
+    if (!globalBranchId) { message.warning('请先选择分支'); return }
     setExporting(true)
     try {
       const params = new URLSearchParams()
@@ -331,7 +206,7 @@ export default function CaseManagement() {
       if (selectedFolderId) params.set('folderId', selectedFolderId)
 
       const token = localStorage.getItem('token')
-      const res = await fetch(`/api/projects/${projectId}/branches/${currentBranch}/cases/export/excel?${params}`, {
+      const res = await fetch(`/api/projects/${projectId}/branches/${globalBranchId}/cases/export/excel?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -355,55 +230,15 @@ export default function CaseManagement() {
     }
   }
 
-  // ---- 同步用例（Git pull + 导入 tea-cases.json） ----
-  const handleSyncBranch = async () => {
-    if (!currentBranch) { message.warning('请先选择分支'); return }
-    setSyncing(true)
-    try {
-      const res = await api.post(`/projects/${projectId}/branches/${currentBranch}/sync`)
-      const taskId = res.data?.taskId
-      if (!taskId) { message.success('同步任务已提交'); return }
-      message.loading({ content: '正在同步...', key: 'sync', duration: 0 })
-      const poll = setInterval(async () => {
-        try {
-          const status = await api.get(`/tasks/${taskId}/status`)
-          const s = status.data
-          if (s.status === 'completed') {
-            clearInterval(poll)
-            message.destroy('sync')
-            const imp = s.result?.import
-            if (imp && !imp.error) {
-              message.success(`同步完成：新增 ${imp.new || 0} / 更新 ${imp.updated || 0} / 移除 ${imp.removed || 0} 条用例`)
-            } else {
-              message.success(s.message || '同步完成')
-            }
-            fetchBranches()
-            fetchCases()
-            fetchFolders()
-            setSyncing(false)
-          } else if (s.status === 'failed') {
-            clearInterval(poll)
-            message.destroy('sync')
-            message.error(s.message || '同步失败')
-            setSyncing(false)
-          }
-        } catch { /* polling error, ignore */ }
-      }, 2000)
-    } catch (err) {
-      message.error(err?.response?.data?.error?.message || err?.message || '同步失败')
-      setSyncing(false)
-    }
-  }
-
   // ---- 导入 ----
   const handleImportFile = async (file) => {
-    if (!currentBranch) return false
+    if (!globalBranchId) return false
     setImporting(true)
     try {
       const formData = new FormData()
       formData.append('file', file)
       const token = localStorage.getItem('token')
-      const res = await fetch(`/api/projects/${projectId}/branches/${currentBranch}/cases/import`, {
+      const res = await fetch(`/api/projects/${projectId}/branches/${globalBranchId}/cases/import`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -446,7 +281,7 @@ export default function CaseManagement() {
     { key: 'caseCode', title: '用例ID', dataIndex: 'caseCode', width: 155, defaultVisible: true, render: v => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#86909c' }}>{v}</span> },
     { key: 'title', title: '标题', dataIndex: 'title', ellipsis: true, defaultVisible: true, fixed: true, render: (v, row) => (
       <span
-        onClick={() => navigate(`/projects/${projectId}/cases/${row.id}?branchId=${currentBranch}`)}
+        onClick={() => navigate(`/projects/${projectId}/cases/${row.id}?branchId=${globalBranchId}`)}
         style={{ color: '#1d2129', cursor: 'pointer', fontWeight: 500 }}
         onMouseEnter={e => e.target.style.color = '#0ea5a0'}
         onMouseLeave={e => e.target.style.color = '#1d2129'}
@@ -484,7 +319,7 @@ export default function CaseManagement() {
       statusFilter === 'deleted' ? (
         <Popconfirm title="确定彻底删除此用例？此操作不可恢复！" onConfirm={async () => {
           try {
-            await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: [row.id], action: 'hard_delete' })
+            await api.post(`/projects/${projectId}/branches/${globalBranchId}/cases/batch`, { caseIds: [row.id], action: 'hard_delete' })
             message.success('已彻底删除')
             fetchCases()
           } catch { /* */ }
@@ -498,7 +333,7 @@ export default function CaseManagement() {
               onClick={async (e) => {
                 e.stopPropagation()
                 try {
-                  await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/${row.id}/copy`)
+                  await api.post(`/projects/${projectId}/branches/${globalBranchId}/cases/${row.id}/copy`)
                   message.success('复制成功')
                   fetchCases()
                 } catch { message.error('复制失败') }
@@ -506,7 +341,7 @@ export default function CaseManagement() {
           </Tooltip>
           <Popconfirm title="确定删除此用例？" onConfirm={async () => {
             try {
-              await api.del(`/projects/${projectId}/branches/${currentBranch}/cases/${row.id}`)
+              await api.del(`/projects/${projectId}/branches/${globalBranchId}/cases/${row.id}`)
               message.success('已删除')
               fetchCases()
               fetchFolders()
@@ -546,27 +381,6 @@ export default function CaseManagement() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)' }}>
-      {/* 分支选择栏 */}
-      <Card styles={{ body: { padding: '6px 16px' } }} style={{ flexShrink: 0, marginBottom: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <BranchesOutlined style={{ color: '#0ea5a0' }} />
-            <span style={{ fontSize: 13, color: '#86909c' }}>分支配置</span>
-            <Select
-              value={currentBranch}
-              onChange={v => { setCurrentBranch(v); setPage(1); setSelectedFolderId(null); localStorage.setItem(`branch_${projectId}`, v) }}
-              size="small" style={{ width: 180 }}
-              options={activeBranches.map(b => ({ value: b.id, label: <span>{b.name} <span style={{ fontSize: 11, color: '#c9cdd4' }}>({b.branch})</span></span> }))}
-            />
-            {branch?.lastSyncAt && (
-              <span style={{ fontSize: 11, color: '#c9cdd4' }}>最近同步: {new Date(branch.lastSyncAt).toLocaleString('zh-CN')} · {branch.lastCommitSha?.substring(0, 7) || '-'}</span>
-            )}
-            <Button size="small" type="text" icon={<SettingOutlined />} onClick={() => setBranchManageOpen(true)} style={{ color: '#86909c' }}>管理</Button>
-          </div>
-          <Button size="small" icon={<SyncOutlined spin={syncing} />} onClick={handleSyncBranch} loading={syncing}>同步用例</Button>
-        </div>
-      </Card>
-
       <div style={{ flex: 1, display: 'flex', gap: 6, minHeight: 0 }}>
         {/* 左侧树 */}
         <Card style={{ width: 220, flexShrink: 0, overflow: 'auto' }}
@@ -590,7 +404,7 @@ export default function CaseManagement() {
                     onConfirm={async (e) => {
                       e?.stopPropagation()
                       try {
-                        await api.del(`/projects/${projectId}/branches/${currentBranch}/folders/${node.key}`)
+                        await api.del(`/projects/${projectId}/branches/${globalBranchId}/folders/${node.key}`)
                         message.success('目录已删除')
                         fetchFolders()
                       } catch { /* request.js 显示错误 */ }
@@ -669,7 +483,7 @@ export default function CaseManagement() {
                 {statusFilter === 'deleted' ? (
                   <Popconfirm title={`确定彻底删除 ${selectedRowKeys.length} 条用例？此操作不可恢复！`} onConfirm={async () => {
                     try {
-                      await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: selectedRowKeys, action: 'hard_delete' })
+                      await api.post(`/projects/${projectId}/branches/${globalBranchId}/cases/batch`, { caseIds: selectedRowKeys, action: 'hard_delete' })
                       message.success('批量彻底删除成功'); setSelectedRowKeys([]); fetchCases()
                     } catch { /* */ }
                   }}>
@@ -678,7 +492,7 @@ export default function CaseManagement() {
                 ) : (<>
                 <Popconfirm title={`确定归档 ${selectedRowKeys.length} 条用例？`} onConfirm={async () => {
                   try {
-                    await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: selectedRowKeys, action: 'archive' })
+                    await api.post(`/projects/${projectId}/branches/${globalBranchId}/cases/batch`, { caseIds: selectedRowKeys, action: 'archive' })
                     message.success('批量归档成功'); setSelectedRowKeys([]); fetchCases()
                   } catch { /* */ }
                 }}>
@@ -687,7 +501,7 @@ export default function CaseManagement() {
                 <Select size="small" placeholder="修改优先级" style={{ width: 110 }}
                   onChange={async (val) => {
                     try {
-                      await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, { caseIds: selectedRowKeys, action: 'set_priority', priority: val })
+                      await api.post(`/projects/${projectId}/branches/${globalBranchId}/cases/batch`, { caseIds: selectedRowKeys, action: 'set_priority', priority: val })
                       message.success('优先级已修改'); setSelectedRowKeys([]); fetchCases()
                     } catch { /* */ }
                   }}
@@ -695,7 +509,7 @@ export default function CaseManagement() {
                 />
                 <Popconfirm title={`确定删除 ${selectedRowKeys.length} 条用例？`} onConfirm={async () => {
                   try {
-                    await api.post(`/projects/${projectId}/branches/${currentBranch}/cases/batch`, {
+                    await api.post(`/projects/${projectId}/branches/${globalBranchId}/cases/batch`, {
                       action: 'delete', caseIds: selectedRowKeys,
                     })
                     message.success('批量删除成功')
@@ -724,7 +538,7 @@ export default function CaseManagement() {
               rowSelection={{ selectedRowKeys: selectedRowKeys, onChange: setSelectedRowKeys }}
               style={{ flex: 1 }}
               locale={{ emptyText: <Empty description="暂无用例" /> }}
-              onRow={(record) => ({ style: { cursor: 'pointer' }, onDoubleClick: () => navigate(`/projects/${projectId}/cases/${record.id}?branchId=${currentBranch}`) })}
+              onRow={(record) => ({ style: { cursor: 'pointer' }, onDoubleClick: () => navigate(`/projects/${projectId}/cases/${record.id}?branchId=${globalBranchId}`) })}
             />
             <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'flex-end' }}>
               <Pagination current={page} pageSize={pageSize} total={total}
@@ -767,9 +581,6 @@ export default function CaseManagement() {
           </div>
         )}
       </Modal>
-
-      {/* 分支管理弹窗 */}
-      <BranchManageModal projectId={projectId} open={branchManageOpen} onClose={() => setBranchManageOpen(false)} onBranchesChanged={fetchBranches} />
 
       {/* 新建用例弹窗 */}
       <Modal
@@ -950,7 +761,7 @@ export default function CaseManagement() {
 
       <TestForgeModal
         projectId={projectId}
-        branchId={currentBranch}
+        branchId={globalBranchId}
         folders={folderTree}
         open={testforgeOpen}
         onClose={() => setTestforgeOpen(false)}
@@ -959,7 +770,7 @@ export default function CaseManagement() {
 
       <AIScriptModal
         projectId={projectId}
-        branchId={currentBranch}
+        branchId={globalBranchId}
         caseIds={selectedRowKeys}
         open={scriptModalOpen}
         onClose={() => setScriptModalOpen(false)}

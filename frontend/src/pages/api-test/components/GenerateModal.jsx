@@ -1,4 +1,5 @@
-import { Button, Modal, Form, Input, TreeSelect, Select, Tabs } from 'antd'
+import { useState } from 'react'
+import { Button, Modal, Form, Input, TreeSelect, Select } from 'antd'
 import { RobotOutlined, LoadingOutlined } from '@ant-design/icons'
 
 const { TextArea } = Input
@@ -10,6 +11,8 @@ export default function GenerateModal({
   folderTree,
   environments, apiList,
 }) {
+  const [inputMode, setInputMode] = useState('manual')
+
   const buildParentSelect = (nodes) => nodes.map(n => ({
     value: n.id, title: n.name,
     children: n.children?.length > 0 ? buildParentSelect(n.children) : undefined,
@@ -19,38 +22,47 @@ export default function GenerateModal({
     <Modal
       title="生成接口测试"
       open={open}
-      onCancel={() => { if (!generating) onClose() }}
+      onCancel={() => { if (!generating) { onClose(); setInputMode('manual') } }}
       width={640}
       footer={!generating ? [
-        <Button key="cancel" onClick={onClose}>取消</Button>,
+        <Button key="cancel" onClick={() => { onClose(); setInputMode('manual') }}>取消</Button>,
         <Button key="gen" type="primary" icon={<RobotOutlined />} onClick={onGenerate}>开始生成</Button>,
       ] : null}
     >
       {!generating ? (
-        <Form form={form} layout="vertical" style={{ marginTop: 12 }}
-          initialValues={{ inputMode: 'manual' }}>
-          <Form.Item name="inputMode" label="接口来源">
-            <Tabs size="small" items={[
-              { key: 'manual', label: '手动输入' },
-              { key: 'apiList', label: '从 API 列表选择' },
-            ]} />
+        <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
+          <Form.Item label="接口来源">
+            <div style={{ display: 'flex', gap: 0, marginBottom: 4 }}>
+              {[
+                { key: 'manual', label: '手动输入' },
+                { key: 'apiList', label: `从 API 列表选择 (${apiList?.length || 0})` },
+              ].map(t => (
+                <Button key={t.key} size="small"
+                  type={inputMode === t.key ? 'primary' : 'default'}
+                  onClick={() => setInputMode(t.key)}
+                  style={{ borderRadius: 0, ...(t.key === 'manual' ? { borderRadius: '6px 0 0 6px' } : { borderRadius: '0 6px 6px 0' }) }}>
+                  {t.label}
+                </Button>
+              ))}
+            </div>
           </Form.Item>
-          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.inputMode !== cur.inputMode}>
-            {({ getFieldValue }) => getFieldValue('inputMode') === 'apiList' && apiList?.length > 0 ? (
-              <Form.Item name="apiIds" label="选择接口">
-                <Select mode="multiple" placeholder="选择要生成测试的接口" allowClear
-                  options={apiList.map(a => ({
-                    value: a.id,
-                    label: `${a.method || ''} ${a.name || a.url || a.id}`.trim(),
-                  }))}
-                  maxTagCount={5} showSearch optionFilterProp="label" />
-              </Form.Item>
-            ) : (
-              <Form.Item name="apiInfo" label="接口定义" rules={[{ required: true, message: '请输入' }]}>
-                <TextArea rows={8} placeholder={"粘贴接口定义，例如：\n\n### POST /api/users — 创建用户\n参数:\n- username (string, required, 3-100位)\n- password (string, required, ≥6位)\n- role (string, required, enum: admin/user)\n需要认证：Bearer Token"} />
-              </Form.Item>
-            )}
-          </Form.Item>
+
+          {inputMode === 'apiList' && apiList?.length > 0 ? (
+            <Form.Item name="apiIds" label="选择接口" rules={[{ required: true, message: '请选择至少一个接口' }]}>
+              <Select mode="multiple" placeholder="选择要生成测试的接口" allowClear
+                options={apiList.map(a => ({
+                  value: a.id,
+                  label: `${a.method || 'GET'} ${a.url || ''} — ${a.name || ''}`.trim(),
+                }))}
+                maxTagCount={5} showSearch optionFilterProp="label"
+                style={{ width: '100%' }} />
+            </Form.Item>
+          ) : (
+            <Form.Item name="apiInfo" label="接口定义" rules={inputMode === 'manual' ? [{ required: true, message: '请输入接口定义' }] : []}>
+              <TextArea rows={8} placeholder={"粘贴接口定义，例如：\n\n### POST /api/users — 创建用户\n参数:\n- username (string, required, 3-100位)\n- password (string, required, ≥6位)\n- role (string, required, enum: admin/user)\n需要认证：Bearer Token"} />
+            </Form.Item>
+          )}
+
           <Form.Item name="targetFolder" label="目标文件夹（可选）">
             <TreeSelect
               treeData={buildParentSelect(folderTree)}

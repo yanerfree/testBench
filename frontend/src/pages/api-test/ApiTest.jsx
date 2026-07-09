@@ -45,7 +45,7 @@ export default function ApiTest() {
     if (!projectId || !branchId) return
     api.get(`/projects/${projectId}/branches/${branchId}/api-nodes`).then(res => {
       const nodes = res.data || []
-      setApiList(nodes.filter(n => n.type === 'endpoint'))
+      setApiList(nodes.filter(n => n.nodeType === 'endpoint'))
     }).catch(() => {})
   }, [projectId, branchId])
 
@@ -122,11 +122,19 @@ export default function ApiTest() {
     try {
       const v = await form.validateFields()
       setGenerating(true); setGenProgress([])
-      api.stream(`/projects/${projectId}/branches/${branchId}/api-tests/generate`, {
-        apiInfo: v.apiInfo,
+      const payload = {
         folderId: v.targetFolder || undefined,
         envVariables: v.envVars ? JSON.parse(v.envVars) : undefined,
-      }, {
+      }
+      if (v.apiIds?.length) {
+        payload.apiIds = v.apiIds
+      } else {
+        payload.apiInfo = v.apiInfo
+      }
+      if (v.envId) {
+        payload.envId = v.envId
+      }
+      api.stream(`/projects/${projectId}/branches/${branchId}/api-tests/generate`, payload, {
         onChunk: (data) => {
           if (data.type === 'step_start') setGenProgress(prev => [...prev, `⏳ ${data.title}`])
           if (data.type === 'step_done') setGenProgress(prev => [...prev, `✅ ${data.summary}`])

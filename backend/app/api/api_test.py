@@ -890,6 +890,7 @@ class GenerateRequest(BaseSchema):
     api_info: str = Field(default="", max_length=10000)
     api_ids: list[str] | None = None
     env_variables: dict | None = None
+    env_id: str | None = None
     folder_id: str | None = None
 
 
@@ -908,6 +909,18 @@ async def generate_api_tests(
     if not ai_config:
         raise AppError(code="AI_NOT_CONFIGURED", message="AI 服务未配置", status_code=503)
 
+    # 合并环境变量：选择环境 + 手动传入
+    env_vars = {}
+    if body.env_id:
+        from app.services import environment_service
+        try:
+            merged = await environment_service.get_merged_variables(session, uuid.UUID(body.env_id))
+            env_vars = {item["key"]: item["value"] for item in merged}
+        except Exception:
+            logger.warning("生成-加载环境变量失败 env_id=%s", body.env_id)
+    if body.env_variables:
+        env_vars.update(body.env_variables)
+
     from app.services.ai.api_test_generator import generate_api_test
 
     async def event_stream():
@@ -917,7 +930,7 @@ async def generate_api_tests(
                 branch_id=branch_id,
                 api_info=body.api_info,
                 api_ids=body.api_ids,
-                env_variables=body.env_variables,
+                env_variables=env_vars or None,
                 folder_id=uuid.UUID(body.folder_id) if body.folder_id else None,
                 ai_config=ai_config,
                 session=session,
