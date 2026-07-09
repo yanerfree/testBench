@@ -490,6 +490,40 @@ async def get_coverage_matrix_endpoint(
     return {"data": matrix}
 
 
+# ── 质量统计（S7.2 / FR48-FR50）─────────────────────────────────────
+
+@router.get("/stats")
+async def get_generation_stats(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role(*READ_ROLES)),
+):
+    """生成质量统计：评审通过率/拒绝率/编辑率/拒绝理由分布"""
+    from app.models.case import Case
+
+    base_cond = [Case.branch_id == branch_id, Case.source == "ai", Case.deleted_at.is_(None)]
+    total = (await session.execute(select(func.count(Case.id)).where(*base_cond))).scalar_one()
+    approved = (await session.execute(
+        select(func.count(Case.id)).where(*base_cond, Case.review_status == "approved")
+    )).scalar_one()
+    rejected = (await session.execute(
+        select(func.count(Case.id)).where(*base_cond, Case.review_status == "rejected")
+    )).scalar_one()
+    pending = (await session.execute(
+        select(func.count(Case.id)).where(*base_cond, Case.review_status == "pending_review")
+    )).scalar_one()
+
+    return {"data": {
+        "total": total,
+        "approved": approved,
+        "rejected": rejected,
+        "pending": pending,
+        "approvalRate": round(approved / total * 100, 1) if total > 0 else 0,
+        "rejectionRate": round(rejected / total * 100, 1) if total > 0 else 0,
+    }}
+
+
 # ── SSE：回放 + 实时（ADR-3）────────────────────────────────────────
 
 SSE_POLL_INTERVAL = 0.5      # 秒；轮询 DB 增量（NFR4 <2s 余量充足）

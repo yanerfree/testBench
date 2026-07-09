@@ -97,10 +97,11 @@ export default function ReportList() {
               { key: '', label: '全部' },
               { key: 'plan', label: '测试计划' },
               { key: 'api_test', label: '接口测试' },
+              { key: 'scenario_test', label: '功能场景' },
             ].map(f => (
               <Button key={f.key} size="small" type={typeFilter === f.key ? 'primary' : 'default'}
                 onClick={() => { setTypeFilter(f.key); setPage(1) }}
-                style={{ borderRadius: 0, ...(f.key === '' ? { borderRadius: '6px 0 0 6px' } : f.key === 'api_test' ? { borderRadius: '0 6px 6px 0' } : {}) }}>
+                style={{ borderRadius: 0, ...(f.key === '' ? { borderRadius: '6px 0 0 6px' } : f.key === 'scenario_test' ? { borderRadius: '0 6px 6px 0' } : {}) }}>
                 {f.label}
               </Button>
             ))}
@@ -158,10 +159,10 @@ export default function ReportList() {
                   <div style={{ width: 70, textAlign: 'center' }}>
                     <span style={{
                       fontSize: 11, padding: '1px 6px', borderRadius: 4,
-                      background: r.reportType === 'api_test' ? '#e6f4ff' : '#f0f5ff',
-                      color: r.reportType === 'api_test' ? '#0ea5a0' : '#4e8af0',
+                      background: r.reportType === 'api_test' ? '#e6f4ff' : r.reportType === 'scenario_test' ? '#f0faf9' : '#f0f5ff',
+                      color: r.reportType === 'api_test' ? '#0ea5a0' : r.reportType === 'scenario_test' ? '#0ea5a0' : '#4e8af0',
                     }}>
-                      {r.reportType === 'api_test' ? '接口测试' : '测试计划'}
+                      {r.reportType === 'api_test' ? '接口测试' : r.reportType === 'scenario_test' ? '功能场景' : '测试计划'}
                     </span>
                   </div>
 
