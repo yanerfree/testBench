@@ -1,10 +1,11 @@
-"""Skill 管理 API — 列表 + 查看 + 编辑"""
+"""Skill 管理 API — 列表 + 查看 + 编辑 + 下载"""
 from __future__ import annotations
 
 import logging
 from pathlib import Path
 
 from fastapi import APIRouter
+from fastapi.responses import PlainTextResponse
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,18 @@ async def list_skills():
                     "contentLength": len(content),
                 })
     return {"data": skills}
+
+
+@router.get("/preset/{skill_name}/download")
+async def download_skill(skill_name: str):
+    skill_file = SKILLS_DIR / skill_name / "SKILL.md"
+    if not skill_file.exists():
+        return PlainTextResponse(f"Skill '{skill_name}' not found", status_code=404)
+    return PlainTextResponse(
+        skill_file.read_text(encoding="utf-8"),
+        media_type="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="SKILL.md"'},
+    )
 
 
 @router.get("/{skill_name}")

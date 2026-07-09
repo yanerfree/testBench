@@ -201,6 +201,8 @@ async def generate_api_test(
         created_ids.append(str(scenario.id))
         code_seq += 1
 
+        await session.commit()
+
         yield GenEvent(type="scenario_created", data={
             "id": str(scenario.id),
             "code": scenario.code,
@@ -208,8 +210,6 @@ async def generate_api_test(
             "priority": scenario.priority,
             "stepCount": len(sc.get("steps", [])),
         })
-
-    await session.commit()
 
     yield GenEvent(type="step_done", data={
         "step": 3,

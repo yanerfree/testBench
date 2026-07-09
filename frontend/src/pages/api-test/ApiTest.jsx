@@ -35,10 +35,19 @@ export default function ApiTest() {
   const [createForm] = Form.useForm()
   const [environments, setEnvironments] = useState([])
   const [envId, setEnvId] = useState(() => localStorage.getItem(`apitest_env_${projectId}`) || null)
+  const [apiList, setApiList] = useState([])
 
   useEffect(() => {
     api.get('/environments').then(res => setEnvironments(res.data || [])).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!projectId || !branchId) return
+    api.get(`/projects/${projectId}/branches/${branchId}/api-nodes`).then(res => {
+      const nodes = res.data || []
+      setApiList(nodes.filter(n => n.type === 'endpoint'))
+    }).catch(() => {})
+  }, [projectId, branchId])
 
   const changeEnv = (id) => {
     setEnvId(id)
@@ -279,6 +288,14 @@ export default function ApiTest() {
     } catch (e) { message.error(e.message || '拆分失败') }
   }
 
+  const handleReorderSteps = async (stepIds) => {
+    if (!selectedScenario) return
+    try {
+      await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/steps/reorder`, { stepIds })
+      loadScenario(selectedScenario.id)
+    } catch (e) { message.error(e.message || '排序失败') }
+  }
+
   const handleCreateScenario = async () => {
     try {
       const v = await createForm.validateFields()
@@ -371,6 +388,7 @@ export default function ApiTest() {
             onCopyScenario={handleCopyScenario}
             onNewVersion={handleNewVersion}
             onSplitScenario={handleSplitScenario}
+            onReorderSteps={handleReorderSteps}
             environments={environments}
             envId={envId}
             onEnvChange={changeEnv}
@@ -397,6 +415,8 @@ export default function ApiTest() {
         genProgress={genProgress}
         onGenerate={handleGenerate}
         folderTree={folderTree}
+        environments={environments}
+        apiList={apiList}
       />
 
       <Modal

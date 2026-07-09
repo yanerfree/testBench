@@ -12,7 +12,7 @@ const METHOD_COLORS = { GET: '#0ea5a0', POST: '#0ea5a0', PUT: '#faad14', DELETE:
 export default function StepList({
   scenario, selectedStepId, readonly,
   onSelectStep, onAddStep, onClose, onSaveScenario, onRunAll,
-  onAiOptimize, onApplyOptimize, onCopyScenario, onNewVersion, onSplitScenario,
+  onAiOptimize, onApplyOptimize, onCopyScenario, onNewVersion, onSplitScenario, onReorderSteps,
   environments, envId, onEnvChange,
 }) {
   const [optimizeOpen, setOptimizeOpen] = useState(false)
@@ -21,6 +21,7 @@ export default function StepList({
   const [plan, setPlan] = useState(null)
   const [splitMode, setSplitMode] = useState(false)
   const [splitSelected, setSplitSelected] = useState(new Set())
+  const [dragIdx, setDragIdx] = useState(null)
   return (
     <div style={{ width: 300, minWidth: 300, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
       <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
@@ -97,6 +98,20 @@ export default function StepList({
               )}
               <div
                 onClick={() => onSelectStep(step)}
+                draggable={!readonly && !splitMode}
+                onDragStart={() => setDragIdx(i)}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderTop = '2px solid #0ea5a0' }}
+                onDragLeave={e => { e.currentTarget.style.borderTop = '' }}
+                onDrop={e => {
+                  e.currentTarget.style.borderTop = ''
+                  if (dragIdx === null || dragIdx === i) return
+                  const steps = [...(scenario.steps || [])]
+                  const [moved] = steps.splice(dragIdx, 1)
+                  steps.splice(i, 0, moved)
+                  onReorderSteps?.(steps.map(s => s.id))
+                  setDragIdx(null)
+                }}
+                onDragEnd={() => setDragIdx(null)}
                 style={{
                   padding: '8px 12px', cursor: 'pointer',
                   background: isSelected ? 'rgba(14,165,160,0.1)' : 'transparent',

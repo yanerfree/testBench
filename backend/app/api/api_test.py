@@ -4,7 +4,7 @@ import json
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from pydantic import Field
 from sqlalchemy import select
@@ -72,16 +72,85 @@ def _step_to_dict(st: ApiTestStep) -> dict:
 async def list_scenarios(
     project_id: uuid.UUID,
     branch_id: uuid.UUID,
+    status: str | None = Query(None),
+    folder_id: str | None = Query(None),
+    search: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    size: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await session.execute(
-        select(ApiTestScenario)
-        .where(ApiTestScenario.project_id == project_id, ApiTestScenario.branch_id == branch_id)
-        .order_by(ApiTestScenario.created_at.desc())
+    q = select(ApiTestScenario).where(
+        ApiTestScenario.project_id == project_id,
+        ApiTestScenario.branch_id == branch_id,
     )
+    if status and status != "all":
+        q = q.where(ApiTestScenario.status == status)
+    if folder_id:
+        q = q.where(ApiTestScenario.folder_id == uuid.UUID(folder_id))
+    if search:
+        kw = f"%{search}%"
+        q = q.where(
+            ApiTestScenario.title.ilike(kw) | ApiTestScenario.code.ilike(kw)
+        )
+    q = q.order_by(ApiTestScenario.created_at.desc())
+
+    if size > 0:
+        from sqlalchemy import func as sa_func
+        count_result = await session.execute(select(sa_func.count()).select_from(q.subquery()))
+        total = count_result.scalar() or 0
+        q = q.offset((page - 1) * size).limit(size)
+        result = await session.execute(q)
+        scenarios = result.scalars().all()
+        return {"data": {"items": [_scenario_to_dict(s) for s in scenarios], "total": total, "page": page, "size": size}}
+
+    result = await session.execute(q)
     scenarios = result.scalars().all()
     return {"data": [_scenario_to_dict(s) for s in scenarios]}
+
+
+@router.get("/stats/quality")
+async def generation_quality_stats(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """生成质量度量 — AI 生成直接发布率等统计。"""
+    from sqlalchemy import func as sa_func
+
+    base = select(ApiTestScenario).where(
+        ApiTestScenario.project_id == project_id,
+        ApiTestScenario.branch_id == branch_id,
+        ApiTestScenario.source == "ai",
+    )
+    total_result = await session.execute(select(sa_func.count()).select_from(base.subquery()))
+    total_ai = total_result.scalar() or 0
+
+    published_unedited = await session.execute(
+        select(sa_func.count()).select_from(
+            base.where(ApiTestScenario.status == "published", ApiTestScenario.edited_after_generate == False).subquery()
+        )
+    )
+    direct_publish = published_unedited.scalar() or 0
+
+    published_edited = await session.execute(
+        select(sa_func.count()).select_from(
+            base.where(ApiTestScenario.status == "published", ApiTestScenario.edited_after_generate == True).subquery()
+        )
+    )
+    edited_publish = published_edited.scalar() or 0
+
+    total_published = direct_publish + edited_publish
+    direct_rate = round(direct_publish / total_published * 100, 1) if total_published > 0 else 0
+
+    return {"data": {
+        "totalAi": total_ai,
+        "totalPublished": total_published,
+        "directPublish": direct_publish,
+        "editedPublish": edited_publish,
+        "directPublishRate": direct_rate,
+    }}
 
 
 class BatchOperationRequest(BaseSchema):
@@ -546,6 +615,35 @@ async def delete_step(
     await session.delete(step)
     await session.commit()
     return {"data": {"deleted": True}}
+
+
+class ReorderStepsRequest(BaseSchema):
+    step_ids: list[str]
+
+
+@router.put("/{scenario_id}/steps/reorder")
+async def reorder_steps(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    scenario_id: uuid.UUID,
+    body: ReorderStepsRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    from app.core.exceptions import AppError
+
+    scenario = await session.get(ApiTestScenario, scenario_id)
+    if not scenario or scenario.project_id != project_id:
+        raise NotFoundError(code="NOT_FOUND", message="场景不存在")
+    if scenario.status != "draft":
+        raise AppError(code="NOT_EDITABLE", message="已发布/已废弃的场景不可排序步骤", status_code=400)
+
+    for i, sid in enumerate(body.step_ids):
+        step = await session.get(ApiTestStep, uuid.UUID(sid))
+        if step and step.scenario_id == scenario_id:
+            step.sort_order = i
+    await session.commit()
+    return {"data": {"reordered": len(body.step_ids)}}
 
 
 @router.post("/{scenario_id}/copy")
