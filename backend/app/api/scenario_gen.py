@@ -21,7 +21,7 @@ from app.core.exceptions import AppError, NotFoundError
 from app.schemas.common import BaseSchema
 from app.deps.auth import require_project_role
 from app.deps.db import async_session_factory, get_db
-from app.models.scenario_gen import GenerationTask, RequirementDoc, RequirementPoint, ScenarioModel, TaskEvent
+from app.models.scenario_gen import GenerationTask, GenerationItem, RequirementDoc, RequirementPoint, ScenarioModel, TaskEvent
 from app.models.user import User
 from app.services.scenario_gen import pipeline
 from app.services.scenario_gen.preprocessor import preprocess
@@ -473,6 +473,40 @@ async def confirm_model(
     await session.commit()
     await session.refresh(task)
     return {"data": {**_task_to_dict(task), "testPointCount": tp_count}}
+
+
+# ── 断点续生成（S4.6 / FR35 / NFR8）─────────────────────────────────
+
+@router.post("/tasks/{task_id}/resume")
+async def resume_task(
+    project_id: uuid.UUID, branch_id: uuid.UUID, task_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role(*EDIT_ROLES)),
+):
+    """从失败/部分失败状态续跑：只处理非 succeeded 的 item"""
+    task = await _get_task_checked(session, project_id, branch_id, task_id)
+    if task.status not in ("partial_failed", "failed"):
+        raise AppError(code="INVALID_STATUS", message=f"当前状态 {task.status} 不支持续跑", status_code=409)
+
+    # 查询未完成 item 数量
+    pending_count = (await session.execute(
+        select(func.count(GenerationItem.id)).where(
+            GenerationItem.task_id == task_id,
+            GenerationItem.status.in_(["pending", "failed"]),
+        )
+    )).scalar_one()
+
+    if pending_count == 0:
+        raise AppError(code="NO_PENDING", message="没有可续跑的 item", status_code=400)
+
+    try:
+        await pipeline.transition(session, task, "generating")
+    except pipeline.InvalidTransition as e:
+        raise AppError(code="INVALID_TRANSITION", message=str(e), status_code=409)
+    await session.commit()
+    await session.refresh(task)
+
+    return {"data": {**_task_to_dict(task), "pendingItems": pending_count}}
 
 
 # ── 覆盖矩阵（S6.1 / FR29-FR33）─────────────────────────────────────
