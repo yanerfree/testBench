@@ -402,11 +402,11 @@ export default function ApiTest() {
         />
       ) : (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {/* ── 场景标题栏 ── */}
-          <div style={{ padding: '8px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.5)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontWeight: 600, fontSize: 14 }}>{selectedScenario.code}</span>
-              <span style={{ color: '#595959', fontSize: 13 }}>{selectedScenario.title}</span>
+          {/* ── 顶部工具栏（与列表页统一风格） ── */}
+          <div style={{ padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+            <Space size={8} wrap>
+              <span style={{ fontWeight: 600, fontSize: 14, color: '#1d2129' }}>{selectedScenario.code}</span>
+              <span style={{ color: '#595959', fontSize: 13, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>{selectedScenario.title}</span>
               <Tag color={selectedScenario.source === 'ai' ? 'blue' : 'default'} style={{ fontSize: 10 }}>
                 {selectedScenario.source === 'ai' ? 'AI' : '手动'}
               </Tag>
@@ -418,13 +418,6 @@ export default function ApiTest() {
                   { value: 'deprecated', label: <Tag color="default">已废弃</Tag> },
                 ]}
               />
-            </div>
-            <Button size="small" type="text" onClick={() => { setSelectedScenario(null); setSelectedStep(null); setShowRunPanel(false) }}>✕ 返回</Button>
-          </div>
-          {/* ── 操作工具栏 ── */}
-          <div style={{ padding: '6px 16px', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0, display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.3)' }}>
-            {/* 左侧：执行相关（高频） */}
-            <Space size={6}>
               {environments?.length > 0 && (
                 <Select size="small" value={envId} onChange={changeEnv} allowClear
                   placeholder="运行环境" style={{ width: 140 }}
@@ -432,22 +425,20 @@ export default function ApiTest() {
               )}
               <Button size="small" type="primary" icon={<PlayCircleOutlined />} onClick={handleRunAll} loading={running}>运行全部</Button>
             </Space>
-
-            <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.08)', margin: '0 12px' }} />
-
-            {/* 中间：编辑相关（中频） */}
-            <Space size={6}>
+            <Space size={8}>
               {selectedScenario.status === 'draft' && (
-                <Button size="small" type="text" icon={<RobotOutlined style={{ color: '#4e8af0' }} />}
-                  onClick={() => setOptimizeOpen(true)}>AI 优化</Button>
+                <Button size="small" icon={<RobotOutlined />} onClick={() => setOptimizeOpen(true)}>AI 优化</Button>
               )}
-              <Button size="small" type="text" icon={<CopyOutlined />} onClick={handleCopyScenario}>复制</Button>
+              <Button size="small" icon={<CopyOutlined />} onClick={handleCopyScenario}>复制</Button>
               {selectedScenario.status === 'draft' && (
-                <Button size="small" type="text" icon={<ScissorOutlined />} onClick={() => setSplitMode(prev => !prev)}>拆分</Button>
+                <Button size="small" icon={<ScissorOutlined />} onClick={() => setSplitMode(prev => !prev)}>拆分</Button>
               )}
               {selectedScenario.status === 'published' && (
-                <Button size="small" type="text" icon={<BranchesOutlined />} onClick={handleNewVersion}>更新版本</Button>
+                <Button size="small" icon={<BranchesOutlined />} onClick={handleNewVersion}>更新版本</Button>
               )}
+              <Button type="text" size="small" onClick={() => { setSelectedScenario(null); setSelectedStep(null); setShowRunPanel(false) }}>
+                ✕ 返回
+              </Button>
             </Space>
           </div>
           {/* ── 步骤列表 + 编辑器/结果面板 ── */}
