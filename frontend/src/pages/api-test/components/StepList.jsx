@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Button, Tag, Space, Select, Tooltip, Typography, Input, Drawer, Spin, Dropdown, message } from 'antd'
+import { Button, Tag, Space, Select, Tooltip, Typography, Input, Drawer, Dropdown, Modal, message } from 'antd'
 import {
-  PlusOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  PlayCircleOutlined, CaretRightOutlined, RobotOutlined, MoreOutlined, CopyOutlined, BranchesOutlined,
+  PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, CloseOutlined,
+  PlayCircleOutlined, CaretRightOutlined, RobotOutlined, CopyOutlined, BranchesOutlined, ScissorOutlined,
 } from '@ant-design/icons'
 
 const { Text } = Typography
@@ -22,9 +22,23 @@ export default function StepList({
   const [splitMode, setSplitMode] = useState(false)
   const [splitSelected, setSplitSelected] = useState(new Set())
   const [dragIdx, setDragIdx] = useState(null)
+
+  const handleSplit = () => {
+    if (splitSelected.size === 0) return
+    Modal.confirm({
+      title: '确认拆分',
+      content: `将选中的 ${splitSelected.size} 个步骤拆分为一个新场景？原场景保留未选中的步骤。`,
+      okText: '确认拆分',
+      cancelText: '取消',
+      onOk: () => { onSplitScenario?.([...splitSelected]); setSplitMode(false); setSplitSelected(new Set()) },
+    })
+  }
+
   return (
     <div style={{ width: 300, minWidth: 300, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
-      <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+
+      {/* ── 顶部：场景信息 + 关闭 ── */}
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Space size={4}>
             <span style={{ fontWeight: 600, fontSize: 13 }}>{scenario.code}</span>
@@ -40,53 +54,76 @@ export default function StepList({
               ]}
             />
           </Space>
-          <Space size={4}>
-            {!readonly && (
-              <Tooltip title="AI 优化">
-                <Button size="small" type="text" icon={<RobotOutlined style={{ color: '#4e8af0' }} />}
-                  onClick={() => { setOptimizeOpen(true); setPlan(null); setSuggestion('') }} />
-              </Tooltip>
-            )}
-            <Tooltip title="运行全部">
-              <Button size="small" type="text" icon={<PlayCircleOutlined style={{ color: '#0ea5a0' }} />} onClick={onRunAll} />
-            </Tooltip>
-            <Dropdown menu={{ items: [
-              { key: 'copy', icon: <CopyOutlined />, label: '复制场景' },
-              ...(!readonly ? [{ key: 'split', icon: <CopyOutlined />, label: '拆分步骤' }] : []),
-              ...(scenario.status === 'published' ? [{ key: 'newVersion', icon: <BranchesOutlined />, label: '更新版本' }] : []),
-            ], onClick: ({ key }) => {
-              if (key === 'copy') onCopyScenario()
-              if (key === 'newVersion') onNewVersion()
-              if (key === 'split') { setSplitMode(true); setSplitSelected(new Set()) }
-            }}} trigger={['click']}>
-              <Button size="small" type="text" icon={<MoreOutlined />} />
-            </Dropdown>
-            <Tooltip title="返回列表">
-              <Button size="small" type="text" onClick={onClose}>✕</Button>
-            </Tooltip>
-          </Space>
+          <Tooltip title="返回列表">
+            <Button size="small" type="text" icon={<CloseOutlined />} onClick={onClose} />
+          </Tooltip>
         </div>
         <Text type="secondary" style={{ fontSize: 12 }}>{scenario.title}</Text>
-        <div style={{ marginTop: 4, fontSize: 11, color: '#8c8c8c' }}>
-          {scenario.steps?.length || 0} 个步骤
-        </div>
-        {environments?.length > 0 && (
-          <Select size="small" value={envId} onChange={onEnvChange} allowClear
-            placeholder="选择运行环境"
-            style={{ width: '100%', marginTop: 6 }}
-            options={environments.map(e => ({ value: e.id, label: e.name }))} />
+      </div>
+
+      {/* ── 场景级操作工具栏 ── */}
+      <div style={{ padding: '6px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Tooltip title="运行全部步骤">
+          <Button size="small" type="primary" icon={<PlayCircleOutlined />} onClick={onRunAll}>运行</Button>
+        </Tooltip>
+        {!readonly && (
+          <Tooltip title="AI 分析并优化步骤">
+            <Button size="small" icon={<RobotOutlined />}
+              onClick={() => { setOptimizeOpen(true); setPlan(null); setSuggestion('') }}>AI 优化</Button>
+          </Tooltip>
         )}
-        {splitMode && (
-          <div style={{ marginTop: 6, display: 'flex', gap: 4 }}>
-            <Button size="small" type="primary" disabled={splitSelected.size === 0}
-              onClick={() => { onSplitScenario?.([...splitSelected]); setSplitMode(false) }}>
-              拆分选中 ({splitSelected.size})
+        <Tooltip title="复制为新的草稿场景">
+          <Button size="small" icon={<CopyOutlined />} onClick={onCopyScenario}>复制</Button>
+        </Tooltip>
+        {!readonly && (
+          <Tooltip title="选择部分步骤拆分为新场景">
+            <Button size="small" icon={<ScissorOutlined />}
+              type={splitMode ? 'primary' : 'default'}
+              onClick={() => { if (splitMode) { setSplitMode(false); setSplitSelected(new Set()) } else { setSplitMode(true); setSplitSelected(new Set()) } }}>
+              拆分
             </Button>
-            <Button size="small" onClick={() => setSplitMode(false)}>取消</Button>
-          </div>
+          </Tooltip>
+        )}
+        {scenario.status === 'published' && (
+          <Tooltip title="基于当前版本创建新草稿">
+            <Button size="small" icon={<BranchesOutlined />} onClick={onNewVersion}>更新版本</Button>
+          </Tooltip>
         )}
       </div>
+
+      {/* ── 环境选择 ── */}
+      {environments?.length > 0 && (
+        <div style={{ padding: '4px 12px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+          <Select size="small" value={envId} onChange={onEnvChange} allowClear
+            placeholder="选择运行环境"
+            style={{ width: '100%' }}
+            options={environments.map(e => ({ value: e.id, label: e.name }))} />
+        </div>
+      )}
+
+      {/* ── 拆分模式提示 ── */}
+      {splitMode && (
+        <div style={{ padding: '8px 12px', background: '#e6fffb', borderBottom: '1px solid #87e8de', fontSize: 12 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4, color: '#0ea5a0' }}>
+            <ScissorOutlined /> 拆分模式
+          </div>
+          <div style={{ color: '#595959', marginBottom: 6 }}>
+            勾选要拆分到新场景的步骤，未勾选的留在当前场景。
+          </div>
+          <Space size={8}>
+            <Button size="small" type="primary" disabled={splitSelected.size === 0} onClick={handleSplit}>
+              确认拆分 ({splitSelected.size})
+            </Button>
+            <Button size="small" onClick={() => { setSplitMode(false); setSplitSelected(new Set()) }}>取消</Button>
+          </Space>
+        </div>
+      )}
+
+      {/* ── 步骤列表 ── */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: '4px 12px 0', fontSize: 11, color: '#8c8c8c' }}>
+          {scenario.steps?.length || 0} 个步骤
+        </div>
         {(scenario.steps || []).map((step, i) => {
           const isSelected = selectedStepId === step.id
           const showGroup = step.groupName && (i === 0 || scenario.steps[i-1]?.groupName !== step.groupName)
@@ -94,7 +131,7 @@ export default function StepList({
             <div key={step.id}>
               {showGroup && (
                 <div style={{ padding: '4px 12px', fontSize: 11, color: '#8c8c8c', background: 'rgba(255,255,255,0.3)' }}>
-                  <CaretRightOutlined style={{ marginRight: 4 }} /> Group  {step.groupName}
+                  <CaretRightOutlined style={{ marginRight: 4 }} /> {step.groupName}
                 </div>
               )}
               <div
@@ -125,7 +162,7 @@ export default function StepList({
                 {splitMode && (
                   <input type="checkbox" checked={splitSelected.has(step.id)}
                     onChange={e => { e.stopPropagation(); const s = new Set(splitSelected); e.target.checked ? s.add(step.id) : s.delete(step.id); setSplitSelected(s) }}
-                    style={{ marginRight: 4 }} />
+                    style={{ marginRight: 2, cursor: 'pointer' }} />
                 )}
                 {step.lastStatus === 'pass' ? <CheckCircleOutlined style={{ color: '#0ea5a0', fontSize: 12 }} /> :
                  step.lastStatus === 'fail' ? <CloseCircleOutlined style={{ color: '#e8453c', fontSize: 12 }} /> :
@@ -133,7 +170,7 @@ export default function StepList({
                 <Tag color={METHOD_COLORS[step.method]} style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '18px' }}>
                   {step.method}
                 </Tag>
-                <span style={{ fontSize: 12, flex: 1 }}>
+                <span style={{ fontSize: 12, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {step.name}
                 </span>
               </div>
@@ -145,6 +182,7 @@ export default function StepList({
         </div>
       </div>
 
+      {/* ── AI 优化抽屉 ── */}
       <Drawer
         title="AI 优化"
         open={optimizeOpen}

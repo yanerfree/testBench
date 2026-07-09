@@ -126,6 +126,7 @@ function EditableAssertionsTable({ assertions, onSave, readonly }) {
                     { value: '>', label: '>' },
                     { value: '<', label: '<' },
                     { value: 'contains', label: '包含' },
+                    { value: 'not_contains', label: '不包含' },
                     { value: 'not_empty', label: '非空' },
                   ]}
                   onChange={v => { const r = [...rows]; r[j] = { ...r[j], operator: v }; setRows(r); save(r) }} />

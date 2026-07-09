@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Card, Tag, Space, Typography, Table, Button, message, Input, Divider } from 'antd'
+import { Card, Tag, Space, Typography, Table, Button, message, Input, Modal, Popconfirm, Alert } from 'antd'
 import {
   ApiOutlined, ToolOutlined, LinkOutlined, CopyOutlined, ThunderboltOutlined,
-  KeyOutlined, PlusOutlined, DeleteOutlined,
+  KeyOutlined, PlusOutlined, DeleteOutlined, QuestionCircleOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 
@@ -32,6 +32,7 @@ const CATEGORY_COLORS = {
 export default function MCPTools() {
   const mcpUrl = `http://${window.location.hostname}:8000/mcp/`
   const [apiKeys, setApiKeys] = useState([])
+  const [createModalOpen, setCreateModalOpen] = useState(false)
   const [newKeyName, setNewKeyName] = useState('')
   const [newKeyResult, setNewKeyResult] = useState(null)
   const [creating, setCreating] = useState(false)
@@ -52,7 +53,6 @@ export default function MCPTools() {
       setNewKeyResult(res.data)
       setNewKeyName('')
       fetchKeys()
-      message.success('API Key 已创建，请立即复制保存')
     } catch (e) {
       message.error(e.message || '创建失败')
     } finally { setCreating(false) }
@@ -95,9 +95,29 @@ export default function MCPTools() {
           MCP 工具
         </h2>
         <span style={{ fontSize: 13, color: '#86909c' }}>
-          MCP (Model Context Protocol) 是 AI 读写平台数据的标准接口。支持 Web 引擎和 Claude Code 两种调用方式。
+          连接 Claude Code 或 AI 引擎到测试平台，自动读写用例、生成接口测试、执行测试和查看报告。
         </span>
       </div>
+
+      {/* 用途说明 */}
+      <Alert
+        type="info"
+        showIcon
+        icon={<QuestionCircleOutlined />}
+        style={{ marginBottom: 16 }}
+        message="MCP 工具可以做什么？"
+        description={
+          <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+            <b>Claude Code 连接后，可以在终端直接：</b>
+            <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
+              <li>输入 "为 POST /api/users 生成接口测试" → AI 自动生成测试场景到平台</li>
+              <li>输入 "运行用户管理的所有测试" → 执行并返回结果</li>
+              <li>输入 "查看最近的测试报告" → 获取通过率和失败详情</li>
+            </ul>
+            <b>配置方法：</b>按下方三个步骤操作即可。
+          </div>
+        }
+      />
 
       {/* 连接信息 */}
       <Card size="small" style={{ marginBottom: 16 }}>
@@ -118,37 +138,76 @@ export default function MCPTools() {
       </Card>
 
       {/* API Key 管理 */}
-      <Card size="small" title={<span><KeyOutlined /> API Key 管理</span>} style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, marginBottom: 12, color: '#86909c' }}>
-          外部 Claude Code 连接需要 API Key 认证。创建后请立即复制保存，密钥只显示一次。
+      <Card size="small" title={<span><KeyOutlined /> API Key 管理</span>}
+        extra={<Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => { setCreateModalOpen(true); setNewKeyResult(null); setNewKeyName('') }}>创建 Key</Button>}
+        style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 13, marginBottom: apiKeys.length > 0 ? 12 : 0, color: '#86909c' }}>
+          外部工具（如 Claude Code）通过 API Key 认证后才能调用 MCP 工具。每个 Key 只在创建时显示一次，请妥善保管。
         </div>
-        {apiKeys.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
+        {apiKeys.length > 0 ? (
+          <div>
             {apiKeys.map(k => (
-              <div key={k.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 8, marginBottom: 4 }}>
-                <Space>
-                  <Text code>{k.prefix}...</Text>
-                  <Text type="secondary">{k.name}</Text>
+              <div key={k.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 8, marginBottom: 4 }}>
+                <Space size={12}>
+                  <Text code style={{ fontSize: 13 }}>{k.prefix}...</Text>
+                  <Text>{k.name}</Text>
                   {k.lastUsedAt && <Text type="secondary" style={{ fontSize: 11 }}>最近使用: {new Date(k.lastUsedAt).toLocaleDateString()}</Text>}
                 </Space>
-                <Button size="small" danger type="text" icon={<DeleteOutlined />} onClick={() => revokeKey(k.id)}>吊销</Button>
+                <Popconfirm title="确认吊销此 Key？吊销后使用该 Key 的连接将立即失效。" onConfirm={() => revokeKey(k.id)} okText="吊销" cancelText="取消" okButtonProps={{ danger: true }}>
+                  <Button size="small" danger type="text" icon={<DeleteOutlined />}>吊销</Button>
+                </Popconfirm>
               </div>
             ))}
           </div>
-        )}
-        <Space>
-          <Input size="small" placeholder="Key 名称（可选）" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} style={{ width: 160 }} />
-          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={createKey} loading={creating}>创建 API Key</Button>
-        </Space>
-        {newKeyResult && (
-          <div style={{ marginTop: 12, padding: '8px 12px', background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 8 }}>
-            <Text strong>新创建的 Key（只显示一次）：</Text>
-            <div style={{ marginTop: 4 }}>
-              <Text code copyable style={{ fontSize: 13, wordBreak: 'break-all' }}>{newKeyResult.key}</Text>
-            </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '12px 0', color: '#c9cdd4', fontSize: 13 }}>
+            暂无 API Key，点击右上角创建
           </div>
         )}
       </Card>
+
+      {/* 创建 Key 弹窗 */}
+      <Modal
+        title="创建 API Key"
+        open={createModalOpen}
+        onCancel={() => setCreateModalOpen(false)}
+        footer={newKeyResult ? [
+          <Button key="close" type="primary" onClick={() => setCreateModalOpen(false)}>我已保存，关闭</Button>
+        ] : [
+          <Button key="cancel" onClick={() => setCreateModalOpen(false)}>取消</Button>,
+          <Button key="create" type="primary" icon={<PlusOutlined />} onClick={createKey} loading={creating}>创建</Button>,
+        ]}
+        width={500}
+      >
+        {!newKeyResult ? (
+          <div>
+            <div style={{ marginBottom: 16, fontSize: 13, color: '#595959', lineHeight: 1.8 }}>
+              API Key 用于外部工具（如 Claude Code）连接本平台的 MCP Server。<br/>
+              创建后将 Key 填入 <Text code>.mcp.json</Text> 的 <Text code>Authorization</Text> 字段即可。
+            </div>
+            <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500 }}>Key 名称（方便识别用途）</div>
+            <Input
+              placeholder="例如：我的开发机、CI 流水线、团队共享"
+              value={newKeyName}
+              onChange={e => setNewKeyName(e.target.value)}
+              onPressEnter={createKey}
+            />
+          </div>
+        ) : (
+          <div>
+            <Alert type="success" showIcon message="API Key 创建成功" style={{ marginBottom: 16 }}
+              description="请立即复制保存。关闭此弹窗后密钥将不再显示。" />
+            <div style={{ padding: '12px 16px', background: '#f6f8fa', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)' }}>
+              <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4 }}>API Key</div>
+              <Text code copyable style={{ fontSize: 14, wordBreak: 'break-all' }}>{newKeyResult.key}</Text>
+            </div>
+            <div style={{ marginTop: 12, padding: '8px 12px', background: '#fffbe6', borderRadius: 6, fontSize: 12, color: '#ad6800' }}>
+              将此 Key 填入 .mcp.json 配置的 headers.Authorization 字段：<br/>
+              <Text code>"Authorization": "Bearer {newKeyResult.key?.substring(0, 12)}..."</Text>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Claude Code 连接配置 */}
       <Card size="small" title={<span><ThunderboltOutlined /> Claude Code 连接配置</span>} style={{ marginBottom: 16 }}>
@@ -184,7 +243,7 @@ curl -o .claude/skills/tb-api-case-generate/SKILL.md \\
           </pre>
 
           <div style={{ marginTop: 16, marginBottom: 8 }}>
-            <b>步骤 3：</b>在 Claude Code 中直接输入生成命令：
+            <b>步骤 3：</b>在 Claude Code 中直接输入：
           </div>
           <div style={{ padding: '12px 16px', background: '#f6f8fa', borderRadius: 8, fontSize: 12, fontFamily: 'monospace' }}>
             <div style={{ color: '#86909c', marginBottom: 4 }}>// 方式 1：根据项目代码自动分析</div>
@@ -193,10 +252,6 @@ curl -o .claude/skills/tb-api-case-generate/SKILL.md \\
             <div style={{ marginBottom: 8 }}>为 POST /api/users 创建用户接口生成接口测试，覆盖正向、参数校验、权限测试</div>
             <div style={{ color: '#86909c', marginBottom: 4 }}>// 方式 3：批量生成</div>
             <div>分析项目所有 API 接口，为每个接口生成完整的接口测试场景</div>
-          </div>
-          <div style={{ marginTop: 8, color: '#86909c', fontSize: 12 }}>
-            Claude Code 会读取项目源码，通过 MCP 工具调用 <Text code>tb_generate_api_test</Text> 生成测试场景到平台。
-            生成后可在接口测试页面查看、调试、发布。
           </div>
         </div>
       </Card>
