@@ -5,6 +5,7 @@ import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import WizardStepper from './components/WizardStepper'
 import Stage1Input from './components/Stage1Input'
+import Stage2Requirements from './components/Stage2Requirements'
 
 const STATUS_MAP = {
   extracting: { color: 'processing', label: '提取中' },
@@ -182,9 +183,17 @@ function TaskDetail({ projectId, taskId }) {
           />
         )}
         {taskId !== 'new' && stage === 'requirements' && (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: '#8c919e' }}>
-            <p>阶段② 确认需求点 — S2.5 将在此实现</p>
-          </div>
+          <Stage2Requirements
+            projectId={projectId}
+            branchId={branchId}
+            taskId={taskId}
+            docContent={task?.docContent}
+            healthCheck={task?.healthCheck}
+            onConfirm={(data) => {
+              setTask(data)
+              setSearchParams({ taskId, stage: 'model' }, { replace: true })
+            }}
+          />
         )}
         {stage === 'model' && (
           <div style={{ textAlign: 'center', padding: '80px 0', color: '#8c919e' }}>

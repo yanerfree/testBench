@@ -21,7 +21,7 @@ from app.core.exceptions import AppError, NotFoundError
 from app.schemas.common import BaseSchema
 from app.deps.auth import require_project_role
 from app.deps.db import async_session_factory, get_db
-from app.models.scenario_gen import GenerationTask, RequirementDoc, TaskEvent
+from app.models.scenario_gen import GenerationTask, RequirementDoc, RequirementPoint, TaskEvent
 from app.models.user import User
 from app.services.scenario_gen import pipeline
 from app.services.scenario_gen.preprocessor import preprocess
@@ -199,6 +199,170 @@ async def abort_task(
         target_id=task.id, target_name=task.title,
         user_id=current_user.id, project_id=project_id,
     )
+    return {"data": _task_to_dict(task)}
+
+
+# ── 需求点 CRUD（S2.5 / FR3-FR4）─────────────────────────────────────
+
+def _point_to_dict(p: RequirementPoint) -> dict:
+    return {
+        "id": str(p.id),
+        "taskId": str(p.task_id),
+        "code": p.code,
+        "title": p.title,
+        "quoteText": p.quote_text,
+        "quoteOffset": p.quote_offset,
+        "anchorStatus": p.anchor_status,
+        "status": p.status,
+        "naReason": p.na_reason,
+        "createdByAi": p.created_by_ai,
+        "sortOrder": p.sort_order,
+    }
+
+
+@router.get("/tasks/{task_id}/requirement-points")
+async def list_requirement_points(
+    project_id: uuid.UUID, branch_id: uuid.UUID, task_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role(*READ_ROLES)),
+):
+    await _get_task_checked(session, project_id, branch_id, task_id)
+    result = await session.execute(
+        select(RequirementPoint).where(RequirementPoint.task_id == task_id)
+        .order_by(RequirementPoint.sort_order)
+    )
+    return {"data": [_point_to_dict(p) for p in result.scalars().all()]}
+
+
+class UpdatePointRequest(BaseSchema):
+    title: str | None = None
+    status: str | None = None
+    na_reason: str | None = None
+
+
+@router.put("/tasks/{task_id}/requirement-points/{point_id}")
+async def update_requirement_point(
+    project_id: uuid.UUID, branch_id: uuid.UUID, task_id: uuid.UUID, point_id: uuid.UUID,
+    body: UpdatePointRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role(*EDIT_ROLES)),
+):
+    await _get_task_checked(session, project_id, branch_id, task_id)
+    point = await session.get(RequirementPoint, point_id)
+    if not point or point.task_id != task_id:
+        raise NotFoundError(code="NOT_FOUND", message="需求点不存在")
+    if body.title is not None:
+        point.title = body.title[:300]
+    if body.status is not None:
+        if body.status not in ("active", "not_applicable"):
+            raise AppError(code="INVALID_STATUS", message="status 仅支持 active/not_applicable", status_code=400)
+        point.status = body.status
+    if body.na_reason is not None:
+        point.na_reason = body.na_reason
+    await session.commit()
+    await session.refresh(point)
+    return {"data": _point_to_dict(point)}
+
+
+@router.delete("/tasks/{task_id}/requirement-points/{point_id}")
+async def delete_requirement_point(
+    project_id: uuid.UUID, branch_id: uuid.UUID, task_id: uuid.UUID, point_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role(*EDIT_ROLES)),
+):
+    await _get_task_checked(session, project_id, branch_id, task_id)
+    point = await session.get(RequirementPoint, point_id)
+    if not point or point.task_id != task_id:
+        raise NotFoundError(code="NOT_FOUND", message="需求点不存在")
+    await session.delete(point)
+    await session.commit()
+    return {"data": {"deleted": True}}
+
+
+class CreatePointRequest(BaseSchema):
+    title: str
+    quote_text: str | None = None
+
+
+@router.post("/tasks/{task_id}/requirement-points", status_code=201)
+async def create_requirement_point(
+    project_id: uuid.UUID, branch_id: uuid.UUID, task_id: uuid.UUID,
+    body: CreatePointRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role(*EDIT_ROLES)),
+):
+    """手工新建需求点（FR4 手工框选原文）"""
+    task = await _get_task_checked(session, project_id, branch_id, task_id)
+    max_order = (await session.execute(
+        select(func.max(RequirementPoint.sort_order)).where(RequirementPoint.task_id == task_id)
+    )).scalar_one_or_none() or 0
+    max_code_num = (await session.execute(
+        select(func.count(RequirementPoint.id)).where(RequirementPoint.task_id == task_id)
+    )).scalar_one() or 0
+
+    from app.services.scenario_gen.extractor import anchor_quote
+    doc = await session.get(RequirementDoc, task.doc_id) if task.doc_id else None
+    doc_text = doc.content_markdown if doc else ""
+    anchor_status, offset = anchor_quote(doc_text, body.quote_text or "") if body.quote_text else ("unanchored", None)
+
+    point = RequirementPoint(
+        task_id=task_id,
+        doc_id=task.doc_id,
+        code=f"R{max_code_num + 1}",
+        title=body.title[:300],
+        quote_text=body.quote_text[:2000] if body.quote_text else None,
+        quote_offset=offset,
+        anchor_status=anchor_status,
+        status="active",
+        created_by_ai=False,
+        sort_order=max_order + 1,
+    )
+    session.add(point)
+    await session.commit()
+    await session.refresh(point)
+    return {"data": _point_to_dict(point)}
+
+
+# ── 需求质量检测端点（S2.4 / FR5 — 软门禁）─────────────────────────
+
+@router.get("/tasks/{task_id}/health-check")
+async def get_health_check(
+    project_id: uuid.UUID, branch_id: uuid.UUID, task_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role(*READ_ROLES)),
+):
+    """返回已存储的质量检测结果（创建任务时自动执行）"""
+    task = await _get_task_checked(session, project_id, branch_id, task_id)
+    return {"data": task.health_check or {"score": None, "issues": [], "below_threshold": False}}
+
+
+# ── 任务阶段推进（确认需求点 → 触发场景模型生成）───────────────────────
+
+@router.post("/tasks/{task_id}/confirm-requirements")
+async def confirm_requirements(
+    project_id: uuid.UUID, branch_id: uuid.UUID, task_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_project_role(*EDIT_ROLES)),
+):
+    """用户确认需求点后，推进到 model_ready → 触发场景模型生成（S3.1 挂接 runner）"""
+    task = await _get_task_checked(session, project_id, branch_id, task_id)
+    if task.status not in ("extracting", "model_ready"):
+        raise AppError(code="INVALID_STATUS", message=f"当前状态 {task.status} 不支持此操作", status_code=409)
+    points_count = (await session.execute(
+        select(func.count(RequirementPoint.id)).where(
+            RequirementPoint.task_id == task_id,
+            RequirementPoint.status == "active",
+        )
+    )).scalar_one()
+    if points_count == 0:
+        raise AppError(code="NO_POINTS", message="至少需要一个有效需求点", status_code=400)
+    try:
+        if task.status == "extracting":
+            await pipeline.transition(session, task, "model_ready")
+    except pipeline.InvalidTransition as e:
+        raise AppError(code="INVALID_TRANSITION", message=str(e), status_code=409)
+    await session.commit()
+    await session.refresh(task)
     return {"data": _task_to_dict(task)}
 
 
