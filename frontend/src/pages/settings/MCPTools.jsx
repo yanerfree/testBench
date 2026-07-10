@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Card, Tag, Space, Typography, Table, Button, message, Input, Modal, Popconfirm, Alert } from 'antd'
+import { Card, Tag, Space, Typography, Table, Button, message, Input, Modal, Popconfirm, Tabs, Badge, Statistic, Row, Col } from 'antd'
 import {
-  ApiOutlined, ToolOutlined, LinkOutlined, CopyOutlined, ThunderboltOutlined,
-  KeyOutlined, PlusOutlined, DeleteOutlined, QuestionCircleOutlined,
+  ApiOutlined, CopyOutlined, ThunderboltOutlined,
+  KeyOutlined, PlusOutlined, DeleteOutlined, CheckCircleOutlined,
+  ClockCircleOutlined, MinusCircleOutlined, RobotOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
@@ -10,31 +11,29 @@ import { copyToClipboard } from '../../utils/clipboard'
 const { Text } = Typography
 
 const MCP_TOOLS = [
-  { name: 'tb_create_scenario_task', description: '从需求文档自动生成手工测试用例（提取需求点→场景模型→批量展开）', category: 'AI 生成', params: 'project_id, branch_id, title, content_markdown' },
-  { name: 'tb_get_scenario_task', description: '查询 AI 生成任务的状态与进度', category: 'AI 生成', params: 'task_id' },
-  { name: 'tb_query_coverage_matrix', description: '查询覆盖矩阵：需求点 × 测试维度', category: 'AI 生成', params: 'task_id, branch_id' },
-  { name: 'tb_get_generation_stats', description: '查询 AI 生成质量统计（通过率/拒绝率）', category: 'AI 生成', params: 'branch_id' },
-  { name: 'tb_list_projects', description: '列出所有项目（名称、ID）', category: '项目', params: '无' },
-  { name: 'tb_list_branches', description: '列出项目下所有活跃分支', category: '项目', params: 'project_id' },
-  { name: 'tb_list_cases', description: '列出分支下的测试用例，支持分页和筛选', category: '用例', params: 'branch_id, page, page_size, keyword, folder_id, priority, case_type' },
-  { name: 'tb_get_case', description: '获取单条测试用例的完整详情', category: '用例', params: 'case_id' },
-  { name: 'tb_create_case', description: '创建测试用例，自动生成编号和目录', category: '用例', params: 'branch_id, title, module, case_type, priority, steps, ...' },
-  { name: 'tb_get_folder_tree', description: '获取用例文件夹树形结构，含各层用例数', category: '用例', params: 'branch_id' },
-  { name: 'tb_list_api_tree', description: '获取项目所有 API 接口的树形结构', category: 'API', params: 'project_id' },
-  { name: 'tb_get_api_node', description: '获取 API 节点详情（method/url/headers/body）', category: 'API', params: 'node_id' },
-  { name: 'tb_list_environments', description: '列出所有测试环境', category: '环境', params: '无' },
-  { name: 'tb_get_merged_variables', description: '获取合并后的环境变量（全局+环境）', category: '环境', params: 'env_id' },
-  { name: 'tb_generate_api_test', description: '根据接口定义 AI 生成接口测试场景', category: '接口测试', params: 'branch_id, api_info, folder_name' },
-  { name: 'tb_list_api_tests', description: '列出接口测试场景', category: '接口测试', params: 'branch_id, folder_id, status' },
-  { name: 'tb_get_api_test', description: '获取场景详情（含步骤/断言/变量）', category: '接口测试', params: 'scenario_id' },
-  { name: 'tb_run_api_test', description: '执行接口测试场景并返回结果', category: '接口测试', params: 'scenario_ids' },
-  { name: 'tb_get_report_summary', description: '获取测试报告摘要', category: '报告', params: 'plan_id, report_id' },
-  { name: 'tb_get_failed_scenarios', description: '获取报告中失败的用例', category: '报告', params: 'plan_id, report_id' },
+  { name: 'tb_create_scenario_task', description: '从需求文档自动生成手工测试用例', category: 'AI 生成', params: 'project_id, branch_id, title, content_markdown' },
+  { name: 'tb_get_scenario_task', description: '查询生成任务状态与进度', category: 'AI 生成', params: 'task_id' },
+  { name: 'tb_query_coverage_matrix', description: '查询需求覆盖矩阵', category: 'AI 生成', params: 'task_id, branch_id' },
+  { name: 'tb_get_generation_stats', description: '查询生成质量统计', category: 'AI 生成', params: 'branch_id' },
+  { name: 'tb_list_projects', description: '列出所有项目', category: '项目', params: '无' },
+  { name: 'tb_list_branches', description: '列出项目分支', category: '项目', params: 'project_id' },
+  { name: 'tb_list_cases', description: '列出测试用例', category: '用例', params: 'branch_id, keyword, ...' },
+  { name: 'tb_get_case', description: '获取用例详情', category: '用例', params: 'case_id' },
+  { name: 'tb_create_case', description: '创建测试用例', category: '用例', params: 'branch_id, title, steps, ...' },
+  { name: 'tb_get_folder_tree', description: '获取用例文件夹树', category: '用例', params: 'branch_id' },
+  { name: 'tb_list_api_tree', description: '获取 API 接口树', category: 'API', params: 'project_id' },
+  { name: 'tb_get_api_node', description: '获取接口详情', category: 'API', params: 'node_id' },
+  { name: 'tb_list_environments', description: '列出测试环境', category: '环境', params: '无' },
+  { name: 'tb_get_merged_variables', description: '获取环境变量', category: '环境', params: 'env_id' },
+  { name: 'tb_generate_api_test', description: '从接口生成测试场景', category: '接口测试', params: 'branch_id, api_info' },
+  { name: 'tb_list_api_tests', description: '列出接口测试场景', category: '接口测试', params: 'branch_id' },
+  { name: 'tb_get_api_test', description: '获取场景详情', category: '接口测试', params: 'scenario_id' },
+  { name: 'tb_run_api_test', description: '执行接口测试', category: '接口测试', params: 'scenario_ids' },
+  { name: 'tb_get_report_summary', description: '获取报告摘要', category: '报告', params: 'plan_id' },
+  { name: 'tb_get_failed_scenarios', description: '获取失败用例', category: '报告', params: 'plan_id' },
 ]
 
-const CATEGORY_COLORS = {
-  'AI 生成': 'magenta', '项目': 'geekblue', '用例': 'blue', 'API': 'green', '环境': 'orange', '接口测试': 'cyan', '报告': 'purple',
-}
+const CAT_COLORS = { 'AI 生成': 'magenta', '项目': 'geekblue', '用例': 'blue', 'API': 'green', '环境': 'orange', '接口测试': 'cyan', '报告': 'purple' }
 
 export default function MCPTools() {
   const mcpUrl = `http://${window.location.hostname}:8000/mcp/`
@@ -45,251 +44,201 @@ export default function MCPTools() {
   const [creating, setCreating] = useState(false)
 
   useEffect(() => { fetchKeys() }, [])
-
-  const fetchKeys = async () => {
-    try {
-      const res = await api.get('/mcp-keys')
-      setApiKeys(res.data || [])
-    } catch { /* */ }
-  }
-
+  const fetchKeys = async () => { try { setApiKeys((await api.get('/mcp-keys')).data || []) } catch {} }
   const createKey = async () => {
     setCreating(true)
-    try {
-      const res = await api.post('/mcp-keys', { name: newKeyName || 'default' })
-      setNewKeyResult(res.data)
-      setNewKeyName('')
-      fetchKeys()
-    } catch (e) {
-      message.error(e.message || '创建失败')
-    } finally { setCreating(false) }
+    try { setNewKeyResult((await api.post('/mcp-keys', { name: newKeyName || 'default' })).data); setNewKeyName(''); fetchKeys() }
+    catch (e) { message.error(e.message || '创建失败') } finally { setCreating(false) }
   }
+  const revokeKey = async (id) => { try { await api.delete(`/mcp-keys/${id}`); message.success('已吊销'); fetchKeys() } catch { message.error('吊销失败') } }
+  const copy = (text) => copyToClipboard(text).then(() => message.success('已复制'))
 
-  const revokeKey = async (id) => {
-    try {
-      await api.delete(`/mcp-keys/${id}`)
-      message.success('已吊销')
-      fetchKeys()
-    } catch { message.error('吊销失败') }
-  }
+  const onlineCount = apiKeys.filter(k => k.lastUsedAt && Date.now() - new Date(k.lastUsedAt).getTime() < 30 * 60 * 1000).length
 
-  const mcpConfig = JSON.stringify({
-    mcpServers: {
-      testbench: {
-        url: mcpUrl,
-        transport: "streamable-http",
-        ...(apiKeys.length > 0 ? { headers: { Authorization: `Bearer <你的API Key>` } } : {}),
-      }
-    }
-  }, null, 2)
-
-  const copy = (text) => {
-    copyToClipboard(text).then(() => message.success('已复制'))
-  }
-
-  const columns = [
-    { title: '工具名称', dataIndex: 'name', width: 220, render: (n) => <Text code style={{ fontSize: 12 }}>{n}</Text> },
-    { title: '分类', dataIndex: 'category', width: 80, render: (c) => <Tag color={CATEGORY_COLORS[c]}>{c}</Tag> },
-    { title: '说明', dataIndex: 'description' },
-    { title: '参数', dataIndex: 'params', width: 260, render: (p) => <Text type="secondary" style={{ fontSize: 12 }}>{p}</Text> },
-  ]
+  const mcpConfig = JSON.stringify({ mcpServers: { testbench: { type: "streamable-http", url: mcpUrl, headers: { Authorization: "Bearer <你的API Key>" } } } }, null, 2)
 
   return (
-    <div>
-      <div style={{ marginBottom: 16 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#1d2129' }}>
-          <ApiOutlined style={{ marginRight: 8 }} />
-          MCP 工具
-        </h2>
-        <span style={{ fontSize: 13, color: '#86909c' }}>
-          连接 Claude Code 或 AI 引擎到测试平台，自动读写用例、生成接口测试、执行测试和查看报告。
-        </span>
+    <div style={{ maxWidth: 1100 }}>
+      {/* ── 页头 ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+        <div>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: '#1d2129' }}>MCP 工具中心</h2>
+          <Text type="secondary" style={{ fontSize: 13 }}>管理 Claude Code 连接，查看可用工具</Text>
+        </div>
+        <Space>
+          <Badge count={onlineCount} size="small" offset={[-4, 4]} color="#52c41a">
+            <Tag style={{ padding: '4px 12px', fontSize: 13 }}>{apiKeys.length} 个连接</Tag>
+          </Badge>
+          <Tag color="blue" style={{ padding: '4px 12px', fontSize: 13 }}>{MCP_TOOLS.length} 个工具</Tag>
+        </Space>
       </div>
 
-      {/* 用途说明 */}
-      <Alert
-        type="info"
-        showIcon
-        icon={<QuestionCircleOutlined />}
-        style={{ marginBottom: 16 }}
-        message="MCP 工具可以做什么？"
-        description={
-          <div style={{ fontSize: 13, lineHeight: 1.8 }}>
-            <b>Claude Code 连接后，可以在终端直接：</b>
-            <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
-              <li>输入 "为 POST /api/users 生成接口测试" → AI 自动生成测试场景到平台</li>
-              <li>输入 "运行用户管理的所有测试" → 执行并返回结果</li>
-              <li>输入 "查看最近的测试报告" → 获取通过率和失败详情</li>
-            </ul>
-            <b>配置方法：</b>按下方三个步骤操作即可。
-          </div>
-        }
-      />
+      {/* ── 概览卡片 ── */}
+      <Row gutter={12} style={{ marginBottom: 20 }}>
+        <Col span={6}>
+          <Card size="small" style={{ textAlign: 'center' }}>
+            <Statistic title="服务地址" value={mcpUrl} valueStyle={{ fontSize: 12, fontFamily: 'monospace' }}
+              suffix={<CopyOutlined style={{ cursor: 'pointer', color: '#0ea5a0' }} onClick={() => copy(mcpUrl)} />} />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card size="small" style={{ textAlign: 'center' }}>
+            <Statistic title="在线连接" value={onlineCount} valueStyle={{ color: onlineCount > 0 ? '#52c41a' : '#bfc4cd' }}
+              prefix={<CheckCircleOutlined />} suffix={`/ ${apiKeys.length}`} />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card size="small" style={{ textAlign: 'center' }}>
+            <Statistic title="可用工具" value={MCP_TOOLS.length} valueStyle={{ color: '#0ea5a0' }}
+              prefix={<ThunderboltOutlined />} />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card size="small" style={{ textAlign: 'center' }}>
+            <Statistic title="协议" value="StreamableHTTP" valueStyle={{ fontSize: 13 }} />
+          </Card>
+        </Col>
+      </Row>
 
-      {/* 连接信息 */}
-      <Card size="small" style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, lineHeight: 2.2 }}>
-          <div>
-            <Text strong><LinkOutlined /> MCP Server 地址：</Text>
-            <Text code copyable style={{ marginLeft: 8, fontSize: 14 }}>{mcpUrl}</Text>
-          </div>
-          <div>
-            <Text strong><ToolOutlined /> 协议：</Text>
-            <Text style={{ marginLeft: 8 }}>StreamableHTTP（兼容 MCP 2025-03-26 规范）</Text>
-          </div>
-          <div>
-            <Text strong><ThunderboltOutlined /> 工具数量：</Text>
-            <Text style={{ marginLeft: 8 }}>{MCP_TOOLS.length} 个</Text>
-          </div>
-        </div>
-      </Card>
+      {/* ── 主体 Tab ── */}
+      <Tabs defaultActiveKey="connections" items={[
+        {
+          key: 'connections',
+          label: <span><KeyOutlined /> 连接管理 <Badge count={onlineCount} size="small" style={{ marginLeft: 4 }} /></span>,
+          children: (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text type="secondary" style={{ fontSize: 13 }}>每个 Claude Code 实例用独立的 API Key 连接。创建 Key 后按「配置指南」Tab 完成配置。</Text>
+                <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => { setCreateModalOpen(true); setNewKeyResult(null); setNewKeyName('') }}>创建 Key</Button>
+              </div>
 
-      {/* API Key 管理 */}
-      <Card size="small" title={<span><KeyOutlined /> 连接管理（API Key）</span>}
-        extra={<Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => { setCreateModalOpen(true); setNewKeyResult(null); setNewKeyName('') }}>创建 Key</Button>}
-        style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, marginBottom: apiKeys.length > 0 ? 12 : 0, color: '#86909c' }}>
-          每个 Claude Code 实例通过独立的 API Key 连接平台。下表展示所有连接及其活跃状态。
-        </div>
-        {apiKeys.length > 0 ? (
-          <div>
-            {apiKeys.map(k => {
-              const lastUsed = k.lastUsedAt ? new Date(k.lastUsedAt) : null
-              const isActive = lastUsed && (Date.now() - lastUsed.getTime() < 30 * 60 * 1000)
-              const isRecent = lastUsed && (Date.now() - lastUsed.getTime() < 24 * 60 * 60 * 1000)
-              return (
-                <div key={k.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: isActive ? 'rgba(82,196,26,0.04)' : 'rgba(0,0,0,0.02)', borderRadius: 8, marginBottom: 4, borderLeft: isActive ? '3px solid #52c41a' : '3px solid transparent' }}>
-                  <Space size={12}>
-                    {isActive ? (
-                      <Tag color="success" style={{ fontSize: 11 }}>在线</Tag>
-                    ) : isRecent ? (
-                      <Tag color="warning" style={{ fontSize: 11 }}>最近活跃</Tag>
-                    ) : lastUsed ? (
-                      <Tag style={{ fontSize: 11 }}>离线</Tag>
-                    ) : (
-                      <Tag style={{ fontSize: 11 }}>未使用</Tag>
-                    )}
-                    <Text code style={{ fontSize: 13 }}>{k.prefix}...</Text>
-                    <Text strong>{k.name}</Text>
-                    {lastUsed && (
-                      <Text type="secondary" style={{ fontSize: 11 }}>
-                        最近调用: {lastUsed.toLocaleString('zh-CN')}
-                      </Text>
-                    )}
-                  </Space>
-                  <Popconfirm title="确认吊销此 Key？吊销后使用该 Key 的连接将立即失效。" onConfirm={() => revokeKey(k.id)} okText="吊销" cancelText="取消" okButtonProps={{ danger: true }}>
-                    <Button size="small" danger type="text" icon={<DeleteOutlined />}>吊销</Button>
-                  </Popconfirm>
+              {apiKeys.length > 0 ? apiKeys.map(k => {
+                const lastUsed = k.lastUsedAt ? new Date(k.lastUsedAt) : null
+                const isOnline = lastUsed && (Date.now() - lastUsed.getTime() < 30 * 60 * 1000)
+                const isRecent = lastUsed && (Date.now() - lastUsed.getTime() < 24 * 60 * 60 * 1000)
+                return (
+                  <div key={k.id} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 16px', marginBottom: 8, borderRadius: 10,
+                    background: isOnline ? 'linear-gradient(135deg, rgba(82,196,26,0.04), rgba(82,196,26,0.01))' : 'rgba(0,0,0,0.015)',
+                    border: `1px solid ${isOnline ? 'rgba(82,196,26,0.2)' : 'rgba(0,0,0,0.04)'}`,
+                  }}>
+                    <Space size={16}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: isOnline ? '#52c41a' : isRecent ? '#faad14' : '#d9d9d9' }} />
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Text strong style={{ fontSize: 14 }}>{k.name}</Text>
+                          <Text code style={{ fontSize: 11, color: '#8c919e' }}>{k.prefix}...</Text>
+                          {isOnline && <Tag color="success" style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px' }}>在线</Tag>}
+                          {!isOnline && isRecent && <Tag color="warning" style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px' }}>最近活跃</Tag>}
+                        </div>
+                        {lastUsed && (
+                          <Text type="secondary" style={{ fontSize: 11 }}>最近调用 {lastUsed.toLocaleString('zh-CN')}</Text>
+                        )}
+                        {!lastUsed && <Text type="secondary" style={{ fontSize: 11 }}>尚未使用</Text>}
+                      </div>
+                    </Space>
+                    <Popconfirm title="吊销后该连接立即失效" onConfirm={() => revokeKey(k.id)} okText="吊销" cancelText="取消" okButtonProps={{ danger: true }}>
+                      <Button size="small" danger type="text" icon={<DeleteOutlined />}>吊销</Button>
+                    </Popconfirm>
+                  </div>
+                )
+              }) : (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#bfc4cd' }}>
+                  <KeyOutlined style={{ fontSize: 32, marginBottom: 8 }} />
+                  <div>还没有连接，点击「创建 Key」开始</div>
                 </div>
-              )
-            })}
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '12px 0', color: '#c9cdd4', fontSize: 13 }}>
-            暂无 API Key，点击右上角创建
-          </div>
-        )}
-      </Card>
+              )}
+            </div>
+          ),
+        },
+        {
+          key: 'tools',
+          label: <span><ThunderboltOutlined /> 工具列表 ({MCP_TOOLS.length})</span>,
+          children: (
+            <Table rowKey="name" dataSource={MCP_TOOLS} pagination={false} size="small"
+              columns={[
+                { title: '工具', dataIndex: 'name', width: 220, render: n => <Text code style={{ fontSize: 11 }}>{n}</Text> },
+                { title: '分类', dataIndex: 'category', width: 80, render: c => <Tag color={CAT_COLORS[c]} style={{ fontSize: 11 }}>{c}</Tag> },
+                { title: '说明', dataIndex: 'description', render: d => <span style={{ fontSize: 13 }}>{d}</span> },
+                { title: '参数', dataIndex: 'params', width: 240, render: p => <Text type="secondary" style={{ fontSize: 11 }}>{p}</Text> },
+              ]}
+            />
+          ),
+        },
+        {
+          key: 'guide',
+          label: <span><RobotOutlined /> 配置指南</span>,
+          children: (
+            <div style={{ maxWidth: 700 }}>
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#0ea5a0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600 }}>1</div>
+                  <Text strong style={{ fontSize: 14 }}>创建 API Key</Text>
+                </div>
+                <Text type="secondary" style={{ fontSize: 13, marginLeft: 32, display: 'block' }}>
+                  在「连接管理」Tab 点击「创建 Key」，复制保存生成的密钥。
+                </Text>
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#0ea5a0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600 }}>2</div>
+                  <Text strong style={{ fontSize: 14 }}>配置 .mcp.json</Text>
+                </div>
+                <div style={{ marginLeft: 32, position: 'relative' }}>
+                  <pre style={{ background: '#f6f8fa', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 8, padding: '12px 16px', fontSize: 12, fontFamily: "'SF Mono', Monaco, monospace", overflow: 'auto' }}>
+                    {mcpConfig}
+                  </pre>
+                  <Button size="small" icon={<CopyOutlined />} style={{ position: 'absolute', top: 8, right: 8 }} onClick={() => copy(mcpConfig)}>复制</Button>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#0ea5a0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600 }}>3</div>
+                  <Text strong style={{ fontSize: 14 }}>在 Claude Code 中使用</Text>
+                </div>
+                <div style={{ marginLeft: 32, padding: '12px 16px', background: '#f6f8fa', borderRadius: 8, fontSize: 13, lineHeight: 2.2, fontFamily: 'monospace' }}>
+                  <div style={{ color: '#86909c' }}>// 从需求文档生成手工测试用例</div>
+                  <div>帮我为这份需求生成测试用例：用户可以登录系统...</div>
+                  <div style={{ color: '#86909c', marginTop: 8 }}>// 查看生成结果</div>
+                  <div>查看最近的测试用例生成任务进度</div>
+                </div>
+              </div>
+            </div>
+          ),
+        },
+      ]} />
 
       {/* 创建 Key 弹窗 */}
-      <Modal
-        title="创建 API Key"
-        open={createModalOpen}
-        onCancel={() => setCreateModalOpen(false)}
+      <Modal title="创建 API Key" open={createModalOpen} onCancel={() => setCreateModalOpen(false)} width={480}
         footer={newKeyResult ? [
           <Button key="close" type="primary" onClick={() => setCreateModalOpen(false)}>我已保存，关闭</Button>
         ] : [
           <Button key="cancel" onClick={() => setCreateModalOpen(false)}>取消</Button>,
           <Button key="create" type="primary" icon={<PlusOutlined />} onClick={createKey} loading={creating}>创建</Button>,
-        ]}
-        width={500}
-      >
+        ]}>
         {!newKeyResult ? (
           <div>
-            <div style={{ marginBottom: 16, fontSize: 13, color: '#595959', lineHeight: 1.8 }}>
-              API Key 用于外部工具（如 Claude Code）连接本平台的 MCP Server。<br/>
-              创建后将 Key 填入 <Text code>.mcp.json</Text> 的 <Text code>Authorization</Text> 字段即可。
-            </div>
-            <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 500 }}>Key 名称（方便识别用途）</div>
-            <Input
-              placeholder="例如：我的开发机、CI 流水线、团队共享"
-              value={newKeyName}
-              onChange={e => setNewKeyName(e.target.value)}
-              onPressEnter={createKey}
-            />
+            <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 16, lineHeight: 1.8 }}>
+              给这个连接取个名字（比如"小李的开发机"、"CI 流水线"），方便在连接管理中识别。
+            </Text>
+            <Input placeholder="连接名称" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} onPressEnter={createKey} size="large" />
           </div>
         ) : (
           <div>
-            <Alert type="success" showIcon message="API Key 创建成功" style={{ marginBottom: 16 }}
-              description="请立即复制保存。关闭此弹窗后密钥将不再显示。" />
-            <div style={{ padding: '12px 16px', background: '#f6f8fa', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)' }}>
-              <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4 }}>API Key</div>
-              <Text code copyable style={{ fontSize: 14, wordBreak: 'break-all' }}>{newKeyResult.key}</Text>
+            <div style={{ padding: '16px', background: '#f6ffed', borderRadius: 10, border: '1px solid #b7eb8f', marginBottom: 16, textAlign: 'center' }}>
+              <CheckCircleOutlined style={{ fontSize: 24, color: '#52c41a', marginBottom: 8 }} />
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>创建成功</div>
+              <Text type="secondary" style={{ fontSize: 12 }}>请立即复制，关闭后不再显示</Text>
             </div>
-            <div style={{ marginTop: 12, padding: '8px 12px', background: '#fffbe6', borderRadius: 6, fontSize: 12, color: '#ad6800' }}>
-              将此 Key 填入 .mcp.json 配置的 headers.Authorization 字段：<br/>
-              <Text code>"Authorization": "Bearer {newKeyResult.key?.substring(0, 12)}..."</Text>
+            <div style={{ padding: '12px 16px', background: '#f6f8fa', borderRadius: 8 }}>
+              <Text code copyable style={{ fontSize: 13, wordBreak: 'break-all' }}>{newKeyResult.key}</Text>
             </div>
           </div>
         )}
       </Modal>
-
-      {/* Claude Code 连接配置 */}
-      <Card size="small" title={<span><ThunderboltOutlined /> Claude Code 连接配置</span>} style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, lineHeight: 1.8 }}>
-          <div style={{ marginBottom: 12 }}>
-            <b>步骤 1：</b>将以下配置合并到项目根目录的 <Text code>.mcp.json</Text> 文件中：
-          </div>
-          <div style={{ position: 'relative' }}>
-            <pre style={{
-              background: '#f6f8fa', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 8,
-              padding: '12px 16px', fontSize: 12, fontFamily: "'SF Mono', Monaco, Consolas, monospace",
-              overflow: 'auto', maxHeight: 200,
-            }}>
-              {mcpConfig}
-            </pre>
-            <Button size="small" icon={<CopyOutlined />} style={{ position: 'absolute', top: 8, right: 8 }}
-              onClick={() => copy(mcpConfig)}>
-              复制
-            </Button>
-          </div>
-
-          <div style={{ marginTop: 16, marginBottom: 8 }}>
-            <b>步骤 2：</b>安装接口测试 Skill（可选，增强生成能力）：
-          </div>
-          <pre style={{
-            background: '#f6f8fa', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 8,
-            padding: '8px 16px', fontSize: 12, fontFamily: 'monospace',
-          }}>
-{`# 在项目目录下执行
-mkdir -p .claude/skills/tb-api-case-generate
-curl -o .claude/skills/tb-api-case-generate/SKILL.md \\
-  ${window.location.origin}/api/skills/preset/tb-api-case-generate/download`}
-          </pre>
-
-          <div style={{ marginTop: 16, marginBottom: 8 }}>
-            <b>步骤 3：</b>在 Claude Code 中直接输入：
-          </div>
-          <div style={{ padding: '12px 16px', background: '#f6f8fa', borderRadius: 8, fontSize: 12, fontFamily: 'monospace' }}>
-            <div style={{ color: '#86909c', marginBottom: 4 }}>// 方式 1：根据项目代码自动分析</div>
-            <div style={{ marginBottom: 8 }}>为项目中的用户管理 API 生成接口测试</div>
-            <div style={{ color: '#86909c', marginBottom: 4 }}>// 方式 2：指定具体接口</div>
-            <div style={{ marginBottom: 8 }}>为 POST /api/users 创建用户接口生成接口测试，覆盖正向、参数校验、权限测试</div>
-            <div style={{ color: '#86909c', marginBottom: 4 }}>// 方式 3：批量生成</div>
-            <div>分析项目所有 API 接口，为每个接口生成完整的接口测试场景</div>
-          </div>
-        </div>
-      </Card>
-
-      {/* 工具列表 */}
-      <Table
-        rowKey="name"
-        columns={columns}
-        dataSource={MCP_TOOLS}
-        pagination={false}
-        size="small"
-        style={{ marginBottom: 24 }}
-      />
     </div>
   )
 }
