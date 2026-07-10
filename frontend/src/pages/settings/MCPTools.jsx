@@ -10,6 +10,12 @@ import { copyToClipboard } from '../../utils/clipboard'
 const { Text } = Typography
 
 const MCP_TOOLS = [
+  { name: 'tb_create_scenario_task', description: '从需求文档自动生成手工测试用例（提取需求点→场景模型→批量展开）', category: 'AI 生成', params: 'project_id, branch_id, title, content_markdown' },
+  { name: 'tb_get_scenario_task', description: '查询 AI 生成任务的状态与进度', category: 'AI 生成', params: 'task_id' },
+  { name: 'tb_query_coverage_matrix', description: '查询覆盖矩阵：需求点 × 测试维度', category: 'AI 生成', params: 'task_id, branch_id' },
+  { name: 'tb_get_generation_stats', description: '查询 AI 生成质量统计（通过率/拒绝率）', category: 'AI 生成', params: 'branch_id' },
+  { name: 'tb_list_projects', description: '列出所有项目（名称、ID）', category: '项目', params: '无' },
+  { name: 'tb_list_branches', description: '列出项目下所有活跃分支', category: '项目', params: 'project_id' },
   { name: 'tb_list_cases', description: '列出分支下的测试用例，支持分页和筛选', category: '用例', params: 'branch_id, page, page_size, keyword, folder_id, priority, case_type' },
   { name: 'tb_get_case', description: '获取单条测试用例的完整详情', category: '用例', params: 'case_id' },
   { name: 'tb_create_case', description: '创建测试用例，自动生成编号和目录', category: '用例', params: 'branch_id, title, module, case_type, priority, steps, ...' },
@@ -27,7 +33,7 @@ const MCP_TOOLS = [
 ]
 
 const CATEGORY_COLORS = {
-  '用例': 'blue', 'API': 'green', '环境': 'orange', '接口测试': 'cyan', '报告': 'purple',
+  'AI 生成': 'magenta', '项目': 'geekblue', '用例': 'blue', 'API': 'green', '环境': 'orange', '接口测试': 'cyan', '报告': 'purple',
 }
 
 export default function MCPTools() {
