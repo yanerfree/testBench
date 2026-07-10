@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastmcp import FastMCP
 
 from app.mcp.deps import get_mcp_session
-from app.mcp.tools import test_cases, api_endpoints, environments, test_reports, api_tests, scenario_gen
+from app.mcp.tools import test_cases, api_endpoints, environments, test_reports, api_tests, scenario_gen, projects
 
 mcp = FastMCP(
     name="testBench",
@@ -152,6 +152,21 @@ _register(
     scenario_gen.query_coverage_matrix,
     name="tb_query_coverage_matrix",
     description="查询覆盖矩阵：需求点 × 测试维度的覆盖状态。参数: task_id(任务UUID), branch_id(分支UUID)",
+)
+
+
+# ── 项目与分支查询工具 ──────────────────────────────
+
+_register(
+    projects.list_projects,
+    name="tb_list_projects",
+    description="列出所有项目（名称、ID、描述）。用于确定要操作的目标项目。",
+)
+
+_register(
+    projects.list_branches,
+    name="tb_list_branches",
+    description="列出项目下所有活跃分支。参数: project_id(项目UUID)",
 )
 
 _register(

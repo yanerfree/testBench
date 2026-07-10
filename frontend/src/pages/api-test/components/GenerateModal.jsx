@@ -12,6 +12,7 @@ export default function GenerateModal({
   onGenerate,
   folderTree,
   environments, apiList,
+  projectName, branchName, branchId,
 }) {
   const [inputMode, setInputMode] = useState('manual')
 
@@ -104,10 +105,14 @@ export default function GenerateModal({
 
               <div>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>2. 在 Claude Code 中输入</div>
+                <div style={{ fontSize: 12, color: '#86909c', marginBottom: 6 }}>
+                  当前项目：<Text strong>{projectName || '-'}</Text>，分支：<Text strong>{branchName || '-'}</Text>
+                  {branchId && <span style={{ marginLeft: 8 }}>(branch_id: <Text code copyable={{ text: branchId }} style={{ fontSize: 11 }}>{branchId.substring(0, 8)}...</Text>)</span>}
+                </div>
                 {[
-                  '为项目中的用户管理 API 生成接口测试',
-                  '为 POST /api/users 生成接口测试，覆盖正向、参数校验、权限测试',
-                  '分析项目所有 API 接口，批量生成接口测试场景',
+                  `在测试平台「${projectName || '当前项目'}」的「${branchName || 'default'}」分支下，为用户管理 API 生成接口测试`,
+                  `在测试平台「${projectName || '当前项目'}」的「${branchName || 'default'}」分支下，为 POST /api/users 生成接口测试，覆盖正向、参数校验、权限测试`,
+                  `在测试平台「${projectName || '当前项目'}」的「${branchName || 'default'}」分支下，分析项目所有 API 接口，批量生成接口测试场景`,
                 ].map((cmd, i) => (
                   <div key={i} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',

@@ -46,10 +46,26 @@ export default function ApiTest() {
   const [environments, setEnvironments] = useState([])
   const [envId, setEnvId] = useState(() => localStorage.getItem(`apitest_env_${projectId}`) || null)
   const [apiList, setApiList] = useState([])
+  const [projectInfo, setProjectInfo] = useState({ name: '', branchName: '' })
 
   useEffect(() => {
     api.get('/environments').then(res => setEnvironments(res.data || [])).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!projectId) return
+    api.get(`/projects/${projectId}`).then(res => {
+      setProjectInfo(prev => ({ ...prev, name: res.data?.name || '' }))
+    }).catch(() => {})
+  }, [projectId])
+
+  useEffect(() => {
+    if (!projectId || !branchId) return
+    api.get(`/projects/${projectId}/branches`).then(res => {
+      const b = (res.data || []).find(x => x.id === branchId)
+      if (b) setProjectInfo(prev => ({ ...prev, branchName: b.name || '' }))
+    }).catch(() => {})
+  }, [projectId, branchId])
 
   useEffect(() => {
     if (!projectId || !branchId) return
@@ -535,6 +551,9 @@ export default function ApiTest() {
         folderTree={folderTree}
         environments={environments}
         apiList={apiList}
+        projectName={projectInfo.name}
+        branchName={projectInfo.branchName}
+        branchId={branchId}
       />
 
       <Modal
