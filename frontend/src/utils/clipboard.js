@@ -1,7 +1,5 @@
 /**
  * 复制文本到剪贴板 — 兼容 HTTP 环境
- * navigator.clipboard 在非 HTTPS 下会被浏览器拒绝，
- * fallback 到 document.execCommand('copy')
  */
 export function copyToClipboard(text) {
   if (navigator.clipboard && window.isSecureContext) {
@@ -9,11 +7,13 @@ export function copyToClipboard(text) {
   }
   const ta = document.createElement('textarea')
   ta.value = text
-  ta.style.position = 'fixed'
-  ta.style.left = '-9999px'
+  ta.setAttribute('readonly', '')
+  ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0'
   document.body.appendChild(ta)
-  ta.select()
-  document.execCommand('copy')
+  ta.focus()
+  ta.setSelectionRange(0, ta.value.length)
+  let ok = false
+  try { ok = document.execCommand('copy') } catch { /* */ }
   document.body.removeChild(ta)
-  return Promise.resolve()
+  return ok ? Promise.resolve() : Promise.reject(new Error('copy failed'))
 }
