@@ -5,6 +5,7 @@ import {
   KeyOutlined, PlusOutlined, DeleteOutlined, QuestionCircleOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
+import { copyToClipboard } from '../../utils/clipboard'
 
 const { Text } = Typography
 
@@ -76,8 +77,8 @@ export default function MCPTools() {
     }
   }, null, 2)
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text).then(() => message.success('已复制'))
+  const copy = (text) => {
+    copyToClipboard(text).then(() => message.success('已复制'))
   }
 
   const columns = [
@@ -224,7 +225,7 @@ export default function MCPTools() {
               {mcpConfig}
             </pre>
             <Button size="small" icon={<CopyOutlined />} style={{ position: 'absolute', top: 8, right: 8 }}
-              onClick={() => copyToClipboard(mcpConfig)}>
+              onClick={() => copy(mcpConfig)}>
               复制
             </Button>
           </div>

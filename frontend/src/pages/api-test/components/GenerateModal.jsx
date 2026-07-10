@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button, Modal, Form, Input, TreeSelect, Select, Typography, message } from 'antd'
 import { RobotOutlined, LoadingOutlined, CopyOutlined, CodeOutlined } from '@ant-design/icons'
+import { copyToClipboard } from '../../../utils/clipboard'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -31,7 +32,7 @@ export default function GenerateModal({
   }, null, 2)
 
   const copyText = (text) => {
-    navigator.clipboard.writeText(text).then(() => message.success('已复制'))
+    copyToClipboard(text).then(() => message.success('已复制'))
   }
 
   const modes = [
