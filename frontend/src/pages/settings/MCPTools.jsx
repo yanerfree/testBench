@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Tag, Space, Typography, Table, Button, message, Input, Modal, Popconfirm, Tabs, Badge, Statistic, Row, Col } from 'antd'
+import { Card, Tag, Space, Typography, Table, Button, message, Input, Modal, Popconfirm, Tabs, Badge } from 'antd'
 import {
   ApiOutlined, CopyOutlined, ThunderboltOutlined,
   KeyOutlined, PlusOutlined, DeleteOutlined, CheckCircleOutlined,
@@ -73,32 +73,34 @@ export default function MCPTools() {
         </Space>
       </div>
 
-      {/* ── 概览卡片 ── */}
-      <Row gutter={12} style={{ marginBottom: 20 }}>
-        <Col span={6}>
-          <Card size="small" style={{ textAlign: 'center' }}>
-            <Statistic title="服务地址" value={mcpUrl} valueStyle={{ fontSize: 12, fontFamily: 'monospace' }}
-              suffix={<CopyOutlined style={{ cursor: 'pointer', color: '#0ea5a0' }} onClick={() => copy(mcpUrl)} />} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card size="small" style={{ textAlign: 'center' }}>
-            <Statistic title="在线连接" value={onlineCount} valueStyle={{ color: onlineCount > 0 ? '#52c41a' : '#bfc4cd' }}
-              prefix={<CheckCircleOutlined />} suffix={`/ ${apiKeys.length}`} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card size="small" style={{ textAlign: 'center' }}>
-            <Statistic title="可用工具" value={MCP_TOOLS.length} valueStyle={{ color: '#0ea5a0' }}
-              prefix={<ThunderboltOutlined />} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card size="small" style={{ textAlign: 'center' }}>
-            <Statistic title="协议" value="StreamableHTTP" valueStyle={{ fontSize: 13 }} />
-          </Card>
-        </Col>
-      </Row>
+      {/* ── 状态横条 ── */}
+      <div style={{
+        display: 'flex', gap: 1, marginBottom: 20, borderRadius: 12, overflow: 'hidden',
+        border: '1px solid rgba(0,0,0,0.04)', background: '#fff',
+      }}>
+        {[
+          { label: '服务地址', value: mcpUrl, mono: true, action: <CopyOutlined style={{ cursor: 'pointer', color: '#0ea5a0', marginLeft: 6 }} onClick={() => copy(mcpUrl)} /> },
+          { label: '在线连接', value: `${onlineCount} / ${apiKeys.length}`, color: onlineCount > 0 ? '#52c41a' : '#bfc4cd' },
+          { label: '可用工具', value: MCP_TOOLS.length, color: '#0ea5a0' },
+          { label: '协议', value: 'StreamableHTTP' },
+        ].map((item, i) => (
+          <div key={i} style={{
+            flex: i === 0 ? 2 : 1, padding: '14px 20px',
+            background: 'rgba(0,0,0,0.008)',
+            borderRight: i < 3 ? '1px solid rgba(0,0,0,0.04)' : 'none',
+          }}>
+            <div style={{ fontSize: 11, color: '#8c919e', marginBottom: 4 }}>{item.label}</div>
+            <div style={{
+              fontSize: item.mono ? 12 : 18, fontWeight: item.mono ? 400 : 600,
+              fontFamily: item.mono ? "'SF Mono', Monaco, monospace" : 'inherit',
+              color: item.color || '#2e3138',
+              display: 'flex', alignItems: 'center',
+            }}>
+              {item.value}{item.action}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* ── 主体 Tab ── */}
       <Tabs defaultActiveKey="connections" items={[
