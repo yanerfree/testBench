@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin, TreeSelect, Checkbox } from 'antd'
-import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, InboxOutlined, SettingOutlined, EditOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined, CodeOutlined, LoadingOutlined } from '@ant-design/icons'
+import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, InboxOutlined, SettingOutlined, EditOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined, CodeOutlined, LoadingOutlined, ApiOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 import { useBranch } from '../../utils/branch'
@@ -461,8 +461,14 @@ export default function CaseManagement() {
                 </Radio.Group>
               </Space>
               <Space>
-                <Tooltip title="从 API 接口定义自动生成手工测试用例（操作步骤+预期结果），需要先在 API 接口页录入接口或手动粘贴">
-                  <Button type="primary" ghost icon={<RobotOutlined />} onClick={() => setTestforgeOpen(true)}>从接口生成用例</Button>
+                <Tooltip title="粘贴需求文档（PRD/用户故事），AI 自动生成手工测试用例（操作步骤+预期结果）">
+                  <Button type="primary" icon={<RobotOutlined />}
+                    onClick={() => navigate(`/projects/${projectId}/scenario-gen?taskId=new`)}>
+                    AI 生成用例
+                  </Button>
+                </Tooltip>
+                <Tooltip title="从 API 接口定义生成手工测试用例，需要接口信息">
+                  <Button ghost icon={<ApiOutlined />} onClick={() => setTestforgeOpen(true)}>从接口生成</Button>
                 </Tooltip>
                 <Tooltip title={selectedRowKeys.length > 0
                   ? `为选中的 ${selectedRowKeys.length} 条用例生成 pytest + httpx 自动化测试脚本`
