@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastmcp import FastMCP
 
 from app.mcp.deps import get_mcp_session
-from app.mcp.tools import test_cases, api_endpoints, environments, test_reports, api_tests
+from app.mcp.tools import test_cases, api_endpoints, environments, test_reports, api_tests, scenario_gen
 
 mcp = FastMCP(
     name="testBench",
@@ -131,4 +131,31 @@ _register(
     api_tests.run_api_test,
     name="tb_run_api_test",
     description="执行接口测试场景并返回结果汇总。参数: scenario_ids(逗号分隔的场景UUID列表)",
+)
+
+
+# ── 功能场景测试工具 ──────────────────────────────
+
+_register(
+    scenario_gen.create_scenario_task,
+    name="tb_create_scenario_task",
+    description="创建功能场景测试生成任务。AI 将自动提取需求点、生成场景模型、展开测试用例。参数: project_id(项目UUID), branch_id(分支UUID), title(任务名称), content_markdown(需求文档Markdown内容)",
+)
+
+_register(
+    scenario_gen.get_scenario_task,
+    name="tb_get_scenario_task",
+    description="查询功能场景测试生成任务的状态与进度。参数: task_id(任务UUID)",
+)
+
+_register(
+    scenario_gen.query_coverage_matrix,
+    name="tb_query_coverage_matrix",
+    description="查询覆盖矩阵：需求点 × 测试维度的覆盖状态。参数: task_id(任务UUID), branch_id(分支UUID)",
+)
+
+_register(
+    scenario_gen.get_generation_stats,
+    name="tb_get_generation_stats",
+    description="查询 AI 生成质量统计：通过率/拒绝率/总数。参数: branch_id(分支UUID)",
 )

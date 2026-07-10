@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "testbench": {
+      "type": "streamable-http",
+      "url": "http://localhost:8000/mcp/",
+      "headers": {
+        "Authorization": "Bearer tb_H0nPuK0jFleQbhKXiz2YaJl0uMpDbtL8NaaF9nU8YeU"
+      }
+    }
+  }
+}
