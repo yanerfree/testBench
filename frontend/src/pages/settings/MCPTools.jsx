@@ -3,7 +3,7 @@ import { Card, Tag, Space, Typography, Table, Button, message, Input, Modal, Pop
 import {
   ApiOutlined, CopyOutlined, ThunderboltOutlined,
   KeyOutlined, PlusOutlined, DeleteOutlined, CheckCircleOutlined,
-  ClockCircleOutlined, MinusCircleOutlined, RobotOutlined,
+  RobotOutlined, LinkOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
@@ -35,6 +35,9 @@ const MCP_TOOLS = [
 
 const CAT_COLORS = { 'AI 生成': 'magenta', '项目': 'geekblue', '用例': 'blue', 'API': 'green', '环境': 'orange', '接口测试': 'cyan', '报告': 'purple' }
 
+const cardStyle = { borderRadius: 12, border: '1px solid rgba(0,0,0,0.04)', boxShadow: 'none' }
+const sectionTitle = { fontSize: 14, fontWeight: 600, color: '#2e3138', marginBottom: 4 }
+
 export default function MCPTools() {
   const mcpUrl = `http://${window.location.hostname}:8000/mcp/`
   const [apiKeys, setApiKeys] = useState([])
@@ -54,101 +57,95 @@ export default function MCPTools() {
   const copy = (text) => copyToClipboard(text).then(() => message.success('已复制'))
 
   const onlineCount = apiKeys.filter(k => k.lastUsedAt && Date.now() - new Date(k.lastUsedAt).getTime() < 30 * 60 * 1000).length
-
   const mcpConfig = JSON.stringify({ mcpServers: { testbench: { type: "streamable-http", url: mcpUrl, headers: { Authorization: "Bearer <你的API Key>" } } } }, null, 2)
 
   return (
-    <div style={{ maxWidth: 1100 }}>
+    <div style={{ maxWidth: 960 }}>
       {/* ── 页头 ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-        <div>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 4px', color: '#1d2129' }}>MCP 工具中心</h2>
-          <Text type="secondary" style={{ fontSize: 13 }}>管理 Claude Code 连接，查看可用工具</Text>
-        </div>
-        <Space>
-          <Badge count={onlineCount} size="small" offset={[-4, 4]} color="#52c41a">
-            <Tag style={{ padding: '4px 12px', fontSize: 13 }}>{apiKeys.length} 个连接</Tag>
-          </Badge>
-          <Tag color="blue" style={{ padding: '4px 12px', fontSize: 13 }}>{MCP_TOOLS.length} 个工具</Tag>
-        </Space>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 6px', color: '#1d2129' }}>
+          <LinkOutlined style={{ marginRight: 8, color: '#0ea5a0' }} />MCP 工具中心
+        </h2>
+        <Text type="secondary" style={{ fontSize: 13 }}>管理 Claude Code 与平台的连接，查看可用的 AI 工具</Text>
       </div>
 
-      {/* ── 状态横条 ── */}
-      <div style={{
-        display: 'flex', gap: 1, marginBottom: 20, borderRadius: 12, overflow: 'hidden',
-        border: '1px solid rgba(0,0,0,0.04)', background: '#fff',
-      }}>
-        {[
-          { label: '服务地址', value: mcpUrl, mono: true, action: <CopyOutlined style={{ cursor: 'pointer', color: '#0ea5a0', marginLeft: 6 }} onClick={() => copy(mcpUrl)} /> },
-          { label: '在线连接', value: `${onlineCount} / ${apiKeys.length}`, color: onlineCount > 0 ? '#52c41a' : '#bfc4cd' },
-          { label: '可用工具', value: MCP_TOOLS.length, color: '#0ea5a0' },
-          { label: '协议', value: 'StreamableHTTP' },
-        ].map((item, i) => (
-          <div key={i} style={{
-            flex: i === 0 ? 2 : 1, padding: '14px 20px',
-            background: 'rgba(0,0,0,0.008)',
-            borderRight: i < 3 ? '1px solid rgba(0,0,0,0.04)' : 'none',
-          }}>
-            <div style={{ fontSize: 11, color: '#8c919e', marginBottom: 4 }}>{item.label}</div>
-            <div style={{
-              fontSize: item.mono ? 12 : 18, fontWeight: item.mono ? 400 : 600,
-              fontFamily: item.mono ? "'SF Mono', Monaco, monospace" : 'inherit',
-              color: item.color || '#2e3138',
-              display: 'flex', alignItems: 'center',
-            }}>
-              {item.value}{item.action}
-            </div>
+      {/* ── 服务地址（独立突出） ── */}
+      <Card size="small" style={{ ...cardStyle, marginBottom: 16, borderLeft: '3px solid #0ea5a0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 12, color: '#8c919e', marginBottom: 2 }}>MCP 服务地址</div>
+            <span style={{ fontSize: 16, fontFamily: "'SF Mono', Monaco, Consolas, monospace", fontWeight: 500, color: '#2e3138', letterSpacing: 0.3 }}>
+              {mcpUrl}
+            </span>
           </div>
-        ))}
-      </div>
+          <Space size={16}>
+            <Button size="small" icon={<CopyOutlined />} onClick={() => copy(mcpUrl)}>复制地址</Button>
+            <Space split={<span style={{ color: '#e0e0e3' }}>|</span>}>
+              <Text type="secondary" style={{ fontSize: 12 }}>{onlineCount}/{apiKeys.length} 在线</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>{MCP_TOOLS.length} 个工具</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>StreamableHTTP</Text>
+            </Space>
+          </Space>
+        </div>
+      </Card>
 
       {/* ── 主体 Tab ── */}
       <Tabs defaultActiveKey="connections" items={[
         {
           key: 'connections',
-          label: <span><KeyOutlined /> 连接管理 <Badge count={onlineCount} size="small" style={{ marginLeft: 4 }} /></span>,
+          label: <span><KeyOutlined /> 连接管理 {onlineCount > 0 && <Badge count={onlineCount} size="small" style={{ marginLeft: 4 }} />}</span>,
           children: (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <Text type="secondary" style={{ fontSize: 13 }}>每个 Claude Code 实例用独立的 API Key 连接。创建 Key 后按「配置指南」Tab 完成配置。</Text>
-                <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => { setCreateModalOpen(true); setNewKeyResult(null); setNewKeyName('') }}>创建 Key</Button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <Text type="secondary" style={{ fontSize: 13 }}>每个 Claude Code 用独立 API Key 连接。创建后按「配置指南」完成配置。</Text>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => { setCreateModalOpen(true); setNewKeyResult(null); setNewKeyName('') }}>创建 Key</Button>
               </div>
 
-              {apiKeys.length > 0 ? apiKeys.map(k => {
-                const lastUsed = k.lastUsedAt ? new Date(k.lastUsedAt) : null
-                const isOnline = lastUsed && (Date.now() - lastUsed.getTime() < 30 * 60 * 1000)
-                const isRecent = lastUsed && (Date.now() - lastUsed.getTime() < 24 * 60 * 60 * 1000)
-                return (
-                  <div key={k.id} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 16px', marginBottom: 8, borderRadius: 10,
-                    background: isOnline ? 'linear-gradient(135deg, rgba(82,196,26,0.04), rgba(82,196,26,0.01))' : 'rgba(0,0,0,0.015)',
-                    border: `1px solid ${isOnline ? 'rgba(82,196,26,0.2)' : 'rgba(0,0,0,0.04)'}`,
-                  }}>
-                    <Space size={16}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: isOnline ? '#52c41a' : isRecent ? '#faad14' : '#d9d9d9' }} />
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Text strong style={{ fontSize: 14 }}>{k.name}</Text>
-                          <Text code style={{ fontSize: 11, color: '#8c919e' }}>{k.prefix}...</Text>
-                          {isOnline && <Tag color="success" style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px' }}>在线</Tag>}
-                          {!isOnline && isRecent && <Tag color="warning" style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px' }}>最近活跃</Tag>}
+              {apiKeys.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {apiKeys.map(k => {
+                    const lastUsed = k.lastUsedAt ? new Date(k.lastUsedAt) : null
+                    const isOnline = lastUsed && (Date.now() - lastUsed.getTime() < 30 * 60 * 1000)
+                    const isRecent = lastUsed && (Date.now() - lastUsed.getTime() < 24 * 60 * 60 * 1000)
+                    return (
+                      <Card key={k.id} size="small" style={{
+                        ...cardStyle,
+                        borderLeft: `3px solid ${isOnline ? '#52c41a' : isRecent ? '#faad14' : '#e8e8e8'}`,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                            <div style={{
+                              width: 36, height: 36, borderRadius: 10,
+                              background: isOnline ? 'rgba(82,196,26,0.08)' : isRecent ? 'rgba(250,173,20,0.08)' : 'rgba(0,0,0,0.03)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              <RobotOutlined style={{ fontSize: 18, color: isOnline ? '#52c41a' : isRecent ? '#faad14' : '#bfc4cd' }} />
+                            </div>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 14, fontWeight: 600, color: '#2e3138' }}>{k.name}</span>
+                                <Text code style={{ fontSize: 11, color: '#8c919e' }}>{k.prefix}...</Text>
+                                {isOnline && <Tag color="success" style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px', margin: 0 }}>在线</Tag>}
+                                {!isOnline && isRecent && <Tag color="warning" style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px', margin: 0 }}>最近活跃</Tag>}
+                              </div>
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                {lastUsed ? `最近调用 ${lastUsed.toLocaleString('zh-CN')}` : '尚未使用'}
+                              </Text>
+                            </div>
+                          </div>
+                          <Popconfirm title="吊销后该连接立即失效" onConfirm={() => revokeKey(k.id)} okText="吊销" cancelText="取消" okButtonProps={{ danger: true }}>
+                            <Button size="small" danger type="text" icon={<DeleteOutlined />}>吊销</Button>
+                          </Popconfirm>
                         </div>
-                        {lastUsed && (
-                          <Text type="secondary" style={{ fontSize: 11 }}>最近调用 {lastUsed.toLocaleString('zh-CN')}</Text>
-                        )}
-                        {!lastUsed && <Text type="secondary" style={{ fontSize: 11 }}>尚未使用</Text>}
-                      </div>
-                    </Space>
-                    <Popconfirm title="吊销后该连接立即失效" onConfirm={() => revokeKey(k.id)} okText="吊销" cancelText="取消" okButtonProps={{ danger: true }}>
-                      <Button size="small" danger type="text" icon={<DeleteOutlined />}>吊销</Button>
-                    </Popconfirm>
-                  </div>
-                )
-              }) : (
-                <div style={{ textAlign: 'center', padding: '40px 0', color: '#bfc4cd' }}>
-                  <KeyOutlined style={{ fontSize: 32, marginBottom: 8 }} />
-                  <div>还没有连接，点击「创建 Key」开始</div>
+                      </Card>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '60px 0', color: '#bfc4cd' }}>
+                  <RobotOutlined style={{ fontSize: 36, marginBottom: 12 }} />
+                  <div style={{ fontSize: 14 }}>还没有连接</div>
+                  <div style={{ fontSize: 12, marginTop: 4 }}>点击「创建 Key」添加 Claude Code 连接</div>
                 </div>
               )}
             </div>
@@ -170,51 +167,60 @@ export default function MCPTools() {
         },
         {
           key: 'guide',
-          label: <span><RobotOutlined /> 配置指南</span>,
+          label: <span><ApiOutlined /> 配置指南</span>,
           children: (
-            <div style={{ maxWidth: 700 }}>
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#0ea5a0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600 }}>1</div>
-                  <Text strong style={{ fontSize: 14 }}>创建 API Key</Text>
+            <div style={{ maxWidth: 680 }}>
+              {[
+                { num: '1', title: '创建 API Key', desc: '在「连接管理」Tab 点击「创建 Key」，复制保存密钥。' },
+                { num: '2', title: '添加 .mcp.json 配置', desc: '将以下内容合并到项目根目录的 .mcp.json 文件：', code: mcpConfig },
+                { num: '3', title: '在 Claude Code 中使用', desc: '重启 Claude Code，然后直接用自然语言：', examples: [
+                  { hint: '从需求文档生成手工测试用例', cmd: '帮我为这份需求生成测试用例：用户可以登录系统...' },
+                  { hint: '查看生成进度', cmd: '查看最近的测试用例生成任务' },
+                ] },
+              ].map((step) => (
+                <div key={step.num} style={{ marginBottom: 28 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                      background: 'linear-gradient(135deg, #0ea5a0, #7cacf8)', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 600,
+                    }}>{step.num}</div>
+                    <span style={sectionTitle}>{step.title}</span>
+                  </div>
+                  <div style={{ marginLeft: 38 }}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>{step.desc}</Text>
+                    {step.code && (
+                      <div style={{ position: 'relative', marginTop: 8 }}>
+                        <pre style={{
+                          background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.06)',
+                          borderRadius: 10, padding: '14px 18px', fontSize: 12,
+                          fontFamily: "'SF Mono', Monaco, monospace", overflow: 'auto', lineHeight: 1.6,
+                        }}>{step.code}</pre>
+                        <Button size="small" icon={<CopyOutlined />} style={{ position: 'absolute', top: 10, right: 10 }}
+                          onClick={() => copy(step.code)}>复制</Button>
+                      </div>
+                    )}
+                    {step.examples && (
+                      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {step.examples.map((ex, i) => (
+                          <Card key={i} size="small" style={{ ...cardStyle, borderLeft: '3px solid #7cacf8' }}>
+                            <div style={{ fontSize: 11, color: '#8c919e', marginBottom: 2 }}>{ex.hint}</div>
+                            <div style={{ fontSize: 13, fontFamily: 'monospace' }}>{ex.cmd}</div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <Text type="secondary" style={{ fontSize: 13, marginLeft: 32, display: 'block' }}>
-                  在「连接管理」Tab 点击「创建 Key」，复制保存生成的密钥。
-                </Text>
-              </div>
-
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#0ea5a0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600 }}>2</div>
-                  <Text strong style={{ fontSize: 14 }}>配置 .mcp.json</Text>
-                </div>
-                <div style={{ marginLeft: 32, position: 'relative' }}>
-                  <pre style={{ background: '#f6f8fa', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 8, padding: '12px 16px', fontSize: 12, fontFamily: "'SF Mono', Monaco, monospace", overflow: 'auto' }}>
-                    {mcpConfig}
-                  </pre>
-                  <Button size="small" icon={<CopyOutlined />} style={{ position: 'absolute', top: 8, right: 8 }} onClick={() => copy(mcpConfig)}>复制</Button>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#0ea5a0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600 }}>3</div>
-                  <Text strong style={{ fontSize: 14 }}>在 Claude Code 中使用</Text>
-                </div>
-                <div style={{ marginLeft: 32, padding: '12px 16px', background: '#f6f8fa', borderRadius: 8, fontSize: 13, lineHeight: 2.2, fontFamily: 'monospace' }}>
-                  <div style={{ color: '#86909c' }}>// 从需求文档生成手工测试用例</div>
-                  <div>帮我为这份需求生成测试用例：用户可以登录系统...</div>
-                  <div style={{ color: '#86909c', marginTop: 8 }}>// 查看生成结果</div>
-                  <div>查看最近的测试用例生成任务进度</div>
-                </div>
-              </div>
+              ))}
             </div>
           ),
         },
       ]} />
 
       {/* 创建 Key 弹窗 */}
-      <Modal title="创建 API Key" open={createModalOpen} onCancel={() => setCreateModalOpen(false)} width={480}
+      <Modal title="创建连接" open={createModalOpen} onCancel={() => setCreateModalOpen(false)} width={460}
         footer={newKeyResult ? [
           <Button key="close" type="primary" onClick={() => setCreateModalOpen(false)}>我已保存，关闭</Button>
         ] : [
@@ -223,21 +229,21 @@ export default function MCPTools() {
         ]}>
         {!newKeyResult ? (
           <div>
-            <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 16, lineHeight: 1.8 }}>
-              给这个连接取个名字（比如"小李的开发机"、"CI 流水线"），方便在连接管理中识别。
+            <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 16 }}>
+              给这个连接取个名字，方便识别是谁的 Claude Code。
             </Text>
-            <Input placeholder="连接名称" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} onPressEnter={createKey} size="large" />
+            <Input placeholder="如：小李的开发机、CI 流水线" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} onPressEnter={createKey} size="large" />
           </div>
         ) : (
           <div>
-            <div style={{ padding: '16px', background: '#f6ffed', borderRadius: 10, border: '1px solid #b7eb8f', marginBottom: 16, textAlign: 'center' }}>
-              <CheckCircleOutlined style={{ fontSize: 24, color: '#52c41a', marginBottom: 8 }} />
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>创建成功</div>
-              <Text type="secondary" style={{ fontSize: 12 }}>请立即复制，关闭后不再显示</Text>
+            <div style={{ textAlign: 'center', padding: '20px 0 16px', marginBottom: 16, background: 'rgba(82,196,26,0.04)', borderRadius: 10 }}>
+              <CheckCircleOutlined style={{ fontSize: 28, color: '#52c41a', marginBottom: 8 }} />
+              <div style={{ fontWeight: 600, fontSize: 15 }}>创建成功</div>
+              <Text type="secondary" style={{ fontSize: 12 }}>请立即复制密钥，关闭后不再显示</Text>
             </div>
-            <div style={{ padding: '12px 16px', background: '#f6f8fa', borderRadius: 8 }}>
+            <Card size="small" style={cardStyle}>
               <Text code copyable style={{ fontSize: 13, wordBreak: 'break-all' }}>{newKeyResult.key}</Text>
-            </div>
+            </Card>
           </div>
         )}
       </Modal>
