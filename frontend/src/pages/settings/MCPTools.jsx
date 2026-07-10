@@ -145,26 +145,44 @@ export default function MCPTools() {
       </Card>
 
       {/* API Key 管理 */}
-      <Card size="small" title={<span><KeyOutlined /> API Key 管理</span>}
+      <Card size="small" title={<span><KeyOutlined /> 连接管理（API Key）</span>}
         extra={<Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => { setCreateModalOpen(true); setNewKeyResult(null); setNewKeyName('') }}>创建 Key</Button>}
         style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 13, marginBottom: apiKeys.length > 0 ? 12 : 0, color: '#86909c' }}>
-          外部工具（如 Claude Code）通过 API Key 认证后才能调用 MCP 工具。每个 Key 只在创建时显示一次，请妥善保管。
+          每个 Claude Code 实例通过独立的 API Key 连接平台。下表展示所有连接及其活跃状态。
         </div>
         {apiKeys.length > 0 ? (
           <div>
-            {apiKeys.map(k => (
-              <div key={k.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 8, marginBottom: 4 }}>
-                <Space size={12}>
-                  <Text code style={{ fontSize: 13 }}>{k.prefix}...</Text>
-                  <Text>{k.name}</Text>
-                  {k.lastUsedAt && <Text type="secondary" style={{ fontSize: 11 }}>最近使用: {new Date(k.lastUsedAt).toLocaleDateString()}</Text>}
-                </Space>
-                <Popconfirm title="确认吊销此 Key？吊销后使用该 Key 的连接将立即失效。" onConfirm={() => revokeKey(k.id)} okText="吊销" cancelText="取消" okButtonProps={{ danger: true }}>
-                  <Button size="small" danger type="text" icon={<DeleteOutlined />}>吊销</Button>
-                </Popconfirm>
-              </div>
-            ))}
+            {apiKeys.map(k => {
+              const lastUsed = k.lastUsedAt ? new Date(k.lastUsedAt) : null
+              const isActive = lastUsed && (Date.now() - lastUsed.getTime() < 30 * 60 * 1000)
+              const isRecent = lastUsed && (Date.now() - lastUsed.getTime() < 24 * 60 * 60 * 1000)
+              return (
+                <div key={k.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: isActive ? 'rgba(82,196,26,0.04)' : 'rgba(0,0,0,0.02)', borderRadius: 8, marginBottom: 4, borderLeft: isActive ? '3px solid #52c41a' : '3px solid transparent' }}>
+                  <Space size={12}>
+                    {isActive ? (
+                      <Tag color="success" style={{ fontSize: 11 }}>在线</Tag>
+                    ) : isRecent ? (
+                      <Tag color="warning" style={{ fontSize: 11 }}>最近活跃</Tag>
+                    ) : lastUsed ? (
+                      <Tag style={{ fontSize: 11 }}>离线</Tag>
+                    ) : (
+                      <Tag style={{ fontSize: 11 }}>未使用</Tag>
+                    )}
+                    <Text code style={{ fontSize: 13 }}>{k.prefix}...</Text>
+                    <Text strong>{k.name}</Text>
+                    {lastUsed && (
+                      <Text type="secondary" style={{ fontSize: 11 }}>
+                        最近调用: {lastUsed.toLocaleString('zh-CN')}
+                      </Text>
+                    )}
+                  </Space>
+                  <Popconfirm title="确认吊销此 Key？吊销后使用该 Key 的连接将立即失效。" onConfirm={() => revokeKey(k.id)} okText="吊销" cancelText="取消" okButtonProps={{ danger: true }}>
+                    <Button size="small" danger type="text" icon={<DeleteOutlined />}>吊销</Button>
+                  </Popconfirm>
+                </div>
+              )
+            })}
           </div>
         ) : (
           <div style={{ textAlign: 'center', padding: '12px 0', color: '#c9cdd4', fontSize: 13 }}>
