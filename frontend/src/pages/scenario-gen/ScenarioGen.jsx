@@ -94,8 +94,8 @@ function TaskCenter({ projectId }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#2e3138' }}>功能场景用例生成</h3>
-          <span style={{ fontSize: 12, color: '#8c919e' }}>粘贴需求文档 → AI 提取需求点 → 生成场景模型 → 批量生成测试用例</span>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#2e3138' }}>AI 生成手工测试用例</h3>
+          <span style={{ fontSize: 12, color: '#8c919e' }}>从需求文档自动生成测试步骤（操作 + 预期结果），生成后进入用例管理待审核</span>
         </div>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={fetchTasks}>刷新</Button>
@@ -125,8 +125,8 @@ function TaskCenter({ projectId }) {
                 <div>
                   <p style={{ marginBottom: 8 }}>还没有生成任务</p>
                   <p style={{ fontSize: 12, color: '#8c919e' }}>
-                    粘贴一份需求文档（PRD/用户故事/功能描述），AI 会自动提取需求点、
-                    生成场景模型、批量生成可审核的测试用例
+                    粘贴一份需求文档，AI 自动生成手工测试用例（操作步骤 + 预期结果），
+                    审核通过后可加入测试计划执行
                   </p>
                 </div>
               }

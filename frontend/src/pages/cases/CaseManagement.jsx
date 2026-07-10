@@ -461,8 +461,8 @@ export default function CaseManagement() {
                 </Radio.Group>
               </Space>
               <Space>
-                <Tooltip title="从接口定义自动生成接口维度测试用例（正向/参数校验/安全/边界值），需要先在 API 接口页录入接口或手动粘贴接口信息">
-                  <Button type="primary" ghost icon={<RobotOutlined />} onClick={() => setTestforgeOpen(true)}>接口用例生成</Button>
+                <Tooltip title="从 API 接口定义自动生成手工测试用例（操作步骤+预期结果），需要先在 API 接口页录入接口或手动粘贴">
+                  <Button type="primary" ghost icon={<RobotOutlined />} onClick={() => setTestforgeOpen(true)}>从接口生成用例</Button>
                 </Tooltip>
                 <Tooltip title={selectedRowKeys.length > 0
                   ? `为选中的 ${selectedRowKeys.length} 条用例生成 pytest + httpx 自动化测试脚本`

@@ -15,7 +15,7 @@ const MESSAGES = {
     'menu.apiTest': '接口测试',
     'menu.ai': 'AI 智能',
     'menu.ai.capabilities': '能力总览',
-    'menu.ai.scenarioGen': '场景生成',
+    'menu.ai.scenarioGen': 'AI 生成用例',
     'menu.ai.skills': 'Skill 管理',
     'menu.ai.mcp': 'MCP 工具',
     'menu.ai.config': 'AI 配置',
@@ -29,6 +29,7 @@ const MESSAGES = {
     'menu.apiMock': 'API Mock',
     'menu.mcpMock': 'MCP Mock',
     'menu.toolbox': '工具箱',
+    'menu.httpClient': 'HTTP 请求',
 
     // 通用
     'common.save': '保存',
@@ -96,6 +97,7 @@ const MESSAGES = {
     'menu.apiMock': 'API Mock',
     'menu.mcpMock': 'MCP Mock',
     'menu.toolbox': '工具箱',
+    'menu.httpClient': 'HTTP 请求',
 
     'common.save': 'Save',
     'common.cancel': 'Cancel',

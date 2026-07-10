@@ -50,8 +50,14 @@ export default function Stage1Input({ projectId, branchId, onTaskCreated }) {
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
       <div style={{ marginBottom: 20, padding: '12px 16px', background: 'rgba(124,172,248,0.06)', borderRadius: 8, border: '1px solid rgba(124,172,248,0.15)' }}>
         <Text style={{ fontSize: 13, color: '#4e6a8a' }}>
-          <strong>使用方法：</strong>把需求文档（PRD、用户故事、功能描述）粘贴到下方输入框，或上传 .md 文件。
-          AI 会自动提取需求点并生成测试用例。不需要提供接口信息——接口测试请使用用例管理页的「接口用例生成」。
+          <strong>这是什么：</strong>从需求文档自动生成<strong>手工测试用例</strong>（操作步骤 + 预期结果），
+          就是平时手写的"1. 打开登录页 → 2. 输入用户名密码 → 3. 点击登录 → 预期：跳转首页"这种。
+          <br/>
+          <strong>怎么用：</strong>把 PRD、用户故事或功能描述粘贴到下方，AI 会提取需求点、生成场景模型，然后批量展开为测试用例。
+          <br/>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            生成的用例会进入「用例管理」的待审核队列，审核通过后可加入测试计划执行。
+          </Text>
         </Text>
       </div>
 

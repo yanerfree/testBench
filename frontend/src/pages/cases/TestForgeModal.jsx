@@ -224,7 +224,7 @@ export default function TestForgeModal({ projectId, branchId, folders, open, onC
             icon={<BulbOutlined />}
             closable
             message="怎么用？"
-            description="选择项目已有的 API 接口（或手动粘贴接口信息），AI 会从正向流程、参数校验、安全、边界值等维度自动生成测试用例。生成后可预览、编辑、一键导入到用例库。"
+            description="选择项目已有的 API 接口（或手动粘贴接口信息），AI 会自动生成手工测试用例（操作步骤 + 预期结果），覆盖正向流程、参数校验、安全、边界值等维度。生成后可预览、编辑、一键导入。"
             style={{ marginBottom: 16 }}
           />
 
