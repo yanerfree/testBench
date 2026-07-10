@@ -150,8 +150,8 @@ export default function TestForgeModal({ projectId, branchId, folders, open, onC
   const renderFooter = () => {
     if (step === STEP_INPUT && !legacyMode) {
       return [
-        <Button key="legacy" onClick={() => setLegacyMode(true)} style={{ float: 'left' }}>
-          MCP / CLI 模式
+        <Button key="legacy" onClick={() => setLegacyMode(true)} style={{ float: 'left' }} type="text" size="small">
+          高级模式（CLI/MCP）
         </Button>,
         <Button key="cancel" onClick={handleClose}>取消</Button>,
         <Button key="submit" type="primary" icon={<ThunderboltOutlined />} onClick={handleGenerate}>
@@ -194,9 +194,9 @@ export default function TestForgeModal({ projectId, branchId, folders, open, onC
     <Modal
       title={
         <Space>
-          <RobotOutlined />
-          <span>AI 用例生成</span>
-          <Tag color="blue">基于接口定义，自动生成多维度测试用例</Tag>
+          <ApiOutlined />
+          <span>接口测试用例生成</span>
+          <Tag color="blue">从 API 接口定义生成测试用例</Tag>
         </Space>
       }
       open={open}
@@ -223,7 +223,8 @@ export default function TestForgeModal({ projectId, branchId, folders, open, onC
             showIcon
             icon={<BulbOutlined />}
             closable
-            message="AI 会从正向流程、参数验证、业务规则、边界值、异常场景、安全 6 个维度自动生成测试用例，去重后可一键导入"
+            message="怎么用？"
+            description="选择项目已有的 API 接口（或手动粘贴接口信息），AI 会从正向流程、参数校验、安全、边界值等维度自动生成测试用例。生成后可预览、编辑、一键导入到用例库。"
             style={{ marginBottom: 16 }}
           />
 
@@ -283,12 +284,13 @@ export default function TestForgeModal({ projectId, branchId, folders, open, onC
             {inputMode === 'manual' && (
               <Form.Item
                 name="interfaceInfo"
-                label="接口信息（手动输入）"
-                rules={[{ required: true, message: '请输入接口信息' }]}
+                label="接口定义（手动输入）"
+                rules={[{ required: true, message: '请粘贴接口定义信息' }]}
+                tooltip="把接口的请求方法、URL、参数、响应格式粘贴进来，AI 会自动解析并生成测试用例"
               >
                 <TextArea
                   rows={6}
-                  placeholder={'粘贴 curl 命令、接口文档、或用自然语言描述：\n\nPOST /api/users 创建用户\n请求: {username: string, email: string}\n响应: 201 {id, username, email}'}
+                  placeholder={'示例（三种格式都支持）：\n\n1. 自然语言：\nPOST /api/users 创建用户\n请求参数: username(必填,3-50字符), email(必填)\n成功返回 201 {id, username, email}\n\n2. curl 命令：\ncurl -X POST http://api.example.com/users -d \'{"username":"test"}\'\n\n3. Swagger/OpenAPI JSON 片段'}
                 />
               </Form.Item>
             )}
@@ -330,12 +332,12 @@ export default function TestForgeModal({ projectId, branchId, folders, open, onC
           <Alert
             type="info"
             showIcon
-            message="MCP / CLI 模式"
+            message="高级模式"
             description={
               <div style={{ fontSize: 12, lineHeight: 2 }}>
-                此模式生成 Task JSON 文件，可通过以下方式使用：<br/>
-                <b>方式一：</b>在 Claude Code 终端执行 <code>/tf-forge</code>，AI 通过 MCP 协议读取接口定义并生成用例<br/>
-                <b>方式二：</b>其他 MCP 客户端连接 <code>{`http://${window.location.hostname}:8000/mcp/`}</code> 调用 testBench 工具
+                此模式生成 Task JSON 文件，供开发者在 Claude Code 中使用：<br/>
+                在终端执行 <code>/tf-forge</code>，AI 会读取接口定义并生成用例<br/>
+                <Text type="secondary">适合习惯命令行的开发工程师</Text>
               </div>
             }
             style={{ marginBottom: 16 }}

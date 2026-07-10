@@ -93,7 +93,10 @@ function TaskCenter({ projectId }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#2e3138' }}>场景生成</h3>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#2e3138' }}>功能场景用例生成</h3>
+          <span style={{ fontSize: 12, color: '#8c919e' }}>粘贴需求文档 → AI 提取需求点 → 生成场景模型 → 批量生成测试用例</span>
+        </div>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={fetchTasks}>刷新</Button>
           <Button type="primary" icon={<PlusOutlined />}
@@ -118,7 +121,15 @@ function TaskCenter({ projectId }) {
           })}
           locale={{ emptyText: (
             <Empty
-              description={<span>还没有生成任务。粘贴一份需求文档，30 分钟内得到一批可评审的场景用例</span>}
+              description={
+                <div>
+                  <p style={{ marginBottom: 8 }}>还没有生成任务</p>
+                  <p style={{ fontSize: 12, color: '#8c919e' }}>
+                    粘贴一份需求文档（PRD/用户故事/功能描述），AI 会自动提取需求点、
+                    生成场景模型、批量生成可审核的测试用例
+                  </p>
+                </div>
+              }
             >
               <Button type="primary" icon={<PlusOutlined />}
                 onClick={() => navigate(`/projects/${projectId}/scenario-gen?taskId=new`)}>

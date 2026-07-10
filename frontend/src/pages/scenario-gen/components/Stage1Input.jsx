@@ -48,10 +48,17 @@ export default function Stage1Input({ projectId, branchId, onTaskCreated }) {
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
+      <div style={{ marginBottom: 20, padding: '12px 16px', background: 'rgba(124,172,248,0.06)', borderRadius: 8, border: '1px solid rgba(124,172,248,0.15)' }}>
+        <Text style={{ fontSize: 13, color: '#4e6a8a' }}>
+          <strong>使用方法：</strong>把需求文档（PRD、用户故事、功能描述）粘贴到下方输入框，或上传 .md 文件。
+          AI 会自动提取需求点并生成测试用例。不需要提供接口信息——接口测试请使用用例管理页的「接口用例生成」。
+        </Text>
+      </div>
+
       <div style={{ marginBottom: 16 }}>
         <Text strong>任务名称</Text>
         <Input
-          placeholder="如：订单退款需求 v2"
+          placeholder="给这次生成取个名字，如：订单退款需求 v2、会员等级规则"
           value={title}
           onChange={e => setTitle(e.target.value)}
           style={{ marginTop: 4 }}
@@ -67,7 +74,7 @@ export default function Stage1Input({ projectId, branchId, onTaskCreated }) {
           </Upload>
         </div>
         <TextArea
-          placeholder="粘贴需求文档（Markdown / 纯文本），或点击右上角上传 .md 文件"
+          placeholder="粘贴需求文档内容（支持 Markdown 和纯文本）&#10;&#10;示例：&#10;# 用户登录功能&#10;&#10;## 正常登录&#10;用户输入用户名和密码，点击登录按钮，系统验证成功后跳转到首页。&#10;&#10;## 密码错误&#10;密码错误时显示「用户名或密码错误」提示。"
           value={content}
           onChange={e => { setContent(e.target.value); if (source === 'upload') setSource('paste') }}
           rows={12}
@@ -86,13 +93,13 @@ export default function Stage1Input({ projectId, branchId, onTaskCreated }) {
         size="small"
         items={[{
           key: 'context',
-          label: <Text type="secondary">增强上下文（可选）</Text>,
+          label: <Text type="secondary">增强上下文（可选，提升生成质量）</Text>,
           children: (
             <Space direction="vertical" style={{ width: '100%' }}>
               <div>
-                <Text type="secondary" style={{ fontSize: 12 }}>业务规则补充</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>补充 AI 可能不知道的业务规则（每行一条）</Text>
                 <TextArea
-                  placeholder="补充 AI 可能不知道的业务规则，如：部分退款后订单状态保持已发货"
+                  placeholder="示例：&#10;部分退款后订单状态保持「已发货」&#10;金额超过500元需要财务审批&#10;同一订单最多退款3次"
                   rows={3}
                   onChange={e => setSettings(s => ({ ...s, business_rules: e.target.value }))}
                 />
