@@ -93,8 +93,11 @@ async def expand_single_test_point(
     cases_validated, warnings = validate_cases([case_data.model_dump()])
     case_dict = cases_validated[0]
 
-    # 取号
+    # 取号 + 归类文件夹
     module = task.settings.get("module", "GEN") if task.settings else "GEN"
+    from app.services.scenario_gen.context_builder import get_or_create_folder
+    folder_id = await get_or_create_folder(session, task.branch_id, module)
+
     max_seq = (await session.execute(
         select(func.count(Case.id)).where(
             Case.branch_id == task.branch_id,
@@ -110,6 +113,7 @@ async def expand_single_test_point(
         case_code=case_code,
         title=case_dict["title"][:200],
         type="api",
+        folder_id=folder_id,
         priority=case_dict["priority"],
         preconditions=case_dict.get("preconditions", ""),
         steps=case_dict["steps"],
