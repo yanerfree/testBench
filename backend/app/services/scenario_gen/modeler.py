@@ -106,7 +106,7 @@ async def generate_scenario_model(
 
     messages = [
         {"role": "system", "content": MODELER_SYSTEM_PROMPT},
-        {"role": "user", "content": f"需求点清单：\n{points_text}\n\n请生成场景模型（四区块 JSON）。"},
+        {"role": "user", "content": f"需求点清单（每条的编号如 R1、R2 必须在测试点的 requirement_point_code 中引用）：\n{points_text}\n\n请生成场景模型（四区块 JSON）。"},
     ]
 
     model_result = await llm_structured(

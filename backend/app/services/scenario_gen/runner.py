@@ -168,47 +168,53 @@ async def run_expansion(task_id: uuid.UUID, project_id: uuid.UUID):
             task.progress = {"total": total, "succeeded": 0, "failed": 0, "skipped": 0}
             await session.commit()
 
-            # 逐测试点展开
+            # 逐测试点展开（小批量并发，提速）
             from app.services.scenario_gen.expander import expand_single_test_point
+            import asyncio
             succeeded = 0
             failed = 0
+            semaphore = asyncio.Semaphore(3)
 
-            for item in existing_items:
-                if item.status == "succeeded":
-                    succeeded += 1
-                    continue
-                if item.status == "skipped":
-                    continue
+            async def expand_one(item):
+                nonlocal succeeded, failed
+                async with semaphore:
+                    async with async_session_factory() as s2:
+                        from app.models.scenario_gen import GenerationItem as GI
+                        it = await s2.get(GI, item.id)
+                        if not it or it.status in ("succeeded", "skipped"):
+                            return
+                        it.status = "running"
+                        await s2.flush()
+                        await pipeline.emit_event(s2, task_id, "point_start", {
+                            "ref": it.test_point_ref,
+                            "title": (it.point_snapshot or {}).get("title", ""),
+                        })
+                        await s2.commit()
 
-                item.status = "running"
-                await session.flush()
-                await pipeline.emit_event(session, task.id, "point_start", {
-                    "ref": item.test_point_ref,
-                    "title": (item.point_snapshot or {}).get("title", ""),
-                })
-                await session.commit()
+                        t = await s2.get(GenerationTask, task_id)
+                        case = await expand_single_test_point(
+                            config, t, it, it.point_snapshot or {}, s2,
+                        )
 
-                case = await expand_single_test_point(
-                    config, task, item, item.point_snapshot or {}, session,
-                )
+                        if case:
+                            succeeded += 1
+                            await pipeline.emit_event(s2, task_id, "case_created", {
+                                "case_id": str(case.id),
+                                "case_code": case.case_code,
+                                "title": case.title,
+                                "priority": case.priority,
+                            })
+                        else:
+                            failed += 1
+                            await pipeline.emit_event(s2, task_id, "point_failed", {
+                                "ref": it.test_point_ref,
+                                "error_message": it.error_message[:200] if it.error_message else "展开失败",
+                            })
+                        await s2.commit()
 
-                if case:
-                    succeeded += 1
-                    await pipeline.emit_event(session, task.id, "case_created", {
-                        "case_id": str(case.id),
-                        "case_code": case.case_code,
-                        "title": case.title,
-                        "priority": case.priority,
-                    })
-                else:
-                    failed += 1
-                    await pipeline.emit_event(session, task.id, "point_failed", {
-                        "ref": item.test_point_ref,
-                        "error_message": item.error_message[:200] if item.error_message else "展开失败",
-                    })
-
-                task.progress = {"total": total, "succeeded": succeeded, "failed": failed, "skipped": 0}
-                await session.commit()
+            # 并发执行
+            tasks_to_expand = [it for it in existing_items if it.status not in ("succeeded", "skipped")]
+            await asyncio.gather(*[expand_one(it) for it in tasks_to_expand], return_exceptions=True)
 
             # 最终状态
             if failed == 0:
