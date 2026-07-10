@@ -135,6 +135,7 @@ async def list_cases(
     is_flaky: bool | None = None,
     keyword: str | None = None,
     include_deleted: bool = False,
+    review_status: str | None = None,
 ) -> tuple[list[Case], int]:
     """分页查询用例列表，支持多条件筛选。返回 (cases, total)。"""
     from sqlalchemy import func, or_
@@ -163,6 +164,8 @@ async def list_cases(
     if keyword:
         like = f"%{keyword}%"
         base = base.where(or_(Case.title.ilike(like), Case.case_code.ilike(like)))
+    if review_status:
+        base = base.where(Case.review_status == review_status)
 
     # 总数
     count_result = await session.execute(

@@ -177,6 +177,7 @@ async def list_cases(
     is_flaky: bool | None = Query(default=None, alias="isFlaky"),
     keyword: str | None = Query(default=None),
     include_deleted: bool = Query(default=False, alias="includeDeleted"),
+    review_status: str | None = Query(default=None, alias="reviewStatus"),
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
 ):
@@ -185,7 +186,7 @@ async def list_cases(
         session, branch_id, page, page_size,
         case_type=case_type, folder_id=folder_id, priority=priority,
         automation_status=automation_status, is_flaky=is_flaky, keyword=keyword,
-        include_deleted=include_deleted,
+        include_deleted=include_deleted, review_status=review_status,
     )
     return {
         "data": [

@@ -69,6 +69,8 @@ export default function CaseManagement() {
       if (keyword) params.set('keyword', keyword)
       if (statusFilter === 'deleted') {
         params.set('includeDeleted', 'true')
+      } else if (statusFilter === 'pending_review') {
+        params.set('reviewStatus', 'pending_review')
       } else if (statusFilter) {
         params.set('automationStatus', statusFilter)
       }
@@ -309,7 +311,7 @@ export default function CaseManagement() {
     { key: 'module', title: '模块', dataIndex: 'module', width: 100, defaultVisible: false, render: v => <span style={{ fontSize: 12 }}>{v || '-'}</span> },
     { key: 'subModule', title: '子模块', dataIndex: 'subModule', width: 100, defaultVisible: false, render: v => <span style={{ fontSize: 12 }}>{v || '-'}</span> },
     { key: 'automationStatus', title: '状态', dataIndex: 'automationStatus', width: 100, defaultVisible: true, render: v => <Tag style={{ background: statusBg[v] || 'rgba(0,0,0,0.03)', color: statusColors[v] || '#8c8c8c', border: 'none' }}>{statusMap[v] || v}</Tag> },
-    { key: 'source', title: '来源', dataIndex: 'source', width: 60, align: 'center', defaultVisible: true, render: v => <span style={{ fontSize: 12, color: '#c9cdd4' }}>{v === 'imported' ? '导入' : '手动'}</span> },
+    { key: 'source', title: '来源', dataIndex: 'source', width: 60, align: 'center', defaultVisible: true, render: v => <span style={{ fontSize: 12, color: v === 'ai' ? '#7cacf8' : '#c9cdd4' }}>{v === 'imported' ? '导入' : v === 'ai' ? 'AI' : '手动'}</span> },
     { key: 'isFlaky', title: 'Flaky', dataIndex: 'isFlaky', width: 46, align: 'center', defaultVisible: true, render: v => v ? <Tag color="#fff7e6" style={{ color: '#faad14', border: 'none' }}>F</Tag> : null },
     { key: 'reviewStatus', title: '审核', dataIndex: 'reviewStatus', width: 70, align: 'center', defaultVisible: true, render: v => {
       if (!v) return null
@@ -455,6 +457,7 @@ export default function CaseManagement() {
                   <Radio.Button value="pending">待自动化</Radio.Button>
                   <Radio.Button value="archived">已归档</Radio.Button>
                   <Radio.Button value="deleted">已删除</Radio.Button>
+                  <Radio.Button value="pending_review">待审核</Radio.Button>
                 </Radio.Group>
               </Space>
               <Space>
