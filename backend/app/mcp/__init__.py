@@ -8,7 +8,25 @@ from app.mcp.tools import test_cases, api_endpoints, environments, test_reports,
 
 mcp = FastMCP(
     name="testBench",
-    instructions="testBench 测试管理平台 MCP Server。提供测试用例、API 接口、环境变量等数据操作工具。",
+    instructions="""testBench 测试管理平台 MCP Server。
+
+当用户要求生成测试用例时，必须按以下流程执行：
+
+1. 调用 tb_list_projects 和 tb_list_branches 确定目标项目和分支
+2. 调用 tb_list_api_tree 获取项目的 API 接口列表，了解有哪些功能模块
+3. 调用 tb_get_api_node 获取目标接口的详细定义（字段名、校验规则、枚举值）
+4. 读取用户项目的前端源码（组件文件、路由文件），了解真实的页面结构：按钮文字、表单字段标签、Toast 提示文案、弹窗标题
+5. 调用 tb_list_cases 检查已有用例，避免重复
+6. 基于真实页面信息生成用例，调用 tb_create_case 入库
+
+用例质量规范：
+- 步骤必须是页面操作（点击按钮、填写输入框），禁止写接口调用（POST/GET/HTTP状态码）
+- 按钮名称、字段标签、Toast文案必须与项目代码中的真实文案一致
+- 预期结果必须是 UI 可见的（Toast内容、页面跳转、列表变化）
+- 每条用例只验证一个测试点
+- P0 占比不超过 15%
+- case_type 用 e2e
+""",
 )
 
 
@@ -52,22 +70,7 @@ _register(
 _register(
     test_cases.create_case,
     name="tb_create_case",
-    description="""创建单条功能测试用例（适合快速补充少量用例）。批量生成推荐用 tb_create_scenario_task 流水线。
-
-参数: branch_id, title, module, case_type(api/e2e), submodule, priority(P0-P3), preconditions, steps([{seq,action,expected}]), expected_result
-
-【重要】生成前必须先读取项目源码或文档，了解真实的页面结构（有哪些按钮、表单字段、Toast提示文案），不能凭猜测编写步骤。
-
-【质量规范】
-1. 步骤必须是页面操作（点击按钮、填写输入框、选择下拉），禁止接口调用（POST/GET/HTTP状态码）
-2. 按钮名称、字段标签、Toast文案必须与真实页面一致，不能猜测
-3. 预期结果必须是UI可见的，禁止模糊词（操作成功/显示正常/无报错）
-4. 每条用例只验证一个测试点
-5. P0占比≤15%
-6. preconditions必填，steps每项必须有seq/action/expected
-7. module必填，中文（如"服务管理"）
-8. case_type 对于页面功能用例用 e2e
-""",
+    description="创建一条功能测试用例，自动生成编号和目录。参数: branch_id, title, module(中文如'服务管理'), case_type(e2e/api), priority(P0-P3), preconditions(前置条件), steps([{seq,action,expected}]), expected_result",
 )
 
 _register(
