@@ -13,9 +13,9 @@ from app.services.import_service import _get_or_create_folder, _next_case_code
 
 @audit_log(action="create", target_type="case")
 async def create_case(
-    session: AsyncSession, branch_id: uuid.UUID, data: CreateCaseRequest
+    session: AsyncSession, branch_id: uuid.UUID, data: CreateCaseRequest, source: str = "manual"
 ) -> Case:
-    """手动创建用例。自动生成 case_code，自动创建目录。"""
+    """创建用例。自动生成 case_code，自动创建目录。"""
     folder_id, _, _ = await _get_or_create_folder(
         session, branch_id, data.module, data.submodule
     )
@@ -38,7 +38,7 @@ async def create_case(
         ui_scenario_status=data.ui_scenario_status,
         is_api_template=data.is_api_template,
         is_ui_template=data.is_ui_template,
-        source="manual",
+        source=source,
         automation_status="pending",
         script_ref_file=data.script_ref_file,
         script_ref_func=data.script_ref_func,

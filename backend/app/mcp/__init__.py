@@ -56,19 +56,17 @@ _register(
 
 参数: branch_id, title, module, case_type(api/e2e), submodule, priority(P0-P3), preconditions, steps([{seq,action,expected}]), expected_result
 
-【质量规范——必须遵守】
-1. 步骤必须是页面操作（打开页面、点击按钮、填写输入框、选择下拉），禁止写接口调用（POST/GET/PUT/DELETE/HTTP状态码/curl/JSON body）
-2. 预期结果必须是UI可见的（Toast提示内容、页面跳转、列表变化、校验红字），禁止模糊词（操作成功/显示正常/无报错/符合预期）
-3. 每条用例只验证一个测试点，标题格式"动作 — 场景细节"
-4. P0占比≤15%，大部分用例应为P1/P2
-5. preconditions必填（登录状态、测试数据准备）
-6. steps每项必须有seq(从1开始)、action、expected
-7. module必填，用中文（如"服务管理"、"用户管理"）
+【重要】生成前必须先读取项目源码或文档，了解真实的页面结构（有哪些按钮、表单字段、Toast提示文案），不能凭猜测编写步骤。
 
-正确示例:
-  step: "点击右上角「创建服务」按钮"  expected: "弹出创建服务表单弹窗"
-错误示例(禁止):
-  step: "POST /api/v1/services"  expected: "返回 200"
+【质量规范】
+1. 步骤必须是页面操作（点击按钮、填写输入框、选择下拉），禁止接口调用（POST/GET/HTTP状态码）
+2. 按钮名称、字段标签、Toast文案必须与真实页面一致，不能猜测
+3. 预期结果必须是UI可见的，禁止模糊词（操作成功/显示正常/无报错）
+4. 每条用例只验证一个测试点
+5. P0占比≤15%
+6. preconditions必填，steps每项必须有seq/action/expected
+7. module必填，中文（如"服务管理"）
+8. case_type 对于页面功能用例用 e2e
 """,
 )
 

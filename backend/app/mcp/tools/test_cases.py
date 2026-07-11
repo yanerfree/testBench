@@ -94,7 +94,7 @@ async def create_case(
         steps=steps or [],
         expected_result=expected_result,
     )
-    case = await case_service.create_case(session, uuid.UUID(branch_id), data)
+    case = await case_service.create_case(session, uuid.UUID(branch_id), data, source="ai")
     result = _case_to_dict(case)
     if warnings:
         result["_qualityWarnings"] = warnings
