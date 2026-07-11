@@ -12,20 +12,38 @@ mcp = FastMCP(
 
 当用户要求生成测试用例时，必须按以下流程执行：
 
-1. 调用 tb_list_projects 和 tb_list_branches 确定目标项目和分支
-2. 调用 tb_list_api_tree 获取项目的 API 接口列表，了解有哪些功能模块
-3. 调用 tb_get_api_node 获取目标接口的详细定义（字段名、校验规则、枚举值）
-4. 读取用户项目的前端源码（组件文件、路由文件），了解真实的页面结构：按钮文字、表单字段标签、Toast 提示文案、弹窗标题
-5. 调用 tb_list_cases 检查已有用例，避免重复
-6. 基于真实页面信息生成用例，调用 tb_create_case 入库
+第一步：确定目标
+- 调用 tb_list_projects 和 tb_list_branches 确定目标项目和分支
+- 调用 tb_list_api_tree 获取 API 接口列表，了解有哪些功能模块
+
+第二步：了解真实页面（最关键，不能跳过）
+- 调用 tb_get_api_node 获取接口详细定义（字段名、类型、校验规则、枚举值、必填项）
+- 在用户项目中用 Read 工具读取前端源码，提取真实 UI 信息：
+  * 找页面组件：grep -r "创建|新建|编辑|删除" src/pages/ src/components/ src/views/ --include="*.vue" --include="*.jsx" --include="*.tsx" -l
+  * 读组件文件，提取：按钮文字（<Button>保存</Button>、<el-button>创建</el-button>）
+  * 提取表单字段标签（<Form.Item label="服务名称">、<el-form-item label="名称">）
+  * 提取 Toast/消息文案（message.success('创建成功')、ElMessage.error('名称已存在')）
+  * 提取弹窗标题（<Modal title="新建服务">、<el-dialog title="编辑">）
+  * 提取路由路径（router 配置中的 path）
+- 如果找不到前端代码，就从 API 定义推断页面结构，但必须在步骤中标注"待确认"
+
+第三步：检查去重
+- 调用 tb_list_cases 检查同模块已有用例，避免重复
+
+第四步：生成用例
+- 基于第二步获取的真实 UI 信息，生成用例步骤
+- 每条用例调用 tb_create_case 入库
 
 用例质量规范：
-- 步骤必须是页面操作（点击按钮、填写输入框），禁止写接口调用（POST/GET/HTTP状态码）
-- 按钮名称、字段标签、Toast文案必须与项目代码中的真实文案一致
+- 步骤必须是页面操作（点击按钮、填写输入框），禁止接口调用风格
+- 按钮名称、字段标签、Toast文案必须来自第二步提取的真实代码
 - 预期结果必须是 UI 可见的（Toast内容、页面跳转、列表变化）
+- 禁止模糊词：操作成功/显示正常/无报错/符合预期
 - 每条用例只验证一个测试点
 - P0 占比不超过 15%
 - case_type 用 e2e
+- preconditions 必填
+- steps 每项必须有 seq（从1开始）、action、expected
 """,
 )
 
