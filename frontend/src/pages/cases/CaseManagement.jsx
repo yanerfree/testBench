@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin, TreeSelect, Checkbox } from 'antd'
-import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, InboxOutlined, SettingOutlined, EditOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined, CodeOutlined, LoadingOutlined, ApiOutlined } from '@ant-design/icons'
+import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, InboxOutlined, SettingOutlined, EditOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined, CodeOutlined, LoadingOutlined, ApiOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PlayCircleOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 import { useBranch } from '../../utils/branch'
+import { useEnv } from '../../utils/env'
 import TestForgeModal from './TestForgeModal'
 import AIScriptModal from '../../components/AIScriptModal'
 
@@ -20,6 +21,12 @@ export default function CaseManagement() {
 
   // 分支
   const [globalBranchId] = useBranch(projectId)
+
+  // 项目环境
+  const [runEnvId, setRunEnvId] = useEnv(projectId)
+  const [environments, setEnvironments] = useState([])
+  const [batchRunning, setBatchRunning] = useState(false)
+  const [batchResult, setBatchResult] = useState(null)
 
   // 目录树
   const [folderTree, setFolderTree] = useState([])
@@ -52,7 +59,42 @@ export default function CaseManagement() {
   const [folderForm] = Form.useForm()
   const [savingFolder, setSavingFolder] = useState(false)
 
+  // 导航面板折叠 & 拖拽调宽
+  const [navCollapsed, setNavCollapsed] = useState(false)
+  const [navWidth, setNavWidth] = useState(220)
+  const resizingRef = useRef(false)
+  const startXRef = useRef(0)
+  const startWidthRef = useRef(220)
+
+  const onResizeStart = useCallback((e) => {
+    e.preventDefault()
+    resizingRef.current = true
+    startXRef.current = e.clientX
+    startWidthRef.current = navWidth
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    const onMove = (ev) => {
+      if (!resizingRef.current) return
+      const delta = ev.clientX - startXRef.current
+      const next = Math.max(160, Math.min(400, startWidthRef.current + delta))
+      setNavWidth(next)
+    }
+    const onUp = () => {
+      resizingRef.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [navWidth])
+
   // ---- 数据加载 ----
+  useEffect(() => {
+    api.get('/environments').then(res => setEnvironments(res.data || [])).catch(() => {})
+  }, [])
+
   const fetchFolders = useCallback(async () => {
     if (!projectId || !globalBranchId) return
     try {
@@ -102,6 +144,31 @@ export default function CaseManagement() {
   }
 
   // 从 folderTree 中根据 id 找到 folder name（递归查找）
+  const handleBatchRun = async () => {
+    if (!selectedRowKeys.length) { message.warning('请先选择用例'); return }
+    if (!runEnvId) { message.warning('请先选择执行环境'); return }
+    setBatchRunning(true)
+    setBatchResult(null)
+    const results = { total: selectedRowKeys.length, success: 0, fail: 0, skip: 0, details: [] }
+    for (const caseId of selectedRowKeys) {
+      const c = cases.find(x => x.id === caseId)
+      try {
+        const res = await api.post(`/projects/${projectId}/branches/${globalBranchId}/cases/${caseId}/scripts/run?type=api`, { envId: runEnvId })
+        const d = res.data || res
+        const ok = d.passed || d.exitCode === 0
+        results[ok ? 'success' : 'fail']++
+        results.details.push({ caseId, title: c?.title, status: ok ? 'pass' : 'fail' })
+      } catch (e) {
+        results.skip++
+        results.details.push({ caseId, title: c?.title, status: 'skip', error: e.message || '无脚本或执行失败' })
+      }
+    }
+    setBatchRunning(false)
+    setBatchResult(results)
+    const msg = `执行完成：${results.success} 通过，${results.fail} 失败，${results.skip} 跳过`
+    results.fail > 0 ? message.warning(msg) : message.success(msg)
+  }
+
   const findFolderNameById = (nodes, targetId) => {
     for (const n of nodes) {
       if (n.id === targetId) return n.name
@@ -280,7 +347,7 @@ export default function CaseManagement() {
 
   // ---- 列表列（可配置） ----
   const allColumns = [
-    { key: 'caseCode', title: '用例ID', dataIndex: 'caseCode', width: 155, defaultVisible: true, render: v => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#86909c' }}>{v}</span> },
+    { key: 'caseCode', title: '用例ID', dataIndex: 'caseCode', width: 135, defaultVisible: true, render: v => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#86909c' }}>{v}</span> },
     { key: 'title', title: '标题', dataIndex: 'title', ellipsis: true, defaultVisible: true, fixed: true, render: (v, row) => (
       <span
         onClick={() => navigate(`/projects/${projectId}/cases/${row.id}?branchId=${globalBranchId}`)}
@@ -289,46 +356,46 @@ export default function CaseManagement() {
         onMouseLeave={e => e.target.style.color = '#1d2129'}
       >{v}</span>
     )},
-    { key: 'type', title: '类型', dataIndex: 'type', width: 65, defaultVisible: true, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v?.toUpperCase()}</span> },
-    { key: 'scenarios', title: '场景覆盖', width: 170, defaultVisible: true, render: (_, row) => {
+    { key: 'type', title: '类型', dataIndex: 'type', width: 50, defaultVisible: true, render: v => <span style={{ fontSize: 11, color: '#86909c' }}>{v?.toUpperCase()}</span> },
+    { key: 'scenarios', title: '场景', width: 105, defaultVisible: true, render: (_, row) => {
       const apiSt = row.apiScenarioStatus
       const uiSt = row.uiScenarioStatus
       const apiColor = apiSt === 'completed' ? '#0ea5a0' : apiSt === 'debugging' ? '#faad14' : '#86909c'
       const uiColor = uiSt === 'completed' ? '#7c5cbf' : uiSt === 'debugging' ? '#faad14' : '#86909c'
       return (
-        <Space size={4}>
-          <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e0f7f6', color: '#0ea5a0' }}>手动</Tag>
-          {row.apiScenario && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e0f7f6', color: apiColor }}>
+        <Space size={2}>
+          <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e0f7f6', color: '#0ea5a0', margin: 0 }}>手动</Tag>
+          {row.apiScenario && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e0f7f6', color: apiColor, margin: 0 }}>
             {row.isApiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14', marginRight: 2 }} />}API
           </Tag>}
-          {row.uiScenario && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#f5f0ff', color: uiColor }}>
+          {row.uiScenario && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#f5f0ff', color: uiColor, margin: 0 }}>
             {row.isUiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14', marginRight: 2 }} />}UI
           </Tag>}
         </Space>
       )
     }},
-    { key: 'priority', title: '优先级', dataIndex: 'priority', width: 68, align: 'center', defaultVisible: true, render: v => <Tag style={{ background: priorityBg[v], color: priorityColors[v], border: 'none' }}>{v}</Tag> },
+    { key: 'priority', title: '优先级', dataIndex: 'priority', width: 56, align: 'center', defaultVisible: true, render: v => <Tag style={{ background: priorityBg[v], color: priorityColors[v], border: 'none', margin: 0 }}>{v}</Tag> },
     { key: 'module', title: '模块', dataIndex: 'module', width: 100, defaultVisible: false, render: v => <span style={{ fontSize: 12 }}>{v || '-'}</span> },
     { key: 'subModule', title: '子模块', dataIndex: 'subModule', width: 100, defaultVisible: false, render: v => <span style={{ fontSize: 12 }}>{v || '-'}</span> },
-    { key: 'automationStatus', title: '状态', dataIndex: 'automationStatus', width: 100, defaultVisible: true, render: v => <Tag style={{ background: statusBg[v] || 'rgba(0,0,0,0.03)', color: statusColors[v] || '#8c8c8c', border: 'none' }}>{statusMap[v] || v}</Tag> },
-    { key: 'source', title: '来源', dataIndex: 'source', width: 60, align: 'center', defaultVisible: true, render: v => <span style={{ fontSize: 12, color: v === 'ai' ? '#7cacf8' : '#c9cdd4' }}>{v === 'imported' ? '导入' : v === 'ai' ? 'AI' : '手动'}</span> },
-    { key: 'isFlaky', title: 'Flaky', dataIndex: 'isFlaky', width: 46, align: 'center', defaultVisible: true, render: v => v ? <Tag color="#fff7e6" style={{ color: '#faad14', border: 'none' }}>F</Tag> : null },
-    { key: 'reviewStatus', title: '审核', dataIndex: 'reviewStatus', width: 70, align: 'center', defaultVisible: true, render: v => {
+    { key: 'automationStatus', title: '状态', dataIndex: 'automationStatus', width: 80, defaultVisible: true, render: v => <Tag style={{ background: statusBg[v] || 'rgba(0,0,0,0.03)', color: statusColors[v] || '#8c8c8c', border: 'none', margin: 0, fontSize: 11 }}>{statusMap[v] || v}</Tag> },
+    { key: 'source', title: '来源', dataIndex: 'source', width: 48, align: 'center', defaultVisible: true, render: v => <span style={{ fontSize: 11, color: v === 'ai' ? '#7cacf8' : '#c9cdd4' }}>{v === 'imported' ? '导入' : v === 'ai' ? 'AI' : '手动'}</span> },
+    { key: 'isFlaky', title: 'Flaky', dataIndex: 'isFlaky', width: 40, align: 'center', defaultVisible: true, render: v => v ? <Tag color="#fff7e6" style={{ color: '#faad14', border: 'none', margin: 0 }}>F</Tag> : null },
+    { key: 'reviewStatus', title: '审核', dataIndex: 'reviewStatus', width: 52, align: 'center', defaultVisible: true, render: v => {
       if (!v) return null
-      if (v === 'approved') return <Tag color="success" style={{ fontSize: 10 }}>已审</Tag>
-      if (v === 'rejected') return <Tag color="error" style={{ fontSize: 10 }}>已拒</Tag>
-      return <Tag color="processing" style={{ fontSize: 10 }}>待审</Tag>
+      if (v === 'approved') return <Tag style={{ fontSize: 10, background: '#e0f7f6', color: '#0ea5a0', border: 'none', margin: 0 }}>已审</Tag>
+      if (v === 'rejected') return <Tag color="error" style={{ fontSize: 10, margin: 0 }}>已拒</Tag>
+      return <Tag style={{ fontSize: 10, background: 'rgba(78,138,240,0.08)', color: '#4e8af0', border: 'none', margin: 0 }}>待审</Tag>
     }},
-    { key: 'qualityScore', title: '评分', dataIndex: 'qualityScore', width: 55, align: 'center', defaultVisible: false, render: v => {
+    { key: 'qualityScore', title: '评分', dataIndex: 'qualityScore', width: 48, align: 'center', defaultVisible: false, render: v => {
       if (!v || v.total == null) return <span style={{ color: '#c9cdd4' }}>—</span>
-      const color = v.total >= 85 ? '#52c41a' : v.total >= 70 ? '#4e8af0' : '#faad14'
+      const color = v.total >= 85 ? '#0ea5a0' : v.total >= 70 ? '#4e8af0' : '#faad14'
       return <span style={{ color, fontWeight: 600, fontSize: 12 }}>{v.total}</span>
     }},
     { key: 'scriptRefFile', title: '脚本文件', dataIndex: 'scriptRefFile', width: 200, ellipsis: true, defaultVisible: false, render: v => <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#86909c' }}>{v || '-'}</span> },
     { key: 'teaId', title: 'TEA ID', dataIndex: 'teaId', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v || '-'}</span> },
     { key: 'createdAt', title: '创建时间', dataIndex: 'createdAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
     { key: 'updatedAt', title: '更新时间', dataIndex: 'updatedAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
-    { key: 'actions', title: '操作', width: 110, align: 'center', defaultVisible: true, render: (_, row) => (
+    { key: 'actions', title: '操作', width: 80, align: 'center', defaultVisible: true, render: (_, row) => (
       statusFilter === 'deleted' ? (
         <Popconfirm title="确定彻底删除此用例？此操作不可恢复！" onConfirm={async () => {
           try {
@@ -337,12 +404,13 @@ export default function CaseManagement() {
             fetchCases()
           } catch { /* */ }
         }}>
-          <Button type="text" size="small" icon={<DeleteOutlined />} danger>彻底删除</Button>
+          <Button type="link" size="small" danger style={{ fontSize: 12, padding: '0 4px' }}>彻底删除</Button>
         </Popconfirm>
       ) : (
-        <Space size={0}>
+        <Space size={4}>
           <Tooltip title="复制用例">
-            <Button type="text" size="small" icon={<CopyOutlined />} style={{ color: '#86909c' }}
+            <Button type="text" size="small" icon={<CopyOutlined />}
+              style={{ color: '#4e8af0', fontSize: 13 }}
               onClick={async (e) => {
                 e.stopPropagation()
                 try {
@@ -360,7 +428,9 @@ export default function CaseManagement() {
               fetchFolders()
             } catch { /* */ }
           }}>
-            <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#e8453c' }} />
+            <Tooltip title="删除用例">
+              <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#e8453c', fontSize: 13 }} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       )
@@ -394,73 +464,110 @@ export default function CaseManagement() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)' }}>
-      <div style={{ flex: 1, display: 'flex', gap: 6, minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'flex', gap: 0, minHeight: 0 }}>
         {/* 左侧树 */}
-        <Card style={{ width: 220, flexShrink: 0, overflow: 'auto' }}
-          styles={{ body: { padding: '8px 4px' }, header: { padding: '0 12px', minHeight: 36, borderBottom: '1px solid rgba(0,0,0,0.04)' } }}
-          title={<span style={{ fontSize: 13, fontWeight: 600 }}>用例导航</span>}
-          extra={<Button type="text" size="small" icon={<PlusOutlined />} onClick={() => setFolderModalOpen(true)} style={{ color: '#0ea5a0' }} />}>
-          {treeData.length > 0 ? (
-            <Tree
-              treeData={treeData}
-              defaultExpandAll
-              onSelect={onTreeSelect}
-              blockNode
-              style={{ fontSize: 13 }}
-              selectedKeys={selectedFolderId ? [selectedFolderId] : []}
-              titleRender={(node) => (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                  <span>{node.title}</span>
-                  <Popconfirm
-                    title="确定删除此目录？"
-                    description="仅允许删除空目录"
-                    onConfirm={async (e) => {
-                      e?.stopPropagation()
-                      try {
-                        await api.del(`/projects/${projectId}/branches/${globalBranchId}/folders/${node.key}`)
-                        message.success('目录已删除')
-                        fetchFolders()
-                      } catch { /* request.js 显示错误 */ }
-                    }}
-                    onCancel={e => e?.stopPropagation()}
-                  >
-                    <Button type="text" size="small" icon={<DeleteOutlined />}
-                      onClick={e => e.stopPropagation()}
-                      style={{ color: '#c9cdd4', opacity: 0.5, fontSize: 11 }}
-                      onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                      onMouseLeave={e => e.currentTarget.style.opacity = 0.5} />
-                  </Popconfirm>
-                </div>
-              )}
-            />
-          ) : (
-            <div style={{ textAlign: 'center', padding: 20, color: '#86909c', fontSize: 12 }}>
-              暂无目录
-              <br />
-              <Button type="link" size="small" onClick={() => setFolderModalOpen(true)}>+ 创建模块</Button>
+        {!navCollapsed && (
+          <Card style={{ width: navWidth, flexShrink: 0, overflow: 'auto', borderRadius: '16px 0 0 16px' }}
+            styles={{ body: { padding: '8px 4px' }, header: { padding: '0 8px 0 12px', minHeight: 36, borderBottom: '1px solid rgba(0,0,0,0.04)' } }}
+            title={<span style={{ fontSize: 13, fontWeight: 600 }}>用例导航</span>}
+            extra={
+              <Space size={0}>
+                <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => setFolderModalOpen(true)} style={{ color: '#0ea5a0' }} />
+                <Tooltip title="收起导航">
+                  <Button type="text" size="small" icon={<MenuFoldOutlined />} onClick={() => setNavCollapsed(true)} style={{ color: '#c9cdd4' }} />
+                </Tooltip>
+              </Space>
+            }>
+            {treeData.length > 0 ? (
+              <Tree
+                treeData={treeData}
+                defaultExpandAll
+                onSelect={onTreeSelect}
+                blockNode
+                style={{ fontSize: 13 }}
+                selectedKeys={selectedFolderId ? [selectedFolderId] : []}
+                titleRender={(node) => (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <span>{node.title}</span>
+                    <Popconfirm
+                      title="确定删除此目录？"
+                      description="仅允许删除空目录"
+                      onConfirm={async (e) => {
+                        e?.stopPropagation()
+                        try {
+                          await api.del(`/projects/${projectId}/branches/${globalBranchId}/folders/${node.key}`)
+                          message.success('目录已删除')
+                          fetchFolders()
+                        } catch { /* request.js 显示错误 */ }
+                      }}
+                      onCancel={e => e?.stopPropagation()}
+                    >
+                      <Button type="text" size="small" icon={<DeleteOutlined />}
+                        onClick={e => e.stopPropagation()}
+                        style={{ color: '#c9cdd4', opacity: 0.5, fontSize: 11 }}
+                        onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                        onMouseLeave={e => e.currentTarget.style.opacity = 0.5} />
+                    </Popconfirm>
+                  </div>
+                )}
+              />
+            ) : (
+              <div style={{ textAlign: 'center', padding: 20, color: '#86909c', fontSize: 12 }}>
+                暂无目录
+                <br />
+                <Button type="link" size="small" onClick={() => setFolderModalOpen(true)}>+ 创建模块</Button>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* 拖拽调宽手柄 / 展开按钮 */}
+        {navCollapsed ? (
+          <Tooltip title="展开导航" placement="right">
+            <div
+              onClick={() => setNavCollapsed(false)}
+              style={{
+                width: 20, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(255,255,255,0.35)', borderRadius: '12px 0 0 12px', transition: 'background 0.2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(14,165,160,0.08)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.35)'}
+            >
+              <MenuUnfoldOutlined style={{ fontSize: 11, color: '#86909c' }} />
             </div>
-          )}
-        </Card>
+          </Tooltip>
+        ) : (
+          <div
+            onMouseDown={onResizeStart}
+            style={{
+              width: 6, flexShrink: 0, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'transparent', transition: 'background 0.2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(14,165,160,0.15)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <div style={{ width: 2, height: 24, borderRadius: 1, background: 'rgba(0,0,0,0.08)' }} />
+          </div>
+        )}
 
         {/* 右侧列表 */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
           {/* 工具栏 */}
           <Card styles={{ body: { padding: '8px 16px' } }} style={{ flexShrink: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Space size={12}>
-                <Input prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />} placeholder="搜索用例ID或标题" value={keyword}
-                  onChange={e => { setKeyword(e.target.value); setPage(1) }} allowClear style={{ width: 260 }}
-                  onPressEnter={fetchCases} />
-                <Radio.Group value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }} size="small" buttonStyle="solid">
-                  <Radio.Button value="">全部 ({total})</Radio.Button>
-                  <Radio.Button value="automated">已自动化</Radio.Button>
-                  <Radio.Button value="pending">待自动化</Radio.Button>
-                  <Radio.Button value="archived">已归档</Radio.Button>
-                  <Radio.Button value="deleted">已删除</Radio.Button>
-                  <Radio.Button value="pending_review">待审核</Radio.Button>
-                </Radio.Group>
-              </Space>
-              <Space>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px', alignItems: 'center' }}>
+              <Input prefix={<SearchOutlined style={{ color: '#c9cdd4' }} />} placeholder="搜索用例ID或标题" value={keyword}
+                onChange={e => { setKeyword(e.target.value); setPage(1) }} allowClear style={{ width: 220 }}
+                onPressEnter={fetchCases} />
+              <Radio.Group value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }} size="small" buttonStyle="solid">
+                <Radio.Button value="">全部</Radio.Button>
+                <Radio.Button value="automated">已自动化</Radio.Button>
+                <Radio.Button value="pending">待自动化</Radio.Button>
+                <Radio.Button value="archived">已归档</Radio.Button>
+                <Radio.Button value="deleted">已删除</Radio.Button>
+                <Radio.Button value="pending_review">待审核</Radio.Button>
+              </Radio.Group>
+              <span style={{ flex: 1 }} />
+              <Space size={6} wrap>
                 <Tooltip title="粘贴需求文档（PRD/用户故事），AI 自动生成手工测试用例（操作步骤+预期结果）">
                   <Button type="primary" icon={<RobotOutlined />}
                     onClick={() => navigate(`/projects/${projectId}/scenario-gen?taskId=new`)}>
@@ -510,6 +617,17 @@ export default function CaseManagement() {
                     <Button size="small" type="link" danger>批量彻底删除</Button>
                   </Popconfirm>
                 ) : (<>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 4 }}>
+                  <Select size="small" value={runEnvId} onChange={setRunEnvId} placeholder="选择环境"
+                    style={{ width: 130 }} allowClear
+                    options={environments.map(e => ({ value: e.id, label: e.name }))} />
+                  <Button size="small" type="primary" icon={<PlayCircleOutlined />}
+                    loading={batchRunning} disabled={!runEnvId}
+                    onClick={handleBatchRun}>
+                    批量执行
+                  </Button>
+                </div>
+                <div style={{ width: 1, height: 16, background: 'rgba(0,0,0,0.1)' }} />
                 <Popconfirm title={`确定归档 ${selectedRowKeys.length} 条用例？`} onConfirm={async () => {
                   try {
                     await api.post(`/projects/${projectId}/branches/${globalBranchId}/cases/batch`, { caseIds: selectedRowKeys, action: 'archive' })
@@ -665,7 +783,7 @@ export default function CaseManagement() {
       >
         <Form form={folderForm} layout="vertical" style={{ marginTop: 12 }}>
           <Form.Item name="name" label="模块名称"
-            rules={[{ required: true, message: '请输入模块名称' }, { pattern: /^[A-Za-z0-9_-]+$/, message: '仅允许字母、数字、下划线、横线' }]}
+            rules={[{ required: true, message: '请输入模块名称' }, { max: 50, message: '最多50个字符' }]}
           >
             <Input placeholder="如：AUTH、USER_MGMT" style={{ textTransform: 'uppercase' }} />
           </Form.Item>
@@ -695,7 +813,7 @@ export default function CaseManagement() {
           <p style={{ fontSize: 12, color: '#86909c', marginBottom: 12 }}>勾选需要显示的列（标题列始终显示）</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {allColumns.filter(c => !c.fixed).map(col => (
-              <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 8px', borderRadius: 10, background: visibleColumnKeys.includes(col.key) ? '#e0f7f6' : 'transparent' }}>
+              <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 8px', borderRadius: 12, background: visibleColumnKeys.includes(col.key) ? '#e0f7f6' : 'transparent' }}>
                 <input
                   type="checkbox"
                   checked={visibleColumnKeys.includes(col.key)}
@@ -738,7 +856,7 @@ export default function CaseManagement() {
               <div style={{ fontSize: 48, fontWeight: 700, color: reviewResult.score >= 75 ? '#0ea5a0' : reviewResult.score >= 60 ? '#faad14' : '#e8453c' }}>
                 {reviewResult.score}
               </div>
-              <Tag color={reviewResult.score >= 75 ? 'success' : reviewResult.score >= 60 ? 'warning' : 'error'} style={{ fontSize: 14 }}>
+              <Tag color={reviewResult.score >= 75 ? 'cyan' : reviewResult.score >= 60 ? 'warning' : 'error'} style={{ fontSize: 14 }}>
                 {reviewResult.level}
               </Tag>
               <div style={{ marginTop: 8, color: '#86909c' }}>
@@ -749,7 +867,7 @@ export default function CaseManagement() {
             {reviewResult.report?.dimensions && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
                 {Object.entries(reviewResult.report.dimensions).map(([key, dim]) => (
-                  <div key={key} style={{ padding: '8px 12px', background: 'transparent', borderRadius: 10, borderLeft: `3px solid ${dim.score >= 80 ? '#0ea5a0' : dim.score >= 60 ? '#faad14' : '#e8453c'}` }}>
+                  <div key={key} style={{ padding: '8px 12px', background: 'transparent', borderRadius: 12, borderLeft: `3px solid ${dim.score >= 80 ? '#0ea5a0' : dim.score >= 60 ? '#faad14' : '#e8453c'}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Text strong>{{completeness:'完整性',accuracy:'准确性',effectiveness:'有效性',executability:'可执行性'}[key] || key}</Text>
                       <Text strong>{dim.score} 分 ({dim.weight}%)</Text>
@@ -763,7 +881,7 @@ export default function CaseManagement() {
             )}
 
             {reviewResult.report?.suggestions?.length > 0 && (
-              <div style={{ padding: '8px 12px', background: '#e0f7f6', borderRadius: 10 }}>
+              <div style={{ padding: '8px 12px', background: '#e0f7f6', borderRadius: 12 }}>
                 <Text strong>改进建议：</Text>
                 {reviewResult.report.suggestions.map((s, i) => (
                   <div key={i} style={{ fontSize: 13, marginTop: 4 }}>• {s}</div>
@@ -795,6 +913,37 @@ export default function CaseManagement() {
         open={scriptModalOpen}
         onClose={() => setScriptModalOpen(false)}
       />
+
+      {/* 批量执行结果 */}
+      <Modal title="批量执行结果" open={!!batchResult} onCancel={() => setBatchResult(null)} footer={null} width={520}>
+        {batchResult && (<>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+            <div style={{ flex: 1, textAlign: 'center', padding: '12px 0', background: '#e0f7f6', borderRadius: 12 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#0ea5a0' }}>{batchResult.success}</div>
+              <div style={{ fontSize: 12, color: '#86909c' }}>通过</div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center', padding: '12px 0', background: '#fff2f0', borderRadius: 12 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#e8453c' }}>{batchResult.fail}</div>
+              <div style={{ fontSize: 12, color: '#86909c' }}>失败</div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center', padding: '12px 0', background: 'rgba(0,0,0,0.03)', borderRadius: 12 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#86909c' }}>{batchResult.skip}</div>
+              <div style={{ fontSize: 12, color: '#86909c' }}>跳过</div>
+            </div>
+          </div>
+          <div style={{ maxHeight: 300, overflow: 'auto' }}>
+            {batchResult.details.map((d, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 12 }}>
+                <Tag color={d.status === 'pass' ? 'cyan' : d.status === 'fail' ? 'red' : 'default'} style={{ margin: 0, width: 40, textAlign: 'center' }}>
+                  {d.status === 'pass' ? '通过' : d.status === 'fail' ? '失败' : '跳过'}
+                </Tag>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title || d.caseId}</span>
+                {d.error && <span style={{ color: '#e8453c', fontSize: 11, flexShrink: 0 }}>{d.error}</span>}
+              </div>
+            ))}
+          </div>
+        </>)}
+      </Modal>
     </div>
   )
 }
