@@ -54,8 +54,9 @@ export default function ApiTest() {
 
   useEffect(() => {
     if (!projectId) return
-    api.get(`/projects/${projectId}`).then(res => {
-      setProjectInfo(prev => ({ ...prev, name: res.data?.name || '' }))
+    api.get('/projects').then(res => {
+      const p = (res.data || []).find(x => x.id === projectId)
+      if (p) setProjectInfo(prev => ({ ...prev, name: p.name }))
     }).catch(() => {})
   }, [projectId])
 
