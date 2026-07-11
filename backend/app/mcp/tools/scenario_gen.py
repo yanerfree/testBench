@@ -88,3 +88,87 @@ async def get_generation_stats(
         "total": total, "approved": approved, "rejected": rejected,
         "approval_rate": round(approved / total * 100, 1) if total > 0 else 0,
     }
+
+
+async def confirm_and_generate(
+    session: AsyncSession,
+    task_id: str,
+) -> dict:
+    """确认需求点和场景模型，自动推进到用例展开。一步到位完成整个流水线。"""
+    from sqlalchemy import select, func
+    from app.models.scenario_gen import GenerationTask, RequirementPoint, ScenarioModel
+    from app.services.scenario_gen import pipeline
+    from app.services.scenario_gen import runner as gen_runner
+    from app.deps.db import async_session_factory
+    from datetime import datetime, timezone
+
+    tid = uuid.UUID(task_id)
+    task = await session.get(GenerationTask, tid)
+    if not task:
+        return {"error": "任务不存在"}
+
+    # 如果还在 extracting，等一下
+    if task.status == "extracting":
+        return {"task_id": task_id, "status": "extracting", "message": "需求点还在提取中，请稍后再调用此工具"}
+
+    # model_ready → 确认需求点 → 触发建模
+    if task.status == "model_ready":
+        points_count = (await session.execute(
+            select(func.count(RequirementPoint.id)).where(
+                RequirementPoint.task_id == tid,
+                RequirementPoint.status == "active",
+            )
+        )).scalar_one()
+        if points_count == 0:
+            return {"error": "没有有效需求点，无法继续"}
+
+        # 触发场景模型生成
+        pipeline.spawn(gen_runner.run_modeling(tid, task.project_id), name=f"mcp-model-{tid}", gen_task_id=tid)
+        return {
+            "task_id": task_id, "status": "modeling",
+            "points_count": points_count,
+            "message": f"已确认 {points_count} 个需求点，正在生成场景模型。请稍后再次调用查看进度。",
+        }
+
+    # 场景模型已生成，等待确认 → 直接确认并展开
+    result = await session.execute(select(ScenarioModel).where(ScenarioModel.task_id == tid))
+    model = result.scalar_one_or_none()
+
+    if task.status == "model_ready" or (model and model.status == "draft"):
+        if not model:
+            return {"error": "场景模型尚未生成", "status": task.status}
+        tp_count = len(model.test_points) if model.test_points else 0
+        if tp_count == 0:
+            return {"error": "场景模型中无测试点"}
+
+        model.status = "confirmed"
+        model.confirmed_at = datetime.now(timezone.utc)
+        try:
+            await pipeline.transition(session, task, "confirmed")
+        except Exception as e:
+            return {"error": f"状态推进失败: {e}"}
+        await session.commit()
+
+        # 后台触发展开
+        async def _start():
+            async with async_session_factory() as s:
+                t = await s.get(GenerationTask, tid)
+                if t and t.status == "confirmed":
+                    await pipeline.transition(s, t, "generating")
+                    await s.commit()
+            await gen_runner.run_expansion(tid, task.project_id)
+        pipeline.spawn(_start(), name=f"mcp-expand-{tid}", gen_task_id=tid)
+
+        return {
+            "task_id": task_id, "status": "generating",
+            "test_points": tp_count,
+            "message": f"已确认场景模型（{tp_count} 个测试点），正在批量展开用例。",
+        }
+
+    # 已经在 generating/completed/failed
+    return {
+        "task_id": task_id,
+        "status": task.status,
+        "progress": task.progress,
+        "message": f"当前状态: {task.status}" + (f"，进度: {task.progress}" if task.progress else ""),
+    }

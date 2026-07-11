@@ -52,7 +52,7 @@ _register(
 _register(
     test_cases.create_case,
     name="tb_create_case",
-    description="""创建一条功能测试用例（默认使用此工具生成用例）。自动生成编号和目录。
+    description="""创建单条功能测试用例（适合快速补充少量用例）。批量生成推荐用 tb_create_scenario_task 流水线。
 
 参数: branch_id, title, module, case_type(api/e2e), submodule, priority(P0-P3), preconditions, steps([{seq,action,expected}]), expected_result
 
@@ -64,7 +64,6 @@ _register(
 5. preconditions必填（登录状态、测试数据准备）
 6. steps每项必须有seq(从1开始)、action、expected
 7. module必填，用中文（如"服务管理"、"用户管理"）
-8. 输入数据用${变量名}引用，preconditions中声明生成规则+示例值
 
 正确示例:
   step: "点击右上角「创建服务」按钮"  expected: "弹出创建服务表单弹窗"
@@ -157,13 +156,21 @@ _register(
 _register(
     scenario_gen.create_scenario_task,
     name="tb_create_scenario_task",
-    description="【仅当用户明确说'从需求文档生成'或'场景生成任务'时使用】创建功能场景测试生成任务（需求文档驱动，需人工确认后才展开用例）。日常生成用例请用 tb_create_case。参数: project_id(项目UUID), branch_id(分支UUID), title(任务名称), content_markdown(需求文档Markdown内容)",
+    description="""创建功能测试用例生成任务（推荐方式，质量最高）。AI 自动提取需求点→生成场景模型→批量展开用例，有多阶段质量管控。
+创建后需调用 tb_confirm_and_generate 推进流程。
+参数: project_id(项目UUID), branch_id(分支UUID), title(任务名称), content_markdown(需求文档Markdown内容)""",
 )
 
 _register(
     scenario_gen.get_scenario_task,
     name="tb_get_scenario_task",
     description="查询功能场景测试生成任务的状态与进度。参数: task_id(任务UUID)",
+)
+
+_register(
+    scenario_gen.confirm_and_generate,
+    name="tb_confirm_and_generate",
+    description="确认需求点和场景模型，自动推进到用例展开。在 tb_create_scenario_task 创建任务后调用。可多次调用查看进度。参数: task_id(任务UUID)",
 )
 
 _register(
