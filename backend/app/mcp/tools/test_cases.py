@@ -83,6 +83,11 @@ async def create_case(
             if not s.get("seq"):
                 s["seq"] = i + 1
 
+    if preconditions:
+        import re
+        preconditions = re.sub(r'；\s*(\d+)\.\s*', r'\n\1. ', preconditions)
+        preconditions = re.sub(r';\s*(\d+)\.\s*', r'\n\1. ', preconditions)
+
     from app.schemas.case import CreateCaseRequest
     data = CreateCaseRequest(
         title=title,
