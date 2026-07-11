@@ -74,7 +74,15 @@ async def create_case(
     steps: list | None = None,
     expected_result: str | None = None,
 ) -> dict:
-    """创建一条测试用例。自动生成 case_code 和目录。"""
+    """创建一条测试用例。自动生成 case_code 和目录。创建前会做质量校验，不合格时返回 warnings。"""
+
+    warnings = _validate_case_quality(title, module, priority, preconditions, steps, expected_result)
+
+    if steps:
+        for i, s in enumerate(steps):
+            if not s.get("seq"):
+                s["seq"] = i + 1
+
     from app.schemas.case import CreateCaseRequest
     data = CreateCaseRequest(
         title=title,
@@ -87,7 +95,49 @@ async def create_case(
         expected_result=expected_result,
     )
     case = await case_service.create_case(session, uuid.UUID(branch_id), data)
-    return _case_to_dict(case)
+    result = _case_to_dict(case)
+    if warnings:
+        result["_qualityWarnings"] = warnings
+    return result
+
+
+_FUZZY_WORDS = ["操作成功", "显示正常", "无报错", "符合预期", "正确显示", "成功返回", "正常运行", "有效数据", "合法数据"]
+_API_PATTERNS = ["POST /", "GET /", "PUT /", "DELETE /", "PATCH /", "返回 2", "返回 4", "返回 5", "HTTP ", "curl "]
+
+
+def _validate_case_quality(title, module, priority, preconditions, steps, expected_result) -> list[str]:
+    warnings = []
+
+    if not module or module.strip() == "-":
+        warnings.append("module 为空：用例必须归属到具体模块（如'服务管理/创建服务'）")
+
+    if not preconditions or len(preconditions.strip()) < 5:
+        warnings.append("preconditions 为空或过短：必须声明前置条件（登录状态、测试数据等）")
+
+    if "/" in title and "—" not in title:
+        warnings.append(f"标题含 '/' 可能混合了多个场景：'{title}'。建议拆分为独立用例")
+
+    if steps:
+        for i, s in enumerate(steps):
+            action = s.get("action", "")
+            expected = s.get("expected", "")
+
+            for pat in _API_PATTERNS:
+                if pat in action:
+                    warnings.append(f"步骤 {i+1} 使用了接口调用风格（'{pat}...'），应改为页面操作描述")
+                    break
+
+            for fw in _FUZZY_WORDS:
+                if fw in expected:
+                    warnings.append(f"步骤 {i+1} 预期含模糊词'{fw}'，应改为具体可验证描述")
+                    break
+
+    if expected_result:
+        for fw in _FUZZY_WORDS:
+            if fw in expected_result:
+                warnings.append(f"expected_result 含模糊词'{fw}'")
+
+    return warnings
 
 
 async def get_folder_tree(session: AsyncSession, branch_id: str) -> list[dict]:
