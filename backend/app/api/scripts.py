@@ -186,7 +186,7 @@ async def generate_script_ai_stream(
                                 "variablesUsed": [], "scriptId": str(script.id),
                             }
                         await session.commit()
-                    yield f"event: done\ndata: {json_mod.dumps({'all_passed': gen_result['all_passed'], 'results': [{'step': r.get('step',''), 'status': r['status'], 'error': r.get('error','')} for r in gen_result['results']]}, ensure_ascii=False)}\n\n"
+                    yield f"event: done\ndata: {json_mod.dumps({'status': 'passed' if gen_result['all_passed'] else 'failed', 'all_passed': gen_result['all_passed'], 'results': [{'step': r.get('step',''), 'action': r.get('step',''), 'status': r['status'], 'error': r.get('error','')} for r in gen_result['results']]}, ensure_ascii=False)}\n\n"
                     break
                 else:
                     yield f"event: {event['type']}\ndata: {json_mod.dumps(event, ensure_ascii=False)}\n\n"
