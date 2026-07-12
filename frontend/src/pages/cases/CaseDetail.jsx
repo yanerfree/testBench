@@ -538,14 +538,6 @@ function ScenarioEditor({
               style={{ borderColor: '#7c5cbf', color: '#7c5cbf' }}>
               {aiGenerating ? '生成中...' : 'AI 生成'}
             </Button>
-            {debugResult && debugResult.status !== 'passed' && (
-              <Button size="small" icon={<BugOutlined />}
-                loading={aiDebugging} disabled={!runEnv}
-                onClick={handleAiDebug}
-                style={{ borderColor: '#fa8c16', color: '#fa8c16' }}>
-                {aiDebugging ? '调试中...' : 'AI 调试'}
-              </Button>
-            )}
             <Button size="small" type="primary" icon={<PlayCircleOutlined />}
               loading={debugRunning} disabled={!runEnv}
               onClick={handleDebugRun}
