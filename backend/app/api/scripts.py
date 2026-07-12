@@ -173,6 +173,7 @@ async def generate_script_ai_stream(
         result = await anyio.to_thread.run_sync(lambda: step_by_step_generate(
             base_url=base_url, credentials=creds, steps=case.steps or [],
             fixture_name=fixture_name, on_step=on_step, healing_history=healing_history,
+            preconditions=case.preconditions or "",
         ))
         queue.put_nowait({"type": "done", "result": result})
 

@@ -45,6 +45,7 @@ def step_by_step_generate(
     llm_complete=None,
     on_step=None,
     healing_history: list[dict] | None = None,
+    preconditions: str = "",
 ) -> dict:
     """
     逐步生成 Playwright 脚本。
@@ -81,7 +82,21 @@ def step_by_step_generate(
             on_step({"type": "step_done", "action": login_result["step"], "status": login_result["status"], "seq": 0})
         if login_result["status"] == "failed":
             browser.close()
-            return {"script": "", "results": results, "all_passed": False}
+            return {"script": "", "results": results, "all_passed": False, "healing_records": healing_records}
+
+        # 前置条件分析 → 生成 setup 步骤
+        if preconditions:
+            setup_steps = _analyze_preconditions(llm_complete, preconditions, base_url, page)
+            for setup in setup_steps:
+                if on_step:
+                    on_step({"type": "step_start", "seq": -1, "action": setup["action"], "phase": "setup"})
+                setup_result = _execute_step(page, setup["code"], f"[前置] {setup['action']}")
+                results.append(setup_result)
+                code_blocks.append(f'    # Setup: {setup["action"]}\n    with tea_step("[前置] {setup["action"][:40]}", phase="setup"):\n' + _indent(setup["code"], 8))
+                if on_step:
+                    on_step({"type": "step_done", "seq": -1, "action": f"[前置] {setup['action']}", "status": setup_result["status"]})
+                if setup_result["status"] == "failed":
+                    break
 
         # 逐步骤生成
         for i, step in enumerate(steps):
@@ -400,6 +415,66 @@ def _classify_failure(llm_complete, action: str, error: str, snapshot: str) -> s
         return "script_bug"
     except Exception:
         return "script_bug"
+
+
+def _analyze_preconditions(llm_complete, preconditions: str, base_url: str, page) -> list[dict]:
+    """分析前置条件，生成 setup 步骤（如果需要通过 UI 操作准备数据）"""
+    # 跳过不需要准备的常见前置条件
+    skip_keywords = ["已登录", "登录", "账号", "权限"]
+    lines = [l.strip() for l in preconditions.split("\n") if l.strip()]
+    needs_setup = []
+    for line in lines:
+        if any(kw in line for kw in skip_keywords):
+            continue
+        if any(kw in line for kw in ["已存在", "已创建", "存在至少", "包含"]):
+            needs_setup.append(line)
+
+    if not needs_setup:
+        return []
+
+    # 让 LLM 判断哪些前置条件需要通过 UI 操作准备，哪些已经满足
+    try:
+        snapshot = page.locator("body").aria_snapshot()[:3000]
+    except Exception:
+        snapshot = ""
+
+    try:
+        prompt = f"""分析以下前置条件，判断哪些需要通过操作来准备数据。
+
+前置条件:
+{chr(10).join(needs_setup)}
+
+当前页面状态:
+{snapshot[:1500]}
+
+如果前置条件中的数据可能不存在（如"已存在至少一个服务"），生成准备数据的操作步骤。
+如果数据已经存在（页面上能看到），输出 SKIP。
+
+对每个需要准备的条件，输出一行 JSON:
+{{"action": "操作描述", "code": "page.xxx 调用代码"}}
+
+如果所有条件都已满足，只输出 SKIP"""
+
+        resp = llm_complete(prompt).strip()
+        if "SKIP" in resp.upper():
+            return []
+
+        setup_steps = []
+        for line in resp.splitlines():
+            line = line.strip()
+            if line.startswith("{"):
+                try:
+                    data = __import__("json").loads(line)
+                    if data.get("action") and data.get("code"):
+                        code = _clean_step_code(data["code"])
+                        if code:
+                            setup_steps.append({"action": data["action"], "code": code})
+                except Exception:
+                    pass
+        return setup_steps[:3]  # 最多 3 个 setup 步骤
+    except Exception as e:
+        logger.warning("前置条件分析失败: %s", e)
+        return []
 
 
 def _assemble_script(func_name: str, fixture_name: str, code_blocks: list[str]) -> str:
