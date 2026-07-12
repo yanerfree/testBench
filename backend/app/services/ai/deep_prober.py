@@ -92,31 +92,36 @@ def _login(page, username: str, password: str):
 
 
 def _try_navigate(page, action: str) -> bool:
-    """根据步骤描述尝试在页面上执行点击导航"""
-    # 提取引号内的关键词：点击「服务管理」→ 服务管理
+    """根据步骤描述尝试在页面上执行点击导航。支持多步操作（下拉菜单等）"""
     targets = re.findall(r'[「「](.+?)[」」]', action)
     if not targets:
-        # 尝试提取"点击 XXX 按钮"中的 XXX
         m = re.search(r'点击\s*(.+?)\s*(?:按钮|菜单|链接|标签|Tab)', action)
         if m:
             targets = [m.group(1)]
 
+    clicked_any = False
     for target in targets:
         try:
-            # 尝试多种定位方式
             for loc_fn in [
-                lambda: page.get_by_role("link", name=target),
-                lambda: page.get_by_role("button", name=target),
-                lambda: page.get_by_text(target),
+                lambda t=target: page.get_by_role("link", name=t),
+                lambda t=target: page.get_by_role("button", name=t),
+                lambda t=target: page.get_by_role("menuitem", name=t),
+                lambda t=target: page.get_by_text(t, exact=True),
+                lambda t=target: page.get_by_text(t),
             ]:
                 loc = loc_fn()
                 if loc.count() > 0:
                     loc.first.click()
-                    return True
+                    clicked_any = True
+                    try:
+                        page.wait_for_timeout(500)
+                    except Exception:
+                        pass
+                    break
         except Exception:
             continue
 
-    return False
+    return clicked_any
 
 
 def _capture_page(page) -> dict:

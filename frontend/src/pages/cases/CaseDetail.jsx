@@ -429,13 +429,10 @@ function ScenarioEditor({
                 } else if (currentEvent === 'step_end') {
                   setLiveSteps(prev => { const n = prev.map(s => s.seq === data.seq ? { ...s, ...data } : s); liveStepsRef.current = n; return n })
                 } else if (currentEvent === 'done') {
+                  // 优先用 liveSteps（有完整步骤名），fallback 到 data.steps
                   const live = liveStepsRef.current
-                  const finalSteps = (data.steps || []).map((s, i) => {
-                    const liveItem = live[i] || {}
-                    return { ...s, action: s.action || s.step_name || liveItem.action, step_name: s.step_name || liveItem.action }
-                  })
-                  const mergedSteps = finalSteps.length > 0 ? finalSteps : live.map(s => ({ ...s }))
-                  setDebugResult({ ...data, steps: mergedSteps, _drawerOpen: true })
+                  const steps = live.length > 0 ? live : (data.steps || [])
+                  setDebugResult({ ...data, steps, _drawerOpen: true })
                   setDebugRunning(false)
                   setLiveSteps([]); liveStepsRef.current = []
                   scriptEditorRef.current?.refresh()
@@ -543,6 +540,19 @@ function ScenarioEditor({
   })
 
   const scVars = scenario.variablesUsed || []
+
+  // UI 类型：加载最近一次执行结果（刷新后恢复 AI 调试按钮）
+  useEffect(() => {
+    if (type !== 'api' && !debugResult && caseId) {
+      api.get(`/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/runs?type=ui&limit=1`)
+        .then(res => {
+          const last = (res.data || [])[0]
+          if (last && last.status !== 'passed') {
+            setDebugResult({ ...last, durationMs: last.durationMs || last.duration_ms, errorSummary: last.errorSummary || last.error_summary })
+          }
+        }).catch(() => {})
+    }
+  }, [caseId, type])
 
   // ── UI 类型：专用简洁布局 ──
   if (type !== 'api') {
