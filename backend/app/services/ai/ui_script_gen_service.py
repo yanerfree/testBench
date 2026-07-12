@@ -43,26 +43,20 @@ async def generate_ui_script(
     fixture_name = _detect_fixture(case.preconditions or "")
     creds = _get_credentials(env_vars, fixture_name)
 
-    # 深度探测：沿用例步骤导航，采集每页真实结构
-    page_info = ""
-    if base_url and case.steps:
-        import anyio
-        from app.services.ai.deep_prober import deep_probe, format_probe_for_prompt
-        probe_results = await anyio.to_thread.run_sync(
-            lambda: deep_probe(base_url, creds, case.steps)
-        )
-        page_info = format_probe_for_prompt(probe_results)
-        logger.info("深度探测完成，采集了 %d 个页面", len(probe_results))
+    # 逐步生成：一步一步生成+执行，每步基于真实页面
+    import anyio
+    from app.services.ai.step_generator import step_by_step_generate
 
-    # 构建 prompt
-    case_text = _format_case(case, fixture_name)
-    messages = [
-        {"role": "system", "content": get_system_prompt()},
-        {"role": "user", "content": get_user_prompt(case_text, env_vars_text, page_info)},
-    ]
+    gen_result = await anyio.to_thread.run_sync(lambda: step_by_step_generate(
+        base_url=base_url,
+        credentials=creds,
+        steps=case.steps or [],
+        fixture_name=fixture_name,
+    ))
 
-    resp = await complete(messages, max_tokens=4096, temperature=0.1)
-    script_content = _extract_code(resp.content)
+    script_content = gen_result.get("script", "")
+    if not script_content.strip():
+        raise ValueError("逐步生成失败，未生成有效脚本")
 
     # 保存
     script = await script_service.create_script(
