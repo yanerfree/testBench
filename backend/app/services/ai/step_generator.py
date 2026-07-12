@@ -76,7 +76,7 @@ def step_by_step_generate(
         login_result = _do_login(page, base_url, credentials)
         results.append(login_result)
         if on_step:
-            on_step({"type": "step_done", "step": login_result["step"], "status": login_result["status"], "seq": 0})
+            on_step({"type": "step_done", "action": login_result["step"], "status": login_result["status"], "seq": 0})
         if login_result["status"] == "failed":
             browser.close()
             return {"script": "", "results": results, "all_passed": False}
