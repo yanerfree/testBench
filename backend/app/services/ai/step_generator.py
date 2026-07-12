@@ -88,6 +88,9 @@ def step_by_step_generate(
             if not action:
                 continue
 
+            # 检测是否需要拆成"打开下拉+选择"两步
+            is_select_step = any(kw in action for kw in ["下拉", "选择", "请选择"])
+
             # 1. 拿当前页面 snapshot
             if on_step:
                 on_step({"type": "step_start", "seq": i + 1, "action": action, "phase": "generating"})
@@ -116,6 +119,23 @@ def step_by_step_generate(
             if exec_result["status"] == "passed":
                 if on_step:
                     on_step({"type": "step_done", "seq": i + 1, "action": action, "status": "passed"})
+
+                # 选择类步骤：执行后可能打开了下拉，需要拿新 snapshot 让 AI 选择选项
+                if is_select_step and "选择" in action:
+                    try:
+                        page.wait_for_timeout(500)
+                        new_snap = page.locator("body").aria_snapshot()[:6000]
+                        select_code = _generate_one_step(
+                            llm_complete=llm_complete, step_num=i + 1,
+                            action=f"在已打开的下拉列表中选择第一个可用选项",
+                            expected="选中选项", snapshot=new_snap, page_url=page.url,
+                        )
+                        select_result = _execute_step(page, select_code, f"{action}（选择选项）")
+                        if select_result["status"] == "passed":
+                            code_blocks[-1] += _indent(select_code, 8)
+                    except Exception:
+                        pass
+
             elif exec_result["status"] == "failed":
                 # 尝试修复，最多 3 次
                 fixed = False
@@ -215,23 +235,23 @@ Aria Snapshot:
 5. 下拉菜单/弹窗中的临时选项 → 用 `page.get_by_text("文字").click()`
 6. 匹配多个元素时加 `.first` 或 `.nth(0)`
 7. **禁止 get_by_label、get_by_placeholder、CSS 选择器**
+8. 选择下拉框选项：先 `page.get_by_text("请选择…").click()` 打开，再 `page.get_by_text("选项名").click()` 选择
+9. 不要用 `get_by_role("option")`，自定义下拉组件没有 option 角色
 
-## 输出
-只输出 2-5 行纯 Python 代码，不要函数定义/import/markdown。变量固定用 `page`。"""
+## 输出（严格遵守）
+只输出 2-5 行 page.xxx 调用代码。不要 import/函数定义/sync_playwright/markdown。
+正确示例:
+page.get_by_text("服务管理").click()
+page.wait_for_load_state("networkidle")
+"""
 
     if llm_complete is None:
         return f'page.get_by_text("{action[:20]}").click()\npage.wait_for_load_state("domcontentloaded")'
 
     try:
         resp = llm_complete(prompt)
-        code = resp.strip()
-        if "```" in code:
-            match = re.search(r"```(?:python)?\s*\n(.*?)```", code, re.DOTALL)
-            if match:
-                code = match.group(1).strip()
-        for pat in (r"^import ", r"^from ", r"^def "):
-            code = re.sub(pat + r".*\n?", "", code, flags=re.MULTILINE)
-        return code.strip()
+        code = _clean_step_code(resp)
+        return code if code.strip() else "pass"
     except Exception as e:
         logger.warning("LLM 生成步骤 %d 失败: %s", step_num, e)
         return f'# LLM 生成失败: {e}\npass'
@@ -256,19 +276,16 @@ def _fix_one_step(llm_complete, action: str, original_code: str, error: str, sna
 ```
 
 修复规则:
-- 用 get_by_role / get_by_text / get_by_label，名称从 Snapshot 查找
-- 禁止 get_by_placeholder、禁止 CSS 选择器
-- 如果 strict mode violation: resolved to N elements → 加 .first 或 .nth(0)
-- 如果 timeout 找不到元素 → 换一个 Snapshot 中存在的元素定位方式
-- 如果需要输入到特定输入框 → 用 get_by_label("标签文字") 精确定位"""
+- 用 get_by_role / get_by_text，名称从 Snapshot 查找
+- 禁止 get_by_placeholder、get_by_label、CSS 选择器
+- 不要用 get_by_role("option")，自定义下拉没有 option 角色
+- 选择下拉选项：page.get_by_text("请选择…").click() → page.get_by_text("选项名").click()
+- strict mode violation → 加 .first 或用更精确的文字匹配
+- timeout 找不到 → 换 Snapshot 中存在的元素"""
 
     try:
         resp = llm_complete(prompt)
-        code = resp.strip()
-        if "```" in code:
-            match = re.search(r"```(?:python)?\s*\n(.*?)```", code, re.DOTALL)
-            if match:
-                code = match.group(1).strip()
+        code = _clean_step_code(resp)
         return code.strip() or None
     except Exception:
         return None
@@ -286,6 +303,25 @@ def _execute_step(page, code: str, step_name: str) -> dict:
 def _indent(code: str, spaces: int) -> str:
     prefix = " " * spaces
     return "\n".join(prefix + line for line in code.splitlines()) + "\n"
+
+
+def _clean_step_code(raw: str) -> str:
+    """清理 LLM 返回的代码——去掉 markdown/import/函数定义/类定义"""
+    code = raw.strip()
+    if "```" in code:
+        match = re.search(r"```(?:python)?\s*\n(.*?)```", code, re.DOTALL)
+        if match:
+            code = match.group(1).strip()
+    # 删除不需要的行
+    lines = []
+    for line in code.splitlines():
+        stripped = line.strip()
+        if any(stripped.startswith(p) for p in ("import ", "from ", "def ", "async def ", "class ", "with sync_playwright", "browser =", "browser.", "context =", "context.", "page = browser", "page = context")):
+            continue
+        if stripped.startswith("```"):
+            continue
+        lines.append(line)
+    return "\n".join(lines).strip()
 
 
 def _assemble_script(func_name: str, fixture_name: str, code_blocks: list[str]) -> str:
