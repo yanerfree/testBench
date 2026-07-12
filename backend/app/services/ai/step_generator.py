@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-import time
 
 import httpx
 
@@ -70,7 +69,7 @@ def step_by_step_generate(
         llm_complete = _llm_complete_sync
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=True, timeout=30000)
         context = browser.new_context(locale="zh-CN", viewport={"width": 1280, "height": 720})
         page = context.new_page()
         page.set_default_timeout(10000)
@@ -184,6 +183,7 @@ def step_by_step_generate(
                 # 尝试修复，最多 3 次
                 fixed = False
                 last_error = exec_result.get("error", "")
+                current_snapshot = snapshot  # 初始化为当前 snapshot
                 for fix_attempt in range(3):
                     try:
                         page.wait_for_load_state("domcontentloaded")
@@ -222,13 +222,13 @@ def step_by_step_generate(
 
                 if not fixed:
                     # 分类失败原因
-                    failure_type = _classify_failure(llm_complete, action, last_error, current_snapshot if 'current_snapshot' in dir() else snapshot)
+                    failure_type = _classify_failure(llm_complete, action, last_error, current_snapshot)
                     healing_records.append({
                         "step_seq": i + 1, "step_action": action[:500], "page_url": page.url,
                         "failure_type": failure_type,
                         "original_code": step_code, "error_summary": last_error[:2000],
                         "fix_code": None, "fix_method": "all_attempts_failed",
-                        "page_snapshot": (current_snapshot if 'current_snapshot' in dir() else snapshot)[:2000],
+                        "page_snapshot": current_snapshot[:2000],
                         "resolved": False,
                     })
                     if on_step:
@@ -492,7 +492,7 @@ def _analyze_preconditions(llm_complete, preconditions: str, base_url: str, page
             line = line.strip()
             if line.startswith("{"):
                 try:
-                    data = __import__("json").loads(line)
+                    data = json.loads(line)
                     if data.get("action") and data.get("code"):
                         code = _clean_step_code(data["code"])
                         if code:

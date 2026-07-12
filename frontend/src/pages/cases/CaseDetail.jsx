@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Tag, Button, Input, Select, Space, Modal, Drawer, message, Tabs, Switch, Popover, Tooltip, Spin, Empty, Table } from 'antd'
 import {
   ArrowLeftOutlined, PlayCircleOutlined, SaveOutlined,
-  ExperimentOutlined, BugOutlined, PlusOutlined, DeleteOutlined, HolderOutlined,
+  PlusOutlined, DeleteOutlined, HolderOutlined,
   ThunderboltOutlined, TagOutlined, AppstoreOutlined, ApiOutlined,
   FlagOutlined, WarningOutlined, CodeOutlined, CopyOutlined, FileTextOutlined,
   DesktopOutlined, CheckCircleOutlined, StarOutlined, StarFilled, ImportOutlined,
@@ -290,7 +290,6 @@ function ScenarioEditor({
   const [debugRunning, setDebugRunning] = useState(false)
   const [debugResult, setDebugResult] = useState(null)
   const [aiGenerating, setAiGenerating] = useState(false)
-  const [aiDebugging, setAiDebugging] = useState(false)
   const [previewScreenshot, setPreviewScreenshot] = useState(null)
   const [debugHistory, setDebugHistory] = useState([])
   const scriptEditorRef = useRef(null)
@@ -376,10 +375,6 @@ function ScenarioEditor({
       }
       setAiGenerating(false)
     }
-  }
-
-  const handleAiDebug = () => {
-    handleAiGenerate()
   }
 
   // 流式运行脚本 — 实时推送步骤进度

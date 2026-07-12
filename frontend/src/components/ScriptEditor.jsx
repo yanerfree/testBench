@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { Button, Select, Space, Tag, Tooltip, Upload, message, Modal, Input, Spin, Empty } from 'antd'
 import {
-  SaveOutlined, HistoryOutlined, CodeOutlined, UploadOutlined,
-  ImportOutlined, PlayCircleOutlined, CopyOutlined,
+  SaveOutlined, CodeOutlined, UploadOutlined,
+  PlayCircleOutlined, CopyOutlined,
 } from '@ant-design/icons'
 import Editor from '@monaco-editor/react'
+import { copyToClipboard } from '../utils/clipboard'
 
 const langMap = { python: 'python', typescript: 'typescript' }
 

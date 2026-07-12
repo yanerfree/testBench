@@ -891,8 +891,8 @@ export default function CaseManagement() {
                 {Object.entries(reviewResult.report.dimensions).map(([key, dim]) => (
                   <div key={key} style={{ padding: '8px 12px', background: 'transparent', borderRadius: 12, borderLeft: `3px solid ${dim.score >= 80 ? '#0ea5a0' : dim.score >= 60 ? '#faad14' : '#e8453c'}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Text strong>{{completeness:'完整性',accuracy:'准确性',effectiveness:'有效性',executability:'可执行性'}[key] || key}</Text>
-                      <Text strong>{dim.score} 分 ({dim.weight}%)</Text>
+                      <span style={{fontWeight:600}}>{{completeness:'完整性',accuracy:'准确性',effectiveness:'有效性',executability:'可执行性'}[key] || key}</span>
+                      <span style={{fontWeight:600}}>{dim.score} 分 ({dim.weight}%)</span>
                     </div>
                     {dim.issues?.length > 0 && dim.issues.map((issue, i) => (
                       <div key={i} style={{ fontSize: 12, color: '#e8453c', marginTop: 2 }}>- {issue}</div>
@@ -904,7 +904,7 @@ export default function CaseManagement() {
 
             {reviewResult.report?.suggestions?.length > 0 && (
               <div style={{ padding: '8px 12px', background: '#e0f7f6', borderRadius: 12 }}>
-                <Text strong>改进建议：</Text>
+                <span style={{fontWeight:600}}>改进建议：</span>
                 {reviewResult.report.suggestions.map((s, i) => (
                   <div key={i} style={{ fontSize: 13, marginTop: 4 }}>• {s}</div>
                 ))}

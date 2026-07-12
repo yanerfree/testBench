@@ -20,7 +20,7 @@ export default function AIScriptModal({
 
   useEffect(() => {
     if (open && projectId) {
-      api.get(`/projects/${projectId}/environments`).then(res => setEnvironments(res.data || [])).catch(() => {})
+      api.get('/environments').then(res => setEnvironments(res.data || [])).catch(() => {})
     }
   }, [open, projectId])
 
