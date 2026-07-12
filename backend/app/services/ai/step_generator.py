@@ -212,7 +212,7 @@ def _do_login(page, base_url: str, credentials: dict) -> dict:
 
 def _generate_one_step(llm_complete, step_num: int, action: str, expected: str, snapshot: str, page_url: str) -> str:
     """调 LLM 生成单个步骤的 Playwright 代码"""
-    prompt = f"""你是 Playwright 代码生成器。根据当前页面的 Aria Snapshot，生成执行操作的 Python 代码。
+    prompt = f"""你是 Playwright 代码生成器。根据当前页面的 Aria Snapshot，生成执行一步操作的 Python 代码。
 
 ## 当前页面
 URL: {page_url}
@@ -228,18 +228,36 @@ Aria Snapshot:
 {expected or "无"}
 
 ## 选择器规则（必须遵守）
-1. 看到 `textbox "xxx"` → 用 `page.get_by_role("textbox", name="xxx")`
-2. 看到 `button "xxx"` → 用 `page.get_by_role("button", name="xxx")`
-3. 看到 `heading "xxx"` → 用 `page.get_by_role("heading", name="xxx")`
-4. 看到 `link "xxx"` → 用 `page.get_by_role("link", name="xxx")`
-5. 下拉菜单/弹窗中的临时选项 → 用 `page.get_by_text("文字").click()`
-6. 匹配多个元素时加 `.first` 或 `.nth(0)`
-7. **禁止 get_by_label、get_by_placeholder、CSS 选择器**
-8. 选择下拉框选项：先 `page.get_by_text("请选择…").click()` 打开，再 `page.get_by_text("选项名").click()` 选择
-9. 不要用 `get_by_role("option")`，自定义下拉组件没有 option 角色
+1. `textbox "xxx"` → `page.get_by_role("textbox", name="xxx")`
+2. `button "xxx"` → `page.get_by_role("button", name="xxx")`
+3. `heading "xxx"` → `page.get_by_role("heading", name="xxx")`
+4. `link "xxx"` → `page.get_by_role("link", name="xxx")`
+5. `checkbox "xxx"` → `page.get_by_role("checkbox", name="xxx")`
+6. 匹配多个元素 → 加 `.first` 或 `.nth(0)`
+7. 下拉菜单/弹窗临时选项 → `page.get_by_text("文字").click()`
+8. 选择下拉框：先 `page.get_by_text("请选择…").click()` 打开，再 `page.get_by_text("选项名").click()`
 
-## 输出（严格遵守）
-只输出 2-5 行 page.xxx 调用代码。不要 import/函数定义/sync_playwright/markdown。
+## 禁止（违反会导致执行失败）
+- ❌ get_by_label — 自定义组件 label 关联不可靠
+- ❌ get_by_placeholder — placeholder 不在 aria snapshot 中
+- ❌ CSS 选择器（.ant-xxx, [class*=xxx]）
+- ❌ get_by_role("option") — 自定义下拉没有 option 角色
+- ❌ import / from / def / class / sync_playwright / browser = 等非操作代码
+- ❌ async def / await（代码在同步环境执行）
+- ❌ 编造 snapshot 中不存在的元素名称
+
+## 常见操作模式
+- 输入文字: `page.get_by_role("textbox", name="xxx").fill("值")`
+- 清空再输入: `page.get_by_role("textbox", name="xxx").clear()` + `.fill("值")`
+- 点击按钮: `page.get_by_role("button", name="xxx").click()`
+- 点击菜单: `page.get_by_text("菜单名").click()`
+- 等待加载: `page.wait_for_load_state("networkidle")`
+- 验证可见: `expect(page.get_by_role("heading", name="xxx")).to_be_visible()`
+- 验证包含文字: `expect(page.locator("body")).to_contain_text("xxx")`
+- 等待状态变化: `page.wait_for_timeout(3000)` + `expect(...).to_be_visible(timeout=10000)`
+
+## 输出
+只输出 2-6 行 page.xxx 调用。不要任何其他内容。
 正确示例:
 page.get_by_text("服务管理").click()
 page.wait_for_load_state("networkidle")
@@ -262,7 +280,7 @@ def _fix_one_step(llm_complete, action: str, original_code: str, error: str, sna
     if llm_complete is None:
         return None
 
-    prompt = f"""修复以下 Playwright 代码。只输出修复后的代码（2-5 行），不要其他内容。
+    prompt = f"""修复以下 Playwright 代码。只输出修复后的 2-6 行 page.xxx 调用代码。
 
 原代码:
 {original_code}
@@ -276,12 +294,12 @@ def _fix_one_step(llm_complete, action: str, original_code: str, error: str, sna
 ```
 
 修复规则:
-- 用 get_by_role / get_by_text，名称从 Snapshot 查找
-- 禁止 get_by_placeholder、get_by_label、CSS 选择器
-- 不要用 get_by_role("option")，自定义下拉没有 option 角色
-- 选择下拉选项：page.get_by_text("请选择…").click() → page.get_by_text("选项名").click()
-- strict mode violation → 加 .first 或用更精确的文字匹配
-- timeout 找不到 → 换 Snapshot 中存在的元素"""
+- 从 Snapshot 找正确的 role+name，用 get_by_role/get_by_text
+- ❌ 禁止: get_by_placeholder, get_by_label, CSS 选择器, get_by_role("option")
+- strict mode violation → 加 .first 或用更精确文字
+- timeout → 换一个 Snapshot 中存在的元素
+- 选择下拉: page.get_by_text("请选择…").click() → page.get_by_text("选项名").click()
+- 不要输出 import/def/class/async/markdown"""
 
     try:
         resp = llm_complete(prompt)
