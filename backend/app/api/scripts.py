@@ -112,6 +112,93 @@ async def generate_script_ai(
     return {"data": result}
 
 
+@router.post("/generate-stream")
+async def generate_script_ai_stream(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    script_type: str = Query(alias="type", default="ui"),
+    env_id: uuid.UUID | None = Body(default=None, alias="envId", embed=True),
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """SSE 流式 AI 生成 — 实时推送每步生成进度"""
+    import asyncio
+    import json as json_mod
+
+    if script_type != "ui":
+        raise AppError(code="INVALID_TYPE", message="仅支持 UI 脚本")
+
+    from app.models.environment import EnvironmentVariable
+    from app.services.ai.ui_script_gen_service import _detect_fixture, _get_credentials
+    from app.services.ai.step_generator import step_by_step_generate
+
+    case = await session.get(Case, case_id)
+    if not case:
+        raise NotFoundError(code="CASE_NOT_FOUND", message="用例不存在")
+
+    env_vars = {}
+    if env_id:
+        rows = await session.execute(
+            select(EnvironmentVariable).where(EnvironmentVariable.environment_id == env_id)
+        )
+        env_vars = {v.key: v.value for v in rows.scalars().all()}
+
+    base_url = env_vars.get("BASE_URL", "")
+    fixture_name = _detect_fixture(case.preconditions or "")
+    creds = _get_credentials(env_vars, fixture_name)
+
+    queue = asyncio.Queue()
+
+    def on_step(event):
+        queue.put_nowait(event)
+
+    async def run_generate():
+        import anyio
+        result = await anyio.to_thread.run_sync(lambda: step_by_step_generate(
+            base_url=base_url, credentials=creds, steps=case.steps or [],
+            fixture_name=fixture_name, on_step=on_step,
+        ))
+        queue.put_nowait({"type": "done", "result": result})
+
+    task = asyncio.create_task(run_generate())
+
+    async def event_generator():
+        try:
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=300)
+                except asyncio.TimeoutError:
+                    break
+                if event["type"] == "done":
+                    gen_result = event["result"]
+                    script_content = gen_result.get("script", "")
+                    if script_content.strip():
+                        script = await script_service.create_script(
+                            session, case_id=case.id, script_type="ui", content=script_content,
+                            file_name=f"test_{case.case_code.lower().replace('-', '_')}_ui.py",
+                            language="python", source="ai_generated",
+                        )
+                        case.ui_scenario_status = "completed" if gen_result["all_passed"] else "debugging"
+                        if not case.ui_scenario and case.steps:
+                            case.ui_scenario = {
+                                "steps": [{"seq": j+1, "action": s.get("action",""), "expected": s.get("expected","")} for j, s in enumerate(case.steps)],
+                                "variablesUsed": [], "scriptId": str(script.id),
+                            }
+                        await session.commit()
+                    yield f"event: done\ndata: {json_mod.dumps({'all_passed': gen_result['all_passed'], 'results': [{'step': r.get('step',''), 'status': r['status'], 'error': r.get('error','')} for r in gen_result['results']]}, ensure_ascii=False)}\n\n"
+                    break
+                else:
+                    yield f"event: {event['type']}\ndata: {json_mod.dumps(event, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            yield f"event: error\ndata: {json_mod.dumps({'error': str(e)[:300]}, ensure_ascii=False)}\n\n"
+        finally:
+            if not task.done():
+                task.cancel()
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
 @router.post("/repair")
 async def repair_script_ai(
     project_id: uuid.UUID,

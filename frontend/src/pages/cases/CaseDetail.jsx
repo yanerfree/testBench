@@ -306,35 +306,74 @@ function ScenarioEditor({
     if (type === 'api') return
     if (!runEnv) { message.warning('请先选择执行环境（需要 BASE_URL）'); return }
     setAiGenerating(true)
-    setDebugResult(null)
+    setDebugResult({ status: 'running', _drawerOpen: true, steps: [] })
     setLiveSteps([])
     liveStepsRef.current = []
-    try {
-      message.loading({ content: '正在逐步生成脚本（AI 一步步探测页面中）...', key: 'ai-gen', duration: 0 })
-      await api.post(
-        `/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/generate?type=ui`,
-        { envId: runEnv }
-      )
-      if (!scenario) {
-        setScenario({ steps: (manualSteps || []).map((s, i) => ({ seq: i + 1, action: s.action || '', expected: s.expected || '' })), variablesUsed: [] })
-      }
-      if (onScriptSaved) onScriptSaved()
-      setViewMode('code')
-      setTimeout(() => scriptEditorRef.current?.refresh(), 300)
 
-      // 自动流式运行
-      message.destroy('ai-gen')
-      runScriptWithStream((result) => {
-        setAiGenerating(false)
-        if (result.status === 'passed') {
-          message.success('验证通过！')
-        } else {
-          message.warning('验证失败，可点击「AI 调试」修复')
-        }
+    const token = localStorage.getItem('token')
+    const url = `/api/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/generate-stream?type=ui`
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ envId: runEnv }),
+        signal: controller.signal,
       })
-      return // runScriptWithStream 异步处理后续
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let currentEvent = null
+
+      const processChunk = async () => {
+        const { done, value } = await reader.read()
+        if (done) return
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) { currentEvent = line.slice(7).trim(); continue }
+          if (line.startsWith('data: ') && currentEvent) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (currentEvent === 'step_start') {
+                setLiveSteps(prev => { const n = [...prev, { ...data, status: 'running' }]; liveStepsRef.current = n; return n })
+              } else if (currentEvent === 'step_done') {
+                setLiveSteps(prev => {
+                  const existing = prev.find(s => s.seq === data.seq)
+                  const n = existing
+                    ? prev.map(s => s.seq === data.seq ? { ...s, ...data } : s)
+                    : [...prev, data]
+                  liveStepsRef.current = n; return n
+                })
+              } else if (currentEvent === 'done') {
+                const live = liveStepsRef.current
+                setDebugResult({ ...data, steps: live.length > 0 ? live : data.results || [], _drawerOpen: true })
+                if (!scenario) {
+                  setScenario({ steps: (manualSteps || []).map((s, i) => ({ seq: i + 1, action: s.action || '', expected: s.expected || '' })), variablesUsed: [] })
+                }
+                if (onScriptSaved) onScriptSaved()
+                setTimeout(() => scriptEditorRef.current?.refresh(), 300)
+                setAiGenerating(false)
+                setLiveSteps([]); liveStepsRef.current = []
+                if (data.all_passed) message.success('生成并验证全部通过！')
+                else message.warning('部分步骤失败，查看详情')
+                return
+              }
+            } catch {}
+            currentEvent = null
+          }
+        }
+        await processChunk()
+      }
+      await processChunk()
     } catch (e) {
-      message.error({ content: e?.response?.data?.error?.message || 'AI 生成失败', key: 'ai-gen' })
+      if (e.name !== 'AbortError') {
+        message.error(e?.message || 'AI 生成失败')
+      }
       setAiGenerating(false)
     }
   }

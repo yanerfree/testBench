@@ -43,6 +43,7 @@ def step_by_step_generate(
     steps: list[dict],
     fixture_name: str = "tenant_page",
     llm_complete=None,
+    on_step=None,
 ) -> dict:
     """
     逐步生成 Playwright 脚本。
@@ -74,6 +75,8 @@ def step_by_step_generate(
         # 登录
         login_result = _do_login(page, base_url, credentials)
         results.append(login_result)
+        if on_step:
+            on_step({"type": "step_done", "step": login_result["step"], "status": login_result["status"], "seq": 0})
         if login_result["status"] == "failed":
             browser.close()
             return {"script": "", "results": results, "all_passed": False}
@@ -86,6 +89,8 @@ def step_by_step_generate(
                 continue
 
             # 1. 拿当前页面 snapshot
+            if on_step:
+                on_step({"type": "step_start", "seq": i + 1, "action": action, "phase": "generating"})
             try:
                 snapshot = page.locator("body").aria_snapshot()[:6000]
             except Exception:
@@ -108,7 +113,10 @@ def step_by_step_generate(
             results.append(exec_result)
             code_blocks.append(f'    # Step {i+1}: {action}\n    with tea_step("{action[:50]}", phase="{"verify" if "验证" in action else "action"}"):\n' + _indent(step_code, 8))
 
-            if exec_result["status"] == "failed":
+            if exec_result["status"] == "passed":
+                if on_step:
+                    on_step({"type": "step_done", "seq": i + 1, "action": action, "status": "passed"})
+            elif exec_result["status"] == "failed":
                 # 尝试修复，最多 3 次
                 fixed = False
                 last_error = exec_result.get("error", "")
@@ -135,12 +143,16 @@ def step_by_step_generate(
                         results[-1] = fix_result
                         code_blocks[-1] = f'    # Step {i+1}: {action}\n    with tea_step("{action[:50]}", phase="{"verify" if "验证" in action else "action"}"):\n' + _indent(fix_code, 8)
                         fixed = True
+                        if on_step:
+                            on_step({"type": "step_done", "seq": i + 1, "action": f"{action}（修复第{fix_attempt+1}次）", "status": "passed"})
                         break
                     else:
                         last_error = fix_result.get("error", "")
                         step_code = fix_code
 
                 if not fixed:
+                    if on_step:
+                        on_step({"type": "step_done", "seq": i + 1, "action": action, "status": "failed", "error": last_error[:200]})
                     break
 
         browser.close()
