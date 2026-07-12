@@ -307,8 +307,10 @@ function ScenarioEditor({
     if (!runEnv) { message.warning('请先选择执行环境（需要 BASE_URL）'); return }
     setAiGenerating(true)
     setDebugResult(null)
+    setLiveSteps([])
+    liveStepsRef.current = []
     try {
-      message.loading({ content: '正在探测页面并生成脚本...', key: 'ai-gen', duration: 0 })
+      message.loading({ content: '正在逐步生成脚本（AI 一步步探测页面中）...', key: 'ai-gen', duration: 0 })
       await api.post(
         `/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/generate?type=ui`,
         { envId: runEnv }
@@ -608,7 +610,19 @@ function ScenarioEditor({
         </div>
 
         {/* 脚本代码 */}
-        <ScriptEditor
+        <div style={{ position: 'relative' }}>
+          {aiGenerating && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 10,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
+              background: 'rgba(30,30,46,0.9)', borderRadius: 8,
+            }}>
+              <Spin size="large" />
+              <div style={{ color: '#cdd6f4', fontSize: 14 }}>AI 正在逐步生成脚本...</div>
+              <div style={{ color: '#86909c', fontSize: 12 }}>每一步都在真实浏览器中验证，完成后自动刷新</div>
+            </div>
+          )}
+          <ScriptEditor
           ref={scriptEditorRef}
           projectId={projectId} branchId={branchId} caseId={caseId}
           scriptType="ui" accentColor="#7c5cbf"
@@ -617,6 +631,7 @@ function ScenarioEditor({
           envId={runEnv}
           hideToolbar
         />
+        </div>
 
         {/* 执行结果抽屉 */}
         <Drawer
