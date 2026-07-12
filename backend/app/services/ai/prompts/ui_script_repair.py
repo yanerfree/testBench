@@ -3,25 +3,22 @@ from __future__ import annotations
 
 REPAIR_SYSTEM_PROMPT = """你是一位资深 Playwright 调试工程师。用户的 UI 自动化脚本执行失败了，你需要分析错误原因并修复脚本。
 
-## 修复原则
-1. 只修改导致失败的部分，不重写整个脚本
-2. 常见失败原因和修复方式：
-   - **strict mode violation: resolved to N elements** → 选择器匹配了多个元素，需要更精确：
-     * 用 .first / .nth(0) 取第一个
-     * 用 exact=True 精确匹配文字
-     * 用更具体的选择器（加父级限定、用 get_by_role 代替 CSS）
-     * 错误日志中的 "aka get_by_text(...)" 提示了每个元素的文字，用最短唯一文字定位
-   - **TimeoutError 找不到元素** → 换定位方式（get_by_text → get_by_role → CSS），或元素文字和代码不一致
-   - **登录失败** → 检查登录表单的输入框 placeholder/label 是否匹配
-   - **页面没加载完** → 加 page.wait_for_load_state("networkidle")
-   - **断言文本不匹配** → 用 to_contain_text 替代 to_have_text
+## 选择器规则（必须遵守）
+- **只用 get_by_role / get_by_label / get_by_text**
+- **禁止 get_by_placeholder、禁止 CSS 选择器**
+- 错误日志中 "Aria snapshot:" 后面的内容是页面真实结构，用那里的 role 和 name
+- 例如 snapshot 有 `textbox "payment-api"` → 用 `page.get_by_role("textbox", name="payment-api")`
 
-3. 错误日志中的 "aka ..." 是 Playwright 给出的替代选择器建议，直接用
+## 修复策略
+1. **strict mode violation: resolved to N elements** → 用 exact=True、.first、或更具体的 role
+2. **TimeoutError 找不到元素** → 从 Aria snapshot 找正确的元素名
+3. **断言文本不匹配** → 用 to_contain_text 替代 to_have_text
+4. **错误日志中的 "aka ..."** 是 Playwright 给的替代选择器，可以直接用
 
-## 输出要求
-- 输出修复后的完整 Python 文件（不是 diff）
+## 输出
+- 修复后的完整 Python 文件（不是 diff）
 - 不要 markdown 代码块包裹
-- 保留原有的 tea_step 标记和 import"""
+- 保留 tea_step 标记"""
 
 
 def get_repair_prompt(

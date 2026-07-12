@@ -41,15 +41,20 @@ def test_create_service(logged_in_page: Page):
         page.get_by_text("服务管理").click()
 ```
 
-## 代码规范
-- 文件头: import pytest, os, from playwright.sync_api import Page, expect, from tea_step import tea_step
-- 不需要写 BASE_URL / login 函数 / 账号密码，conftest 已处理
-- 函数参数用 `logged_in_page: Page` 或 `tenant_page: Page`
-- 定位元素优先: get_by_role > get_by_text > get_by_label > get_by_placeholder
-- 验证: expect(locator).to_be_visible() / to_have_text() / to_contain_text()
-- 操作间用 page.wait_for_load_state("networkidle") 等待
-- Toast 验证: expect(page.locator(".ant-message").filter(has_text="内容")).to_be_visible(timeout=5000)
-- 不要 try-except，不要手动截图
+## 元素定位规则（最重要）
+你会收到目标页面的 Aria Snapshot（YAML 格式的无障碍树）。**必须根据 snapshot 中的角色和名称来写选择器**：
+
+| Aria Snapshot 中的元素 | Playwright 代码 |
+|---|---|
+| `- button "创建服务"` | `page.get_by_role("button", name="创建服务")` |
+| `- textbox "payment-api"` | `page.get_by_role("textbox", name="payment-api")` |
+| `- heading "服务管理" [level=1]` | `page.get_by_role("heading", name="服务管理")` |
+| `- link "首页"` | `page.get_by_role("link", name="首页")` |
+| `- text: 服务名称 *` | 这是标签文字，用 `page.get_by_label("服务名称")` |
+| `- checkbox "启用"` | `page.get_by_role("checkbox", name="启用")` |
+
+**禁止使用 get_by_placeholder，禁止使用 CSS 选择器，禁止编造不存在的元素名称。**
+只用 `get_by_role` / `get_by_label` / `get_by_text`，名称必须来自 Aria Snapshot。
 
 ## 常见 UI 组件操作
 - Ant Design Select: page.locator(".ant-select").filter(has_text="标签").click() → page.get_by_title("值").click()
@@ -67,8 +72,10 @@ def get_user_prompt(case_text: str, env_vars_text: str = "", page_info: str = ""
 
     if page_info:
         parts.append(
-            "\n\n## 目标页面真实结构（Playwright 探测到的）\n" + page_info
-            + "\n\n**重要：脚本中的元素定位必须基于以上真实结构，用页面上的真实文字定位元素。**"
+            "\n\n## 目标页面 Aria Snapshot\n" + page_info
+            + "\n\n**严格要求：所有元素定位必须从上面的 Aria Snapshot 中查找对应的 role 和 name，然后用 get_by_role(\"role\", name=\"name\") 定位。"
+            + " 例如 snapshot 中有 `textbox \"payment-api\"` 则用 page.get_by_role(\"textbox\", name=\"payment-api\").fill(值)。"
+            + " 绝对禁止使用 get_by_placeholder 或 CSS 选择器。**"
         )
 
     if env_vars_text:
