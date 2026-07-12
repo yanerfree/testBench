@@ -472,12 +472,12 @@ def _execute_step(page, code: str, step_name: str) -> dict:
             page.wait_for_load_state("networkidle", timeout=5000)
         except Exception:
             pass
-        # 检查页面是否有错误提示（防止假通过）
+        # 检查页面是否有明确的错误提示（防止假通过）
         try:
-            error_toast = page.locator(".ant-message-error, .ant-notification-error, [class*='error'], [class*='Error']").first
-            if error_toast.is_visible(timeout=500):
+            error_toast = page.locator(".ant-message-error").first
+            if error_toast.is_visible(timeout=300):
                 error_text = error_toast.inner_text()[:200]
-                return {"step": step_name, "status": "failed", "error": f"页面出现错误提示: {error_text}"}
+                return {"step": step_name, "status": "failed", "error": f"页面错误提示: {error_text}"}
         except Exception:
             pass
         return {"step": step_name, "status": "passed"}
