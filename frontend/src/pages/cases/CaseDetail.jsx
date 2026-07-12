@@ -685,7 +685,7 @@ function ScenarioEditor({
                     const ok = s.status === 'passed'
                     const isRunning = s.status === 'running'
                     const phase = s.step_phase || s.phase
-                    const name = s.step_name || s.action || `步骤 ${i + 1}`
+                    const name = s.step_name || s.action || s.step || `步骤 ${i + 1}`
                     const error = s.error_summary || s.error
                     const ms = s.duration_ms
                     const phaseEmoji = { setup: '🔧', action: '👆', verify: '✅' }

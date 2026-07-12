@@ -249,6 +249,7 @@ Aria Snapshot:
 ## 常见操作模式
 - 输入文字: `page.get_by_role("textbox", name="xxx").fill("值")`
 - 清空再输入: `page.get_by_role("textbox", name="xxx").clear()` + `.fill("值")`
+- 输入名称/ID: 在原文后加时间戳避免重复，如 `"core-api-" + str(int(time.time()))[-6:]`
 - 点击按钮: `page.get_by_role("button", name="xxx").click()`
 - 点击菜单: `page.get_by_text("菜单名").click()`
 - 等待加载: `page.wait_for_load_state("networkidle")`
