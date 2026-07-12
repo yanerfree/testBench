@@ -80,13 +80,21 @@ def step_by_step_generate(
         def on_response(response):
             try:
                 req = response.request
-                if req.resource_type in ("xhr", "fetch") and "/api/" in req.url:
+                url = req.url
+                # 捕获所有 /api/ 路径的请求，不限制 resource_type
+                if "/api/" in url:
+                    body = None
+                    try:
+                        body = req.post_data[:500] if req.post_data else None
+                    except Exception:
+                        pass
                     captured_requests.append({
                         "method": req.method,
-                        "url": req.url,
+                        "url": url,
+                        "path": url.split("//", 1)[-1].split("/", 1)[-1] if "//" in url else url,
                         "status": response.status,
-                        "request_headers": dict(req.headers) if req.headers else {},
-                        "response_status": response.status,
+                        "resource_type": req.resource_type,
+                        "post_data": body,
                     })
             except Exception:
                 pass

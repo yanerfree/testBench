@@ -781,9 +781,16 @@ function ScenarioEditor({
                         </span>
                         <Tag color={r.method === 'GET' ? 'blue' : r.method === 'POST' ? 'green' : r.method === 'PUT' ? 'orange' : r.method === 'DELETE' ? 'red' : 'default'}
                           style={{ width: 50, textAlign: 'center', margin: 0, fontSize: 11 }}>{r.method}</Tag>
-                        <span style={{ flex: 1, fontFamily: 'monospace', fontSize: 11, color: '#4e5969', marginLeft: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {r.url.replace(/^https?:\/\/[^/]+/, '')}
-                        </span>
+                        <div style={{ flex: 1, marginLeft: 8, minWidth: 0 }}>
+                          <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#4e5969', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {(r.path || r.url || '').replace(/^https?:\/\/[^/]+/, '')}
+                          </div>
+                          {r.post_data && (
+                            <div style={{ fontSize: 10, color: '#86909c', fontFamily: 'monospace', marginTop: 2, maxHeight: 40, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {r.post_data.substring(0, 120)}{r.post_data.length > 120 ? '...' : ''}
+                            </div>
+                          )}
+                        </div>
                         <Tag color={r.status < 400 ? undefined : 'error'} style={{ margin: 0, fontSize: 11, ...(r.status < 400 ? { background: '#e0f7f6', color: '#0ea5a0', border: 'none' } : {}) }}>{r.status}</Tag>
                       </div>
                     ))}
