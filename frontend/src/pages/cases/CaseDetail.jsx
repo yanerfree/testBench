@@ -339,42 +339,8 @@ function ScenarioEditor({
     }
   }
 
-  const handleAiDebug = async () => {
-    if (!runEnv) { message.warning('请先选择执行环境'); return }
-    if (!debugResult || debugResult.status === 'passed') { message.info('当前没有失败的执行结果'); return }
-    setAiDebugging(true)
-    try {
-      message.loading({ content: 'AI 正在分析失败原因并修复脚本...', key: 'ai-debug', duration: 0 })
-      const repairRes = await api.post(
-        `/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/repair`,
-        { errorSummary: debugResult.errorSummary || '', stdout: debugResult.stdout || '' }
-      )
-      if (!repairRes.data?.changed) {
-        message.info({ content: 'AI 未找到可修复的内容，建议手动检查脚本', key: 'ai-debug' })
-        return
-      }
-      scriptEditorRef.current?.refresh()
-
-      message.loading({ content: '脚本已修复，正在重新验证...', key: 'ai-debug', duration: 0 })
-      setDebugRunning(true)
-      const runRes = await api.post(
-        `/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/run?type=ui`,
-        { envId: runEnv }
-      )
-      const result = runRes.data || runRes
-      setDebugResult({ ...result, _drawerOpen: true })
-      scriptEditorRef.current?.refresh()
-      if (result.status === 'passed') {
-        message.success({ content: '修复后验证通过！', key: 'ai-debug' })
-      } else {
-        message.warning({ content: '仍然失败，可再次点击「AI 调试」继续修复', key: 'ai-debug', duration: 5 })
-      }
-    } catch (e) {
-      message.error({ content: e?.response?.data?.error?.message || 'AI 调试失败', key: 'ai-debug' })
-    } finally {
-      setAiDebugging(false)
-      setDebugRunning(false)
-    }
+  const handleAiDebug = () => {
+    handleAiGenerate()
   }
 
   // 流式运行脚本 — 实时推送步骤进度
