@@ -77,27 +77,38 @@ def step_by_step_generate(
 
         # 拦截 HTTP 请求（接口流量提取）
         captured_requests = []
+        pending_requests = {}
+
+        def on_request(request):
+            try:
+                if "/api/" in request.url:
+                    body = None
+                    try:
+                        body = request.post_data[:500] if request.post_data else None
+                    except Exception:
+                        pass
+                    pending_requests[request.url + request.method] = {
+                        "method": request.method,
+                        "url": request.url,
+                        "path": request.url.split("//", 1)[-1].split("/", 1)[-1] if "//" in request.url else request.url,
+                        "resource_type": request.resource_type,
+                        "post_data": body,
+                        "status": 0,
+                    }
+            except Exception:
+                pass
+
         def on_response(response):
             try:
                 req = response.request
-                url = req.url
-                # 捕获所有 /api/ 路径的请求，不限制 resource_type
-                if "/api/" in url:
-                    body = None
-                    try:
-                        body = req.post_data[:500] if req.post_data else None
-                    except Exception:
-                        pass
-                    captured_requests.append({
-                        "method": req.method,
-                        "url": url,
-                        "path": url.split("//", 1)[-1].split("/", 1)[-1] if "//" in url else url,
-                        "status": response.status,
-                        "resource_type": req.resource_type,
-                        "post_data": body,
-                    })
+                key = req.url + req.method
+                if key in pending_requests:
+                    pending_requests[key]["status"] = response.status
+                    captured_requests.append(pending_requests.pop(key))
             except Exception:
                 pass
+
+        page.on("request", on_request)
         page.on("response", on_response)
 
         # 登录
@@ -108,6 +119,25 @@ def step_by_step_generate(
         if login_result["status"] == "failed":
             browser.close()
             return {"script": "", "results": results, "all_passed": False, "healing_records": healing_records}
+
+        # 前置准备 — 如果步骤中有"创建"操作，生成唯一名称避免冲突
+        import time as _time
+        unique_suffix = str(int(_time.time()))[-6:]
+        created_name = None
+        has_create_step = any("创建" in s.get("action", "") or "新建" in s.get("action", "") for s in steps)
+        if has_create_step:
+            for step in steps:
+                action = step.get("action", "")
+                if "服务名称" in action or "名称" in action:
+                    import re as _re
+                    name_match = _re.search(r'(?:服务名称|名称).+?输入\s+([a-zA-Z0-9_-]+)', action)
+                    if name_match:
+                        created_name = f"{name_match.group(1)}-{unique_suffix}"
+                    break
+
+        if on_step and created_name:
+            on_step({"type": "step_done", "seq": -1, "action": f"[前置] 使用唯一名称: {created_name}", "status": "passed"})
+        results.append({"step": f"[前置] 唯一名称: {created_name or '无创建操作'}", "status": "passed"})
 
         # 前置条件分析 → 生成 setup 步骤
         if preconditions:
@@ -164,10 +194,13 @@ def step_by_step_generate(
                         history_hint = "\n以下代码在之前尝试中失败过，请避免类似写法：\n" + "\n".join(f"- {c[:100]}" for c in failed_codes[:3])
 
             # 3. LLM 生成这一步的代码
+            actual_action = action
+            if created_name and ("输入" in action and ("名称" in action or "名" in action)):
+                actual_action = action + f"\n注意：使用唯一名称 '{created_name}' 替代用例中的原始名称"
             step_code = _generate_one_step(
                 llm_complete=llm_complete,
                 step_num=i + 1,
-                action=action,
+                action=actual_action,
                 expected=expected,
                 snapshot=snapshot,
                 page_url=page.url,
@@ -257,9 +290,31 @@ def step_by_step_generate(
                         on_step({"type": "step_done", "seq": i + 1, "action": action, "status": "failed", "error": last_error[:200], "failure_type": failure_type})
                     break
 
-        browser.close()
+        # 后置清理 — 删除本次测试创建的数据
+        all_main_passed = all(r["status"] == "passed" for r in results if "[前置]" not in r.get("step", ""))
+        if created_name and all_main_passed:
+            if on_step:
+                on_step({"type": "step_start", "seq": 999, "action": f"[后置清理] 删除测试数据 {created_name}", "phase": "teardown"})
+            try:
+                snapshot = page.locator("body").aria_snapshot()[:6000]
+                teardown_code = _generate_one_step(
+                    llm_complete=llm_complete, step_num=999,
+                    action=f"导航到服务管理列表页，找到名称含 '{created_name}' 的服务并删除它",
+                    expected="服务被删除", snapshot=snapshot, page_url=page.url,
+                )
+                teardown_result = _execute_step(page, teardown_code, f"[后置清理] 删除 {created_name}")
+                results.append(teardown_result)
+                code_blocks.append(f'    # Teardown\n    with tea_step("[后置清理] 删除 {created_name}", phase="teardown"):\n' + _indent(teardown_code, 8))
+                if on_step:
+                    on_step({"type": "step_done", "seq": 999, "action": f"[后置清理] 删除 {created_name}", "status": teardown_result["status"]})
+            except Exception:
+                pass
 
-    # 拼接完整脚本
+        # 把未收到 response 的 pending 请求也加到 captured
+        for req_data in pending_requests.values():
+            captured_requests.append(req_data)
+
+        browser.close()
     script = _assemble_script(func_name, fixture_name, code_blocks)
     all_passed = all(r["status"] == "passed" for r in results)
 
@@ -346,6 +401,11 @@ Aria Snapshot:
 - 验证包含文字: `expect(page.locator("body")).to_contain_text("xxx")`
 - 等待状态变化: `page.wait_for_timeout(3000)` + `expect(...).to_be_visible(timeout=10000)`
 
+## 结果验证（重要！）
+操作步骤（点击按钮/提交表单）后**必须验证结果**：
+- 创建/提交后: 检查是否出现成功 Toast 或页面跳转，如: `expect(page.locator("body")).not_to_contain_text("错误")` + `page.wait_for_url("**/不是原来的路径**")`
+- 如果页面还在原来的 URL 或出现错误提示 → 操作失败
+
 ## 输出
 只输出 2-6 行 page.xxx 调用。不要任何其他内容。
 正确示例:
@@ -407,6 +467,19 @@ def _execute_step(page, code: str, step_name: str) -> dict:
         page.set_default_timeout(30000)
     try:
         exec(code, {"page": page, "expect": __import__("playwright.sync_api", fromlist=["expect"]).expect, "time": __import__("time")})
+        # 等待网络请求完成
+        try:
+            page.wait_for_load_state("networkidle", timeout=5000)
+        except Exception:
+            pass
+        # 检查页面是否有错误提示（防止假通过）
+        try:
+            error_toast = page.locator(".ant-message-error, .ant-notification-error, [class*='error'], [class*='Error']").first
+            if error_toast.is_visible(timeout=500):
+                error_text = error_toast.inner_text()[:200]
+                return {"step": step_name, "status": "failed", "error": f"页面出现错误提示: {error_text}"}
+        except Exception:
+            pass
         return {"step": step_name, "status": "passed"}
     except Exception as e:
         return {"step": step_name, "status": "failed", "error": str(e)[:500]}
