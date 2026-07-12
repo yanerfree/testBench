@@ -11,7 +11,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from app.engine.command_builder import build_pytest_command, check_script_exists
+from app.engine.command_builder import build_pytest_command, check_script_exists, is_playwright_script
 from app.engine.result_parser import parse_junit_xml, parse_step_json
 
 logger = logging.getLogger(__name__)
@@ -49,6 +49,15 @@ def execute_single_case(
     with tempfile.NamedTemporaryFile(suffix=".xml", delete=False, prefix="junit_") as f:
         junit_xml_path = f.name
 
+    # 检测是否为 Playwright 脚本
+    script_content = Path(sandbox_dir, script_ref_file).read_text(encoding="utf-8", errors="ignore")
+    pw_output_dir = None
+    if is_playwright_script(script_content):
+        pw_output_dir = str(Path(sandbox_dir) / ".pw_results")
+        Path(pw_output_dir).mkdir(parents=True, exist_ok=True)
+        from app.engine.pw_conftest import write_playwright_conftest
+        write_playwright_conftest(sandbox_dir, env_vars)
+
     # 注入 HTTP 捕获插件 + 步骤标记器
     plugin_src = Path(__file__).parent / "plugins" / "tea_capture.py"
     step_src = Path(__file__).parent / "plugins" / "tea_step.py"
@@ -75,6 +84,7 @@ def execute_single_case(
         script_ref_func=script_ref_func,
         junit_xml_path=junit_xml_path,
         capture_plugin=has_capture_plugin,
+        playwright_output_dir=pw_output_dir,
     )
 
     # 3. 构建环境变量
@@ -138,14 +148,24 @@ def execute_single_case(
         error_msgs = [r["message"] for r in junit_results if r["message"]]
         error_summary = "; ".join(error_msgs)[:2000] if error_msgs else None
 
-    # 7. 解析步骤级 JSON（可选）
+    # 7. 解析步骤级 JSON
     steps = []
+    tea_results_dir = Path(sandbox_dir) / ".tea_results"
     if script_ref_func:
-        step_json_path = str(Path(sandbox_dir) / ".tea_results" / f"{script_ref_func}.json")
+        step_json_path = str(tea_results_dir / f"{script_ref_func}.json")
         steps = parse_step_json(step_json_path)
         if not steps:
             step_json_path = str(Path(sandbox_dir) / f"{script_ref_func}.json")
             steps = parse_step_json(step_json_path)
+    if not steps and tea_results_dir.exists():
+        for json_file in sorted(tea_results_dir.glob("*.json")):
+            steps = parse_step_json(str(json_file))
+            if steps:
+                break
+            steps = parse_step_json(step_json_path)
+
+    # 8. 采集 Playwright 截图（可选）
+    screenshots = _collect_screenshots(pw_output_dir) if pw_output_dir else []
 
     return {
         "status": status,
@@ -153,4 +173,30 @@ def execute_single_case(
         "error_summary": error_summary,
         "stdout": ((stdout or "") + ("\n--- STDERR ---\n" + stderr if stderr else ""))[:10000],
         "steps": steps,
+        "screenshots": screenshots,
     }
+
+
+def _collect_screenshots(output_dir: str | None, max_size_bytes: int = 500_000) -> list[dict]:
+    """扫描 Playwright 输出目录，收集截图文件转为 base64"""
+    if not output_dir:
+        return []
+    import base64
+    results = []
+    output_path = Path(output_dir)
+    if not output_path.exists():
+        return []
+    for png in sorted(output_path.rglob("*.png")):
+        if png.stat().st_size > max_size_bytes:
+            continue
+        try:
+            b64 = base64.b64encode(png.read_bytes()).decode("ascii")
+            results.append({
+                "name": png.name,
+                "base64": b64,
+            })
+        except Exception:
+            logger.warning("读取截图失败: %s", png)
+        if len(results) >= 10:
+            break
+    return results

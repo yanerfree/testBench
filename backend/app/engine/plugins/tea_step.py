@@ -30,12 +30,6 @@ _output_dir: Path | None = None
 
 @contextmanager
 def tea_step(name: str, phase: str = "action"):
-    """标注业务语义步骤，自动计时和状态追踪。
-
-    Args:
-        name: 业务步骤名称（如"管理员登录"、"创建新用户"）
-        phase: 步骤阶段，setup / action / verify
-    """
     step = {
         "seq": len(_current_steps) + 1,
         "action": name,
@@ -47,6 +41,8 @@ def tea_step(name: str, phase: str = "action"):
     }
     _current_steps.append(step)
     _step_stack.append(step)
+    # 实时进度标记
+    print(f'##STEP_START##{json.dumps({"seq": step["seq"], "action": name, "phase": phase}, ensure_ascii=False)}', flush=True)
     try:
         yield step
     except Exception as e:
@@ -57,6 +53,7 @@ def tea_step(name: str, phase: str = "action"):
         step["duration_ms"] = int((time.monotonic() - step.pop("_start")) * 1000)
         if _step_stack and _step_stack[-1] is step:
             _step_stack.pop()
+        print(f'##STEP_END##{json.dumps({"seq": step["seq"], "status": step["status"], "duration_ms": step["duration_ms"], "error": step.get("error", "")[:200]}, ensure_ascii=False)}', flush=True)
 
 
 def current_step() -> dict | None:

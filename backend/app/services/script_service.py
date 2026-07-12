@@ -18,13 +18,21 @@ async def create_script(
     commit_sha: str | None = None,
     created_by: uuid.UUID | None = None,
 ) -> Script:
-    """创建新版本脚本。自动递增 version，将旧 active 版本归档。"""
-    # 如果内容与当前 active 版本相同，跳过
+    """创建或更新脚本。AI 生成的脚本直接覆盖，手动编辑的递增版本。"""
     current = await get_active_script(session, case_id, script_type)
     if current and current.content == content:
         return current
 
-    # 获取最大 version
+    # AI 生成/修复：直接覆盖当前版本，不创建新版本
+    if source == "ai_generated" and current:
+        current.content = content
+        if file_name:
+            current.file_name = file_name
+        current.source = source
+        await session.flush()
+        return current
+
+    # 手动编辑/其他来源：递增版本
     result = await session.execute(
         select(func.max(Script.version)).where(
             Script.case_id == case_id,
@@ -33,7 +41,6 @@ async def create_script(
     )
     max_ver = result.scalar_one_or_none() or 0
 
-    # 将旧 active 改为 archived
     if current:
         current.status = "archived"
 

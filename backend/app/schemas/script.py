@@ -13,7 +13,7 @@ class CreateScriptRequest(BaseSchema):
     file_name: str | None = None
     func_name: str | None = None
     language: Literal["python", "typescript"] = "python"
-    source: Literal["manual", "git_sync", "upload"] = "manual"
+    source: Literal["manual", "git_sync", "upload", "ai_generated"] = "manual"
 
 
 class ScriptResponse(BaseSchema):

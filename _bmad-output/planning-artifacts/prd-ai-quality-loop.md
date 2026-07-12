@@ -81,11 +81,12 @@
 **做法**：
 1. 新建 `tb-ui-self-healing` Skill — 三阶段工作流：
    - 诊断：读错误日志 + 截图，定位失败原因
-   - 分类：系统 Bug / 脚本 Bug / 用例过期
+   - 分类：系统 Bug / 脚本 Bug / 用例过期 / **外部依赖不可用**
    - 处置：
      - 系统 Bug → 出 bug 报告，不改脚本
      - 脚本 Bug → 最小化修复 → 重跑
      - 用例过期 → 更新用例步骤
+     - **外部依赖不可用 → 用平台 Mock 工具创建替代服务**（衔接阶段四）
 2. 修复档案（healing archive）：每次修复留档，反哺 Skill 改进
 3. 最多 3 轮自愈，还不行就仲裁
 
@@ -101,23 +102,35 @@
 
 ### 第四阶段：前置数据管理（2-3 天）
 
-**目标**：用例的前置条件（"已创建服务 X"）自动通过 API 准备，后置自动清理。
+**目标**：用例的前置条件（"已创建服务 X"、"存在健康的负载配置"）自动准备，后置自动清理。
+
+**核心决策（2026-07-12）：复用平台已有 Mock 工具，不新建 API Setup 系统。**
 
 **做法**：
-1. 新建 API Setup 模型 — 可复用的前置数据代码片段
-   - 每个 Setup 有：名称、实体类型、创建代码（API 调用）、清理代码、参数 schema
-   - 例："createService" → POST /api/v1/services + DELETE /api/v1/services/:id
-2. 用例的 preconditions 可绑定 setupRef
-3. 脚本执行前自动运行 setup 代码创建数据，执行后运行 teardown 清理
+1. **AI 分析前置条件** → 识别外部依赖类型：
+   - 需要可响应的上游服务 → 用 API Mock 创建
+   - 需要特定 LLM 返回 → 用 LLM Mock 创建
+   - 需要已存在的业务数据（服务、策略等）→ 通过目标系统 API 创建
+2. **Mock 自动管理**：
+   - 脚本执行前：AI 通过 MCP 调用 `tb_create_api_mock` 创建 Mock 服务
+   - 获取 Mock 地址作为上游依赖配置
+   - 脚本执行后：自动清理 Mock 资源
+3. **前置数据通过目标系统 API 准备**：
+   - AI 分析目标系统的 API 接口（已有 `tb_list_api_tree` + `tb_get_api_node`）
+   - 生成 setup 脚本（API 调用创建数据）+ teardown 脚本（删除数据）
+   - 作为 tea_step phase="setup" 嵌入测试脚本
+
+**优势**：
+- 自包含：不依赖外部服务是否在线
+- 可重复：每次测试用新建的 Mock，不互相干扰
+- 复用已有能力：API Mock / LLM Mock 平台已经有了
 
 **改动范围**：
-- 新建 `backend/app/models/api_setup.py`
-- 新建 `backend/app/services/api_setup_service.py`
-- MCP 新增工具：`tb_create_api_setup`、`tb_run_setup`、`tb_run_teardown`
-- `ui_script_service.py` 集成：执行前后自动调用 setup/teardown
-- 前端用例详情页展示 setupRef 绑定状态
+- MCP instructions 补充：告诉 AI 遇到外部依赖用 Mock 工具
+- Playwright 生成 Prompt 补充：识别前置条件中的依赖，生成 setup/teardown
+- 前端用例详情展示 Mock 依赖状态
 
-**验证**：一条需要"已创建服务"的用例 → 执行时自动创建服务 → 测试 → 自动删除服务。
+**验证**：一条需要"健康负载配置"的用例 → AI 自动创建 API Mock → 配置为上游 → 测试通过 → 自动清理。
 
 ---
 

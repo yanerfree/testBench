@@ -11,7 +11,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.user import Base
@@ -68,6 +68,7 @@ class ScriptRun(Base):
     duration_ms: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     error_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     stdout: Mapped[str | None] = mapped_column(Text, nullable=True)
+    screenshots: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     executed_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )

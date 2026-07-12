@@ -1,0 +1,208 @@
+"""UI 脚本生成服务 — 深度探测 + 基于真实页面结构生成脚本"""
+from __future__ import annotations
+
+import logging
+import re
+import uuid
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.case import Case
+from app.models.environment import EnvironmentVariable
+from app.services import script_service
+from app.services.ai.llm_client import complete
+from app.services.ai.prompts.ui_script_generation import get_system_prompt, get_user_prompt
+
+logger = logging.getLogger(__name__)
+
+
+async def generate_ui_script(
+    case_id: str,
+    session: AsyncSession,
+    env_id: str | None = None,
+) -> dict:
+    """深度探测目标页面 → 基于真实结构生成 Playwright 脚本 → 保存"""
+    case = await session.get(Case, uuid.UUID(case_id))
+    if not case:
+        raise ValueError(f"用例不存在: {case_id}")
+
+    # 读环境变量
+    env_vars = {}
+    if env_id:
+        rows = await session.execute(
+            select(EnvironmentVariable)
+            .where(EnvironmentVariable.environment_id == uuid.UUID(env_id))
+        )
+        env_vars = {v.key: v.value for v in rows.scalars().all()}
+
+    base_url = env_vars.get("BASE_URL", "")
+    env_vars_text = _format_env_vars(env_vars)
+
+    # 解析前置条件，确定用哪个 fixture
+    fixture_name = _detect_fixture(case.preconditions or "")
+    creds = _get_credentials(env_vars, fixture_name)
+
+    # 深度探测：沿用例步骤导航，采集每页真实结构
+    page_info = ""
+    if base_url and case.steps:
+        import anyio
+        from app.services.ai.deep_prober import deep_probe, format_probe_for_prompt
+        probe_results = await anyio.to_thread.run_sync(
+            lambda: deep_probe(base_url, creds, case.steps)
+        )
+        page_info = format_probe_for_prompt(probe_results)
+        logger.info("深度探测完成，采集了 %d 个页面", len(probe_results))
+
+    # 构建 prompt
+    case_text = _format_case(case, fixture_name)
+    messages = [
+        {"role": "system", "content": get_system_prompt()},
+        {"role": "user", "content": get_user_prompt(case_text, env_vars_text, page_info)},
+    ]
+
+    resp = await complete(messages, max_tokens=4096, temperature=0.1)
+    script_content = _extract_code(resp.content)
+
+    # 保存
+    script = await script_service.create_script(
+        session,
+        case_id=case.id,
+        script_type="ui",
+        content=script_content,
+        file_name=f"test_{case.case_code.lower().replace('-', '_')}_ui.py",
+        language="python",
+        source="ai_generated",
+    )
+
+    case.ui_scenario_status = "debugging"
+    if not case.ui_scenario and case.steps:
+        case.ui_scenario = {
+            "steps": [
+                {"seq": i + 1, "action": s.get("action", ""), "expected": s.get("expected", "")}
+                for i, s in enumerate(case.steps)
+            ],
+            "variablesUsed": [],
+            "scriptId": str(script.id),
+        }
+    elif case.ui_scenario:
+        case.ui_scenario = {**case.ui_scenario, "scriptId": str(script.id)}
+    await session.flush()
+
+    return {
+        "script_id": str(script.id),
+        "content": script_content,
+        "case_id": case_id,
+        "version": script.version,
+    }
+
+
+async def repair_ui_script(
+    case_id: str,
+    session: AsyncSession,
+    error_summary: str,
+    stdout: str = "",
+) -> dict:
+    """分析执行失败原因，读取调试历史，修复脚本。"""
+    from sqlalchemy import select as sa_select
+    from app.models.script import ScriptRun
+
+    case = await session.get(Case, uuid.UUID(case_id))
+    if not case:
+        raise ValueError(f"用例不存在: {case_id}")
+
+    current_script = await script_service.get_active_script(session, case.id, "ui")
+    if not current_script:
+        raise ValueError("没有可修复的 UI 脚本")
+
+    runs_result = await session.execute(
+        sa_select(ScriptRun)
+        .where(ScriptRun.case_id == case.id, ScriptRun.script_type == "ui", ScriptRun.status != "passed")
+        .order_by(ScriptRun.created_at.desc())
+        .limit(5)
+    )
+    history = [{"error": r.error_summary or "", "stdout_tail": (r.stdout or "")[-500:]} for r in runs_result.scalars().all()]
+
+    from app.services.ai.prompts.ui_script_repair import REPAIR_SYSTEM_PROMPT, get_repair_prompt
+    messages = [
+        {"role": "system", "content": REPAIR_SYSTEM_PROMPT},
+        {"role": "user", "content": get_repair_prompt(current_script.content, error_summary, stdout, history)},
+    ]
+
+    resp = await complete(messages, max_tokens=4096, temperature=0.1)
+    fixed_content = _extract_code(resp.content)
+
+    if fixed_content == current_script.content:
+        return {"changed": False, "message": "AI 未找到可修复的内容"}
+
+    script = await script_service.create_script(
+        session, case_id=case.id, script_type="ui", content=fixed_content,
+        file_name=current_script.file_name, language="python", source="ai_generated",
+    )
+    await session.flush()
+    return {"changed": True, "script_id": str(script.id), "version": script.version}
+
+
+def _detect_fixture(preconditions: str) -> str:
+    """从前置条件文本自动检测应该用哪个 fixture"""
+    text = preconditions.lower()
+    if any(kw in text for kw in ["租户", "tenant", "已授权"]):
+        return "tenant_page"
+    return "logged_in_page"
+
+
+def _get_credentials(env_vars: dict, fixture_name: str) -> dict:
+    """根据 fixture 名称获取对应的登录凭据"""
+    if fixture_name == "tenant_page":
+        return {
+            "username": env_vars.get("TENANT_USERNAME", env_vars.get("ADMIN_USERNAME", "")),
+            "password": env_vars.get("TENANT_PASSWORD", env_vars.get("ADMIN_PASSWORD", "")),
+        }
+    return {
+        "username": env_vars.get("ADMIN_USERNAME", ""),
+        "password": env_vars.get("ADMIN_PASSWORD", ""),
+    }
+
+
+def _format_case(case: Case, fixture_name: str) -> str:
+    lines = [
+        f"## 用例: {case.title}",
+        f"- 编号: {case.case_code}",
+        f"- 优先级: {case.priority}",
+        f"- 登录方式: 使用 `{fixture_name}` fixture（conftest 已注入，不需要自己写登录代码）",
+    ]
+    if case.preconditions:
+        lines.append(f"- 前置条件: {case.preconditions}")
+    if case.steps:
+        lines.append("- 步骤:")
+        for i, step in enumerate(case.steps, 1):
+            action = step.get("action", "")
+            expected = step.get("expected", "")
+            lines.append(f"  {i}. {action}")
+            if expected:
+                lines.append(f"     预期: {expected}")
+    if case.expected_result:
+        lines.append(f"- 总体预期: {case.expected_result}")
+    return "\n".join(lines)
+
+
+def _format_env_vars(env_vars: dict[str, str]) -> str:
+    lines = []
+    for key, value in sorted(env_vars.items()):
+        if any(s in key.lower() for s in ("password", "secret", "token")):
+            lines.append(f"- {key} = (已配置)")
+        else:
+            lines.append(f"- {key} = \"{value}\"")
+    return "\n".join(lines)
+
+
+def _extract_code(text: str) -> str:
+    """从 LLM 响应中提取 Python 代码"""
+    match = re.search(r"```(?:python)?\s*\n(.*?)```", text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    for pattern in (r"^import ", r"^from "):
+        m = re.search(pattern, text, re.MULTILINE)
+        if m:
+            return text[m.start():].strip()
+    return text.strip()

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { Button, Select, Space, Tag, Tooltip, Upload, message, Modal, Input, Spin, Empty } from 'antd'
 import {
   SaveOutlined, HistoryOutlined, CodeOutlined, UploadOutlined,
@@ -8,13 +8,17 @@ import Editor from '@monaco-editor/react'
 
 const langMap = { python: 'python', typescript: 'typescript' }
 
-export default function ScriptEditor({
+const ScriptEditor = forwardRef(function ScriptEditor({
   projectId, branchId, caseId, scriptType,
   accentColor = '#0ea5a0',
   autoGenerateCode = null,
   onScriptSaved = null,
   envId = null,
-}) {
+  minimal = false,
+  hideRun = false,
+  hideVersions = false,
+  hideToolbar = false,
+}, ref) {
   const [script, setScript] = useState(null)
   const [versions, setVersions] = useState([])
   const [content, setContent] = useState('')
@@ -89,6 +93,12 @@ export default function ScriptEditor({
     finally { setSaving(false) }
   }
 
+  useImperativeHandle(ref, () => ({
+    save: () => handleSave(),
+    copyCode: () => { copyToClipboard(content); message.success('已复制到剪贴板') },
+    refresh: () => { fetchActive(); fetchVersions() },
+  }))
+
   const handleActivateVersion = async (scriptId) => {
     try {
       const res = await fetch(`${apiBase}/${scriptId}/activate`, { method: 'POST', headers })
@@ -150,6 +160,11 @@ export default function ScriptEditor({
   if (loading) return <div style={{ textAlign: 'center', padding: 32 }}><Spin tip="加载脚本..." /></div>
 
   if (!script && !dirty) return (
+    minimal ? (
+      <div style={{ padding: 24, textAlign: 'center', color: '#c9cdd4', fontSize: 13 }}>
+        点击「AI 重新生成」生成 Playwright 脚本
+      </div>
+    ) : (
     <div style={{ padding: '16px 0' }}>
       <Empty description={`暂无${scriptType === 'api' ? '接口' : 'UI'}测试脚本`} image={Empty.PRESENTED_IMAGE_SIMPLE}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -170,13 +185,47 @@ export default function ScriptEditor({
           placeholder="在此粘贴 Python / TypeScript 测试脚本..." style={{ fontFamily: 'monospace', fontSize: 13 }} />
       </Modal>
     </div>
+    )
   )
 
   const language = langMap[script?.language] || 'python'
 
+  if (minimal) {
+    return (
+      <div style={{ border: '1px solid rgba(0,0,0,0.04)', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '4px 12px', background: '#1e1e1e', borderBottom: '1px solid #333',
+        }}>
+          <Tag color={accentColor} style={{ fontSize: 11, margin: 0 }}>{language}</Tag>
+          {script?.fileName && <span style={{ fontSize: 12, fontFamily: 'monospace', color: '#aaa' }}>{script.fileName}</span>}
+          {script?.version && <Tag style={{ fontSize: 10, margin: 0, background: '#333', color: '#aaa', border: 'none' }}>v{script.version}</Tag>}
+        </div>
+        <Editor
+          height={400}
+          language={language}
+          theme="vs-dark"
+          value={content}
+          options={{
+            minimap: { enabled: false },
+            fontSize: 13,
+            lineNumbers: 'on',
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            tabSize: 4,
+            wordWrap: 'on',
+            padding: { top: 8 },
+            readOnly: true,
+          }}
+        />
+      </div>
+    )
+  }
+
   return (
     <div style={{ border: '1px solid rgba(0,0,0,0.04)', borderRadius: 8, overflow: 'hidden' }}>
       {/* 工具栏 */}
+      {!hideToolbar && (
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '6px 12px', background: '#1e1e1e', borderBottom: '1px solid #333',
@@ -188,7 +237,7 @@ export default function ScriptEditor({
           {script?.version && <Tag style={{ fontSize: 10, margin: 0, background: '#333', color: '#aaa', border: 'none' }}>v{script.version}</Tag>}
         </Space>
         <Space size={6}>
-          {versions.length > 1 && (
+          {!hideVersions && versions.length > 1 && (
             <Select size="small" style={{ width: 100 }} value={script?.id}
               onChange={(v) => handleActivateVersion(v)}
               options={versions.map(ver => ({
@@ -204,14 +253,17 @@ export default function ScriptEditor({
             <Button size="small" type="text" icon={<CopyOutlined />} style={{ color: '#aaa' }}
               onClick={() => { copyToClipboard(content); message.success('已复制') }} />
           </Tooltip>
+          {!hideRun && (
           <Tooltip title={dirty ? '请先保存' : '运行脚本'}>
             <Button size="small" icon={<PlayCircleOutlined />} loading={running}
               disabled={dirty || !script?.id}
               style={{ color: '#0ea5a0', borderColor: '#0ea5a0' }}
               onClick={handleRun}>运行</Button>
           </Tooltip>
+          )}
         </Space>
       </div>
+      )}
 
       {/* Monaco 编辑器 */}
       <Editor
@@ -236,8 +288,8 @@ export default function ScriptEditor({
         }}
       />
 
-      {/* 执行结果面板 */}
-      {(running || runResult) && (
+      {/* 执行结果面板（hideRun 时外部处理） */}
+      {!hideRun && (running || runResult) && (
         <div style={{ borderTop: '1px solid #333', background: '#1a1a1a', padding: '12px 16px' }}>
           {running ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#aaa' }}>
@@ -280,4 +332,6 @@ export default function ScriptEditor({
       </Modal>
     </div>
   )
-}
+})
+
+export default ScriptEditor

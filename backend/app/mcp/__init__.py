@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastmcp import FastMCP
 
 from app.mcp.deps import get_mcp_session
-from app.mcp.tools import test_cases, api_endpoints, environments, test_reports, api_tests, scenario_gen, projects
+from app.mcp.tools import test_cases, api_endpoints, environments, test_reports, api_tests, scenario_gen, projects, ui_scripts
 
 mcp = FastMCP(
     name="testBench",
@@ -217,4 +217,25 @@ _register(
     scenario_gen.get_generation_stats,
     name="tb_get_generation_stats",
     description="查询 AI 生成质量统计：通过率/拒绝率/总数。参数: branch_id(分支UUID)",
+)
+
+
+# ── UI 脚本工具 ──────────────────────────────────
+
+_register(
+    ui_scripts.generate_ui_script,
+    name="tb_generate_ui_script",
+    description="AI 生成 Playwright UI 测试脚本。读取用例步骤，调用 LLM 生成可执行的 Playwright Python 脚本并保存。参数: case_id(用例UUID), env_id(可选，环境UUID，用于获取 BASE_URL)",
+)
+
+_register(
+    ui_scripts.run_ui_script,
+    name="tb_run_ui_script",
+    description="执行用例的 Playwright UI 测试脚本，返回通过/失败结果。失败时自动截图。参数: case_id(用例UUID), env_id(环境UUID，必须包含 BASE_URL)",
+)
+
+_register(
+    ui_scripts.get_ui_script_result,
+    name="tb_get_ui_script_result",
+    description="获取用例最近一次 UI 脚本执行结果（状态、耗时、错误摘要、截图数）。参数: case_id(用例UUID)",
 )

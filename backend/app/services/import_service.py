@@ -77,9 +77,14 @@ async def _get_or_create_folder(
 async def _next_case_code(
     session: AsyncSession, branch_id: uuid.UUID, module: str
 ) -> str:
-    """生成下一个 case_code: TC-{MODULE}-{seq5}"""
-    module_upper = module.upper()
-    prefix = f"TC-{module_upper}-"
+    """生成下一个 case_code: TC-{MODULE}-{seq5}。module 含非 ASCII 字符时用 SVC 缩写。"""
+    import re
+    module_tag = module.upper().replace("/", "-").replace(" ", "")
+    if not re.match(r'^[A-Z0-9_-]+$', module_tag):
+        module_tag = re.sub(r'[^A-Z0-9]', '', module_tag) or "SVC"
+        if len(module_tag) > 8:
+            module_tag = module_tag[:8]
+    prefix = f"TC-{module_tag}-"
 
     # 查询当前分支下该模块的最大序号
     result = await session.execute(

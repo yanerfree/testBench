@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, Tag, Button, Input, Select, Space, Modal, message, Tabs, Switch, Popover, Tooltip, Spin, Empty, Table } from 'antd'
+import { Card, Tag, Button, Input, Select, Space, Modal, Drawer, message, Tabs, Switch, Popover, Tooltip, Spin, Empty, Table } from 'antd'
 import {
   ArrowLeftOutlined, PlayCircleOutlined, SaveOutlined,
   ExperimentOutlined, BugOutlined, PlusOutlined, DeleteOutlined, HolderOutlined,
@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
+import { useEnv } from '../../utils/env'
 import ScriptEditor from '../../components/ScriptEditor'
 import ApiStepList, { generateApiCodeFromSteps } from '../../components/ApiStepList'
 
@@ -35,7 +36,7 @@ function InlineProp({ icon, value, color, bg, children }) {
       arrow={false} styles={{ body: { padding: 8 } }}>
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px 2px 6px',
-        borderRadius: 10, fontSize: 12, cursor: 'pointer', transition: 'all 0.15s',
+        borderRadius: 12, fontSize: 12, cursor: 'pointer', transition: 'all 0.15s',
         background: bg || 'rgba(0,0,0,0.02)', color: color || '#4e5969', border: '1px solid transparent',
         userSelect: 'none', lineHeight: '22px',
       }}
@@ -53,7 +54,7 @@ function ReadonlyProp({ icon, label, value, bg }) {
     <Tooltip title={label}>
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px 2px 6px',
-        borderRadius: 10, fontSize: 12, background: bg || 'rgba(0,0,0,0.02)', lineHeight: '22px',
+        borderRadius: 12, fontSize: 12, background: bg || 'rgba(0,0,0,0.02)', lineHeight: '22px',
       }}>
         {icon && <span style={{ fontSize: 11, color: '#86909c', display: 'flex' }}>{icon}</span>}
         {label && <span style={{ color: '#86909c' }}>{label}</span>}
@@ -68,7 +69,7 @@ function DropdownList({ items, activeKey, onSelect }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {items.map(item => (
         <div key={item.key} onClick={() => onSelect(item.key)} style={{
-          padding: '6px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 13,
+          padding: '6px 12px', borderRadius: 12, cursor: 'pointer', fontSize: 13,
           display: 'flex', alignItems: 'center', gap: 8,
           background: activeKey === item.key ? '#e0f7f6' : 'transparent',
           fontWeight: activeKey === item.key ? 600 : 400,
@@ -98,7 +99,7 @@ function findFolderPath(tree, targetId) {
 function ScenarioStepsView({ steps, extraCol, extraColLabel, extraPlaceholder, extraColor }) {
   if (!steps?.length) return <Empty description="暂无步骤" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: 24 }} />
   return (
-    <div style={{ borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+    <div style={{ borderRadius: 12, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
       <div style={{
         display: 'flex', gap: 10, padding: '6px 14px', fontSize: 12, fontWeight: 600,
         background: 'rgba(0,0,0,0.02)', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
@@ -116,7 +117,7 @@ function ScenarioStepsView({ steps, extraCol, extraColLabel, extraPlaceholder, e
           borderBottom: i < steps.length - 1 ? '1px solid rgba(0,0,0,0.03)' : 'none', alignItems: 'center',
         }}>
           <span style={{
-            width: 28, height: 24, borderRadius: 10, background: '#e0f7f6', color: '#0ea5a0',
+            width: 28, height: 24, borderRadius: 12, background: '#e0f7f6', color: '#0ea5a0',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
           }}>{s.seq || i + 1}</span>
           {s.phase ? (
@@ -279,13 +280,197 @@ function ScenarioEditor({
   isTemplate, setIsTemplate, type, accentColor,
   onImportTemplate, manualSteps, caseTitle,
   projectId, branchId, caseId,
-  environments, runEnv,
+  environments, runEnv, onEnvChange,
   onScriptSaved,
 }) {
   const extraCol = type === 'api' ? 'apiEndpoint' : 'uiTarget'
   const extraLabel = type === 'api' ? '接口端点' : '页面/元素'
   const [viewMode, setViewMode] = useState('steps')
   const [newVarInput, setNewVarInput] = useState('')
+  const [debugRunning, setDebugRunning] = useState(false)
+  const [debugResult, setDebugResult] = useState(null)
+  const [aiGenerating, setAiGenerating] = useState(false)
+  const [aiDebugging, setAiDebugging] = useState(false)
+  const [previewScreenshot, setPreviewScreenshot] = useState(null)
+  const [debugHistory, setDebugHistory] = useState([])
+  const scriptEditorRef = useRef(null)
+
+  const loadDebugHistory = async () => {
+    try {
+      const res = await api.get(`/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/runs?type=ui&limit=10`)
+      setDebugHistory((res.data || []).filter(r => r.status !== 'passed'))
+    } catch { /* ignore */ }
+  }
+
+  const handleAiGenerate = async () => {
+    if (type === 'api') return
+    if (!runEnv) { message.warning('请先选择执行环境（需要 BASE_URL）'); return }
+    setAiGenerating(true)
+    setDebugResult(null)
+    try {
+      message.loading({ content: '正在探测页面并生成脚本...', key: 'ai-gen', duration: 0 })
+      await api.post(
+        `/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/generate?type=ui`,
+        { envId: runEnv }
+      )
+      if (!scenario) {
+        setScenario({ steps: (manualSteps || []).map((s, i) => ({ seq: i + 1, action: s.action || '', expected: s.expected || '' })), variablesUsed: [] })
+      }
+      if (onScriptSaved) onScriptSaved()
+      setViewMode('code')
+      setTimeout(() => scriptEditorRef.current?.refresh(), 300)
+
+      // 自动流式运行
+      message.destroy('ai-gen')
+      runScriptWithStream((result) => {
+        setAiGenerating(false)
+        if (result.status === 'passed') {
+          message.success('验证通过！')
+        } else {
+          message.warning('验证失败，可点击「AI 调试」修复')
+        }
+      })
+      return // runScriptWithStream 异步处理后续
+    } catch (e) {
+      message.error({ content: e?.response?.data?.error?.message || 'AI 生成失败', key: 'ai-gen' })
+      setAiGenerating(false)
+    }
+  }
+
+  const handleAiDebug = async () => {
+    if (!runEnv) { message.warning('请先选择执行环境'); return }
+    if (!debugResult || debugResult.status === 'passed') { message.info('当前没有失败的执行结果'); return }
+    setAiDebugging(true)
+    try {
+      message.loading({ content: 'AI 正在分析失败原因并修复脚本...', key: 'ai-debug', duration: 0 })
+      const repairRes = await api.post(
+        `/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/repair`,
+        { errorSummary: debugResult.errorSummary || '', stdout: debugResult.stdout || '' }
+      )
+      if (!repairRes.data?.changed) {
+        message.info({ content: 'AI 未找到可修复的内容，建议手动检查脚本', key: 'ai-debug' })
+        return
+      }
+      scriptEditorRef.current?.refresh()
+
+      message.loading({ content: '脚本已修复，正在重新验证...', key: 'ai-debug', duration: 0 })
+      setDebugRunning(true)
+      const runRes = await api.post(
+        `/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/run?type=ui`,
+        { envId: runEnv }
+      )
+      const result = runRes.data || runRes
+      setDebugResult({ ...result, _drawerOpen: true })
+      scriptEditorRef.current?.refresh()
+      if (result.status === 'passed') {
+        message.success({ content: '修复后验证通过！', key: 'ai-debug' })
+      } else {
+        message.warning({ content: '仍然失败，可再次点击「AI 调试」继续修复', key: 'ai-debug', duration: 5 })
+      }
+    } catch (e) {
+      message.error({ content: e?.response?.data?.error?.message || 'AI 调试失败', key: 'ai-debug' })
+    } finally {
+      setAiDebugging(false)
+      setDebugRunning(false)
+    }
+  }
+
+  // 流式运行脚本 — 实时推送步骤进度
+  const [liveSteps, setLiveSteps] = useState([])
+  const liveStepsRef = useRef([])
+  const abortRef = useRef(null)
+
+  const stopExecution = () => {
+    if (abortRef.current) {
+      abortRef.current.abort()
+      abortRef.current = null
+    }
+    setDebugRunning(false)
+    setAiGenerating(false)
+    message.info('已停止执行')
+  }
+
+  const runScriptWithStream = (onDone) => {
+    const token = localStorage.getItem('token')
+    const url = `/api/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/run-stream?type=ui`
+    const controller = new AbortController()
+    abortRef.current = controller
+    setLiveSteps([])
+    setDebugResult(null)
+    setDebugRunning(true)
+    // 打开 Drawer 显示实时进度
+    setDebugResult({ status: 'running', _drawerOpen: true, steps: [] })
+
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ envId: runEnv }),
+      signal: controller.signal,
+    }).then(response => {
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      function processChunk() {
+        reader.read().then(({ done, value }) => {
+          if (done) return
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          let currentEvent = null
+          for (const line of lines) {
+            if (line.startsWith('event: ')) currentEvent = line.slice(7).trim()
+            else if (line.startsWith('data: ') && currentEvent) {
+              try {
+                const data = JSON.parse(line.slice(6))
+                if (currentEvent === 'step_start') {
+                  setLiveSteps(prev => { const n = [...prev, { ...data, status: 'running' }]; liveStepsRef.current = n; return n })
+                } else if (currentEvent === 'step_end') {
+                  setLiveSteps(prev => { const n = prev.map(s => s.seq === data.seq ? { ...s, ...data } : s); liveStepsRef.current = n; return n })
+                } else if (currentEvent === 'done') {
+                  const live = liveStepsRef.current
+                  const finalSteps = (data.steps || []).map((s, i) => {
+                    const liveItem = live[i] || {}
+                    return { ...s, action: s.action || s.step_name || liveItem.action, step_name: s.step_name || liveItem.action }
+                  })
+                  const mergedSteps = finalSteps.length > 0 ? finalSteps : live.map(s => ({ ...s }))
+                  setDebugResult({ ...data, steps: mergedSteps, _drawerOpen: true })
+                  setDebugRunning(false)
+                  setLiveSteps([]); liveStepsRef.current = []
+                  scriptEditorRef.current?.refresh()
+                  onDone?.(data)
+                }
+              } catch {}
+              currentEvent = null
+            }
+          }
+          processChunk()
+        }).catch(() => { setDebugRunning(false) })
+      }
+      processChunk()
+    }).catch(e => {
+      setDebugResult({ status: 'error', errorSummary: e.message, _drawerOpen: true })
+      setDebugRunning(false)
+    })
+  }
+
+  const handleDebugRun = () => {
+    if (!runEnv) { message.warning('请先选择执行环境'); return }
+    if (type === 'api') {
+      // 接口类型走原来的同步方式
+      setDebugRunning(true); setDebugResult(null)
+      api.post(`/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/run?type=api`, { envId: runEnv })
+        .then(res => setDebugResult({ ...(res.data || res), _drawerOpen: true }))
+        .catch(e => setDebugResult({ status: 'error', errorSummary: e?.response?.data?.error?.message || e.message, _drawerOpen: true }))
+        .finally(() => setDebugRunning(false))
+      return
+    }
+    runScriptWithStream((result) => {
+      if (result.status === 'passed') message.success('验证通过！')
+      else message.warning('验证失败，查看详情')
+    })
+  }
 
   const initScenario = (fromManual) => {
     let newSteps
@@ -304,18 +489,43 @@ function ScenarioEditor({
   }
 
   if (!scenario) return (
-    <Card styles={{ body: { padding: '16px 20px' } }}>
-      <Empty description={`暂无${type === 'api' ? '接口' : 'UI'}测试场景`} image={Empty.PRESENTED_IMAGE_SIMPLE}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-          <Space>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => initScenario(false)}>创建空白场景</Button>
-            {manualSteps?.length > 0 && (
-              <Button icon={<CopyOutlined />} onClick={() => initScenario(true)}>从手动步骤生成</Button>
-            )}
-          </Space>
-          <Button type="link" size="small" icon={<ImportOutlined />} onClick={onImportTemplate}>从模板导入</Button>
+    <Card styles={{ body: { padding: '24px 20px' } }}>
+      {type !== 'api' && manualSteps?.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '32px 0' }}>
+          <DesktopOutlined style={{ fontSize: 40, color: 'rgba(124,92,191,0.25)' }} />
+          <div style={{ fontSize: 14, color: '#4e5969', fontWeight: 500 }}>
+            基于手动测试步骤（{manualSteps.length} 步）生成 Playwright 自动化脚本
+          </div>
+          <div style={{ fontSize: 12, color: '#86909c', maxWidth: 400, textAlign: 'center' }}>
+            AI 将分析用例的操作步骤和预期结果，生成可执行的 Playwright Python 测试脚本，并在目标系统上运行验证
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            <Select size="middle" value={runEnv} onChange={onEnvChange} style={{ width: 180 }}
+              placeholder="选择执行环境" options={(environments || []).map(e => ({ value: e.id, label: e.name }))} />
+            <Button type="primary" size="middle" icon={<ThunderboltOutlined />}
+              loading={aiGenerating} disabled={!runEnv}
+              onClick={handleAiGenerate}
+              style={{ background: '#7c5cbf', borderColor: '#7c5cbf', height: 36 }}>
+              AI 生成脚本
+            </Button>
+          </div>
+          {!runEnv && <div style={{ fontSize: 12, color: '#c9cdd4' }}>请先选择环境（需要配置 BASE_URL 变量）</div>}
         </div>
-      </Empty>
+      ) : type !== 'api' ? (
+        <Empty description="该用例没有手动测试步骤，请先在「手动测试步骤」Tab 添加步骤" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      ) : (
+        <Empty description="暂无接口测试场景" image={Empty.PRESENTED_IMAGE_SIMPLE}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <Space>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => initScenario(false)}>创建空白场景</Button>
+              {manualSteps?.length > 0 && (
+                <Button icon={<CopyOutlined />} onClick={() => initScenario(true)}>从手动步骤生成</Button>
+              )}
+            </Space>
+            <Button type="link" size="small" icon={<ImportOutlined />} onClick={onImportTemplate}>从模板导入</Button>
+          </div>
+        </Empty>
+      )}
     </Card>
   )
 
@@ -334,13 +544,272 @@ function ScenarioEditor({
 
   const scVars = scenario.variablesUsed || []
 
+  // ── UI 类型：专用简洁布局 ──
+  if (type !== 'api') {
+    const passed = debugResult?.status === 'passed'
+    return (
+      <Card styles={{ body: { padding: '16px 20px' } }}>
+        {/* 工具栏 */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Space size={8}>
+            <Select size="small" value={runEnv} onChange={onEnvChange} style={{ width: 150 }}
+              placeholder="选择环境" options={(environments || []).map(e => ({ value: e.id, label: e.name }))} />
+            <Button size="small" icon={<ThunderboltOutlined />}
+              loading={aiGenerating} disabled={!runEnv}
+              onClick={handleAiGenerate}
+              style={{ borderColor: '#7c5cbf', color: '#7c5cbf' }}>
+              {aiGenerating ? '生成中...' : 'AI 生成'}
+            </Button>
+            {debugResult && debugResult.status !== 'passed' && (
+              <Button size="small" icon={<BugOutlined />}
+                loading={aiDebugging} disabled={!runEnv}
+                onClick={handleAiDebug}
+                style={{ borderColor: '#fa8c16', color: '#fa8c16' }}>
+                {aiDebugging ? '调试中...' : 'AI 调试'}
+              </Button>
+            )}
+            <Button size="small" type="primary" icon={<PlayCircleOutlined />}
+              loading={debugRunning} disabled={!runEnv}
+              onClick={handleDebugRun}
+              style={{ background: '#7c5cbf', borderColor: '#7c5cbf' }}>
+              运行验证
+            </Button>
+          </Space>
+          <Space size={8}>
+            <Button size="small" icon={<SaveOutlined />}
+              onClick={() => scriptEditorRef.current?.save()}>
+              保存
+            </Button>
+            <Button size="small" icon={<CopyOutlined />}
+              onClick={() => scriptEditorRef.current?.copyCode()}>
+              复制
+            </Button>
+            {/* 右侧状态标签 */}
+            {debugResult && (
+              <Tag color={passed ? undefined : 'error'}
+                style={{ cursor: 'pointer', fontWeight: 600, fontSize: 12, padding: '2px 10px', margin: 0,
+                  ...(passed ? { background: '#e0f7f6', color: '#0ea5a0', border: 'none' } : {}) }}
+                onClick={() => setDebugResult(prev => prev ? { ...prev, _drawerOpen: true } : prev)}>
+                {passed ? '✓ 通过' : '✗ 失败'} · {debugResult.durationMs != null ? `${(debugResult.durationMs / 1000).toFixed(1)}s` : ''}
+                {debugResult.screenshots?.length > 0 ? ` · ${debugResult.screenshots.length} 截图` : ''}
+              </Tag>
+            )}
+          </Space>
+        </div>
+
+        {/* 脚本代码 */}
+        <ScriptEditor
+          ref={scriptEditorRef}
+          projectId={projectId} branchId={branchId} caseId={caseId}
+          scriptType="ui" accentColor="#7c5cbf"
+          autoGenerateCode={generateUiCode(steps, caseTitle)}
+          onScriptSaved={onScriptSaved}
+          envId={runEnv}
+          hideToolbar
+        />
+
+        {/* 执行结果抽屉 */}
+        <Drawer
+          title={null}
+          placement="right"
+          width={580}
+          open={!!debugResult?._drawerOpen}
+          onClose={() => setDebugResult(prev => prev ? { ...prev, _drawerOpen: false } : null)}
+          afterOpenChange={(open) => { if (open) loadDebugHistory() }}
+          styles={{ body: { padding: 0 } }}
+        >
+          {debugResult && (() => {
+            const isRunning = debugResult.status === 'running'
+            const stepList = isRunning ? liveSteps : (debugResult.steps || [])
+            return (
+            <div>
+              {/* 头部 */}
+              <div style={{
+                padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 12,
+                background: isRunning ? 'linear-gradient(135deg, rgba(124,92,191,0.08), rgba(124,92,191,0.02))'
+                  : passed ? 'linear-gradient(135deg, rgba(14,165,160,0.08), rgba(14,165,160,0.02))'
+                  : 'linear-gradient(135deg, rgba(232,69,60,0.08), rgba(232,69,60,0.02))',
+                borderBottom: '1px solid rgba(0,0,0,0.04)',
+              }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 22,
+                  background: isRunning ? '#f3f0ff' : passed ? '#e0f7f6' : '#fff2f0',
+                  color: isRunning ? '#7c5cbf' : passed ? '#0ea5a0' : '#e8453c',
+                }}>
+                  {isRunning ? <Spin size="small" /> : passed ? <CheckCircleOutlined /> : <WarningOutlined />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: isRunning ? '#7c5cbf' : passed ? '#0ea5a0' : '#e8453c' }}>
+                    {isRunning ? '正在执行...' : passed ? '验证通过' : '验证失败'}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>
+                    {isRunning
+                      ? `${liveSteps.filter(s => s.status === 'passed').length} 步完成，${liveSteps.filter(s => s.status === 'running').length > 0 ? '1 步执行中' : '等待中...'}`
+                      : `耗时 ${debugResult.durationMs != null ? `${(debugResult.durationMs / 1000).toFixed(1)}s` : '-'}${stepList.length > 0 ? ` · ${stepList.filter(s => s.status === 'passed').length}/${stepList.length} 步通过` : ''}`
+                    }
+                  </div>
+                </div>
+                {isRunning && (
+                  <Button size="small" danger onClick={stopExecution}>停止</Button>
+                )}
+              </div>
+
+              {/* 步骤时间线 */}
+              {stepList.length > 0 ? (
+                <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129', marginBottom: 16 }}>执行过程</div>
+                  {stepList.map((s, i) => {
+                    const ok = s.status === 'passed'
+                    const isRunning = s.status === 'running'
+                    const phase = s.step_phase || s.phase
+                    const name = s.step_name || s.action || `步骤 ${i + 1}`
+                    const error = s.error_summary || s.error
+                    const ms = s.duration_ms
+                    const phaseEmoji = { setup: '🔧', action: '👆', verify: '✅' }
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: 14 }}>
+                        {/* 左：连线 */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 32, flexShrink: 0 }}>
+                          <div style={{
+                            width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 16, flexShrink: 0,
+                            background: isRunning ? '#f3f0ff' : ok ? '#f0faf9' : '#fff5f5',
+                            border: isRunning ? '2px solid #d3adf7' : ok ? '2px solid #b5e8e3' : '2px solid #ffccc7',
+                          }}>
+                            {isRunning ? <Spin size="small" /> : ok ? (phaseEmoji[phase] || '✅') : '❌'}
+                          </div>
+                          {i < stepList.length - 1 && (
+                            <div style={{ width: 2, flex: 1, minHeight: 16, background: isRunning ? '#d3adf7' : ok ? '#b5e8e3' : '#ffccc7' }} />
+                          )}
+                        </div>
+                        {/* 右：内容 */}
+                        <div style={{ flex: 1, paddingBottom: 16, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 32 }}>
+                            <span style={{ fontSize: 14, fontWeight: 500, color: isRunning ? '#7c5cbf' : ok ? '#1d2129' : '#e8453c' }}>
+                              {name}
+                            </span>
+                            <span style={{
+                              fontSize: 11, padding: '1px 8px', borderRadius: 10, fontWeight: 500,
+                              background: isRunning ? '#f3f0ff' : ok ? '#e0f7f6' : '#fff2f0',
+                              color: isRunning ? '#7c5cbf' : ok ? '#0ea5a0' : '#e8453c',
+                            }}>
+                              {isRunning ? '执行中...' : ok ? '通过' : '失败'}
+                            </span>
+                            {ms != null && (
+                              <span style={{ fontSize: 11, color: '#c9cdd4', marginLeft: 'auto' }}>
+                                {ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`}
+                              </span>
+                            )}
+                          </div>
+                          {error && (
+                            <div style={{
+                              marginTop: 6, padding: '8px 12px', borderRadius: 8,
+                              background: '#fff5f5', border: '1px solid #ffccc7',
+                              fontSize: 12, color: '#e8453c', lineHeight: 1.5, wordBreak: 'break-all',
+                            }}>
+                              {error.substring(0, 300)}{error.length > 300 ? '...' : ''}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : debugResult.errorSummary ? (
+                <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129', marginBottom: 8 }}>错误信息</div>
+                  <div style={{
+                    padding: 12, borderRadius: 8, background: '#fff5f5', border: '1px solid #ffccc7',
+                    fontSize: 12, color: '#e8453c', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                  }}>
+                    {debugResult.errorSummary}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* 截图 */}
+              {debugResult.screenshots?.length > 0 && (
+                <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#1d2129', marginBottom: 8 }}>失败截图</div>
+                  {debugResult.screenshots.map((s, i) => (
+                    <div key={i} style={{ marginBottom: 8, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.06)', cursor: 'pointer' }}
+                      onClick={() => setPreviewScreenshot(s)}>
+                      <img src={`data:image/png;base64,${s.base64}`} alt={s.name}
+                        style={{ width: '100%', display: 'block' }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 执行日志（折叠） */}
+              {debugResult.stdout && (
+                <details style={{ borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                  <summary style={{ padding: '12px 24px', fontSize: 13, fontWeight: 500, color: '#86909c', cursor: 'pointer' }}>
+                    执行日志（调试用）
+                  </summary>
+                  <div style={{ padding: '0 24px 16px' }}>
+                    <pre style={{
+                      margin: 0, padding: 14, borderRadius: 8, fontSize: 11, lineHeight: 1.5,
+                      fontFamily: "'JetBrains Mono', monospace", background: '#1e1e2e', color: '#cdd6f4',
+                      maxHeight: 350, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                    }}>
+                      {debugResult.stdout}
+                    </pre>
+                  </div>
+                </details>
+              )}
+
+              {/* 调试历史 */}
+              {debugHistory.length > 0 && (
+                <details>
+                  <summary style={{ padding: '12px 24px', fontSize: 13, fontWeight: 500, color: '#86909c', cursor: 'pointer' }}>
+                    调试历史（{debugHistory.length} 次失败记录）
+                  </summary>
+                  <div style={{ padding: '0 24px 16px' }}>
+                    {debugHistory.map((run, i) => (
+                      <div key={run.id} style={{ marginBottom: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.04)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, color: '#e8453c', fontWeight: 600 }}>#{debugHistory.length - i}</span>
+                          <span style={{ fontSize: 11, color: '#86909c' }}>{run.createdAt ? new Date(run.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                          <span style={{ fontSize: 11, color: '#c9cdd4' }}>{run.durationMs ? `${(run.durationMs / 1000).toFixed(1)}s` : ''}</span>
+                        </div>
+                        {run.errorSummary && (
+                          <div style={{ fontSize: 11, color: '#e8453c', fontFamily: 'monospace', lineHeight: 1.4, wordBreak: 'break-all' }}>
+                            {run.errorSummary.substring(0, 200)}{run.errorSummary.length > 200 ? '...' : ''}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
+            )
+          })()}
+        </Drawer>
+
+        {/* 截图预览弹窗 */}
+        <Modal open={!!previewScreenshot} onCancel={() => setPreviewScreenshot(null)}
+          footer={null} width="80%" title={previewScreenshot?.name || '截图预览'}
+          styles={{ body: { padding: 0, textAlign: 'center', background: '#1e1e2e' } }}>
+          {previewScreenshot && (
+            <img src={`data:image/png;base64,${previewScreenshot.base64}`} alt={previewScreenshot.name}
+              style={{ maxWidth: '100%', maxHeight: '80vh' }} />
+          )}
+        </Modal>
+      </Card>
+    )
+  }
+
+  // ── 接口类型：保持原有的完整 ScenarioEditor ──
   return (
     <Card styles={{ body: { padding: '16px 20px' } }}>
       {/* 顶部工具栏：视图切换 + 状态 + 模板 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <Space size={8}>
           {/* 视图切换 */}
-          <div style={{ display: 'inline-flex', borderRadius: 10, border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+          <div style={{ display: 'inline-flex', borderRadius: 12, border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
             <div onClick={() => setViewMode('steps')} style={{
               padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 500,
               background: viewMode === 'steps' ? accentColor : 'transparent',
@@ -368,6 +837,14 @@ function ScenarioEditor({
           </Tooltip>
         </Space>
         <Space>
+          <Select size="small" value={runEnv} onChange={onEnvChange} style={{ width: 130 }}
+            placeholder="选择环境" options={(environments || []).map(e => ({ value: e.id, label: e.name }))} />
+          <Button size="small" type="primary" icon={<PlayCircleOutlined />}
+            loading={debugRunning} disabled={!runEnv}
+            onClick={handleDebugRun}
+            style={{ background: accentColor, borderColor: accentColor }}>
+            调试运行
+          </Button>
           <Button size="small" icon={<ImportOutlined />} onClick={onImportTemplate}>从模板导入</Button>
           <Button size="small" danger type="text" onClick={() => {
             Modal.confirm({
@@ -383,14 +860,14 @@ function ScenarioEditor({
         <>
           {type === 'api' ? (
             <ApiStepList steps={steps} onChange={newSteps => updateScenario({ steps: newSteps })} accentColor={accentColor}
-                environments={environments} runEnv={runEnv} />
+                environments={environments} runEnv={runEnv} onEnvChange={setRunEnv} />
           ) : (
             <div style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <h4 style={{ fontSize: 13, color: '#86909c', margin: 0 }}>UI 测试步骤</h4>
                 <Button type="primary" ghost size="small" icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
               </div>
-              <div style={{ borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+              <div style={{ borderRadius: 12, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                 <div style={{
                   display: 'flex', gap: 6, padding: '6px 14px', fontSize: 12, fontWeight: 600,
                   background: 'rgba(0,0,0,0.02)', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
@@ -410,7 +887,7 @@ function ScenarioEditor({
                   }}>
                     <HolderOutlined style={{ color: 'rgba(0,0,0,0.15)', cursor: 'grab', flexShrink: 0 }} />
                     <span style={{
-                      width: 28, height: 24, borderRadius: 10, background: '#e0f7f6', color: '#0ea5a0',
+                      width: 28, height: 24, borderRadius: 12, background: '#e0f7f6', color: '#0ea5a0',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
                     }}>{s.seq}</span>
                     <Input value={s.action || ''} onChange={e => updateStepField(i, 'action', e.target.value)}
@@ -447,6 +924,47 @@ function ScenarioEditor({
           />
         </div>
       )}
+
+      {/* 调试运行结果（内联） */}
+      {debugResult && (
+        <div style={{ marginTop: 16, border: `1px solid ${debugResult.status === 'passed' ? 'rgba(14,165,160,0.3)' : 'rgba(232,69,60,0.3)'}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{
+            padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 10,
+            background: debugResult.status === 'passed' ? 'rgba(14,165,160,0.06)' : 'rgba(232,69,60,0.06)',
+          }}>
+            <Tag color={debugResult.status === 'passed' ? 'cyan' : 'error'} style={{ margin: 0, fontWeight: 600 }}>
+              {(debugResult.status || 'UNKNOWN').toUpperCase()}
+            </Tag>
+            {debugResult.durationMs != null && <span style={{ fontSize: 12, color: '#86909c' }}>{(debugResult.durationMs / 1000).toFixed(1)}s</span>}
+            <div style={{ flex: 1 }} />
+            <Button type="text" size="small" onClick={() => setDebugResult(null)} style={{ color: '#c9cdd4' }}>关闭</Button>
+          </div>
+          {debugResult.errorSummary && (
+            <div style={{ padding: '8px 14px', fontSize: 12, color: '#e8453c', fontFamily: 'monospace' }}>{debugResult.errorSummary}</div>
+          )}
+          {debugResult.stdout && (
+            <pre style={{ margin: 0, padding: 14, fontSize: 11, fontFamily: 'monospace', background: '#1e1e2e', color: '#cdd6f4', maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
+              {debugResult.stdout}
+            </pre>
+          )}
+          {debugResult.screenshots?.length > 0 && (
+            <div style={{ padding: '10px 14px', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
+              <div style={{ fontSize: 12, color: '#86909c', marginBottom: 8 }}>失败截图 ({debugResult.screenshots.length})</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {debugResult.screenshots.map((s, i) => (
+                  <div key={i} style={{ cursor: 'pointer', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.06)' }}
+                    onClick={() => setPreviewScreenshot(s)}>
+                    <img src={`data:image/png;base64,${s.base64}`} alt={s.name}
+                      style={{ width: 160, height: 100, objectFit: 'cover', display: 'block' }} />
+                    <div style={{ fontSize: 11, color: '#86909c', padding: '2px 6px', background: 'rgba(0,0,0,0.02)' }}>{s.name}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
     </Card>
   )
 }
@@ -523,10 +1041,11 @@ export default function CaseDetail() {
   const [runModalOpen, setRunModalOpen] = useState(false)
   const [runStatus, setRunStatus] = useState('idle')
   const [runResult, setRunResult] = useState(null)
-  const [runEnv, setRunEnv] = useState(null)
+  const [runEnv, setRunEnv] = useEnv(projectId)
   const [hasActiveScript, setHasActiveScript] = useState(false)
   const [scriptRuns, setScriptRuns] = useState([])
   const [scriptRunsLoading, setScriptRunsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState('manual')
 
   // 编辑状态
   const [title, setTitle] = useState('')
@@ -636,13 +1155,21 @@ export default function CaseDetail() {
 
       const envs = envRes.data || []
       setEnvironments(envs)
-      if (envs.length) {
+      // 如果 useEnv 还没持久化选择，默认选第一个
+      if (envs.length && !runEnv) {
         setRunEnv(envs[0].id)
-        try {
-          const varRes = await api.get(`/environments/${envs[0].id}/variables`)
-          envs[0].variables = varRes.data || []
-          setEnvironments([...envs])
-        } catch {}
+      }
+      // 加载已选环境的变量
+      const activeEnvId = runEnv || (envs.length ? envs[0].id : null)
+      if (activeEnvId) {
+        const env = envs.find(e => e.id === activeEnvId)
+        if (env) {
+          try {
+            const varRes = await api.get(`/environments/${activeEnvId}/variables`)
+            env.variables = varRes.data || []
+            setEnvironments([...envs])
+          } catch {}
+        }
       }
     } catch { message.error('加载用例详情失败') }
     finally { setLoading(false) }
@@ -731,10 +1258,6 @@ export default function CaseDetail() {
           <Button type="primary" size="small" icon={<SaveOutlined />} disabled={!isDirty} onClick={handleSave}>保存</Button>
           <Input value={title} onChange={e => setTitle(e.target.value)} variant="borderless"
             style={{ fontSize: 16, fontWeight: 600, flex: 1, padding: '2px 4px' }} />
-          <Select value={runEnv} onChange={setRunEnv} size="small" style={{ width: 170, flexShrink: 0 }}
-            placeholder="选择环境" options={environments.map(e => ({ value: e.id, label: e.name }))} />
-          <Button type="primary" size="small" icon={<PlayCircleOutlined />}
-            onClick={() => { setRunModalOpen(true); setRunStatus('idle') }}>执行</Button>
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
@@ -809,8 +1332,8 @@ export default function CaseDetail() {
       </Card>
 
       <div style={{ display: 'flex', gap: 16 }}>
-        <div style={{ flex: 1 }}>
-          <Tabs defaultActiveKey="manual" onChange={k => { if (k === 'history') loadScriptRuns() }} items={[
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Tabs activeKey={activeTab} onChange={k => { setActiveTab(k); if (k === 'history') loadScriptRuns() }} items={[
             { key: 'manual', label: '手动测试步骤', children: (
               <Card styles={{ body: { padding: '16px 20px' } }}>
                 <div style={{ marginBottom: 20 }}>
@@ -824,7 +1347,7 @@ export default function CaseDetail() {
                     <h4 style={{ fontSize: 13, color: '#86909c', margin: 0 }}>测试步骤</h4>
                     <Button type="primary" ghost size="small" icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
                   </div>
-                  <div style={{ borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+                  <div style={{ borderRadius: 12, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                     <div style={{
                       display: 'flex', gap: 10, padding: '6px 14px', fontSize: 12, fontWeight: 600,
                       background: 'rgba(0,0,0,0.02)', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
@@ -843,7 +1366,7 @@ export default function CaseDetail() {
                       }}>
                         <HolderOutlined style={{ color: 'rgba(0,0,0,0.15)', cursor: 'grab', flexShrink: 0 }} />
                         <span style={{
-                          width: 28, height: 24, borderRadius: 10, background: '#e0f7f6', color: '#0ea5a0',
+                          width: 28, height: 24, borderRadius: 12, background: '#e0f7f6', color: '#0ea5a0',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
                         }}>{s.seq}</span>
                         <Input value={s.action} onChange={e => updateStep(i, 'action', e.target.value)}
@@ -877,6 +1400,26 @@ export default function CaseDetail() {
                     placeholder="可选备注信息" style={{ background: 'rgba(0,0,0,0.02)', borderColor: 'rgba(0,0,0,0.04)' }}
                     autoSize={{ minRows: 2, maxRows: 4 }} />
                 </div>
+
+                <div style={{ marginTop: 20 }}>
+                  <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>依赖参数</h4>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                    {variablesUsed.map((v, i) => (
+                      <Tag key={i} closable onClose={() => setVariablesUsed(prev => prev.filter((_, j) => j !== i))}
+                        style={{ fontFamily: 'monospace', fontSize: 11, background: '#edf3ff', border: '1px solid rgba(78,138,240,0.3)', color: '#4e8af0', borderRadius: 12, padding: '1px 6px' }}>
+                        {v}
+                      </Tag>
+                    ))}
+                    {variablesUsed.length === 0 && <span style={{ fontSize: 12, color: '#c9cdd4' }}>暂无</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <Input value={newVarInput} onChange={e => setNewVarInput(e.target.value)} size="small"
+                      placeholder="参数名" style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }}
+                      onKeyDown={e => { if (e.key === 'Enter' && newVarInput.trim()) { setVariablesUsed(prev => [...prev, newVarInput.trim()]); setNewVarInput('') } }} />
+                    <Button size="small" icon={<PlusOutlined />} disabled={!newVarInput.trim()}
+                      onClick={() => { setVariablesUsed(prev => [...prev, newVarInput.trim()]); setNewVarInput('') }} />
+                  </div>
+                </div>
               </Card>
             )},
 
@@ -889,7 +1432,7 @@ export default function CaseDetail() {
                 onImportTemplate={() => { setTemplateModalType('api'); setTemplateModalOpen(true) }}
                 manualSteps={steps} caseTitle={title}
                 projectId={projectId} branchId={branchId} caseId={caseId}
-                environments={environments} runEnv={runEnv}
+                environments={environments} runEnv={runEnv} onEnvChange={setRunEnv}
                 onScriptSaved={() => setHasActiveScript(true)}
               />
             )},
@@ -903,6 +1446,7 @@ export default function CaseDetail() {
                 onImportTemplate={() => { setTemplateModalType('ui'); setTemplateModalOpen(true) }}
                 manualSteps={steps} caseTitle={title}
                 projectId={projectId} branchId={branchId} caseId={caseId}
+                environments={environments} runEnv={runEnv} onEnvChange={setRunEnv}
                 onScriptSaved={() => setHasActiveScript(true)}
               />
             )},
@@ -917,9 +1461,25 @@ export default function CaseDetail() {
                   pagination={false}
                   locale={{ emptyText: '暂无执行记录' }}
                   expandable={{
-                    expandedRowRender: r => r.stdout ? (
-                      <pre style={{ margin: 0, padding: 12, background: '#1e1e1e', color: '#d4d4d4', borderRadius: 10, fontSize: 12, fontFamily: 'monospace', maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{r.stdout}</pre>
-                    ) : <span style={{ color: '#c9cdd4' }}>无输出日志</span>,
+                    expandedRowRender: r => (
+                      <div>
+                        {r.stdout ? (
+                          <pre style={{ margin: 0, padding: 12, background: '#1e1e1e', color: '#d4d4d4', borderRadius: 12, fontSize: 12, fontFamily: 'monospace', maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{r.stdout}</pre>
+                        ) : <span style={{ color: '#c9cdd4' }}>无输出日志</span>}
+                        {r.screenshots?.length > 0 && (
+                          <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {r.screenshots.map((s, i) => (
+                              <div key={i} style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.06)', cursor: 'pointer' }}
+                                onClick={() => window.open(`data:image/png;base64,${s.base64}`, '_blank')}>
+                                <img src={`data:image/png;base64,${s.base64}`} alt={s.name}
+                                  style={{ width: 120, height: 75, objectFit: 'cover', display: 'block' }} />
+                                <div style={{ fontSize: 10, color: '#86909c', padding: '1px 4px', background: 'rgba(0,0,0,0.02)' }}>{s.name}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ),
                     rowExpandable: () => true,
                   }}
                   columns={[
@@ -929,7 +1489,7 @@ export default function CaseDetail() {
                     },
                     {
                       title: '状态', dataIndex: 'status', width: 100,
-                      render: v => <Tag color={v === 'passed' ? 'success' : v === 'failed' ? 'error' : 'warning'} style={{ fontWeight: 600 }}>{(v || 'unknown').toUpperCase()}</Tag>
+                      render: v => <Tag color={v === 'passed' ? undefined : v === 'failed' ? 'error' : 'warning'} style={{ fontWeight: 600, ...(v === 'passed' ? { background: '#e0f7f6', color: '#0ea5a0', border: 'none' } : {}) }}>{(v || 'unknown').toUpperCase()}</Tag>
                     },
                     {
                       title: '耗时', dataIndex: 'durationMs', width: 100,
@@ -977,54 +1537,6 @@ export default function CaseDetail() {
             ] : []),
           ]} />
         </div>
-
-        <div style={{ width: 260, flexShrink: 0 }}>
-          <Card styles={{ body: { padding: 16 } }} style={{ marginBottom: 12 }}>
-            <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 12 }}>快速操作</h4>
-            <Space direction="vertical" style={{ width: '100%' }} size={8}>
-              <Button block type="primary" icon={<PlayCircleOutlined />}
-                onClick={() => { setRunModalOpen(true); setRunStatus('idle') }}>执行此用例</Button>
-              <Button block icon={<BugOutlined />}
-                onClick={async () => {
-                  const newFlaky = !flaky; setFlaky(newFlaky)
-                  try {
-                    await api.put(`/projects/${projectId}/branches/${branchId}/cases/${caseId}`, { isFlaky: newFlaky })
-                    message.success(newFlaky ? '已标记为 Flaky' : '已取消 Flaky')
-                  } catch { message.error('操作失败') }
-                }}>
-                {flaky ? '取消 Flaky 标记' : '标记为 Flaky'}
-              </Button>
-              <Button block icon={<ExperimentOutlined />} danger ghost
-                onClick={async () => {
-                  try {
-                    await api.post(`/projects/${projectId}/branches/${branchId}/cases/batch`, { caseIds: [caseId], action: 'archive' })
-                    message.success('已归档'); navigate(-1)
-                  } catch { message.error('归档失败') }
-                }}>归档</Button>
-            </Space>
-          </Card>
-
-          {/* 依赖参数 */}
-          <Card styles={{ body: { padding: 16 } }}>
-            <h4 style={{ fontSize: 13, color: '#86909c', marginBottom: 8 }}>依赖参数</h4>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-              {variablesUsed.map((v, i) => (
-                <Tag key={i} closable onClose={() => setVariablesUsed(prev => prev.filter((_, j) => j !== i))}
-                  style={{ fontFamily: 'monospace', fontSize: 11, background: '#edf3ff', border: '1px solid rgba(78,138,240,0.3)', color: '#4e8af0', borderRadius: 12, padding: '1px 6px' }}>
-                  {v}
-                </Tag>
-              ))}
-              {variablesUsed.length === 0 && <span style={{ fontSize: 12, color: '#c9cdd4' }}>暂无</span>}
-            </div>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <Input value={newVarInput} onChange={e => setNewVarInput(e.target.value)} size="small"
-                placeholder="参数名" style={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }}
-                onKeyDown={e => { if (e.key === 'Enter' && newVarInput.trim()) { setVariablesUsed(prev => [...prev, newVarInput.trim()]); setNewVarInput('') } }} />
-              <Button size="small" icon={<PlusOutlined />} disabled={!newVarInput.trim()}
-                onClick={() => { setVariablesUsed(prev => [...prev, newVarInput.trim()]); setNewVarInput('') }} />
-            </div>
-          </Card>
-        </div>
       </div>
 
       <TemplateModal
@@ -1047,7 +1559,7 @@ export default function CaseDetail() {
 
       <Modal open={runModalOpen} onCancel={() => { setRunModalOpen(false); setRunResult(null); setRunStatus('idle') }} footer={null} title="执行用例" width={560}>
         <div style={{ padding: '12px 0' }}>
-          <div style={{ padding: '12px 16px', background: 'rgba(0,0,0,0.02)', borderRadius: 10, marginBottom: 20 }}>
+          <div style={{ padding: '12px 16px', background: 'rgba(0,0,0,0.02)', borderRadius: 12, marginBottom: 20 }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>{title}</div>
             <div style={{ fontSize: 12, color: '#86909c', fontFamily: 'monospace' }}>{caseCode}</div>
           </div>
@@ -1085,8 +1597,8 @@ export default function CaseDetail() {
               {runResult && (
                 <div style={{ marginTop: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                    <Tag color={runResult.status === 'passed' ? 'success' : runResult.status === 'failed' ? 'error' : 'warning'}
-                      style={{ fontWeight: 700, fontSize: 13, padding: '2px 12px' }}>
+                    <Tag color={runResult.status === 'passed' ? undefined : runResult.status === 'failed' ? 'error' : 'warning'}
+                      style={{ fontWeight: 700, fontSize: 13, padding: '2px 12px', ...(runResult.status === 'passed' ? { background: '#e0f7f6', color: '#0ea5a0', border: 'none' } : {}) }}>
                       {(runResult.status || 'UNKNOWN').toUpperCase()}
                     </Tag>
                     {runResult.durationMs != null && (

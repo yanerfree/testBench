@@ -88,6 +88,52 @@ async def create_script(
     }
 
 
+@router.post("/generate")
+async def generate_script_ai(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    script_type: str = Query(alias="type", default="ui"),
+    env_id: uuid.UUID | None = Body(default=None, alias="envId", embed=True),
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """AI 生成 Playwright 测试脚本"""
+    if script_type != "ui":
+        raise AppError(code="INVALID_TYPE", message="AI 生成仅支持 UI 脚本类型")
+
+    from app.services.ai.ui_script_gen_service import generate_ui_script
+    result = await generate_ui_script(
+        case_id=str(case_id),
+        session=session,
+        env_id=str(env_id) if env_id else None,
+    )
+    await session.commit()
+    return {"data": result}
+
+
+@router.post("/repair")
+async def repair_script_ai(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    error_summary: str = Body(default="", alias="errorSummary"),
+    stdout: str = Body(default=""),
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """AI 分析执行失败原因并修复脚本"""
+    from app.services.ai.ui_script_gen_service import repair_ui_script
+    result = await repair_ui_script(
+        case_id=str(case_id),
+        session=session,
+        error_summary=error_summary,
+        stdout=stdout,
+    )
+    await session.commit()
+    return {"data": result}
+
+
 @router.post("/run")
 async def run_script(
     project_id: uuid.UUID,
@@ -115,10 +161,11 @@ async def run_script(
     file_name = script.file_name or f"test_{script_type}.py"
     content = script.content
 
-    if env_vars.get("BASE_URL"):
+    # 把环境变量注入脚本中 os.getenv 的默认值
+    for var_name, var_value in env_vars.items():
         content = re.sub(
-            r'(BASE_URL\s*=\s*)(["\']).*?\2',
-            lambda m: f'{m.group(1)}{m.group(2)}{env_vars["BASE_URL"]}{m.group(2)}',
+            rf'({re.escape(var_name)}\s*=\s*os\.getenv\(\s*"{re.escape(var_name)}"\s*,\s*)(["\']).*?\2',
+            lambda m, v=var_value: f'{m.group(1)}{m.group(2)}{v}{m.group(2)}',
             content,
             count=1,
         )
@@ -150,15 +197,171 @@ async def run_script(
         duration_ms=result.get("duration_ms"),
         error_summary=result.get("error_summary"),
         stdout=result.get("stdout"),
+        screenshots=result.get("screenshots") or None,
         executed_by=user.id,
     )
     session.add(run_record)
+
+    # 更新用例 UI 场景状态
+    if script_type == "ui":
+        case = await session.get(Case, case_id)
+        if case:
+            case.ui_scenario_status = "completed" if result.get("status") == "passed" else "debugging"
+
     await session.commit()
     await session.refresh(run_record)
 
     result["id"] = str(run_record.id)
     result["created_at"] = run_record.created_at.isoformat()
     return {"data": result}
+
+
+@router.post("/run-stream")
+async def run_script_stream(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    script_type: str = Query(alias="type", default="ui"),
+    env_id: uuid.UUID | None = Body(default=None, alias="envId", embed=True),
+    session: AsyncSession = Depends(get_db),
+    user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """SSE 流式执行脚本 — 实时推送步骤进度"""
+    import asyncio
+    import json
+    import subprocess
+    import time as time_mod
+
+    script = await script_service.get_active_script(session, case_id, script_type)
+    if not script:
+        raise NotFoundError(code="SCRIPT_NOT_FOUND", message="没有可执行的脚本")
+
+    env_vars: dict[str, str] = {}
+    if env_id:
+        rows = await session.execute(
+            select(EnvironmentVariable).where(EnvironmentVariable.environment_id == env_id)
+        )
+        for v in rows.scalars().all():
+            env_vars[v.key] = v.value
+
+    file_name = script.file_name or f"test_{script_type}.py"
+    content = script.content
+    for var_name, var_value in env_vars.items():
+        content = re.sub(
+            rf'({re.escape(var_name)}\s*=\s*os\.getenv\(\s*"{re.escape(var_name)}"\s*,\s*)(["\']).*?\2',
+            lambda m, v=var_value: f'{m.group(1)}{m.group(2)}{v}{m.group(2)}',
+            content, count=1,
+        )
+
+    sandbox_dir = tempfile.mkdtemp(prefix="tb_run_")
+    script_path = Path(sandbox_dir) / file_name
+    script_path.parent.mkdir(parents=True, exist_ok=True)
+    script_path.write_text(content, encoding="utf-8")
+
+    from app.engine.command_builder import build_pytest_command, is_playwright_script
+    import os as os_mod
+
+    pw_output_dir = None
+    if is_playwright_script(content):
+        pw_output_dir = str(Path(sandbox_dir) / ".pw_results")
+        Path(pw_output_dir).mkdir(parents=True, exist_ok=True)
+        from app.engine.pw_conftest import write_playwright_conftest
+        write_playwright_conftest(sandbox_dir, env_vars)
+
+    plugin_src = Path(__file__).resolve().parent.parent / "engine" / "plugins" / "tea_capture.py"
+    step_src = Path(__file__).resolve().parent.parent / "engine" / "plugins" / "tea_step.py"
+    tea_plugins_dir = Path(sandbox_dir) / ".tea_plugins"
+    tea_results_dir = Path(sandbox_dir) / ".tea_results"
+    tea_plugins_dir.mkdir(parents=True, exist_ok=True)
+    tea_results_dir.mkdir(parents=True, exist_ok=True)
+    if plugin_src.exists():
+        shutil.copy2(str(plugin_src), str(tea_plugins_dir / "tea_capture.py"))
+    if step_src.exists():
+        shutil.copy2(str(step_src), str(tea_plugins_dir / "tea_step.py"))
+
+    import sys
+    junit_path = tempfile.mktemp(suffix=".xml")
+    cmd = build_pytest_command(sandbox_dir, file_name, script.func_name, junit_path, plugin_src.exists(), pw_output_dir)
+
+    run_env = os_mod.environ.copy()
+    run_env.update(env_vars)
+    run_env["PYTHONPATH"] = str(tea_plugins_dir) + ":" + run_env.get("PYTHONPATH", "")
+    run_env["TEA_CAPTURE_DIR"] = str(tea_results_dir)
+
+    async def event_generator():
+        start_time = time_mod.time()
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            cwd=sandbox_dir, env=run_env,
+        )
+        stderr_chunks = []
+
+        async def drain_stderr():
+            async for line in proc.stderr:
+                stderr_chunks.append(line.decode("utf-8", errors="ignore"))
+
+        stderr_task = asyncio.create_task(drain_stderr())
+
+        try:
+            async for line in proc.stdout:
+                text = line.decode("utf-8", errors="ignore").rstrip()
+                if text.startswith("##STEP_START##"):
+                    data = text[len("##STEP_START##"):]
+                    yield f"event: step_start\ndata: {data}\n\n"
+                elif text.startswith("##STEP_END##"):
+                    data = text[len("##STEP_END##"):]
+                    yield f"event: step_end\ndata: {data}\n\n"
+
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=10)
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
+
+            await stderr_task
+            stderr = "".join(stderr_chunks)
+            duration_ms = int((time_mod.time() - start_time) * 1000)
+
+            from app.engine.result_parser import parse_junit_xml, parse_step_json
+            junit_results = parse_junit_xml(junit_path)
+
+            status = "passed"
+            error_summary = None
+            if not junit_results:
+                status = "error" if proc.returncode != 0 else "passed"
+                error_summary = stderr[:2000] if proc.returncode != 0 else None
+            else:
+                statuses = [r["status"] for r in junit_results]
+                if "error" in statuses: status = "error"
+                elif "failed" in statuses: status = "failed"
+                error_msgs = [r["message"] for r in junit_results if r["message"]]
+                error_summary = "; ".join(error_msgs)[:2000] if error_msgs else None
+
+            steps = []
+            for jf in sorted(tea_results_dir.glob("*.json")):
+                steps = parse_step_json(str(jf))
+                if steps: break
+
+            from app.engine.executor import _collect_screenshots
+            screenshots = _collect_screenshots(pw_output_dir) if pw_output_dir else []
+
+            final = json.dumps({
+                "status": status, "duration_ms": duration_ms, "error_summary": error_summary,
+                "steps": steps, "screenshots": screenshots,
+            }, ensure_ascii=False, default=str)
+            yield f"event: done\ndata: {final}\n\n"
+
+        finally:
+            try:
+                proc.kill()
+                await proc.wait()
+            except Exception:
+                pass
+            try: os_mod.unlink(junit_path)
+            except: pass
+            shutil.rmtree(sandbox_dir, ignore_errors=True)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.get("/runs")
@@ -189,6 +392,7 @@ async def list_script_runs(
                 "duration_ms": r.duration_ms,
                 "error_summary": r.error_summary,
                 "stdout": r.stdout,
+                "screenshots": r.screenshots,
                 "executed_by": str(r.executed_by),
                 "created_at": r.created_at.isoformat() if r.created_at else None,
             }
