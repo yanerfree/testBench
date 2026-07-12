@@ -678,10 +678,31 @@ function ScenarioEditor({
                 />
               </div>
             )},
-            { key: 'api', label: '接口视图', children: (
-              <div style={{ padding: 32, textAlign: 'center', color: '#c9cdd4' }}>
-                执行过程中捕获的 HTTP 请求将在此展示（开发中）
-              </div>
+            { key: 'api', label: `接口视图${debugResult?.captured_requests?.length ? ` (${debugResult.captured_requests.length})` : ''}`, children: (
+              debugResult?.captured_requests?.length > 0 ? (
+                <div style={{ padding: '8px 0' }}>
+                  <div style={{ fontSize: 12, color: '#86909c', marginBottom: 8 }}>执行过程中浏览器发出的 API 请求（可用于接口测试编排）</div>
+                  <div style={{ borderRadius: 8, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#86909c', background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                      <span style={{ width: 60 }}>方法</span>
+                      <span style={{ flex: 1 }}>URL</span>
+                      <span style={{ width: 60, textAlign: 'right' }}>状态</span>
+                    </div>
+                    {debugResult.captured_requests.map((r, i) => (
+                      <div key={i} style={{ display: 'flex', padding: '4px 12px', fontSize: 12, borderBottom: '1px solid rgba(0,0,0,0.02)', alignItems: 'center' }}>
+                        <Tag color={r.method === 'GET' ? 'blue' : r.method === 'POST' ? 'green' : r.method === 'PUT' ? 'orange' : r.method === 'DELETE' ? 'red' : 'default'}
+                          style={{ width: 50, textAlign: 'center', margin: 0, fontSize: 11 }}>{r.method}</Tag>
+                        <span style={{ flex: 1, fontFamily: 'monospace', fontSize: 11, color: '#4e5969', marginLeft: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.url}</span>
+                        <Tag color={r.status < 400 ? undefined : 'error'} style={{ margin: 0, fontSize: 11, ...(r.status < 400 ? { background: '#e0f7f6', color: '#0ea5a0', border: 'none' } : {}) }}>{r.status}</Tag>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: 32, textAlign: 'center', color: '#c9cdd4' }}>
+                  点击「AI 生成」后，执行过程中的 API 请求将在此展示
+                </div>
+              )
             )},
           ]}
         />

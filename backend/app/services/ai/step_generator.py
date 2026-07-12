@@ -75,6 +75,23 @@ def step_by_step_generate(
         page = context.new_page()
         page.set_default_timeout(10000)
 
+        # 拦截 HTTP 请求（接口流量提取）
+        captured_requests = []
+        def on_response(response):
+            try:
+                req = response.request
+                if req.resource_type in ("xhr", "fetch") and "/api/" in req.url:
+                    captured_requests.append({
+                        "method": req.method,
+                        "url": req.url,
+                        "status": response.status,
+                        "request_headers": dict(req.headers) if req.headers else {},
+                        "response_status": response.status,
+                    })
+            except Exception:
+                pass
+        page.on("response", on_response)
+
         # 登录
         login_result = _do_login(page, base_url, credentials)
         results.append(login_result)
@@ -224,7 +241,7 @@ def step_by_step_generate(
     script = _assemble_script(func_name, fixture_name, code_blocks)
     all_passed = all(r["status"] == "passed" for r in results)
 
-    return {"script": script, "results": results, "all_passed": all_passed, "healing_records": healing_records}
+    return {"script": script, "results": results, "all_passed": all_passed, "healing_records": healing_records, "captured_requests": captured_requests}
 
 
 def _do_login(page, base_url: str, credentials: dict) -> dict:
