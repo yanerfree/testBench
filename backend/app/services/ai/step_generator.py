@@ -45,6 +45,7 @@ def step_by_step_generate(
     on_step=None,
     healing_history: list[dict] | None = None,
     preconditions: str = "",
+    cached_steps: dict | None = None,
 ) -> dict:
     """
     逐步生成 Playwright 脚本。
@@ -132,7 +133,20 @@ def step_by_step_generate(
             except Exception:
                 snapshot = ""
 
-            # 2. 查历史修复记录
+            # 2. 检查缓存 — 之前通过的代码直接用
+            cache_key = str(i + 1)
+            cached_code = (cached_steps or {}).get(cache_key)
+            if cached_code:
+                cache_result = _execute_step(page, cached_code, f"{action}（缓存）")
+                if cache_result["status"] == "passed":
+                    results.append(cache_result)
+                    code_blocks.append(f'    # Step {i+1}: {action}\n    with tea_step("{action[:50]}", phase="{"verify" if "验证" in action else "action"}"):\n' + _indent(cached_code, 8))
+                    if on_step:
+                        on_step({"type": "step_done", "seq": i + 1, "action": f"{action}（缓存）", "status": "passed"})
+                    continue
+                # 缓存失效，走正常生成
+
+            # 3. 查历史修复记录
             history_hint = ""
             if healing_history:
                 relevant = [h for h in healing_history if h.get("step_seq") == i + 1 or h.get("page_url") == page.url]
@@ -241,7 +255,14 @@ def step_by_step_generate(
     script = _assemble_script(func_name, fixture_name, code_blocks)
     all_passed = all(r["status"] == "passed" for r in results)
 
-    return {"script": script, "results": results, "all_passed": all_passed, "healing_records": healing_records, "captured_requests": captured_requests}
+    # 收集通过步骤的缓存
+    step_cache = {}
+    for r in results:
+        if r.get("status") == "passed" and r.get("code"):
+            seq = r.get("seq") or str(results.index(r))
+            step_cache[str(seq)] = r["code"]
+
+    return {"script": script, "results": results, "all_passed": all_passed, "healing_records": healing_records, "captured_requests": captured_requests, "step_cache": step_cache}
 
 
 def _do_login(page, base_url: str, credentials: dict) -> dict:

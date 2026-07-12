@@ -291,6 +291,7 @@ function ScenarioEditor({
   const [debugResult, setDebugResult] = useState(null)
   const [aiGenerating, setAiGenerating] = useState(false)
   const [previewScreenshot, setPreviewScreenshot] = useState(null)
+  const [stepHints, setStepHints] = useState({})
   const [debugHistory, setDebugHistory] = useState([])
   const scriptEditorRef = useRef(null)
 
@@ -601,6 +602,31 @@ function ScenarioEditor({
           </Space>
         </div>
 
+        {/* 最近执行摘要 */}
+        {debugResult && debugResult.status !== 'running' && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', marginBottom: 8,
+            borderRadius: 8, cursor: 'pointer',
+            background: passed ? 'rgba(14,165,160,0.06)' : 'rgba(232,69,60,0.06)',
+            border: passed ? '1px solid rgba(14,165,160,0.15)' : '1px solid rgba(232,69,60,0.15)',
+          }} onClick={() => setDebugResult(prev => prev ? { ...prev, _drawerOpen: true } : prev)}>
+            {passed ? <CheckCircleOutlined style={{ color: '#0ea5a0' }} /> : <WarningOutlined style={{ color: '#e8453c' }} />}
+            <span style={{ fontSize: 13, fontWeight: 500, color: passed ? '#0ea5a0' : '#e8453c' }}>
+              {passed ? '验证通过' : '验证失败'}
+            </span>
+            {debugResult.durationMs && <span style={{ fontSize: 12, color: '#86909c' }}>{(debugResult.durationMs / 1000).toFixed(1)}s</span>}
+            {debugResult.steps?.length > 0 && (
+              <span style={{ fontSize: 12, color: '#86909c' }}>
+                {debugResult.steps.filter(s => s.status === 'passed').length}/{debugResult.steps.length} 步通过
+              </span>
+            )}
+            {debugResult.captured_requests?.length > 0 && (
+              <span style={{ fontSize: 12, color: '#86909c' }}>{debugResult.captured_requests.length} 个接口</span>
+            )}
+            <span style={{ fontSize: 11, color: '#c9cdd4', marginLeft: 'auto' }}>点击查看详情</span>
+          </div>
+        )}
+
         {/* 三视图切换 */}
         <Tabs size="small" defaultActiveKey="steps" style={{ marginBottom: 0 }}
           items={[
@@ -638,6 +664,15 @@ function ScenarioEditor({
                               }>{
                                 {script_bug: '脚本问题', system_bug: '系统Bug', case_expired: '用例过期', dependency: '缺少依赖'}[s.failure_type] || s.failure_type
                               }</Tag>
+                            )}
+                            {!ok && !isRunning && (
+                              <div style={{ marginTop: 4 }}>
+                                <Input size="small" placeholder="输入指导（如：改成验证运行中）"
+                                  value={stepHints[i] || ''} onChange={e => setStepHints(prev => ({ ...prev, [i]: e.target.value }))}
+                                  style={{ width: '100%', fontSize: 12 }}
+                                  suffix={stepHints[i] ? <span style={{ fontSize: 11, color: '#7c5cbf', cursor: 'pointer' }} onClick={() => message.info('指导已记录，重新生成时将应用')}>已记录</span> : null}
+                                />
+                              </div>
                             )}
                           </div>
                           {s.duration_ms != null && <span style={{ fontSize: 11, color: '#c9cdd4', flexShrink: 0 }}>{s.duration_ms >= 1000 ? `${(s.duration_ms / 1000).toFixed(1)}s` : `${s.duration_ms}ms`}</span>}

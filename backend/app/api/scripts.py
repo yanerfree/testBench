@@ -174,6 +174,7 @@ async def generate_script_ai_stream(
             base_url=base_url, credentials=creds, steps=case.steps or [],
             fixture_name=fixture_name, on_step=on_step, healing_history=healing_history,
             preconditions=case.preconditions or "",
+            cached_steps=(case.ui_scenario or {}).get("stepCache"),
         ))
         queue.put_nowait({"type": "done", "result": result})
 
@@ -196,11 +197,14 @@ async def generate_script_ai_stream(
                             language="python", source="ai_generated",
                         )
                         case.ui_scenario_status = "completed" if gen_result["all_passed"] else "debugging"
-                        if not case.ui_scenario and case.steps:
-                            case.ui_scenario = {
-                                "steps": [{"seq": j+1, "action": s.get("action",""), "expected": s.get("expected","")} for j, s in enumerate(case.steps)],
-                                "variablesUsed": [], "scriptId": str(script.id),
-                            }
+                        if not case.ui_scenario:
+                            case.ui_scenario = {}
+                        case.ui_scenario = {
+                            **case.ui_scenario,
+                            "steps": [{"seq": j+1, "action": s.get("action",""), "expected": s.get("expected","")} for j, s in enumerate(case.steps or [])],
+                            "scriptId": str(script.id),
+                            "stepCache": gen_result.get("step_cache", {}),
+                        }
                         await session.commit()
 
                     # 保存修复档案
