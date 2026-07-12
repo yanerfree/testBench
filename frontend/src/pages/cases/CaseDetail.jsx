@@ -546,16 +546,29 @@ function ScenarioEditor({
 
   const scVars = scenario.variablesUsed || []
 
-  // UI 类型：加载最近一次执行结果（刷新后恢复 AI 调试按钮）
+  // UI 类型：加载最近一次执行结果 + 从 ui_scenario 恢复生成数据
   useEffect(() => {
-    if (type !== 'api' && !debugResult && caseId) {
-      api.get(`/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/runs?type=ui&limit=1`)
-        .then(res => {
-          const last = (res.data || [])[0]
-          if (last && last.status !== 'passed') {
-            setDebugResult({ ...last, durationMs: last.durationMs || last.duration_ms, errorSummary: last.errorSummary || last.error_summary })
-          }
-        }).catch(() => {})
+    if (type !== 'api' && caseId) {
+      // 从 ui_scenario 恢复上次生成的步骤和接口数据
+      const uiData = uiScenario || {}
+      if (uiData.lastResults?.length > 0 && !debugResult) {
+        const allPassed = uiData.lastResults.every(r => r.status === 'passed')
+        setDebugResult({
+          status: allPassed ? 'passed' : 'failed',
+          steps: uiData.lastResults,
+          captured_requests: uiData.capturedRequests || [],
+        })
+      }
+      // 从最近执行记录补充（如果 ui_scenario 没有数据）
+      if (!uiData.lastResults?.length && !debugResult) {
+        api.get(`/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/runs?type=ui&limit=1`)
+          .then(res => {
+            const last = (res.data || [])[0]
+            if (last) {
+              setDebugResult({ ...last, durationMs: last.durationMs || last.duration_ms, errorSummary: last.errorSummary || last.error_summary })
+            }
+          }).catch(() => {})
+      }
     }
   }, [caseId, type])
 

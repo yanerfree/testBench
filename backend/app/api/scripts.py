@@ -204,6 +204,8 @@ async def generate_script_ai_stream(
                             "steps": [{"seq": j+1, "action": s.get("action",""), "expected": s.get("expected","")} for j, s in enumerate(case.steps or [])],
                             "scriptId": str(script.id),
                             "stepCache": gen_result.get("step_cache", {}),
+                            "lastResults": [{"step": r.get("step",""), "action": r.get("step",""), "status": r["status"], "error": r.get("error",""), "code": r.get("code","")[:200] if r.get("code") else ""} for r in gen_result["results"]],
+                            "capturedRequests": gen_result.get("captured_requests", [])[:50],
                         }
                         await session.commit()
 
