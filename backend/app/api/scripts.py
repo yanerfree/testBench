@@ -153,11 +153,26 @@ async def generate_script_ai_stream(
     def on_step(event):
         queue.put_nowait(event)
 
+    # 查历史修复记录
+    healing_history = []
+    try:
+        from app.models.healing_archive import HealingArchive
+        ha_result = await session.execute(
+            select(HealingArchive).where(HealingArchive.case_id == case_id)
+            .order_by(HealingArchive.created_at.desc()).limit(20)
+        )
+        healing_history = [
+            {"step_seq": h.step_seq, "page_url": h.page_url, "original_code": h.original_code, "resolved": h.resolved}
+            for h in ha_result.scalars().all()
+        ]
+    except Exception:
+        pass
+
     async def run_generate():
         import anyio
         result = await anyio.to_thread.run_sync(lambda: step_by_step_generate(
             base_url=base_url, credentials=creds, steps=case.steps or [],
-            fixture_name=fixture_name, on_step=on_step,
+            fixture_name=fixture_name, on_step=on_step, healing_history=healing_history,
         ))
         queue.put_nowait({"type": "done", "result": result})
 
@@ -186,6 +201,20 @@ async def generate_script_ai_stream(
                                 "variablesUsed": [], "scriptId": str(script.id),
                             }
                         await session.commit()
+
+                    # 保存修复档案
+                    for hr in gen_result.get("healing_records", []):
+                        from app.models.healing_archive import HealingArchive
+                        session.add(HealingArchive(
+                            case_id=case.id, step_seq=hr["step_seq"], step_action=hr["step_action"],
+                            page_url=hr.get("page_url"), original_code=hr["original_code"],
+                            error_summary=hr["error_summary"], fix_code=hr.get("fix_code"),
+                            fix_method=hr.get("fix_method"), page_snapshot=hr.get("page_snapshot"),
+                            resolved=hr.get("resolved", False),
+                        ))
+                    if gen_result.get("healing_records"):
+                        await session.commit()
+
                     yield f"event: done\ndata: {json_mod.dumps({'status': 'passed' if gen_result['all_passed'] else 'failed', 'all_passed': gen_result['all_passed'], 'results': [{'step': r.get('step',''), 'action': r.get('step',''), 'status': r['status'], 'error': r.get('error','')} for r in gen_result['results']]}, ensure_ascii=False)}\n\n"
                     break
                 else:

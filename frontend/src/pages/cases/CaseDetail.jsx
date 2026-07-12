@@ -606,29 +606,85 @@ function ScenarioEditor({
           </Space>
         </div>
 
-        {/* 脚本代码 */}
-        <div style={{ position: 'relative' }}>
-          {aiGenerating && (
-            <div style={{
-              position: 'absolute', inset: 0, zIndex: 10,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
-              background: 'rgba(30,30,46,0.9)', borderRadius: 8,
-            }}>
-              <Spin size="large" />
-              <div style={{ color: '#cdd6f4', fontSize: 14 }}>AI 正在逐步生成脚本...</div>
-              <div style={{ color: '#86909c', fontSize: 12 }}>每一步都在真实浏览器中验证，完成后自动刷新</div>
-            </div>
-          )}
-          <ScriptEditor
-          ref={scriptEditorRef}
-          projectId={projectId} branchId={branchId} caseId={caseId}
-          scriptType="ui" accentColor="#7c5cbf"
-          autoGenerateCode={generateUiCode(steps, caseTitle)}
-          onScriptSaved={onScriptSaved}
-          envId={runEnv}
-          hideToolbar
+        {/* 三视图切换 */}
+        <Tabs size="small" defaultActiveKey="steps" style={{ marginBottom: 0 }}
+          items={[
+            { key: 'steps', label: '步骤视图', children: (
+              <div style={{ padding: '12px 0' }}>
+                {(debugResult?.steps || liveSteps || []).length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {(liveSteps.length > 0 ? liveSteps : (debugResult?.steps || [])).map((s, i) => {
+                      const ok = s.status === 'passed'
+                      const isRunning = s.status === 'running'
+                      const phase = s.step_phase || s.phase
+                      const name = s.step_name || s.action || s.step || `步骤 ${i + 1}`
+                      const error = s.error_summary || s.error
+                      const phaseEmoji = { setup: '🔧', action: '👆', verify: '✅' }
+                      return (
+                        <div key={i} style={{ display: 'flex', gap: 10, padding: '8px 12px', borderRadius: 8, background: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)' }}>
+                          <span style={{ fontSize: 18, width: 28, textAlign: 'center', flexShrink: 0 }}>
+                            {isRunning ? '⏳' : ok ? (phaseEmoji[phase] || '✅') : '❌'}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: isRunning ? '#7c5cbf' : ok ? '#1d2129' : '#e8453c' }}>
+                              {name}
+                              <span style={{
+                                fontSize: 11, padding: '1px 6px', borderRadius: 8, marginLeft: 8, fontWeight: 500,
+                                background: isRunning ? '#f3f0ff' : ok ? '#e0f7f6' : '#fff2f0',
+                                color: isRunning ? '#7c5cbf' : ok ? '#0ea5a0' : '#e8453c',
+                              }}>
+                                {isRunning ? '执行中' : ok ? '通过' : '失败'}
+                              </span>
+                            </div>
+                            {error && <div style={{ marginTop: 4, fontSize: 12, color: '#e8453c', lineHeight: 1.4 }}>{error.substring(0, 200)}</div>}
+                            {!ok && !isRunning && s.failure_type && (
+                              <Tag style={{ marginTop: 4, fontSize: 11 }} color={
+                                s.failure_type === 'system_bug' ? 'red' : s.failure_type === 'dependency' ? 'orange' : s.failure_type === 'case_expired' ? 'blue' : 'default'
+                              }>{
+                                {script_bug: '脚本问题', system_bug: '系统Bug', case_expired: '用例过期', dependency: '缺少依赖'}[s.failure_type] || s.failure_type
+                              }</Tag>
+                            )}
+                          </div>
+                          {s.duration_ms != null && <span style={{ fontSize: 11, color: '#c9cdd4', flexShrink: 0 }}>{s.duration_ms >= 1000 ? `${(s.duration_ms / 1000).toFixed(1)}s` : `${s.duration_ms}ms`}</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ padding: 32, textAlign: 'center', color: '#c9cdd4' }}>点击「AI 生成」生成脚本后查看执行步骤</div>
+                )}
+              </div>
+            )},
+            { key: 'script', label: '脚本视图', children: (
+              <div style={{ position: 'relative' }}>
+                {aiGenerating && (
+                  <div style={{
+                    position: 'absolute', inset: 0, zIndex: 10,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
+                    background: 'rgba(30,30,46,0.9)', borderRadius: 8,
+                  }}>
+                    <Spin size="large" />
+                    <div style={{ color: '#cdd6f4', fontSize: 14 }}>AI 正在逐步生成脚本...</div>
+                  </div>
+                )}
+                <ScriptEditor
+                  ref={scriptEditorRef}
+                  projectId={projectId} branchId={branchId} caseId={caseId}
+                  scriptType="ui" accentColor="#7c5cbf"
+                  autoGenerateCode={generateUiCode(steps, caseTitle)}
+                  onScriptSaved={onScriptSaved}
+                  envId={runEnv}
+                  hideToolbar
+                />
+              </div>
+            )},
+            { key: 'api', label: '接口视图', children: (
+              <div style={{ padding: 32, textAlign: 'center', color: '#c9cdd4' }}>
+                执行过程中捕获的 HTTP 请求将在此展示（开发中）
+              </div>
+            )},
+          ]}
         />
-        </div>
 
         {/* 执行结果抽屉 */}
         <Drawer

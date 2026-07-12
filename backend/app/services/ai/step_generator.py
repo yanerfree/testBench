@@ -44,6 +44,7 @@ def step_by_step_generate(
     fixture_name: str = "tenant_page",
     llm_complete=None,
     on_step=None,
+    healing_history: list[dict] | None = None,
 ) -> dict:
     """
     逐步生成 Playwright 脚本。
@@ -63,6 +64,7 @@ def step_by_step_generate(
     results = []
     code_blocks = []
     func_name = "test_generated"
+    healing_records = []  # 收集修复档案
     if llm_complete is None:
         llm_complete = _llm_complete_sync
 
@@ -99,7 +101,16 @@ def step_by_step_generate(
             except Exception:
                 snapshot = ""
 
-            # 2. LLM 生成这一步的代码
+            # 2. 查历史修复记录
+            history_hint = ""
+            if healing_history:
+                relevant = [h for h in healing_history if h.get("step_seq") == i + 1 or h.get("page_url") == page.url]
+                if relevant:
+                    failed_codes = [h["original_code"] for h in relevant if not h.get("resolved")]
+                    if failed_codes:
+                        history_hint = "\n以下代码在之前尝试中失败过，请避免类似写法：\n" + "\n".join(f"- {c[:100]}" for c in failed_codes[:3])
+
+            # 3. LLM 生成这一步的代码
             step_code = _generate_one_step(
                 llm_complete=llm_complete,
                 step_num=i + 1,
@@ -107,6 +118,7 @@ def step_by_step_generate(
                 expected=expected,
                 snapshot=snapshot,
                 page_url=page.url,
+                history_hint=history_hint,
             )
 
             # 3. 执行
@@ -163,6 +175,12 @@ def step_by_step_generate(
                         results[-1] = fix_result
                         code_blocks[-1] = f'    # Step {i+1}: {action}\n    with tea_step("{action[:50]}", phase="{"verify" if "验证" in action else "action"}"):\n' + _indent(fix_code, 8)
                         fixed = True
+                        healing_records.append({
+                            "step_seq": i + 1, "step_action": action[:500], "page_url": page.url,
+                            "original_code": step_code, "error_summary": last_error[:2000],
+                            "fix_code": fix_code, "fix_method": f"auto_fix_attempt_{fix_attempt+1}",
+                            "page_snapshot": current_snapshot[:2000], "resolved": True,
+                        })
                         if on_step:
                             on_step({"type": "step_done", "seq": i + 1, "action": f"{action}（修复第{fix_attempt+1}次）", "status": "passed"})
                         break
@@ -171,8 +189,18 @@ def step_by_step_generate(
                         step_code = fix_code
 
                 if not fixed:
+                    # 分类失败原因
+                    failure_type = _classify_failure(llm_complete, action, last_error, current_snapshot if 'current_snapshot' in dir() else snapshot)
+                    healing_records.append({
+                        "step_seq": i + 1, "step_action": action[:500], "page_url": page.url,
+                        "failure_type": failure_type,
+                        "original_code": step_code, "error_summary": last_error[:2000],
+                        "fix_code": None, "fix_method": "all_attempts_failed",
+                        "page_snapshot": (current_snapshot if 'current_snapshot' in dir() else snapshot)[:2000],
+                        "resolved": False,
+                    })
                     if on_step:
-                        on_step({"type": "step_done", "seq": i + 1, "action": action, "status": "failed", "error": last_error[:200]})
+                        on_step({"type": "step_done", "seq": i + 1, "action": action, "status": "failed", "error": last_error[:200], "failure_type": failure_type})
                     break
 
         browser.close()
@@ -181,7 +209,7 @@ def step_by_step_generate(
     script = _assemble_script(func_name, fixture_name, code_blocks)
     all_passed = all(r["status"] == "passed" for r in results)
 
-    return {"script": script, "results": results, "all_passed": all_passed}
+    return {"script": script, "results": results, "all_passed": all_passed, "healing_records": healing_records}
 
 
 def _do_login(page, base_url: str, credentials: dict) -> dict:
@@ -210,7 +238,7 @@ def _do_login(page, base_url: str, credentials: dict) -> dict:
         return {"step": "登录系统", "status": "failed", "error": str(e)[:300]}
 
 
-def _generate_one_step(llm_complete, step_num: int, action: str, expected: str, snapshot: str, page_url: str) -> str:
+def _generate_one_step(llm_complete, step_num: int, action: str, expected: str, snapshot: str, page_url: str, history_hint: str = "") -> str:
     """调 LLM 生成单个步骤的 Playwright 代码"""
     prompt = f"""你是 Playwright 代码生成器。根据当前页面的 Aria Snapshot，生成执行一步操作的 Python 代码。
 
@@ -262,7 +290,7 @@ Aria Snapshot:
 正确示例:
 page.get_by_text("服务管理").click()
 page.wait_for_load_state("networkidle")
-"""
+{history_hint}"""
 
     if llm_complete is None:
         return f'page.get_by_text("{action[:20]}").click()\npage.wait_for_load_state("domcontentloaded")'
@@ -332,13 +360,12 @@ def _indent(code: str, spaces: int) -> str:
 
 
 def _clean_step_code(raw: str) -> str:
-    """清理 LLM 返回的代码——去掉 markdown/import/函数定义/类定义"""
+    """清理 LLM 返回的代码"""
     code = raw.strip()
     if "```" in code:
         match = re.search(r"```(?:python)?\s*\n(.*?)```", code, re.DOTALL)
         if match:
             code = match.group(1).strip()
-    # 删除不需要的行
     lines = []
     for line in code.splitlines():
         stripped = line.strip()
@@ -348,6 +375,31 @@ def _clean_step_code(raw: str) -> str:
             continue
         lines.append(line)
     return "\n".join(lines).strip()
+
+
+def _classify_failure(llm_complete, action: str, error: str, snapshot: str) -> str:
+    """分类失败原因"""
+    if llm_complete is None:
+        return "script_bug"
+    try:
+        prompt = f"""分析以下 Playwright 测试失败的原因类型。只输出一个分类词，不要其他内容。
+
+操作: {action[:200]}
+错误: {error[:500]}
+页面状态: {snapshot[:500]}
+
+分类选项（只选一个）:
+- script_bug — 选择器或代码写法错误
+- system_bug — 系统功能本身有 bug（按钮不响应、页面 500 等）
+- case_expired — 页面结构已变，用例步骤需要更新
+- dependency — 缺少前置数据或外部依赖"""
+        resp = llm_complete(prompt).strip().lower()
+        for t in ("script_bug", "system_bug", "case_expired", "dependency"):
+            if t in resp:
+                return t
+        return "script_bug"
+    except Exception:
+        return "script_bug"
 
 
 def _assemble_script(func_name: str, fixture_name: str, code_blocks: list[str]) -> str:
