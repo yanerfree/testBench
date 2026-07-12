@@ -420,19 +420,30 @@ def _classify_failure(llm_complete, action: str, error: str, snapshot: str) -> s
 def _analyze_preconditions(llm_complete, preconditions: str, base_url: str, page) -> list[dict]:
     """分析前置条件，生成 setup 步骤（如果需要通过 UI 操作准备数据）"""
     # 跳过不需要准备的常见前置条件
-    skip_keywords = ["已登录", "登录", "账号", "权限"]
+    skip_keywords = ["已登录", "登录", "账号", "权限", "管理员", "租户", "授权", "集群", "网关", "已存在", "已创建", "存在至少", "已配置"]
     lines = [l.strip() for l in preconditions.split("\n") if l.strip()]
     needs_setup = []
     for line in lines:
-        if any(kw in line for kw in skip_keywords):
+        # 去掉编号前缀
+        clean = re.sub(r'^\d+[\.\、\s]+', '', line)
+        if any(kw in clean for kw in skip_keywords):
             continue
-        if any(kw in line for kw in ["已存在", "已创建", "存在至少", "包含"]):
-            needs_setup.append(line)
+        needs_setup.append(clean)
 
     if not needs_setup:
         return []
 
-    # 让 LLM 判断哪些前置条件需要通过 UI 操作准备，哪些已经满足
+    # 先检查页面上是否已有数据——如果能看到相关内容就跳过
+    try:
+        body_text = page.inner_text("body")[:2000] if page else ""
+    except Exception:
+        body_text = ""
+
+    # 简单检查：如果页面上有服务/数据/表格行，大概率条件已满足
+    if any(kw in body_text for kw in ["运行中", "已下线", "服务总数", "负载配置", "条 ·"]):
+        return []
+
+    # 让 LLM 判断
     try:
         snapshot = page.locator("body").aria_snapshot()[:3000]
     except Exception:
