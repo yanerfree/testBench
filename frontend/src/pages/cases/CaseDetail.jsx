@@ -550,7 +550,7 @@ function ScenarioEditor({
   useEffect(() => {
     if (type !== 'api' && caseId) {
       // 从 ui_scenario 恢复上次生成的步骤和接口数据
-      const uiData = uiScenario || {}
+      const uiData = scenario || {}
       if (uiData.lastResults?.length > 0 && !debugResult) {
         const allPassed = uiData.lastResults.every(r => r.status === 'passed')
         setDebugResult({
