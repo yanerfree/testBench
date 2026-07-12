@@ -87,7 +87,7 @@ def step_by_step_generate(
 
             # 1. 拿当前页面 snapshot
             try:
-                snapshot = page.locator("body").aria_snapshot()[:3000]
+                snapshot = page.locator("body").aria_snapshot()[:6000]
             except Exception:
                 snapshot = ""
 
@@ -109,29 +109,38 @@ def step_by_step_generate(
             code_blocks.append(f'    # Step {i+1}: {action}\n    with tea_step("{action[:50]}", phase="{"verify" if "验证" in action else "action"}"):\n' + _indent(step_code, 8))
 
             if exec_result["status"] == "failed":
-                # 重新拿当前页面 snapshot（可能已经导航到新页面）
-                try:
-                    page.wait_for_load_state("domcontentloaded")
-                    current_snapshot = page.locator("body").aria_snapshot()[:3000]
-                except Exception:
-                    current_snapshot = snapshot
-                # 尝试修复一次
-                fix_code = _fix_one_step(
-                    llm_complete=llm_complete,
-                    action=action,
-                    original_code=step_code,
-                    error=exec_result.get("error", ""),
-                    snapshot=current_snapshot,
-                )
-                if fix_code and fix_code != step_code:
-                    fix_result = _execute_step(page, fix_code, f"{action}（修复后）")
-                    fix_result["code"] = fix_code
+                # 尝试修复，最多 3 次
+                fixed = False
+                last_error = exec_result.get("error", "")
+                for fix_attempt in range(3):
+                    try:
+                        page.wait_for_load_state("domcontentloaded")
+                        current_snapshot = page.locator("body").aria_snapshot()[:6000]
+                    except Exception:
+                        current_snapshot = snapshot
+
+                    fix_code = _fix_one_step(
+                        llm_complete=llm_complete,
+                        action=action,
+                        original_code=step_code if fix_attempt == 0 else fix_code,
+                        error=last_error,
+                        snapshot=current_snapshot,
+                    )
+                    if not fix_code or fix_code == step_code:
+                        break
+
+                    fix_result = _execute_step(page, fix_code, f"{action}（修复第{fix_attempt+1}次）")
                     if fix_result["status"] == "passed":
+                        fix_result["code"] = fix_code
                         results[-1] = fix_result
                         code_blocks[-1] = f'    # Step {i+1}: {action}\n    with tea_step("{action[:50]}", phase="{"verify" if "验证" in action else "action"}"):\n' + _indent(fix_code, 8)
-                    else:
+                        fixed = True
                         break
-                else:
+                    else:
+                        last_error = fix_result.get("error", "")
+                        step_code = fix_code
+
+                if not fixed:
                     break
 
         browser.close()
@@ -171,7 +180,7 @@ def _do_login(page, base_url: str, credentials: dict) -> dict:
 
 def _generate_one_step(llm_complete, step_num: int, action: str, expected: str, snapshot: str, page_url: str) -> str:
     """调 LLM 生成单个步骤的 Playwright 代码"""
-    prompt = f"""你是 Playwright 代码生成器。根据当前页面状态，生成执行下面这一步操作的 Python 代码。
+    prompt = f"""你是 Playwright 代码生成器。根据当前页面的 Aria Snapshot，生成执行操作的 Python 代码。
 
 ## 当前页面
 URL: {page_url}
@@ -186,14 +195,17 @@ Aria Snapshot:
 ## 预期结果
 {expected or "无"}
 
-## 规则
-- 只输出纯 Python 代码（2-5 行），不要函数定义、不要 import、不要 markdown
-- 变量名固定用 `page`
-- 用 get_by_role / get_by_text / get_by_label 定位，名称从 Aria Snapshot 中查找
-- 禁止 get_by_placeholder、禁止 CSS 选择器
-- 操作后加 page.wait_for_load_state("domcontentloaded")
-- 如果是验证步骤，用 expect(...).to_be_visible() 或 .to_contain_text()
-- 下拉菜单、弹窗项用 get_by_text(精确文字).click()"""
+## 选择器规则（必须遵守）
+1. 看到 `textbox "xxx"` → 用 `page.get_by_role("textbox", name="xxx")`
+2. 看到 `button "xxx"` → 用 `page.get_by_role("button", name="xxx")`
+3. 看到 `heading "xxx"` → 用 `page.get_by_role("heading", name="xxx")`
+4. 看到 `link "xxx"` → 用 `page.get_by_role("link", name="xxx")`
+5. 下拉菜单/弹窗中的临时选项 → 用 `page.get_by_text("文字").click()`
+6. 匹配多个元素时加 `.first` 或 `.nth(0)`
+7. **禁止 get_by_label、get_by_placeholder、CSS 选择器**
+
+## 输出
+只输出 2-5 行纯 Python 代码，不要函数定义/import/markdown。变量固定用 `page`。"""
 
     if llm_complete is None:
         return f'page.get_by_text("{action[:20]}").click()\npage.wait_for_load_state("domcontentloaded")'
@@ -228,10 +240,15 @@ def _fix_one_step(llm_complete, action: str, original_code: str, error: str, sna
 
 当前页面 Aria Snapshot:
 ```yaml
-{snapshot}
+{snapshot[:2000]}
 ```
 
-规则: 用 get_by_role / get_by_text / get_by_label，名称从 Snapshot 查找。禁止 get_by_placeholder。"""
+修复规则:
+- 用 get_by_role / get_by_text / get_by_label，名称从 Snapshot 查找
+- 禁止 get_by_placeholder、禁止 CSS 选择器
+- 如果 strict mode violation: resolved to N elements → 加 .first 或 .nth(0)
+- 如果 timeout 找不到元素 → 换一个 Snapshot 中存在的元素定位方式
+- 如果需要输入到特定输入框 → 用 get_by_label("标签文字") 精确定位"""
 
     try:
         resp = llm_complete(prompt)
