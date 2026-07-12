@@ -293,11 +293,18 @@ def _fix_one_step(llm_complete, action: str, original_code: str, error: str, sna
 
 def _execute_step(page, code: str, step_name: str) -> dict:
     """在浏览器中执行一段代码"""
+    # 等待/观察类步骤给更长超时
+    is_wait_step = any(kw in step_name for kw in ["等待", "观察", "同步"])
+    if is_wait_step:
+        page.set_default_timeout(30000)
     try:
         exec(code, {"page": page, "expect": __import__("playwright.sync_api", fromlist=["expect"]).expect, "time": __import__("time")})
         return {"step": step_name, "status": "passed"}
     except Exception as e:
         return {"step": step_name, "status": "failed", "error": str(e)[:500]}
+    finally:
+        if is_wait_step:
+            page.set_default_timeout(10000)
 
 
 def _indent(code: str, spaces: int) -> str:
