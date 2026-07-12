@@ -263,25 +263,36 @@ def step_by_step_generate(
                         on_step({"type": "step_done", "seq": i + 1, "action": action, "status": "failed", "error": last_error[:200], "failure_type": failure_type})
                     break
 
-        # 后置清理 — 删除本次测试创建的数据
+        # 后置清理 — 通过 API 删除创建的服务（比 UI 操作更可靠）
         all_main_passed = all(r["status"] == "passed" for r in results if "[前置]" not in r.get("step", ""))
         if created_name and all_main_passed:
             if on_step:
-                on_step({"type": "step_start", "seq": 999, "action": f"[后置清理] 删除测试数据 {created_name}", "phase": "teardown"})
+                on_step({"type": "step_start", "seq": 999, "action": f"[后置清理] 删除 {created_name}", "phase": "teardown"})
             try:
-                snapshot = page.locator("body").aria_snapshot()[:6000]
-                teardown_code = _generate_one_step(
-                    llm_complete=llm_complete, step_num=999,
-                    action=f"导航到服务管理列表页，找到名称含 '{created_name}' 的服务并删除它",
-                    expected="服务被删除", snapshot=snapshot, page_url=page.url,
-                )
-                teardown_result = _execute_step(page, teardown_code, f"[后置清理] 删除 {created_name}")
+                # 通过 JavaScript 调用 API 删除
+                cleanup_code = f'''
+import time
+# 搜索刚创建的服务
+page.get_by_text("服务管理").click()
+page.wait_for_load_state("networkidle")
+time.sleep(1)
+# 通过 API 查找并删除
+result = page.evaluate("""async () => {{
+    const resp = await fetch('/api/v1/services?search={created_name}&page_size=10');
+    const data = await resp.json();
+    const services = (data.data || data.items || []).filter(s => s.name && s.name.includes('{created_name}'));
+    for (const svc of services) {{
+        await fetch('/api/v1/services/' + svc.id, {{ method: 'DELETE' }});
+    }}
+    return services.length;
+}}""")
+'''
+                teardown_result = _execute_step(page, cleanup_code, f"[后置清理] 删除 {created_name}")
                 results.append(teardown_result)
-                code_blocks.append(f'    # Teardown\n    with tea_step("[后置清理] 删除 {created_name}", phase="teardown"):\n' + _indent(teardown_code, 8))
                 if on_step:
                     on_step({"type": "step_done", "seq": 999, "action": f"[后置清理] 删除 {created_name}", "status": teardown_result["status"]})
             except Exception:
-                pass
+                results.append({"step": f"[后置清理] 删除 {created_name}", "status": "failed", "error": "清理异常"})
 
         # 从 HAR 读取捕获的接口请求
         captured_requests = []
