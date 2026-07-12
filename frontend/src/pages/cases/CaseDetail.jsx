@@ -292,6 +292,8 @@ function ScenarioEditor({
   const [aiGenerating, setAiGenerating] = useState(false)
   const [previewScreenshot, setPreviewScreenshot] = useState(null)
   const [stepHints, setStepHints] = useState({})
+  const [selectedApis, setSelectedApis] = useState([])
+  const [apiArranging, setApiArranging] = useState(false)
   const [debugHistory, setDebugHistory] = useState([])
   const scriptEditorRef = useRef(null)
 
@@ -711,18 +713,64 @@ function ScenarioEditor({
             { key: 'api', label: `接口视图${debugResult?.captured_requests?.length ? ` (${debugResult.captured_requests.length})` : ''}`, children: (
               debugResult?.captured_requests?.length > 0 ? (
                 <div style={{ padding: '8px 0' }}>
-                  <div style={{ fontSize: 12, color: '#86909c', marginBottom: 8 }}>执行过程中浏览器发出的 API 请求（可用于接口测试编排）</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 12, color: '#86909c' }}>
+                      勾选需要的接口，编排为接口测试场景
+                      {selectedApis.length > 0 && <span style={{ color: '#7c5cbf', fontWeight: 600 }}> · 已选 {selectedApis.length} 个</span>}
+                    </span>
+                    <Space size={8}>
+                      {selectedApis.length > 0 && (
+                        <Button size="small" onClick={() => setSelectedApis([])}>取消选择</Button>
+                      )}
+                      <Button size="small" type="primary" disabled={selectedApis.length === 0} loading={apiArranging}
+                        style={{ background: '#0ea5a0', borderColor: '#0ea5a0' }}
+                        onClick={async () => {
+                          setApiArranging(true)
+                          try {
+                            const selected = selectedApis.map(idx => debugResult.captured_requests[idx])
+                            const apiInfo = selected.map(r => `${r.method} ${r.url} → ${r.status}`).join('\n')
+                            await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/generate`, {
+                              apiInfo, folderName: caseTitle || 'UI流量提取',
+                            })
+                            message.success(`已编排 ${selected.length} 个接口为测试场景`)
+                            setSelectedApis([])
+                          } catch (e) {
+                            message.error(e?.response?.data?.error?.message || '编排失败')
+                          } finally {
+                            setApiArranging(false)
+                          }
+                        }}>
+                        编排为接口测试
+                      </Button>
+                    </Space>
+                  </div>
                   <div style={{ borderRadius: 8, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
-                    <div style={{ display: 'flex', padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#86909c', background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                    <div style={{ display: 'flex', padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#86909c', background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center' }}>
+                      <span style={{ width: 32 }}>
+                        <input type="checkbox"
+                          checked={selectedApis.length === debugResult.captured_requests.length && selectedApis.length > 0}
+                          onChange={e => setSelectedApis(e.target.checked ? debugResult.captured_requests.map((_, i) => i) : [])}
+                          style={{ cursor: 'pointer' }} />
+                      </span>
                       <span style={{ width: 60 }}>方法</span>
                       <span style={{ flex: 1 }}>URL</span>
                       <span style={{ width: 60, textAlign: 'right' }}>状态</span>
                     </div>
                     {debugResult.captured_requests.map((r, i) => (
-                      <div key={i} style={{ display: 'flex', padding: '4px 12px', fontSize: 12, borderBottom: '1px solid rgba(0,0,0,0.02)', alignItems: 'center' }}>
+                      <div key={i} style={{
+                        display: 'flex', padding: '4px 12px', fontSize: 12, alignItems: 'center',
+                        borderBottom: '1px solid rgba(0,0,0,0.02)',
+                        background: selectedApis.includes(i) ? 'rgba(14,165,160,0.04)' : i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.01)',
+                        cursor: 'pointer',
+                      }} onClick={() => setSelectedApis(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i])}>
+                        <span style={{ width: 32 }}>
+                          <input type="checkbox" checked={selectedApis.includes(i)} readOnly style={{ cursor: 'pointer' }} />
+                        </span>
                         <Tag color={r.method === 'GET' ? 'blue' : r.method === 'POST' ? 'green' : r.method === 'PUT' ? 'orange' : r.method === 'DELETE' ? 'red' : 'default'}
                           style={{ width: 50, textAlign: 'center', margin: 0, fontSize: 11 }}>{r.method}</Tag>
-                        <span style={{ flex: 1, fontFamily: 'monospace', fontSize: 11, color: '#4e5969', marginLeft: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.url}</span>
+                        <span style={{ flex: 1, fontFamily: 'monospace', fontSize: 11, color: '#4e5969', marginLeft: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {r.url.replace(/^https?:\/\/[^/]+/, '')}
+                        </span>
                         <Tag color={r.status < 400 ? undefined : 'error'} style={{ margin: 0, fontSize: 11, ...(r.status < 400 ? { background: '#e0f7f6', color: '#0ea5a0', border: 'none' } : {}) }}>{r.status}</Tag>
                       </div>
                     ))}
