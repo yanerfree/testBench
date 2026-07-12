@@ -56,6 +56,8 @@ def test_create_service(logged_in_page: Page):
 **禁止使用 get_by_placeholder，禁止使用 CSS 选择器，禁止编造不存在的元素名称。**
 只用 `get_by_role` / `get_by_label` / `get_by_text`，名称必须来自 Aria Snapshot。
 
+**注意：下拉菜单、弹窗中的临时元素可能不在 Aria Snapshot 中。对这类元素用 `get_by_text("文字", exact=True).click()`，不要用 get_by_role("heading", ...)。**
+
 ## 常见 UI 组件操作
 - Ant Design Select: page.locator(".ant-select").filter(has_text="标签").click() → page.get_by_title("值").click()
 - Modal: page.locator(".ant-modal").filter(has_text="标题")
