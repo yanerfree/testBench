@@ -71,45 +71,18 @@ def step_by_step_generate(
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, timeout=30000)
-        context = browser.new_context(locale="zh-CN", viewport={"width": 1280, "height": 720})
+        # 接口流量提取 — 用 HAR 录制（最可靠）
+        import tempfile as _tempfile
+        har_path = _tempfile.mktemp(suffix=".har")
+        context = browser.new_context(
+            locale="zh-CN", viewport={"width": 1280, "height": 720},
+            record_har_path=har_path,
+        )
         page = context.new_page()
         page.set_default_timeout(10000)
 
-        # 拦截 HTTP 请求（接口流量提取）
-        captured_requests = []
-        pending_requests = {}
-
-        def on_request(request):
-            try:
-                if "/api/" in request.url:
-                    body = None
-                    try:
-                        body = request.post_data[:500] if request.post_data else None
-                    except Exception:
-                        pass
-                    pending_requests[request.url + request.method] = {
-                        "method": request.method,
-                        "url": request.url,
-                        "path": request.url.split("//", 1)[-1].split("/", 1)[-1] if "//" in request.url else request.url,
-                        "resource_type": request.resource_type,
-                        "post_data": body,
-                        "status": 0,
-                    }
-            except Exception:
-                pass
-
-        def on_response(response):
-            try:
-                req = response.request
-                key = req.url + req.method
-                if key in pending_requests:
-                    pending_requests[key]["status"] = response.status
-                    captured_requests.append(pending_requests.pop(key))
-            except Exception:
-                pass
-
-        page.on("request", on_request)
-        page.on("response", on_response)
+        page = context.new_page()
+        page.set_default_timeout(10000)
 
         # 登录
         login_result = _do_login(page, base_url, credentials)
@@ -310,9 +283,32 @@ def step_by_step_generate(
             except Exception:
                 pass
 
-        # 把未收到 response 的 pending 请求也加到 captured
-        for req_data in pending_requests.values():
-            captured_requests.append(req_data)
+        # 从 HAR 读取捕获的接口请求
+        captured_requests = []
+        context.close()  # 关闭 context 才能写入 HAR
+        try:
+            import os as _os
+            if _os.path.exists(har_path):
+                with open(har_path) as f:
+                    har_data = json.load(f)
+                for entry in har_data.get("log", {}).get("entries", []):
+                    req = entry.get("request", {})
+                    resp = entry.get("response", {})
+                    url = req.get("url", "")
+                    if "/api/" in url:
+                        post_data = None
+                        if req.get("postData", {}).get("text"):
+                            post_data = req["postData"]["text"][:500]
+                        captured_requests.append({
+                            "method": req.get("method", "GET"),
+                            "url": url,
+                            "path": url.split("//", 1)[-1].split("/", 1)[-1] if "//" in url else url,
+                            "status": resp.get("status", 0),
+                            "post_data": post_data,
+                        })
+                _os.unlink(har_path)
+        except Exception:
+            pass
 
         browser.close()
     script = _assemble_script(func_name, fixture_name, code_blocks)
