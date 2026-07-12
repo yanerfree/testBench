@@ -307,9 +307,9 @@ async def run_scenario(
     token_cache: TokenCache | None = None,
 ) -> AsyncIterator[RunEvent]:
     async with _run_semaphore:
-        # 变量优先级：步骤提取 > 运行时 > 场景 env_variables > 环境/全局（base_env）
-        env = dict(base_env or {})
-        env.update(scenario.env_variables or {})
+        # 变量优先级：步骤提取 > 运行时 > 用户选择的环境(base_env) > 场景 env_variables
+        env = dict(scenario.env_variables or {})
+        env.update(base_env or {})
         _inject_runtime_variables(env)
         if token_cache is None:
             token_cache = TokenCache(env)

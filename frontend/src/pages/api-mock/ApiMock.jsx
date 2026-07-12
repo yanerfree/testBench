@@ -60,7 +60,7 @@ const CT_COLOR = (ct) => {
   if (!ct) return 'blue'
   if (ct.includes('json')) return 'blue'
   if (ct.includes('xml')) return 'orange'
-  if (ct.includes('html')) return 'green'
+  if (ct.includes('html')) return 'cyan'
   if (ct.includes('csv')) return 'cyan'
   if (ct.includes('plain')) return 'default'
   return 'default'
@@ -134,11 +134,12 @@ export default function ApiMock() {
   const isDirty = useMemo(() => {
     if (!routeForm || !originalForm) return false
     const keys = ['name', 'method', 'path', 'enabled', 'statusCode', 'contentType',
-      'responseBody', 'responseMode', 'matchMode', 'delayMs', 'proxyUrl', 'proxyModifyResponse']
+      'responseBody', 'responseMode', 'matchMode', 'delayMs', 'proxyUrl', 'proxyModifyResponse', 'authType']
     for (const k of keys) {
       if (routeForm[k] !== originalForm[k]) return true
     }
     if (JSON.stringify(routeForm.responseHeaders) !== JSON.stringify(originalForm.responseHeaders)) return true
+    if (JSON.stringify(routeForm.authConfig) !== JSON.stringify(originalForm.authConfig)) return true
     return false
   }, [routeForm, originalForm])
 
@@ -368,7 +369,7 @@ export default function ApiMock() {
           {/* URL 栏 */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 0, marginBottom: 16,
-            border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, overflow: 'hidden', background: 'transparent',
+            border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, overflow: 'hidden', background: 'transparent',
           }}>
             <Select
               value={routeForm.method}
@@ -525,7 +526,7 @@ export default function ApiMock() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 12, color: '#8c8c8c', fontWeight: 500 }}>响应预览</span>
-                    <Tag color={(routeForm.statusCode ?? 200) < 400 ? 'green' : 'red'} style={{ margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>
+                    <Tag color={(routeForm.statusCode ?? 200) < 400 ? 'cyan' : 'red'} style={{ margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>
                       {routeForm.statusCode ?? 200}
                     </Tag>
                     <Tag color={CT_COLOR(routeForm.contentType)} style={{ margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>
@@ -545,7 +546,7 @@ export default function ApiMock() {
                   margin: 0, padding: 14, flex: 1, minHeight: 200, overflow: 'auto',
                   fontSize: 12, lineHeight: 1.6, fontFamily: MONO,
                   background: '#1e1e2e', color: '#cdd6f4',
-                  whiteSpace: 'pre-wrap', wordBreak: 'break-all', borderRadius: 10,
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-all', borderRadius: 12,
                 }}>
                   {formatBody(routeForm.responseBody, routeForm.contentType)}
                 </pre>
@@ -597,7 +598,7 @@ export default function ApiMock() {
               <Fragment key={l.id}>
                 <tr onClick={() => handleToggleLogDetail(l.id)} style={{
                   cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.03)', background: 'rgba(255,255,255,0.25)',
-                  background: expandedLogId === l.id ? '#f9f0ff' : 'transparent',
+                  background: expandedLogId === l.id ? 'rgba(124,92,191,0.06)' : 'transparent',
                 }}>
                   <td style={{ padding: '5px 10px', whiteSpace: 'nowrap', fontSize: 11, color: '#8c8c8c' }}>
                     {new Date(l.timestamp).toLocaleTimeString('zh-CN', { hour12: false })}
@@ -733,8 +734,8 @@ export default function ApiMock() {
               const isDef = r.id === defaultRouteId
               return (
                 <div key={r.id} onClick={() => selectRoute(r)} style={{
-                  padding: '10px 12px', marginBottom: 4, borderRadius: 10, cursor: 'pointer',
-                  background: sel ? '#f9f0ff' : 'transparent',
+                  padding: '10px 12px', marginBottom: 4, borderRadius: 12, cursor: 'pointer',
+                  background: sel ? 'rgba(124,92,191,0.06)' : 'transparent',
                   borderLeft: `3px solid ${sel ? '#7c5cbf' : r.enabled ? '#0ea5a0' : 'rgba(0,0,0,0.1)'}`,
                   transition: 'all .15s',
                 }}>
@@ -761,6 +762,11 @@ export default function ApiMock() {
                       <Tag color={CT_COLOR(r.contentType)} style={{ margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 6 }}>
                         {CT_SHORT(r.contentType)}
                       </Tag>
+                      {r.authType && r.authType !== 'none' && (
+                        <Tooltip title={`认证: ${r.authType}`}>
+                          <LockOutlined style={{ fontSize: 10, color: '#fa8c16' }} />
+                        </Tooltip>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -778,7 +784,7 @@ export default function ApiMock() {
             <div style={{ display: 'flex', gap: 0 }}>
               {[
                 { key: 'config', label: '路由配置' },
-                { key: 'logs', label: <>请求日志 <Tag style={{ margin: '0 0 0 4px', fontSize: 11, borderRadius: 10, lineHeight: '18px', padding: '0 6px' }}>{serviceStatus.totalRequests}</Tag></> },
+                { key: 'logs', label: <>请求日志 <Tag style={{ margin: '0 0 0 4px', fontSize: 11, borderRadius: 12, lineHeight: '18px', padding: '0 6px' }}>{serviceStatus.totalRequests}</Tag></> },
               ].map(t => (
                 <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
                   padding: '10px 16px', cursor: 'pointer', fontSize: 14, position: 'relative',
@@ -807,6 +813,83 @@ export default function ApiMock() {
       >
         {routeForm && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {/* 认证配置 */}
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#262626', marginBottom: 8 }}>请求认证</div>
+              <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>认证方式</div>
+              <Select value={routeForm.authType || 'none'} onChange={v => setRouteForm(f => ({ ...f, authType: v, authConfig: v === 'none' ? null : (f.authConfig || {}) }))}
+                size="small" style={{ width: '100%' }}
+                options={[
+                  { value: 'none', label: '无认证' },
+                  { value: 'bearer', label: 'Bearer Token' },
+                  { value: 'basic', label: 'Basic Auth' },
+                  { value: 'apikey', label: 'API Key' },
+                  { value: 'jwt', label: 'JWT 验证' },
+                  { value: 'custom_header', label: '自定义 Header' },
+                ]} />
+              {routeForm.authType === 'bearer' && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>Token</div>
+                  <Input value={routeForm.authConfig?.token || ''} onChange={e => setRouteForm(f => ({ ...f, authConfig: { ...f.authConfig, token: e.target.value } }))}
+                    placeholder="输入 Bearer Token" style={{ fontFamily: MONO, fontSize: 12 }} />
+                </div>
+              )}
+              {routeForm.authType === 'basic' && (
+                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>用户名</div>
+                    <Input value={routeForm.authConfig?.username || ''} onChange={e => setRouteForm(f => ({ ...f, authConfig: { ...f.authConfig, username: e.target.value } }))}
+                      placeholder="username" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>密码</div>
+                    <Input.Password value={routeForm.authConfig?.password || ''} onChange={e => setRouteForm(f => ({ ...f, authConfig: { ...f.authConfig, password: e.target.value } }))}
+                      placeholder="password" />
+                  </div>
+                </div>
+              )}
+              {routeForm.authType === 'apikey' && (
+                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>Header 名称</div>
+                    <Input value={routeForm.authConfig?.headerName || ''} onChange={e => setRouteForm(f => ({ ...f, authConfig: { ...f.authConfig, headerName: e.target.value } }))}
+                      placeholder="X-API-Key" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>Key 值</div>
+                    <Input value={routeForm.authConfig?.key || ''} onChange={e => setRouteForm(f => ({ ...f, authConfig: { ...f.authConfig, key: e.target.value } }))}
+                      placeholder="your-api-key" style={{ fontFamily: MONO, fontSize: 12 }} />
+                  </div>
+                </div>
+              )}
+              {routeForm.authType === 'jwt' && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>Secret（HS256 签名验证，留空则只检查格式和过期时间）</div>
+                  <Input value={routeForm.authConfig?.secret || ''} onChange={e => setRouteForm(f => ({ ...f, authConfig: { ...f.authConfig, secret: e.target.value } }))}
+                    placeholder="your-jwt-secret（可选）" style={{ fontFamily: MONO, fontSize: 12 }} />
+                  <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 6 }}>验证逻辑：JWT 格式 → exp 过期检查 → 签名校验（如填了 secret）</div>
+                </div>
+              )}
+              {routeForm.authType === 'custom_header' && (
+                <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>Header 名称</div>
+                    <Input value={routeForm.authConfig?.headerName || ''} onChange={e => setRouteForm(f => ({ ...f, authConfig: { ...f.authConfig, headerName: e.target.value } }))}
+                      placeholder="X-Custom-Auth" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>Header 值</div>
+                    <Input value={routeForm.authConfig?.headerValue || ''} onChange={e => setRouteForm(f => ({ ...f, authConfig: { ...f.authConfig, headerValue: e.target.value } }))}
+                      placeholder="expected-value" style={{ fontFamily: MONO, fontSize: 12 }} />
+                  </div>
+                </div>
+              )}
+              {routeForm.authType && routeForm.authType !== 'none' && (
+                <div style={{ fontSize: 11, color: '#0ea5a0', marginTop: 6 }}>请求必须携带正确的认证信息，否则返回 401</div>
+              )}
+            </div>
+
+            {/* 代理转发 */}
             <div>
               <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>代理转发 URL</div>
               <Input value={routeForm.proxyUrl || ''} onChange={e => setRouteForm(f => ({ ...f, proxyUrl: e.target.value || null }))}

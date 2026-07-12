@@ -20,6 +20,7 @@ from app.schemas.variable import (
     EnvVarItem,
     EnvVarResponse,
     UpdateChannelRequest,
+    UpdateEnvRequest,
     UpdateVarRequest,
     VarResponse,
 )
@@ -80,6 +81,13 @@ async def delete_environment(env_id: uuid.UUID, session: AsyncSession = Depends(
     await environment_service.delete_environment(session, env_id)
     await write_audit_log(session, action="delete", target_type="environment", target_id=env_id, target_name=env.name)
     return MessageResponse(message="删除成功").model_dump()
+
+@router.put("/api/environments/{env_id}")
+async def update_environment(env_id: uuid.UUID, body: UpdateEnvRequest, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+    updates = body.model_dump(exclude_unset=True)
+    env = await environment_service.update_environment(session, env_id, **updates)
+    await write_audit_log(session, action="update", target_type="environment", target_id=env_id, target_name=env.name)
+    return {"data": EnvResponse.model_validate(env, from_attributes=True).model_dump(by_alias=True)}
 
 @router.get("/api/environments/{env_id}/variables")
 async def list_env_variables(env_id: uuid.UUID, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin, TreeSelect, Checkbox } from 'antd'
-import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, InboxOutlined, SettingOutlined, EditOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined, CodeOutlined, LoadingOutlined, ApiOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PlayCircleOutlined } from '@ant-design/icons'
+import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, InboxOutlined, SettingOutlined, EditOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined, CodeOutlined, LoadingOutlined, ApiOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PlayCircleOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 import { useBranch } from '../../utils/branch'
@@ -26,7 +26,6 @@ export default function CaseManagement() {
   const [runEnvId, setRunEnvId] = useEnv(projectId)
   const [environments, setEnvironments] = useState([])
   const [batchRunning, setBatchRunning] = useState(false)
-  const [batchResult, setBatchResult] = useState(null)
 
   // 目录树
   const [folderTree, setFolderTree] = useState([])
@@ -144,29 +143,47 @@ export default function CaseManagement() {
   }
 
   // 从 folderTree 中根据 id 找到 folder name（递归查找）
-  const handleBatchRun = async () => {
+  // 批量执行弹窗
+  const [batchExecOpen, setBatchExecOpen] = useState(false)
+  const [batchExecType, setBatchExecType] = useState('api')
+  const [batchPrecheck, setBatchPrecheck] = useState({ total: 0, executable: 0, skipped: 0 })
+
+  const openBatchExec = () => {
     if (!selectedRowKeys.length) { message.warning('请先选择用例'); return }
-    if (!runEnvId) { message.warning('请先选择执行环境'); return }
+    const selected = cases.filter(c => selectedRowKeys.includes(c.id))
+    const apiCount = selected.filter(c => c.automationStatus === 'automated').length
+    setBatchExecType('api')
+    setBatchPrecheck({ total: selected.length, executable: apiCount, skipped: selected.length - apiCount })
+    setBatchExecOpen(true)
+  }
+
+  const updatePrecheck = (type) => {
+    setBatchExecType(type)
+    const selected = cases.filter(c => selectedRowKeys.includes(c.id))
+    const execCount = selected.filter(c => c.automationStatus === 'automated').length
+    setBatchPrecheck({ total: selected.length, executable: execCount, skipped: selected.length - execCount })
+  }
+
+  const handleBatchExec = async () => {
+    if (!runEnvId) { message.warning('请选择执行环境'); return }
     setBatchRunning(true)
-    setBatchResult(null)
-    const results = { total: selectedRowKeys.length, success: 0, fail: 0, skip: 0, details: [] }
-    for (const caseId of selectedRowKeys) {
-      const c = cases.find(x => x.id === caseId)
-      try {
-        const res = await api.post(`/projects/${projectId}/branches/${globalBranchId}/cases/${caseId}/scripts/run?type=api`, { envId: runEnvId })
-        const d = res.data || res
-        const ok = d.passed || d.exitCode === 0
-        results[ok ? 'success' : 'fail']++
-        results.details.push({ caseId, title: c?.title, status: ok ? 'pass' : 'fail' })
-      } catch (e) {
-        results.skip++
-        results.details.push({ caseId, title: c?.title, status: 'skip', error: e.message || '无脚本或执行失败' })
-      }
+    try {
+      const res = await api.post(`/projects/${projectId}/reports/execute-adhoc`, {
+        caseIds: selectedRowKeys,
+        branchId: globalBranchId,
+        type: batchExecType,
+        envId: runEnvId,
+      })
+      const d = res.data || res
+      message.success(`执行已启动：${d.executable} 条可执行，${d.skipped} 条跳过`)
+      setBatchExecOpen(false)
+      setSelectedRowKeys([])
+      navigate(`/projects/${projectId}/reports/${d.reportId}`)
+    } catch (e) {
+      message.error(e.message || '执行失败')
+    } finally {
+      setBatchRunning(false)
     }
-    setBatchRunning(false)
-    setBatchResult(results)
-    const msg = `执行完成：${results.success} 通过，${results.fail} 失败，${results.skip} 跳过`
-    results.fail > 0 ? message.warning(msg) : message.success(msg)
   }
 
   const findFolderNameById = (nodes, targetId) => {
@@ -407,10 +424,9 @@ export default function CaseManagement() {
           <Button type="link" size="small" danger style={{ fontSize: 12, padding: '0 4px' }}>彻底删除</Button>
         </Popconfirm>
       ) : (
-        <Space size={4}>
+        <Space size={6}>
           <Tooltip title="复制用例">
-            <Button type="text" size="small" icon={<CopyOutlined />}
-              style={{ color: '#4e8af0', fontSize: 13 }}
+            <span
               onClick={async (e) => {
                 e.stopPropagation()
                 try {
@@ -418,7 +434,11 @@ export default function CaseManagement() {
                   message.success('复制成功')
                   fetchCases()
                 } catch { message.error('复制失败') }
-              }} />
+              }}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 26, borderRadius: 6, cursor: 'pointer', color: '#0ea5a0', background: 'rgba(14,165,160,0.08)', transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(14,165,160,0.18)'; e.currentTarget.style.transform = 'scale(1.08)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(14,165,160,0.08)'; e.currentTarget.style.transform = 'scale(1)' }}
+            ><CopyOutlined style={{ fontSize: 13 }} /></span>
           </Tooltip>
           <Popconfirm title="确定删除此用例？" onConfirm={async () => {
             try {
@@ -429,7 +449,12 @@ export default function CaseManagement() {
             } catch { /* */ }
           }}>
             <Tooltip title="删除用例">
-              <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#e8453c', fontSize: 13 }} />
+              <span
+                onClick={e => e.stopPropagation()}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 26, borderRadius: 6, cursor: 'pointer', color: '#e8453c', background: 'rgba(232,69,60,0.06)', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(232,69,60,0.15)'; e.currentTarget.style.transform = 'scale(1.08)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(232,69,60,0.06)'; e.currentTarget.style.transform = 'scale(1)' }}
+              ><DeleteOutlined style={{ fontSize: 13 }} /></span>
             </Tooltip>
           </Popconfirm>
         </Space>
@@ -472,6 +497,9 @@ export default function CaseManagement() {
             title={<span style={{ fontSize: 13, fontWeight: 600 }}>用例导航</span>}
             extra={
               <Space size={0}>
+                <Tooltip title="刷新目录">
+                  <Button type="text" size="small" icon={<ReloadOutlined />} onClick={() => { fetchFolders(); fetchCases() }} style={{ color: '#c9cdd4' }} />
+                </Tooltip>
                 <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => setFolderModalOpen(true)} style={{ color: '#0ea5a0' }} />
                 <Tooltip title="收起导航">
                   <Button type="text" size="small" icon={<MenuFoldOutlined />} onClick={() => setNavCollapsed(true)} style={{ color: '#c9cdd4' }} />
@@ -617,16 +645,10 @@ export default function CaseManagement() {
                     <Button size="small" type="link" danger>批量彻底删除</Button>
                   </Popconfirm>
                 ) : (<>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 4 }}>
-                  <Select size="small" value={runEnvId} onChange={setRunEnvId} placeholder="选择环境"
-                    style={{ width: 130 }} allowClear
-                    options={environments.map(e => ({ value: e.id, label: e.name }))} />
-                  <Button size="small" type="primary" icon={<PlayCircleOutlined />}
-                    loading={batchRunning} disabled={!runEnvId}
-                    onClick={handleBatchRun}>
-                    批量执行
-                  </Button>
-                </div>
+                <Button size="small" type="primary" icon={<PlayCircleOutlined />}
+                  onClick={openBatchExec}>
+                  批量执行
+                </Button>
                 <div style={{ width: 1, height: 16, background: 'rgba(0,0,0,0.1)' }} />
                 <Popconfirm title={`确定归档 ${selectedRowKeys.length} 条用例？`} onConfirm={async () => {
                   try {
@@ -676,7 +698,7 @@ export default function CaseManagement() {
               rowSelection={{ selectedRowKeys: selectedRowKeys, onChange: setSelectedRowKeys }}
               style={{ flex: 1 }}
               locale={{ emptyText: <Empty description="暂无用例" /> }}
-              onRow={(record) => ({ style: { cursor: 'pointer' }, onDoubleClick: () => navigate(`/projects/${projectId}/cases/${record.id}?branchId=${globalBranchId}`) })}
+              onRow={(record) => ({ style: { cursor: 'pointer' }, onClick: (e) => { if (e.target.closest('.ant-checkbox-wrapper, .ant-btn, .ant-popconfirm, a')) return; navigate(`/projects/${projectId}/cases/${record.id}?branchId=${globalBranchId}`) } })}
             />
             <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'flex-end' }}>
               <Pagination current={page} pageSize={pageSize} total={total}
@@ -914,35 +936,36 @@ export default function CaseManagement() {
         onClose={() => setScriptModalOpen(false)}
       />
 
-      {/* 批量执行结果 */}
-      <Modal title="批量执行结果" open={!!batchResult} onCancel={() => setBatchResult(null)} footer={null} width={520}>
-        {batchResult && (<>
-          <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-            <div style={{ flex: 1, textAlign: 'center', padding: '12px 0', background: '#e0f7f6', borderRadius: 12 }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#0ea5a0' }}>{batchResult.success}</div>
-              <div style={{ fontSize: 12, color: '#86909c' }}>通过</div>
-            </div>
-            <div style={{ flex: 1, textAlign: 'center', padding: '12px 0', background: '#fff2f0', borderRadius: 12 }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#e8453c' }}>{batchResult.fail}</div>
-              <div style={{ fontSize: 12, color: '#86909c' }}>失败</div>
-            </div>
-            <div style={{ flex: 1, textAlign: 'center', padding: '12px 0', background: 'rgba(0,0,0,0.03)', borderRadius: 12 }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#86909c' }}>{batchResult.skip}</div>
-              <div style={{ fontSize: 12, color: '#86909c' }}>跳过</div>
-            </div>
+      {/* 批量执行弹窗 */}
+      <Modal title="批量执行" open={batchExecOpen} onCancel={() => setBatchExecOpen(false)}
+        okText="开始执行" cancelText="取消" confirmLoading={batchRunning}
+        onOk={handleBatchExec} okButtonProps={{ disabled: !runEnvId || batchPrecheck.executable === 0 }}
+        width={440}>
+        <div style={{ padding: '8px 0' }}>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: '#86909c', marginBottom: 6 }}>执行类型</div>
+            <Radio.Group value={batchExecType} onChange={e => updatePrecheck(e.target.value)} buttonStyle="solid" size="small">
+              <Radio.Button value="api">接口测试 (API)</Radio.Button>
+              <Radio.Button value="ui">UI 测试 (E2E)</Radio.Button>
+            </Radio.Group>
           </div>
-          <div style={{ maxHeight: 300, overflow: 'auto' }}>
-            {batchResult.details.map((d, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 12 }}>
-                <Tag color={d.status === 'pass' ? 'cyan' : d.status === 'fail' ? 'red' : 'default'} style={{ margin: 0, width: 40, textAlign: 'center' }}>
-                  {d.status === 'pass' ? '通过' : d.status === 'fail' ? '失败' : '跳过'}
-                </Tag>
-                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title || d.caseId}</span>
-                {d.error && <span style={{ color: '#e8453c', fontSize: 11, flexShrink: 0 }}>{d.error}</span>}
-              </div>
-            ))}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: '#86909c', marginBottom: 6 }}>执行环境 *</div>
+            <Select value={runEnvId} onChange={setRunEnvId} placeholder="请选择环境"
+              style={{ width: '100%' }}
+              options={environments.map(e => ({ value: e.id, label: e.name }))} />
           </div>
-        </>)}
+          <div style={{ padding: '12px 16px', background: 'rgba(0,0,0,0.02)', borderRadius: 12, fontSize: 13 }}>
+            <div style={{ marginBottom: 4 }}>共选中 <b>{batchPrecheck.total}</b> 个用例</div>
+            <div style={{ color: '#0ea5a0' }}>{batchPrecheck.executable} 个包含可执行脚本</div>
+            {batchPrecheck.skipped > 0 && (
+              <div style={{ color: '#faad14' }}>{batchPrecheck.skipped} 个无脚本，将被跳过</div>
+            )}
+            {batchPrecheck.executable === 0 && (
+              <div style={{ color: '#e8453c', marginTop: 4 }}>没有可执行的用例</div>
+            )}
+          </div>
+        </div>
       </Modal>
     </div>
   )

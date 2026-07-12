@@ -137,6 +137,17 @@ class ApiMockServerManager:
 
         route_dict = self._route_to_dict(matched_route)
 
+        auth_error = self._check_auth(request, route_dict)
+        if auth_error:
+            t_done = time.perf_counter()
+            if self.capture_enabled:
+                await self._log_request(
+                    route_dict, request, request_body_str, method, path,
+                    401, 'application/json', '{"error":"Unauthorized"}', {},
+                    match_ms, (t_done - t0) * 1000,
+                )
+            return auth_error
+
         # 延迟模拟
         delay = route_dict.get("delay_ms", 0)
         if delay > 0:
@@ -252,7 +263,78 @@ class ApiMockServerManager:
             "match_mode": route.match_mode,
             "proxy_url": route.proxy_url,
             "proxy_modify_response": route.proxy_modify_response,
+            "auth_type": route.auth_type,
+            "auth_config": route.auth_config,
         }
+
+    def _check_auth(self, request: Request, route_dict: dict) -> JSONResponse | None:
+        auth_type = route_dict.get("auth_type", "none")
+        if auth_type == "none":
+            return None
+        cfg = route_dict.get("auth_config") or {}
+        auth_header = request.headers.get("authorization", "")
+
+        if auth_type == "bearer":
+            expected = cfg.get("token", "")
+            if not expected or not auth_header.lower().startswith("bearer ") or auth_header[7:].strip() != expected:
+                return JSONResponse({"error": "Unauthorized", "message": "Invalid or missing Bearer token"}, status_code=401)
+
+        elif auth_type == "basic":
+            import base64
+            username = cfg.get("username", "")
+            password = cfg.get("password", "")
+            if not username:
+                return JSONResponse({"error": "Unauthorized", "message": "Auth not configured"}, status_code=401)
+            expected = base64.b64encode(f"{username}:{password}".encode()).decode()
+            if not auth_header.lower().startswith("basic ") or auth_header[6:].strip() != expected:
+                return JSONResponse({"error": "Unauthorized", "message": "Invalid Basic credentials"}, status_code=401)
+
+        elif auth_type == "apikey":
+            header_name = cfg.get("headerName", "X-API-Key")
+            expected_key = cfg.get("key", "")
+            if not expected_key:
+                return JSONResponse({"error": "Unauthorized", "message": "Auth not configured"}, status_code=401)
+            actual = request.headers.get(header_name.lower(), "")
+            if actual != expected_key:
+                return JSONResponse({"error": "Unauthorized", "message": f"Invalid or missing {header_name}"}, status_code=401)
+
+        elif auth_type == "custom_header":
+            header_name = cfg.get("headerName", "")
+            expected_value = cfg.get("headerValue", "")
+            if not header_name or not expected_value:
+                return JSONResponse({"error": "Unauthorized", "message": "Auth not configured"}, status_code=401)
+            actual = request.headers.get(header_name.lower(), "")
+            if actual != expected_value:
+                return JSONResponse({"error": "Unauthorized", "message": f"Invalid or missing {header_name}"}, status_code=401)
+
+        elif auth_type == "jwt":
+            import base64, hmac, hashlib, time as _time
+            secret = cfg.get("secret", "")
+            if not auth_header.lower().startswith("bearer "):
+                return JSONResponse({"error": "Unauthorized", "message": "Missing Bearer JWT token"}, status_code=401)
+            jwt_token = auth_header[7:].strip()
+            parts = jwt_token.split(".")
+            if len(parts) != 3:
+                return JSONResponse({"error": "Unauthorized", "message": "Invalid JWT format"}, status_code=401)
+            try:
+                pad = lambda s: s + "=" * (4 - len(s) % 4) if len(s) % 4 else s
+                payload_str = base64.urlsafe_b64decode(pad(parts[1])).decode("utf-8")
+                import json as _json
+                payload_data = _json.loads(payload_str)
+            except Exception:
+                return JSONResponse({"error": "Unauthorized", "message": "Invalid JWT payload"}, status_code=401)
+            exp = payload_data.get("exp")
+            if exp and isinstance(exp, (int, float)) and exp < _time.time():
+                return JSONResponse({"error": "Unauthorized", "message": "JWT token expired"}, status_code=401)
+            if secret:
+                signing_input = f"{parts[0]}.{parts[1]}".encode()
+                expected_sig = base64.urlsafe_b64encode(
+                    hmac.new(secret.encode(), signing_input, hashlib.sha256).digest()
+                ).rstrip(b"=").decode()
+                if parts[2] != expected_sig:
+                    return JSONResponse({"error": "Unauthorized", "message": "JWT signature mismatch"}, status_code=401)
+
+        return None
 
     async def _log_request(
         self, route_dict, request, request_body_str, method, path,

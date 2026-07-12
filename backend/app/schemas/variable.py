@@ -46,6 +46,10 @@ class EnvVarResponse(BaseSchema):
     description: str | None
     sort_order: int
 
+class UpdateEnvRequest(BaseSchema):
+    name: str | None = None
+    description: str | None = None
+
 class CloneEnvRequest(BaseSchema):
     name: str
 

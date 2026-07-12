@@ -8,16 +8,18 @@ import {
   LockOutlined, CodeOutlined, CaretRightOutlined, CaretDownOutlined,
   HolderOutlined, MoreOutlined, CheckCircleOutlined, FieldStringOutlined,
   ThunderboltOutlined, ClockCircleOutlined, CloseOutlined, SwapOutlined,
+  MenuFoldOutlined, MenuUnfoldOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { useBranch } from '../../utils/branch'
+import { useEnv } from '../../utils/env'
 import { copyToClipboard } from '../../utils/clipboard'
 
 const methodColors = {
   GET: { color: '#0ea5a0', bg: '#e0f7f6' },
   POST: { color: '#fa8c16', bg: '#fff7e6' },
   PUT: { color: '#faad14', bg: '#fffbe6' },
-  PATCH: { color: '#7c5cbf', bg: '#f9f0ff' },
+  PATCH: { color: '#7c5cbf', bg: 'rgba(124,92,191,0.06)' },
   DELETE: { color: '#e8453c', bg: '#fff2f0' },
 }
 
@@ -29,7 +31,7 @@ const commonHeaders = [
   { value: 'Cache-Control', desc: 'no-cache' },
   { value: 'User-Agent', desc: 'testBench/1.0' },
 ]
-const headerOptions = commonHeaders.map(h => ({ value: h.value, label: <span>{h.value} <span style={{ fontSize: 10, color: '#999' }}>{h.desc}</span></span> }))
+const headerOptions = commonHeaders.map(h => ({ value: h.value, label: <span>{h.value} <span style={{ fontSize: 10, color: '#86909c' }}>{h.desc}</span></span> }))
 
 // =========== Body 片段模板 ===========
 const bodySnippets = [
@@ -117,7 +119,7 @@ function VarInsertBtn({ envVars, onInsert }) {
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(14,165,160,0.06)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#fa8c16', fontWeight: 600 }}>{`{{${v.key}}}`}</span>
-              <span style={{ fontSize: 10, color: '#999', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.value}</span>
+              <span style={{ fontSize: 10, color: '#86909c', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.value}</span>
             </div>
           ))}
         </div>
@@ -158,7 +160,7 @@ function KvEditor({ items = [], onChange, keyPh = 'Key', valPh = 'Value' }) {
   if (bulkMode) return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 11, color: '#666' }}>格式: <code style={{ fontSize: 10, background: 'rgba(0,0,0,0.04)', padding: '1px 4px', borderRadius: 4 }}>key: value  // 描述</code></span>
+        <span style={{ fontSize: 11, color: '#4e5969' }}>格式: <code style={{ fontSize: 10, background: 'rgba(0,0,0,0.04)', padding: '1px 4px', borderRadius: 4 }}>key: value  // 描述</code></span>
         <Space size={4}><Button size="small" onClick={() => setBulkMode(false)}>取消</Button><Button size="small" type="primary" onClick={fromBulk}>确定</Button></Space>
       </div>
       <Input.TextArea value={bulkText} onChange={e => setBulkText(e.target.value)} autoSize={{ minRows: 5, maxRows: 14 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
@@ -167,16 +169,16 @@ function KvEditor({ items = [], onChange, keyPh = 'Key', valPh = 'Value' }) {
   return (
     <div>
       {items.length > 0 && (
-        <div style={{ display: 'flex', gap: 4, marginBottom: 4, padding: '0 4px', fontSize: 10, color: '#999', fontWeight: 600, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 4, padding: '0 4px', fontSize: 10, color: '#86909c', fontWeight: 600, alignItems: 'center' }}>
           <span style={{ width: 20 }}></span>
           <span style={{ flex: 3 }}>{keyPh}</span>
           <span style={{ flex: 4 }}>{valPh}</span>
           <span style={{ flex: 3 }}>描述</span>
           <span style={{ width: 24 }}></span>
-          <Tooltip title="批量编辑"><Button type="text" size="small" icon={<EditOutlined />} onClick={toBulk} style={{ width: 20, height: 16, fontSize: 10, color: '#999' }} /></Tooltip>
+          <Tooltip title="批量编辑"><Button type="text" size="small" icon={<EditOutlined />} onClick={toBulk} style={{ width: 20, height: 16, fontSize: 10, color: '#86909c' }} /></Tooltip>
         </div>
       )}
-      {items.length === 0 && <div style={{ padding: '12px 0', textAlign: 'center', color: '#999', fontSize: 12 }}>暂无，点击添加</div>}
+      {items.length === 0 && <div style={{ padding: '12px 0', textAlign: 'center', color: '#86909c', fontSize: 12 }}>暂无，点击添加</div>}
       {items.map((r, i) => (
         <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 3, alignItems: 'center', opacity: r.enabled === false ? 0.45 : 1 }}>
           <Checkbox checked={r.enabled !== false} onChange={e => up(i, 'enabled', e.target.checked)} style={{ marginRight: -2 }} />
@@ -186,7 +188,7 @@ function KvEditor({ items = [], onChange, keyPh = 'Key', valPh = 'Value' }) {
             <Input size="small" value={r.key} placeholder={keyPh} onChange={e => up(i, 'key', e.target.value)} style={{ flex: 3, fontFamily: 'monospace', fontSize: 11 }} />
           )}
           <Input size="small" value={r.value} placeholder={valPh} onChange={e => up(i, 'value', e.target.value)} style={{ flex: 4, fontFamily: 'monospace', fontSize: 11 }} />
-          <Input size="small" value={r.desc || ''} placeholder="描述" onChange={e => up(i, 'desc', e.target.value)} style={{ flex: 3, fontSize: 11, color: '#666' }} />
+          <Input size="small" value={r.desc || ''} placeholder="描述" onChange={e => up(i, 'desc', e.target.value)} style={{ flex: 3, fontSize: 11, color: '#4e5969' }} />
           <Button type="text" size="small" icon={<DeleteOutlined />} danger onClick={() => onChange(items.filter((_, j) => j !== i))} />
         </div>
       ))}
@@ -203,10 +205,10 @@ function AuthEditor({ auth, onChange }) {
     <div>
       <Select size="small" value={a.type || 'none'} onChange={v => up('type', v)} style={{ width: 200, marginBottom: 12 }}
         options={[{ value: 'none', label: '无认证' }, { value: 'bearer', label: 'Bearer Token' }, { value: 'basic', label: 'Basic Auth' }, { value: 'apikey', label: 'API Key' }]} />
-      {a.type === 'bearer' && <div><div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Token</div><Input size="small" value={a.token || ''} onChange={e => up('token', e.target.value)} placeholder="输入 Token" style={{ fontFamily: 'monospace', fontSize: 11 }} /></div>}
-      {a.type === 'basic' && <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}><div><div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>用户名</div><Input size="small" value={a.username || ''} onChange={e => up('username', e.target.value)} /></div><div><div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>密码</div><Input.Password size="small" value={a.password || ''} onChange={e => up('password', e.target.value)} /></div></div>}
-      {a.type === 'apikey' && <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}><div style={{ display: 'flex', gap: 8 }}><div style={{ flex: 1 }}><div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Key</div><Input size="small" value={a.keyName || ''} onChange={e => up('keyName', e.target.value)} /></div><div style={{ flex: 1 }}><div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Value</div><Input size="small" value={a.keyValue || ''} onChange={e => up('keyValue', e.target.value)} style={{ fontFamily: 'monospace', fontSize: 11 }} /></div></div><div><div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>添加到</div><Select size="small" value={a.keyIn || 'header'} onChange={v => up('keyIn', v)} style={{ width: 160 }} options={[{ value: 'header', label: 'Header' }, { value: 'query', label: 'Query Params' }]} /></div></div>}
-      {a.type === 'none' && <div style={{ padding: '12px 0', textAlign: 'center', color: '#999', fontSize: 12 }}>不使用认证</div>}
+      {a.type === 'bearer' && <div><div style={{ fontSize: 11, color: '#4e5969', marginBottom: 4 }}>Token</div><Input size="small" value={a.token || ''} onChange={e => up('token', e.target.value)} placeholder="输入 Token" style={{ fontFamily: 'monospace', fontSize: 11 }} /></div>}
+      {a.type === 'basic' && <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}><div><div style={{ fontSize: 11, color: '#4e5969', marginBottom: 4 }}>用户名</div><Input size="small" value={a.username || ''} onChange={e => up('username', e.target.value)} /></div><div><div style={{ fontSize: 11, color: '#4e5969', marginBottom: 4 }}>密码</div><Input.Password size="small" value={a.password || ''} onChange={e => up('password', e.target.value)} /></div></div>}
+      {a.type === 'apikey' && <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}><div style={{ display: 'flex', gap: 8 }}><div style={{ flex: 1 }}><div style={{ fontSize: 11, color: '#4e5969', marginBottom: 4 }}>Key</div><Input size="small" value={a.keyName || ''} onChange={e => up('keyName', e.target.value)} /></div><div style={{ flex: 1 }}><div style={{ fontSize: 11, color: '#4e5969', marginBottom: 4 }}>Value</div><Input size="small" value={a.keyValue || ''} onChange={e => up('keyValue', e.target.value)} style={{ fontFamily: 'monospace', fontSize: 11 }} /></div></div><div><div style={{ fontSize: 11, color: '#4e5969', marginBottom: 4 }}>添加到</div><Select size="small" value={a.keyIn || 'header'} onChange={v => up('keyIn', v)} style={{ width: 160 }} options={[{ value: 'header', label: 'Header' }, { value: 'query', label: 'Query Params' }]} /></div></div>}
+      {a.type === 'none' && <div style={{ padding: '12px 0', textAlign: 'center', color: '#86909c', fontSize: 12 }}>不使用认证</div>}
     </div>
   )
 }
@@ -233,7 +235,7 @@ function ResponsePanel({ response, onUseAsBody }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', marginBottom: 8, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
         <span style={{ fontWeight: 700, fontSize: 14, color: statusColor, background: statusColor + '10', padding: '2px 8px', borderRadius: 12 }}>{sc} {r.statusText || ''}</span>
         <span style={{ fontSize: 11, color: durationColor, fontWeight: 600 }}>{durationMs} ms</span>
-        <span style={{ fontSize: 11, color: '#666' }}>{sizeStr}</span>
+        <span style={{ fontSize: 11, color: '#4e5969' }}>{sizeStr}</span>
         <div style={{ flex: 1 }} />
         {['body', 'headers'].map(t => (
           <div key={t} onClick={() => setViewTab(t)} style={{ padding: '2px 10px', fontSize: 11, cursor: 'pointer', color: viewTab === t ? '#0ea5a0' : '#666', fontWeight: viewTab === t ? 600 : 400, borderBottom: viewTab === t ? '2px solid #0ea5a0' : '2px solid transparent' }}>
@@ -242,7 +244,7 @@ function ResponsePanel({ response, onUseAsBody }) {
         ))}
       </div>
       {sc === 0 && (
-        <div style={{ marginBottom: 8, padding: '8px 12px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 10, fontSize: 12, color: '#cf1322' }}>
+        <div style={{ marginBottom: 8, padding: '8px 12px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 12, fontSize: 12, color: '#e8453c' }}>
           请求失败，请检查：URL 是否正确、服务是否在运行、环境变量是否配置（如 <code style={{ background: 'transparent', padding: '0 4px', borderRadius: 3 }}>{'{{BASE_URL}}'}</code>）
         </div>
       )}
@@ -255,12 +257,12 @@ function ResponsePanel({ response, onUseAsBody }) {
               ))}
             </div>
             <Space size={4}>
-              <Input size="small" prefix={<SearchOutlined style={{ color: '#999' }} />} value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索" allowClear style={{ width: 140, fontSize: 11 }} />
+              <Input size="small" prefix={<SearchOutlined style={{ color: '#86909c' }} />} value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索" allowClear style={{ width: 140, fontSize: 11 }} />
               <Tooltip title="复制响应体"><Button size="small" icon={<CopyOutlined />} onClick={() => copyToClipboard(displayBody).then(() => message.success('已复制'))} /></Tooltip>
               {isJson && onUseAsBody && <Tooltip title="填入请求 Body"><Button size="small" icon={<SwapOutlined />} onClick={() => onUseAsBody(prettyBody)}>用作 Body</Button></Tooltip>}
             </Space>
           </div>
-          <pre style={{ margin: 0, padding: 12, background: 'rgba(255,255,255,0.35)', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 10, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', cursor: isJson ? 'text' : 'default' }}>{displayBody}</pre>
+          <pre style={{ margin: 0, padding: 12, background: 'rgba(255,255,255,0.35)', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, maxHeight: 400, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', cursor: isJson ? 'text' : 'default' }}>{displayBody}</pre>
         </div>
       )}
       {viewTab === 'headers' && respHeaders.map((h, i) => (
@@ -269,7 +271,7 @@ function ResponsePanel({ response, onUseAsBody }) {
           onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.02)'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
           <span style={{ fontWeight: 600, color: '#4e5969', width: 200, flexShrink: 0, fontFamily: 'monospace' }}>{h.key}</span>
-          <span style={{ color: '#666', fontFamily: 'monospace', wordBreak: 'break-all' }}>{h.value}</span>
+          <span style={{ color: '#4e5969', fontFamily: 'monospace', wordBreak: 'break-all' }}>{h.value}</span>
         </div>
       ))}
     </div>
@@ -305,7 +307,7 @@ function TreeNode({ node, children, level, isSelected, onClick, onContextMenu, o
             display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', paddingLeft: 10 + level * 16,
             cursor: 'pointer', background: isSelected ? '#e0f7f6' : hovered ? 'rgba(14,165,160,0.06)' : 'transparent',
           }}>
-          {expanded ? <CaretDownOutlined style={{ fontSize: 9, color: '#666' }} /> : <CaretRightOutlined style={{ fontSize: 9, color: '#666' }} />}
+          {expanded ? <CaretDownOutlined style={{ fontSize: 9, color: '#4e5969' }} /> : <CaretRightOutlined style={{ fontSize: 9, color: '#4e5969' }} />}
           {expanded ? <FolderOpenOutlined style={{ fontSize: 12, color: '#faad14' }} /> : <FolderOutlined style={{ fontSize: 12, color: '#faad14' }} />}
           {editing ? (
             <Input size="small" autoFocus value={editName} onChange={e => setEditName(e.target.value)}
@@ -315,7 +317,7 @@ function TreeNode({ node, children, level, isSelected, onClick, onContextMenu, o
           ) : (
             <span style={{ fontSize: 12, color: '#1d2129', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
           )}
-          {hovered && !editing && <MoreOutlined style={{ color: '#999', fontSize: 12 }} onClick={e => { e.stopPropagation(); onContextMenu(node, e) }} />}
+          {hovered && !editing && <MoreOutlined style={{ color: '#86909c', fontSize: 12 }} onClick={e => { e.stopPropagation(); onContextMenu(node, e) }} />}
         </div>
         {expanded && children}
       </div>
@@ -345,11 +347,11 @@ function TreeNode({ node, children, level, isSelected, onClick, onContextMenu, o
         <span style={{ fontSize: 12, color: '#1d2129', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {displayName}
           {showUrlHint && (
-            <span style={{ fontSize: 10, color: '#999', marginLeft: 4 }}>{node.url.split('?')[0]}</span>
+            <span style={{ fontSize: 10, color: '#86909c', marginLeft: 4 }}>{node.url.split('?')[0]}</span>
           )}
         </span>
       )}
-      {hovered && !editing && <MoreOutlined style={{ color: '#999', fontSize: 12 }} onClick={e => { e.stopPropagation(); onContextMenu(node, e) }} />}
+      {hovered && !editing && <MoreOutlined style={{ color: '#86909c', fontSize: 12 }} onClick={e => { e.stopPropagation(); onContextMenu(node, e) }} />}
     </div>
   )
 }
@@ -548,7 +550,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
         <Input variant="borderless" value={data.name || ''} onChange={e => up('name', e.target.value)}
           placeholder="输入接口名称" style={{ fontSize: 14, fontWeight: 600, color: '#1d2129', flex: 1, padding: '2px 4px' }} />
         <Button size="small" type={dirty ? 'primary' : 'default'} disabled={!dirty} onClick={() => { onSave(data); setDirty(false); onDirtyChange?.(false) }}
-          style={dirty ? {} : { color: '#bbb', borderColor: '#e0e0e0' }}>保存</Button>
+          style={dirty ? {} : { color: '#c9cdd4', borderColor: 'rgba(0,0,0,0.06)' }}>保存</Button>
       </div>
 
       {/* Method + URL + Send */}
@@ -578,7 +580,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
             { key: 'gen-python', icon: <CodeOutlined />, label: '生成 Python 代码', onClick: () => { setCodeGenLang('python'); setCodeGenOpen(true) } },
             { key: 'gen-js', icon: <CodeOutlined />, label: '生成 JavaScript 代码', onClick: () => { setCodeGenLang('javascript'); setCodeGenOpen(true) } },
           ]}} trigger={['click']}>
-            <Button icon={<CodeOutlined />} style={{ color: '#666' }} />
+            <Button icon={<CodeOutlined />} style={{ color: '#4e5969' }} />
           </Dropdown>
           <VarInsertBtn envVars={envVars} onInsert={v => { const cur = data.url || ''; up('url', cur + v) }} />
           <Tooltip title="Ctrl+Enter 发送">
@@ -587,7 +589,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
           </Tooltip>
         </div>
         {urlHasVars && (
-          <div style={{ marginTop: 4, fontSize: 11, color: '#999', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ marginTop: 4, fontSize: 11, color: '#86909c', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             <span style={{ color: '#0ea5a0', marginRight: 4 }}>→</span>{resolvedUrl}
           </div>
         )}
@@ -601,7 +603,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
             color: t.highlight ? '#0ea5a0' : activeTab === t.key ? '#0ea5a0' : t.dim ? '#bbb' : '#666',
             fontWeight: activeTab === t.key ? 600 : 400,
             borderBottom: activeTab === t.key ? `2px solid ${t.highlight ? '#0ea5a0' : '#0ea5a0'}` : '2px solid transparent',
-          }}>{t.label}{t.count > 0 && <span style={{ fontSize: 10, marginLeft: 3, color: '#999' }}>{t.count}</span>}</div>
+          }}>{t.label}{t.count > 0 && <span style={{ fontSize: 10, marginLeft: 3, color: '#86909c' }}>{t.count}</span>}</div>
         ))}
       </div>
 
@@ -646,7 +648,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
                             onMouseEnter={e => e.currentTarget.style.background = 'rgba(14,165,160,0.06)'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                             <div style={{ fontSize: 12, fontWeight: 600, color: '#1d2129', marginBottom: 2 }}>{s.label}</div>
-                            <pre style={{ margin: 0, fontSize: 10, color: '#666', fontFamily: 'monospace', lineHeight: 1.4, maxHeight: 60, overflow: 'hidden', whiteSpace: 'pre-wrap' }}>{s.code}</pre>
+                            <pre style={{ margin: 0, fontSize: 10, color: '#4e5969', fontFamily: 'monospace', lineHeight: 1.4, maxHeight: 60, overflow: 'hidden', whiteSpace: 'pre-wrap' }}>{s.code}</pre>
                           </div>
                         ))}
                       </div>
@@ -658,7 +660,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
               <div style={{ flex: 1 }} />
               <VarInsertBtn envVars={envVars} onInsert={v => up('body', (data.body || '') + v)} />
             </div>
-            {(data.bodyType || 'json') === 'none' && <div style={{ padding: '12px 0', textAlign: 'center', color: '#999', fontSize: 12 }}>无 Body</div>}
+            {(data.bodyType || 'json') === 'none' && <div style={{ padding: '12px 0', textAlign: 'center', color: '#86909c', fontSize: 12 }}>无 Body</div>}
             {((data.bodyType || 'json') === 'json' || data.bodyType === 'raw') && (
               <>
                 <Input.TextArea ref={bodyRef} value={data.body || ''} onChange={e => up('body', e.target.value)} placeholder='{"key": "value"}' autoSize={{ minRows: 6, maxRows: 18 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
@@ -677,7 +679,7 @@ function EndpointEditor({ node, onSave, onSend, sending, response, envVars, onDi
       {/* cURL Import Modal */}
       <Modal open={importCurlOpen} onCancel={() => { setImportCurlOpen(false); setCurlText('') }}
         title="导入 cURL" width={560} okText="导入" onOk={handleImportCurl} okButtonProps={{ disabled: !curlText.trim() }}>
-        <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>粘贴 cURL 命令，自动解析为请求参数。也可以直接在 URL 栏粘贴 cURL 命令。</div>
+        <div style={{ fontSize: 12, color: '#4e5969', marginBottom: 8 }}>粘贴 cURL 命令，自动解析为请求参数。也可以直接在 URL 栏粘贴 cURL 命令。</div>
         <Input.TextArea value={curlText} onChange={e => setCurlText(e.target.value)}
           placeholder={'curl -X GET \'https://api.example.com/users\' \\\n  -H \'Authorization: Bearer token\' \\\n  -H \'Content-Type: application/json\''}
           autoSize={{ minRows: 6, maxRows: 14 }} style={{ fontFamily: 'monospace', fontSize: 11 }} />
@@ -715,11 +717,12 @@ export default function ApiManagement() {
   const [sendingMap, setSendingMap] = useState({})
   const [responses, setResponses] = useState({})
   const [environments, setEnvironments] = useState([])
-  const [runEnv, setRunEnv] = useState(null)
+  const [runEnv, setRunEnv] = useEnv(projectId)
   const [envVars, setEnvVars] = useState([])
   const [ctxMenu, setCtxMenu] = useState(null)
   const [newNodeId, setNewNodeId] = useState(null)
   const [dirtyTabs, setDirtyTabs] = useState(new Set())
+  const [navCollapsed, setNavCollapsed] = useState(false)
 
   const loadNodes = async () => {
     try {
@@ -734,10 +737,12 @@ export default function ApiManagement() {
     api.get('/environments').then(res => {
       const envs = res.data || []
       setEnvironments(envs)
-      if (envs.length > 0) {
-        setRunEnv(envs[0].id)
-        api.get(`/environments/${envs[0].id}/variables`).then(r => {
-          envs[0].variables = r.data || []
+      const activeId = runEnv || (envs.length ? envs[0].id : null)
+      if (activeId && !runEnv) setRunEnv(activeId)
+      if (activeId) {
+        api.get(`/environments/${activeId}/variables`).then(r => {
+          const env = envs.find(e => e.id === activeId)
+          if (env) env.variables = r.data || []
           setEnvironments([...envs])
           setEnvVars(r.data || [])
         }).catch(() => {})
@@ -898,11 +903,23 @@ export default function ApiManagement() {
   return (
     <div style={{ display: 'flex', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden', height: 'calc(100vh - 80px)', background: 'transparent' }}>
       {/* 左侧：接口树 */}
+      {navCollapsed ? (
+        <div
+          onClick={() => setNavCollapsed(false)}
+          style={{ width: 20, borderRight: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, background: 'rgba(255,255,255,0.35)' }}
+          title="展开侧栏"
+        >
+          <MenuUnfoldOutlined style={{ fontSize: 12, color: '#86909c' }} />
+        </div>
+      ) : (
       <div style={{ width: 300, borderRight: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         {/* 工具栏 */}
         <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.35)' }}>
-          <Input size="small" prefix={<SearchOutlined style={{ color: '#999' }} />} placeholder="搜索接口..."
+          <Input size="small" prefix={<SearchOutlined style={{ color: '#86909c' }} />} placeholder="搜索接口..."
             value={search} onChange={e => setSearch(e.target.value)} allowClear style={{ flex: 1, fontSize: 11 }} />
+          <Tooltip title="收起侧栏">
+            <Button type="text" size="small" icon={<MenuFoldOutlined style={{ fontSize: 12 }} />} onClick={() => setNavCollapsed(true)} style={{ flexShrink: 0 }} />
+          </Tooltip>
           <Dropdown menu={{ items: [
             { key: 'endpoint', icon: <ApiOutlined />, label: '新建接口', onClick: () => handleCreate(null, 'endpoint') },
             { key: 'folder', icon: <FolderOutlined />, label: '新建文件夹', onClick: () => handleCreate(null, 'folder') },
@@ -969,6 +986,7 @@ export default function ApiManagement() {
           )}
         </div>
       </div>
+      )}
 
       {/* 右侧 */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -993,7 +1011,7 @@ export default function ApiManagement() {
                     {dirtyTabs.has(tid) && <span style={{ color: '#fa8c16', marginRight: 2 }}>●</span>}
                     {tn.name || '未命名接口'}
                   </span>
-                  <CloseOutlined onClick={e => closeTab(tid, e)} style={{ fontSize: 9, color: '#bbb', marginLeft: 4 }} />
+                  <CloseOutlined onClick={e => closeTab(tid, e)} style={{ fontSize: 9, color: '#c9cdd4', marginLeft: 4 }} />
                 </div>
               )
             })}
@@ -1020,7 +1038,7 @@ export default function ApiManagement() {
               }} onBlur={() => handleSave({ ...selected, name: nodes.find(n => n.id === selected.id)?.name })}
                 variant="borderless" style={{ fontSize: 16, fontWeight: 600, flex: 1 }} />
             </div>
-            <div style={{ color: '#666', fontSize: 12 }}>
+            <div style={{ color: '#4e5969', fontSize: 12 }}>
               包含 {nodes.filter(n => n.parentId === selected.id).length} 个子项
             </div>
             <div style={{ marginTop: 16 }}>
@@ -1031,7 +1049,7 @@ export default function ApiManagement() {
             </div>
           </div>
         ) : (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#86909c' }}>
             <div style={{ textAlign: 'center' }}>
               <ApiOutlined style={{ fontSize: 40, marginBottom: 12 }} />
               <div style={{ fontSize: 13 }}>选择一个接口开始调试</div>
@@ -1063,14 +1081,14 @@ export default function ApiManagement() {
       <Modal open={importOpen} onCancel={() => { setImportOpen(false); setImportFile(null) }}
         title="导入 Postman Collection" width={520} okText="导入" onOk={handleImport} confirmLoading={importing}>
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>
+          <div style={{ fontSize: 12, color: '#4e5969', marginBottom: 8 }}>
             支持 Postman Collection v2.0/v2.1 JSON 格式。从 Postman 中 Export → Collection v2.1 即可。
           </div>
           <Upload.Dragger accept=".json"
             beforeUpload={file => { setImportFile(file); return false }}
             fileList={importFile ? [importFile] : []}
             onRemove={() => setImportFile(null)}>
-            <p style={{ fontSize: 12, color: '#666' }}><ImportOutlined style={{ fontSize: 24, color: '#0ea5a0', display: 'block', marginBottom: 8 }} />点击或拖拽 JSON 文件到此处</p>
+            <p style={{ fontSize: 12, color: '#4e5969' }}><ImportOutlined style={{ fontSize: 24, color: '#0ea5a0', display: 'block', marginBottom: 8 }} />点击或拖拽 JSON 文件到此处</p>
           </Upload.Dragger>
         </div>
       </Modal>

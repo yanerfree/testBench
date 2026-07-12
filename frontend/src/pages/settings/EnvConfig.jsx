@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Button, Input, Table, Tabs, Modal, Form, message, Popconfirm, Tag, Tooltip, Spin } from 'antd'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Button, Input, Tabs, Modal, Form, message, Popconfirm, Tag, Tooltip, Spin } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, CopyOutlined, EditOutlined,
-  GlobalOutlined, CloudServerOutlined, EyeOutlined, EyeInvisibleOutlined,
-  UnorderedListOutlined,
+  GlobalOutlined, CloudServerOutlined,
+  UnorderedListOutlined, CheckOutlined, CloseOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 
@@ -38,6 +38,12 @@ function EnvironmentPanel() {
   const [loading, setLoading] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [form] = Form.useForm()
+
+  // 环境名称/描述编辑
+  const [editingName, setEditingName] = useState(false)
+  const [editingDesc, setEditingDesc] = useState(false)
+  const [editNameVal, setEditNameVal] = useState('')
+  const [editDescVal, setEditDescVal] = useState('')
 
   const selectedEnv = envs.find(e => e.id === selectedId)
 
@@ -96,6 +102,15 @@ function EnvironmentPanel() {
     } catch { /* */ }
   }
 
+  const handleUpdateEnv = async (field, value) => {
+    if (!selectedId) return
+    try {
+      await api.put(`/environments/${selectedId}`, { [field]: value })
+      message.success('已更新')
+      fetchEnvs()
+    } catch { /* */ }
+  }
+
   const handleSaveVars = async (vars) => {
     try {
       await api.put(`/environments/${selectedId}/variables`, vars.map(v => ({
@@ -104,6 +119,26 @@ function EnvironmentPanel() {
       message.success('变量已保存')
       fetchEnvVars()
     } catch { /* */ }
+  }
+
+  const startEditName = () => {
+    setEditNameVal(selectedEnv?.name || '')
+    setEditingName(true)
+  }
+  const confirmEditName = () => {
+    const v = editNameVal.trim()
+    if (!v) { message.warning('名称不能为空'); return }
+    if (v !== selectedEnv?.name) handleUpdateEnv('name', v)
+    setEditingName(false)
+  }
+
+  const startEditDesc = () => {
+    setEditDescVal(selectedEnv?.description || '')
+    setEditingDesc(true)
+  }
+  const confirmEditDesc = () => {
+    handleUpdateEnv('description', editDescVal.trim() || null)
+    setEditingDesc(false)
   }
 
   return (
@@ -134,12 +169,42 @@ function EnvironmentPanel() {
       {/* 右侧环境详情 */}
       <div style={{ flex: 1, background: 'rgba(255,255,255,0.5)', borderRadius: 14, border: 'none', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: '20px 24px' }}>
         {selectedEnv ? (<>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <div>
-              <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1d2129' }}>{selectedEnv.name}</h3>
-              <div style={{ fontSize: 12, color: '#86909c', marginTop: 2 }}>{selectedEnv.description || '暂无描述'}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {/* 环境名称 — 可编辑 */}
+              {editingName ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <Input value={editNameVal} onChange={e => setEditNameVal(e.target.value)}
+                    onPressEnter={confirmEditName} autoFocus size="small"
+                    style={{ fontSize: 15, fontWeight: 600, width: 200 }} />
+                  <Button type="text" size="small" icon={<CheckOutlined />} style={{ color: '#0ea5a0' }} onClick={confirmEditName} />
+                  <Button type="text" size="small" icon={<CloseOutlined />} style={{ color: '#c9cdd4' }} onClick={() => setEditingName(false)} />
+                </div>
+              ) : (
+                <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#1d2129', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  onClick={startEditName}>
+                  {selectedEnv.name}
+                  <EditOutlined style={{ fontSize: 12, color: '#c9cdd4' }} />
+                </h3>
+              )}
+              {/* 描述 — 可编辑 */}
+              {editingDesc ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <Input value={editDescVal} onChange={e => setEditDescVal(e.target.value)}
+                    onPressEnter={confirmEditDesc} autoFocus size="small"
+                    placeholder="环境用途说明" style={{ fontSize: 12, width: 280 }} />
+                  <Button type="text" size="small" icon={<CheckOutlined />} style={{ color: '#0ea5a0' }} onClick={confirmEditDesc} />
+                  <Button type="text" size="small" icon={<CloseOutlined />} style={{ color: '#c9cdd4' }} onClick={() => setEditingDesc(false)} />
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: '#86909c', marginTop: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  onClick={startEditDesc}>
+                  {selectedEnv.description || '点击添加描述'}
+                  <EditOutlined style={{ fontSize: 10, color: '#c9cdd4' }} />
+                </div>
+              )}
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
               <Tooltip title="复制环境"><Button size="small" icon={<CopyOutlined />} onClick={handleClone} /></Tooltip>
               <Popconfirm title="确定删除该环境？" onConfirm={handleDeleteEnv}>
                 <Button size="small" danger icon={<DeleteOutlined />} />
@@ -192,7 +257,7 @@ function GlobalVariablePanel() {
   }
 
   return (
-    <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 14, border: 'none', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: '20px 24px', maxWidth: 800 }}>
+    <div style={{ background: 'rgba(255,255,255,0.5)', borderRadius: 14, border: 'none', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', padding: '20px 24px', maxWidth: 900 }}>
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: '#1d2129' }}>全局变量</div>
         <div style={{ fontSize: 12, color: '#86909c', marginTop: 4 }}>
@@ -208,28 +273,29 @@ function GlobalVariablePanel() {
 function VariableTable({ variables, onSave }) {
   const [editVars, setEditVars] = useState([])
   const [dirty, setDirty] = useState(false)
-  const [revealedKeys, setRevealedKeys] = useState(new Set())
   const [bulkOpen, setBulkOpen] = useState(false)
   const [bulkText, setBulkText] = useState('')
+  const idCounter = useRef(0)
 
   useEffect(() => {
-    setEditVars(variables.map(v => ({ key: v.key, value: v.value, description: v.description })))
+    setEditVars(variables.map(v => ({ _uid: ++idCounter.current, key: v.key, value: v.value, description: v.description || '' })))
     setDirty(false)
   }, [variables])
 
-  const toggleReveal = (key) => {
-    setRevealedKeys(prev => { const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next })
-  }
-
-  const updateVar = (index, field, value) => {
-    const updated = [...editVars]
-    updated[index] = { ...updated[index], [field]: value }
-    setEditVars(updated)
+  const updateVar = (uid, field, value) => {
+    setEditVars(prev => prev.map(v => v._uid === uid ? { ...v, [field]: value } : v))
     setDirty(true)
   }
 
-  const addVar = () => { setEditVars(prev => [...prev, { key: '', value: '' }]); setDirty(true) }
-  const removeVar = (index) => { setEditVars(prev => prev.filter((_, i) => i !== index)); setDirty(true) }
+  const addVar = () => {
+    setEditVars(prev => [...prev, { _uid: ++idCounter.current, key: '', value: '', description: '' }])
+    setDirty(true)
+  }
+
+  const removeVar = (uid) => {
+    setEditVars(prev => prev.filter(v => v._uid !== uid))
+    setDirty(true)
+  }
 
   const handleSave = () => {
     const valid = editVars.filter(v => v.key && v.value)
@@ -237,7 +303,11 @@ function VariableTable({ variables, onSave }) {
   }
 
   const openBulkEdit = () => {
-    setBulkText(editVars.map(v => `${v.key},${v.value}`).join('\n'))
+    setBulkText(editVars.map(v => {
+      const parts = [v.key, v.value]
+      if (v.description) parts.push(v.description)
+      return parts.join(',')
+    }).join('\n'))
     setBulkOpen(true)
   }
 
@@ -245,37 +315,57 @@ function VariableTable({ variables, onSave }) {
     const lines = bulkText.split('\n').filter(l => l.trim())
     const parsed = []
     for (const line of lines) {
-      const idx = line.indexOf(',')
-      if (idx === -1) continue
-      const key = line.substring(0, idx).trim()
-      const value = line.substring(idx + 1).trim()
-      if (key) parsed.push({ key, value })
+      const parts = line.split(',')
+      if (parts.length < 2) continue
+      const key = parts[0].trim()
+      const value = parts[1].trim()
+      const description = parts.slice(2).join(',').trim()
+      if (key) parsed.push({ _uid: ++idCounter.current, key, value, description })
     }
     setEditVars(parsed)
     setDirty(true)
     setBulkOpen(false)
   }
 
-  const inputStyle = { fontSize: 12, padding: '2px 4px' }
-
-  const columns = [
-    { title: '变量名', dataIndex: 'key', width: '35%', render: (v, _, i) => <Input value={v} onChange={e => updateVar(i, 'key', e.target.value)} placeholder="KEY" variant="borderless" size="small" style={inputStyle} /> },
-    { title: '值', dataIndex: 'value', width: '50%', render: (v, _, i) => <Input value={v} onChange={e => updateVar(i, 'value', e.target.value)} placeholder="VALUE" variant="borderless" size="small" style={inputStyle} /> },
-    { title: '', width: 50, align: 'center', render: (_, __, i) => <Popconfirm title="删除此变量？" onConfirm={() => removeVar(i)}><Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#c9cdd4' }} /></Popconfirm> },
-  ]
-
   return (<>
-    <Table dataSource={editVars} columns={columns} rowKey={(r, i) => r.id || r.key || `row-${i}`} size="small" pagination={false} style={{ marginBottom: 12 }} />
-    <div style={{ display: 'flex', gap: 8 }}>
+    {/* 表头 */}
+    <div style={{ display: 'flex', gap: 8, padding: '6px 8px', marginBottom: 2, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+      <div style={{ width: '25%', fontSize: 12, fontWeight: 600, color: '#4e5969' }}>变量名</div>
+      <div style={{ width: '35%', fontSize: 12, fontWeight: 600, color: '#4e5969' }}>值</div>
+      <div style={{ flex: 1, fontSize: 12, fontWeight: 600, color: '#4e5969' }}>备注</div>
+      <div style={{ width: 36 }} />
+    </div>
+    {/* 行 */}
+    {editVars.length === 0 && (
+      <div style={{ padding: '24px 0', textAlign: 'center', color: '#c9cdd4', fontSize: 12 }}>暂无变量，点击下方添加</div>
+    )}
+    {editVars.map(v => (
+      <div key={v._uid} style={{ display: 'flex', gap: 8, padding: '3px 8px', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
+        <Input value={v.key} onChange={e => updateVar(v._uid, 'key', e.target.value)}
+          placeholder="KEY" variant="borderless" size="small"
+          style={{ width: '25%', fontSize: 12, fontFamily: 'monospace', padding: '2px 4px' }} />
+        <Input value={v.value} onChange={e => updateVar(v._uid, 'value', e.target.value)}
+          placeholder="VALUE" variant="borderless" size="small"
+          style={{ width: '35%', fontSize: 12, fontFamily: 'monospace', padding: '2px 4px' }} />
+        <Input value={v.description} onChange={e => updateVar(v._uid, 'description', e.target.value)}
+          placeholder="变量用途说明" variant="borderless" size="small"
+          style={{ flex: 1, fontSize: 12, color: '#86909c', padding: '2px 4px' }} />
+        <Popconfirm title="删除此变量？" onConfirm={() => removeVar(v._uid)}>
+          <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#c9cdd4', width: 28 }} />
+        </Popconfirm>
+      </div>
+    ))}
+
+    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
       <Button type="dashed" icon={<PlusOutlined />} onClick={addVar} size="small">添加变量</Button>
       <Button icon={<UnorderedListOutlined />} onClick={openBulkEdit} size="small">批量编辑</Button>
       {dirty && <Button type="primary" size="small" onClick={handleSave}>保存</Button>}
     </div>
 
     <Modal title="批量编辑" open={bulkOpen} onOk={handleBulkConfirm} onCancel={() => setBulkOpen(false)} okText="确定" cancelText="取消" width={560}>
-      <div style={{ fontSize: 13, color: '#86909c', marginBottom: 10 }}>格式: <span style={{ color: '#4e5969', fontFamily: 'monospace' }}>变量名,值</span></div>
+      <div style={{ fontSize: 13, color: '#86909c', marginBottom: 10 }}>格式: <span style={{ color: '#4e5969', fontFamily: 'monospace' }}>变量名,值,备注</span></div>
       <Input.TextArea value={bulkText} onChange={e => setBulkText(e.target.value)} rows={10}
-        placeholder={'BASE_URL,https://staging.example.com\nDB_HOST,10.0.1.100'}
+        placeholder={'BASE_URL,https://staging.example.com,测试目标地址\nDB_HOST,10.0.1.100,数据库主机'}
         style={{ fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace", fontSize: 13 }} />
     </Modal>
   </>)

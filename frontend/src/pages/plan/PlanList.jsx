@@ -10,7 +10,7 @@ const statusMap = {
   draft:          { label: '草稿',     color: '#86909c', bg: 'rgba(0,0,0,0.03)', dot: '#c9cdd4' },
   executing:      { label: '执行中',   color: '#0ea5a0', bg: '#e0f7f6', dot: '#0ea5a0' },
   paused:         { label: '已暂停',   color: '#faad14', bg: '#fffbe6', dot: '#faad14' },
-  pending_manual: { label: '待录入',   color: '#7c5cbf', bg: '#f9f0ff', dot: '#7c5cbf' },
+  pending_manual: { label: '待录入',   color: '#7c5cbf', bg: 'rgba(124,92,191,0.06)', dot: '#7c5cbf' },
   completed:      { label: '已完成',   color: '#0ea5a0', bg: '#e0f7f6', dot: '#0ea5a0' },
   archived:       { label: '已归档',   color: '#86909c', bg: 'rgba(0,0,0,0.03)', dot: '#c9cdd4' },
 }
@@ -173,7 +173,7 @@ export default function PlanList() {
       {loading ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spin /></div> :
         filteredPlans.length === 0 ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Empty description="暂无计划" /></div> : <>
         {/* Table */}
-        <div style={{ background: 'rgba(255,255,255,0.3)', border: 'none', borderRadius: 14, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ background: 'rgba(255,255,255,0.3)', border: 'none', borderRadius: 16, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', height: 36, background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0 }}>
             <div style={{ flex: 4, ...th }}>计划名称</div>
@@ -181,7 +181,7 @@ export default function PlanList() {
             <div style={{ width: 90, textAlign: 'center', ...th }}>环境</div>
             <div style={{ width: 60, textAlign: 'center', ...th }}>用例</div>
             <div style={{ width: 80, textAlign: 'center', ...th }}>状态</div>
-            <div style={{ width: 200, textAlign: 'center', ...th }}>操作</div>
+            <div style={{ width: 160, textAlign: 'center', ...th }}>操作</div>
           </div>
           {/* Body */}
           <div style={{ flex: 1, overflow: 'auto' }}>
@@ -232,7 +232,7 @@ export default function PlanList() {
                   <div style={{ width: 80, textAlign: 'center' }}>
                     <span style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
-                      fontSize: 11, padding: '2px 8px', borderRadius: 10,
+                      fontSize: 11, padding: '2px 8px', borderRadius: 12,
                       background: s.dot, color: '#fff',
                     }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'transparent' }} />
@@ -241,7 +241,7 @@ export default function PlanList() {
                   </div>
 
                   {/* Actions */}
-                  <div style={{ width: 200, display: 'flex', justifyContent: 'center', gap: 4 }}>
+                  <div style={{ width: 160, display: 'flex', justifyContent: 'center', gap: 4 }}>
                     {['draft', 'completed', 'paused'].includes(plan.status) && (
                       <Button type="text" size="small" style={{ fontSize: 12, color: '#86909c' }}
                         onClick={async e => {

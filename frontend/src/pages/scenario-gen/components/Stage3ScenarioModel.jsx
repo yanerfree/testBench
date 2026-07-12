@@ -6,7 +6,7 @@ import { api } from '../../../utils/request'
 const { Text } = Typography
 
 const DIMENSION_COLORS = {
-  positive: 'green', negative: 'red', boundary: 'orange',
+  positive: '#0ea5a0', negative: 'red', boundary: 'orange',
   permission: 'purple', data: 'cyan', state: 'blue',
 }
 const DIMENSION_LABELS = {
@@ -77,7 +77,7 @@ export default function Stage3ScenarioModel({ projectId, branchId, taskId, onCon
     { title: '角色', dataIndex: 'role', key: 'role' },
     { title: '操作', dataIndex: 'action', key: 'action' },
     { title: '允许', dataIndex: 'allowed', key: 'allowed', width: 80,
-      render: v => v ? <Tag color="success">允许</Tag> : <Tag color="error">禁止</Tag>,
+      render: v => v ? <Tag color="cyan">允许</Tag> : <Tag color="error">禁止</Tag>,
     },
   ]
 

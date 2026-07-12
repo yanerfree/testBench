@@ -33,7 +33,7 @@ const MCP_TOOLS = [
   { name: 'tb_get_failed_scenarios', description: '获取失败用例', category: '报告', params: 'plan_id' },
 ]
 
-const CAT_COLORS = { 'AI 生成': 'magenta', '项目': 'geekblue', '用例': 'blue', 'API': 'green', '环境': 'orange', '接口测试': 'cyan', '报告': 'purple' }
+const CAT_COLORS = { 'AI 生成': 'magenta', '项目': 'geekblue', '用例': 'blue', 'API': 'cyan', '环境': 'orange', '接口测试': 'cyan', '报告': 'purple' }
 
 const cardStyle = { borderRadius: 12, border: '1px solid rgba(0,0,0,0.04)', boxShadow: 'none' }
 const sectionTitle = { fontSize: 14, fontWeight: 600, color: '#2e3138', marginBottom: 4 }
@@ -110,22 +110,22 @@ export default function MCPTools() {
                     return (
                       <Card key={k.id} size="small" style={{
                         ...cardStyle,
-                        borderLeft: `3px solid ${isOnline ? '#52c41a' : isRecent ? '#faad14' : '#e8e8e8'}`,
+                        borderLeft: `3px solid ${isOnline ? '#0ea5a0' : isRecent ? '#faad14' : '#e8e8e8'}`,
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                             <div style={{
-                              width: 36, height: 36, borderRadius: 10,
-                              background: isOnline ? 'rgba(82,196,26,0.08)' : isRecent ? 'rgba(250,173,20,0.08)' : 'rgba(0,0,0,0.03)',
+                              width: 36, height: 36, borderRadius: 12,
+                              background: isOnline ? 'rgba(14,165,160,0.08)' : isRecent ? 'rgba(250,173,20,0.08)' : 'rgba(0,0,0,0.03)',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                             }}>
-                              <RobotOutlined style={{ fontSize: 18, color: isOnline ? '#52c41a' : isRecent ? '#faad14' : '#bfc4cd' }} />
+                              <RobotOutlined style={{ fontSize: 18, color: isOnline ? '#0ea5a0' : isRecent ? '#faad14' : '#bfc4cd' }} />
                             </div>
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <span style={{ fontSize: 14, fontWeight: 600, color: '#2e3138' }}>{k.name}</span>
                                 <Text code style={{ fontSize: 11, color: '#8c919e' }}>{k.prefix}...</Text>
-                                {isOnline && <Tag color="success" style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px', margin: 0 }}>在线</Tag>}
+                                {isOnline && <Tag color="cyan" style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px', margin: 0 }}>在线</Tag>}
                                 {!isOnline && isRecent && <Tag color="warning" style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px', margin: 0 }}>最近活跃</Tag>}
                               </div>
                               <Text type="secondary" style={{ fontSize: 12 }}>
@@ -194,7 +194,7 @@ export default function MCPTools() {
                       <div style={{ position: 'relative', marginTop: 8 }}>
                         <pre style={{
                           background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.06)',
-                          borderRadius: 10, padding: '14px 18px', fontSize: 12,
+                          borderRadius: 12, padding: '14px 18px', fontSize: 12,
                           fontFamily: "'SF Mono', Monaco, monospace", overflow: 'auto', lineHeight: 1.6,
                         }}>{step.code}</pre>
                         <Button size="small" icon={<CopyOutlined />} style={{ position: 'absolute', top: 10, right: 10 }}
@@ -236,8 +236,8 @@ export default function MCPTools() {
           </div>
         ) : (
           <div>
-            <div style={{ textAlign: 'center', padding: '20px 0 16px', marginBottom: 16, background: 'rgba(82,196,26,0.04)', borderRadius: 10 }}>
-              <CheckCircleOutlined style={{ fontSize: 28, color: '#52c41a', marginBottom: 8 }} />
+            <div style={{ textAlign: 'center', padding: '20px 0 16px', marginBottom: 16, background: 'rgba(14,165,160,0.04)', borderRadius: 12 }}>
+              <CheckCircleOutlined style={{ fontSize: 28, color: '#0ea5a0', marginBottom: 8 }} />
               <div style={{ fontWeight: 600, fontSize: 15 }}>创建成功</div>
               <Text type="secondary" style={{ fontSize: 12 }}>请立即复制密钥，关闭后不再显示</Text>
             </div>

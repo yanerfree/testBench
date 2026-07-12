@@ -6,7 +6,7 @@ import { api } from '../../../utils/request'
 const { Text } = Typography
 
 const DIM_COLORS = {
-  positive: 'green', negative: 'red', boundary: 'orange',
+  positive: '#0ea5a0', negative: 'red', boundary: 'orange',
   permission: 'purple', data: 'cyan', state: 'blue',
 }
 const DIM_LABELS = {
@@ -97,7 +97,7 @@ export default function Stage4Generation({ projectId, branchId, taskId, onDone }
           {events.filter(e => ['point_start', 'case_created', 'case_skipped', 'point_failed'].includes(e.type)).map((ev, i) => (
             <div key={i} style={{ fontSize: 12, padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: 6 }}>
               {ev.type === 'point_start' && <span style={{ color: '#faad14' }}>⟳</span>}
-              {ev.type === 'case_created' && <span style={{ color: '#52c41a' }}>✓</span>}
+              {ev.type === 'case_created' && <span style={{ color: '#0ea5a0' }}>✓</span>}
               {ev.type === 'case_skipped' && <span style={{ color: '#bfc4cd' }}>⊘</span>}
               {ev.type === 'point_failed' && <span style={{ color: '#e8453c' }}>✕</span>}
               <Text type="secondary" style={{ fontSize: 11 }}>
@@ -159,7 +159,7 @@ export default function Stage4Generation({ projectId, branchId, taskId, onDone }
                     {c.dimension && <Tag color={DIM_COLORS[c.dimension]}>{DIM_LABELS[c.dimension] || c.dimension}</Tag>}
                     {c.priority && <Tag color={c.priority === 'P0' ? 'red' : c.priority === 'P1' ? 'orange' : 'blue'}>{c.priority}</Tag>}
                     {c.score != null && (
-                      <Tag color={c.score >= 85 ? 'green' : c.score >= 70 ? 'blue' : 'orange'}>{c.score}</Tag>
+                      <Tag color={c.score >= 85 ? 'cyan' : c.score >= 70 ? 'blue' : 'orange'}>{c.score}</Tag>
                     )}
                     <Tag>待审核</Tag>
                   </Space>

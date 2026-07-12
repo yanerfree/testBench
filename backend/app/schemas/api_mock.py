@@ -24,6 +24,8 @@ class ApiMockRouteCreate(BaseSchema):
     match_mode: str = Field(default="exact")
     proxy_url: str | None = None
     proxy_modify_response: bool = False
+    auth_type: str = Field(default="none")
+    auth_config: dict | None = None
 
 
 class ApiMockRouteUpdate(BaseSchema):
@@ -40,6 +42,8 @@ class ApiMockRouteUpdate(BaseSchema):
     match_mode: str | None = None
     proxy_url: str | None = Field(default=None)
     proxy_modify_response: bool | None = None
+    auth_type: str | None = None
+    auth_config: dict | None = Field(default=None)
 
 
 class ApiMockRouteResponse(BaseSchema):
@@ -58,6 +62,8 @@ class ApiMockRouteResponse(BaseSchema):
     match_mode: str
     proxy_url: str | None
     proxy_modify_response: bool
+    auth_type: str
+    auth_config: dict | None
     hit_count: int
     last_hit_at: datetime | None
     created_at: datetime

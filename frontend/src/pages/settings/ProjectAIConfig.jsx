@@ -142,7 +142,7 @@ export default function ProjectAIConfig() {
 
   const statusIcon = (config) => {
     if (!config.status) return <Tag>未测试</Tag>
-    if (config.status === 'ok') return <Tag color="success" icon={<CheckCircleOutlined />}>正常</Tag>
+    if (config.status === 'ok') return <Tag color="cyan" icon={<CheckCircleOutlined />}>正常</Tag>
     return <Tag color="error" icon={<CloseCircleOutlined />}>异常</Tag>
   }
 

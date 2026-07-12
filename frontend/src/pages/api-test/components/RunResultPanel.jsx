@@ -42,7 +42,7 @@ export default function RunResultPanel({ results, scenario, running, onClose, re
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* 顶部统计 */}
       <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -90,7 +90,7 @@ export default function RunResultPanel({ results, scenario, running, onClose, re
               >
                 {r.status === 'pass' ? <CheckCircleOutlined style={{ color: '#0ea5a0', fontSize: 14 }} /> :
                  r.status === 'fail' ? <CloseCircleOutlined style={{ color: '#e8453c', fontSize: 14 }} /> :
-                 r.status === 'skip' ? <span style={{ width: 14, height: 14, borderRadius: 7, background: '#e8e8e8', display: 'inline-block' }} /> :
+                 r.status === 'skip' ? <span style={{ width: 14, height: 14, borderRadius: 7, background: 'rgba(0,0,0,0.08)', display: 'inline-block' }} /> :
                  <LoadingOutlined style={{ color: '#0ea5a0', fontSize: 14 }} />}
 
                 {r.statusCode && (

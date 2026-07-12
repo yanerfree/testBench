@@ -32,6 +32,7 @@ from app.api.skill_manage import router as skill_manage_router
 from app.api.knowledge import router as knowledge_router
 from app.api.screenshots import router as screenshots_router
 from app.api.toolbox import router as toolbox_router
+from app.api.http_client import router as http_client_router
 from app.api.scenario_gen import router as scenario_gen_router
 from app.api.mcp_keys import router as mcp_keys_router
 from app.core.middleware import CamelCaseResponse, TokenRefreshMiddleware, TraceIdMiddleware
@@ -196,6 +197,7 @@ app.include_router(skill_manage_router)
 app.include_router(knowledge_router)
 app.include_router(screenshots_router)
 app.include_router(toolbox_router)
+app.include_router(http_client_router)
 app.include_router(mcp_keys_router)
 
 # --- MCP Server 挂载 ---

@@ -5,7 +5,7 @@ import {
   FolderOutlined, FileTextOutlined, UnorderedListOutlined, BarChartOutlined,
   SettingOutlined, UserOutlined, FileSearchOutlined, ApiOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined, RobotOutlined,
-  CloudServerOutlined, ThunderboltOutlined, BugOutlined, ToolOutlined,
+  CloudServerOutlined, ThunderboltOutlined, BugOutlined, ToolOutlined, SendOutlined,
   GlobalOutlined,
 } from '@ant-design/icons'
 import { api } from './utils/request'
@@ -29,6 +29,7 @@ import LlmMock from './pages/llm-mock/LlmMock'
 import ApiMock from './pages/api-mock/ApiMock'
 import McpMock from './pages/mcp-mock/McpMock'
 import Toolbox from './pages/toolbox/Toolbox'
+import HttpClient from './pages/http-client/HttpClient'
 import AIProviderConfig from './pages/settings/AIProviderConfig'
 import ProjectAIConfig from './pages/settings/ProjectAIConfig'
 import AICapabilities from './pages/settings/AICapabilities'
@@ -119,6 +120,7 @@ function AppLayout() {
     { key: '/tools/api-mock', icon: <CloudServerOutlined />, label: t('menu.apiMock') },
     { key: '/tools/mcp-mock', icon: <ApiOutlined />, label: t('menu.mcpMock') },
     { key: '/tools/toolbox', icon: <ToolOutlined />, label: t('menu.toolbox') },
+    { key: '/tools/http-client', icon: <SendOutlined />, label: t('menu.httpClient') },
   ]
 
   const handleLogout = async () => {
@@ -254,6 +256,7 @@ function AppLayout() {
             <Route path="/tools/api-mock" element={<ApiMock />} />
             <Route path="/tools/mcp-mock" element={<McpMock />} />
             <Route path="/tools/toolbox" element={<Toolbox />} />
+            <Route path="/tools/http-client" element={<HttpClient />} />
           </Routes>
         </Content>
       </Layout>

@@ -98,10 +98,11 @@ export default function ReportList() {
               { key: 'plan', label: '测试计划' },
               { key: 'api_test', label: '接口测试' },
               { key: 'scenario_test', label: '功能场景' },
+              { key: 'adhoc', label: '批量执行' },
             ].map(f => (
               <Button key={f.key} size="small" type={typeFilter === f.key ? 'primary' : 'default'}
                 onClick={() => { setTypeFilter(f.key); setPage(1) }}
-                style={{ borderRadius: 0, ...(f.key === '' ? { borderRadius: '6px 0 0 6px' } : f.key === 'scenario_test' ? { borderRadius: '0 6px 6px 0' } : {}) }}>
+                style={{ borderRadius: 0, ...(f.key === '' ? { borderRadius: '6px 0 0 6px' } : f.key === 'adhoc' ? { borderRadius: '0 6px 6px 0' } : {}) }}>
                 {f.label}
               </Button>
             ))}
@@ -119,17 +120,17 @@ export default function ReportList() {
       {loading ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spin /></div> :
         filtered.length === 0 ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Empty description="暂无报告" /></div> : <>
         {/* Table */}
-        <div style={{ background: 'rgba(255,255,255,0.3)', border: 'none', borderRadius: 14, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ background: 'rgba(255,255,255,0.3)', border: 'none', borderRadius: 16, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', height: 36, background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid rgba(0,0,0,0.04)', flexShrink: 0 }}>
-            <div style={{ flex: 3, ...th }}>报告名称</div>
+            <div style={{ flex: 4, ...th }}>报告名称</div>
             <div style={{ width: 70, textAlign: 'center', ...th }}>类型</div>
-            <div style={{ width: 90, textAlign: 'center', ...th }}>环境</div>
+            <div style={{ width: 80, textAlign: 'center', ...th }}>环境</div>
             <div style={{ width: 80, textAlign: 'center', ...th }}>状态</div>
-            <div style={{ width: 150, textAlign: 'center', ...th }}>结果</div>
+            <div style={{ width: 130, textAlign: 'center', ...th }}>结果</div>
             <div style={{ width: 70, textAlign: 'center', ...th }}>通过率</div>
-            <div style={{ width: 70, textAlign: 'right', ...th }}>耗时</div>
-            <div style={{ width: 130, textAlign: 'center', ...th }}>操作</div>
+            <div style={{ width: 60, textAlign: 'right', ...th }}>耗时</div>
+            <div style={{ width: 100, textAlign: 'center', ...th }}>操作</div>
           </div>
           {/* Body */}
           <div style={{ flex: 1, overflow: 'auto' }}>
@@ -146,7 +147,7 @@ export default function ReportList() {
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   {/* Report name + time */}
-                  <div style={{ flex: 3, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ flex: 4, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontWeight: 500, fontSize: 13, color: '#1d2129', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {r.reportName || r.planName}
                     </span>
@@ -158,16 +159,16 @@ export default function ReportList() {
                   {/* Type */}
                   <div style={{ width: 70, textAlign: 'center' }}>
                     <span style={{
-                      fontSize: 11, padding: '1px 6px', borderRadius: 4,
-                      background: r.reportType === 'api_test' ? '#e6f4ff' : r.reportType === 'scenario_test' ? '#f0faf9' : '#f0f5ff',
-                      color: r.reportType === 'api_test' ? '#0ea5a0' : r.reportType === 'scenario_test' ? '#0ea5a0' : '#4e8af0',
+                      fontSize: 11, padding: '1px 6px', borderRadius: 6,
+                      background: r.reportType === 'adhoc' ? 'rgba(250,173,20,0.08)' : r.reportType === 'api_test' ? 'rgba(78,138,240,0.06)' : r.reportType === 'scenario_test' ? 'rgba(14,165,160,0.06)' : 'rgba(78,138,240,0.06)',
+                      color: r.reportType === 'adhoc' ? '#fa8c16' : r.reportType === 'api_test' ? '#0ea5a0' : r.reportType === 'scenario_test' ? '#0ea5a0' : '#4e8af0',
                     }}>
-                      {r.reportType === 'api_test' ? '接口测试' : r.reportType === 'scenario_test' ? '功能场景' : '测试计划'}
+                      {r.reportType === 'adhoc' ? '批量执行' : r.reportType === 'api_test' ? '接口测试' : r.reportType === 'scenario_test' ? '功能场景' : '测试计划'}
                     </span>
                   </div>
 
                   {/* Environment */}
-                  <div style={{ width: 90, textAlign: 'center' }}>
+                  <div style={{ width: 80, textAlign: 'center' }}>
                     {r.environmentName ? (
                       <span style={{ fontSize: 12, color: '#86909c' }}>
                         {r.environmentName}
@@ -179,7 +180,7 @@ export default function ReportList() {
                   <div style={{ width: 80, textAlign: 'center' }}>
                     <span style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
-                      fontSize: 11, padding: '2px 8px', borderRadius: 10,
+                      fontSize: 11, padding: '2px 8px', borderRadius: 12,
                       background: isCompleted ? '#0ea5a0' : '#faad14',
                       color: '#fff',
                     }}>
@@ -189,7 +190,7 @@ export default function ReportList() {
                   </div>
 
                   {/* Results */}
-                  <div style={{ width: 150, textAlign: 'center', fontSize: 12, fontFamily: 'monospace' }}>
+                  <div style={{ width: 130, textAlign: 'center', fontSize: 12, fontFamily: 'monospace' }}>
                     <span style={{ color: '#0ea5a0' }}>{r.passed}</span>
                     <span style={{ color: '#c9cdd4' }}> / </span>
                     <span style={{ color: '#e8453c' }}>{r.failed + r.error}</span>
@@ -208,12 +209,12 @@ export default function ReportList() {
                   </div>
 
                   {/* Duration */}
-                  <div style={{ width: 70, textAlign: 'right', fontSize: 12, fontFamily: 'monospace', color: '#86909c' }}>
+                  <div style={{ width: 60, textAlign: 'right', fontSize: 12, fontFamily: 'monospace', color: '#86909c' }}>
                     {fmt(r.totalDurationMs)}
                   </div>
 
                   {/* Actions */}
-                  <div style={{ width: 130, display: 'flex', justifyContent: 'center', gap: 2 }}>
+                  <div style={{ width: 100, display: 'flex', justifyContent: 'center', gap: 2 }}>
                     <Button type="text" size="small" style={{ fontSize: 12, color: '#0ea5a0' }}
                       onClick={e => handleExport(e, r.id)}>导出</Button>
                     <Button type="text" size="small" danger style={{ fontSize: 12 }}

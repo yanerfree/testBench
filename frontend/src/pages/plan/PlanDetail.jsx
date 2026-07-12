@@ -10,8 +10,8 @@ const planStatusMap = {
   executing: { label: '执行中', color: '#0ea5a0', bg: '#e0f7f6' },
   completed: { label: '已完成', color: '#0ea5a0', bg: '#e0f7f6' },
   paused: { label: '已暂停', color: '#faad14', bg: '#fffbe6' },
-  pending_manual: { label: '待手动录入', color: '#7c5cbf', bg: '#f9f0ff' },
-  archived: { label: '已归档', color: '#8c8c8c', bg: 'rgba(0,0,0,0.03)' },
+  pending_manual: { label: '待手动录入', color: '#7c5cbf', bg: 'rgba(124,92,191,0.06)' },
+  archived: { label: '已归档', color: '#86909c', bg: 'rgba(0,0,0,0.03)' },
 }
 
 function fmt(ms) {
@@ -285,7 +285,7 @@ export default function PlanDetail() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {/* Table Header */}
-            <div style={{ display: 'flex', padding: '8px 16px', background: 'rgba(0,0,0,0.02)', borderRadius: '6px 6px 0 0', fontSize: 12, color: '#86909c', fontWeight: 500 }}>
+            <div style={{ display: 'flex', padding: '8px 16px', background: 'rgba(0,0,0,0.02)', borderRadius: '8px 8px 0 0', fontSize: 12, color: '#86909c', fontWeight: 500 }}>
               <div style={{ width: 50 }}>#</div>
               <div style={{ flex: 3 }}>执行时间</div>
               <div style={{ flex: 2, textAlign: 'center' }}>状态</div>

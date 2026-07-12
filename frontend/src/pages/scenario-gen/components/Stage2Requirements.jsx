@@ -6,7 +6,7 @@ import { api } from '../../../utils/request'
 const { Text, Paragraph } = Typography
 
 const ANCHOR_TAG = {
-  anchored: { color: 'success', label: '已锚定' },
+  anchored: { color: 'cyan', label: '已锚定' },
   fuzzy: { color: 'warning', label: '模糊匹配' },
   unanchored: { color: 'default', label: '未定位' },
 }
@@ -131,13 +131,13 @@ export default function Stage2Requirements({ projectId, branchId, taskId, docCon
       {score !== null && score !== undefined && (
         <Card size="small" style={{
           marginBottom: 16,
-          borderColor: belowThreshold ? '#faad14' : '#52c41a',
-          background: belowThreshold ? 'rgba(250,173,20,0.04)' : 'rgba(82,196,26,0.04)',
+          borderColor: belowThreshold ? '#faad14' : '#0ea5a0',
+          background: belowThreshold ? 'rgba(250,173,20,0.04)' : 'rgba(14,165,160,0.04)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Space>
               <Text strong>健康分 {score}</Text>
-              {belowThreshold ? <Tag color="warning">建议改善</Tag> : <Tag color="success">通过</Tag>}
+              {belowThreshold ? <Tag color="warning">建议改善</Tag> : <Tag color="cyan">通过</Tag>}
               {issues.length > 0 && <Text type="secondary">发现 {issues.length} 个问题</Text>}
             </Space>
           </div>
@@ -203,9 +203,9 @@ export default function Stage2Requirements({ projectId, branchId, taskId, docCon
             </div>
             {selectedQuote.quoteText && (
               <Card size="small" style={{
-                background: selectedQuote.anchorStatus === 'fuzzy' ? '#fffbe6' : '#f6ffed',
+                background: selectedQuote.anchorStatus === 'fuzzy' ? 'rgba(250,173,20,0.06)' : 'rgba(14,165,160,0.06)',
                 borderStyle: selectedQuote.anchorStatus === 'fuzzy' ? 'dashed' : 'solid',
-                borderColor: selectedQuote.anchorStatus === 'fuzzy' ? '#faad14' : '#b7eb8f',
+                borderColor: selectedQuote.anchorStatus === 'fuzzy' ? '#faad14' : 'rgba(14,165,160,0.3)',
               }}>
                 <Paragraph style={{ margin: 0, fontSize: 13, whiteSpace: 'pre-wrap' }}>
                   {selectedQuote.quoteText}

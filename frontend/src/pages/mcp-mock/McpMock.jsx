@@ -150,7 +150,7 @@ export default function McpMock() {
           <div style={{ display: 'flex', gap: 0 }}>
             {[
               { key: 'config', label: `工具配置 (${tools.length})` },
-              { key: 'logs', label: <>调用日志 <Tag style={{ margin: '0 0 0 4px', fontSize: 11, borderRadius: 10, lineHeight: '18px', padding: '0 6px' }}>{logsTotal}</Tag></> },
+              { key: 'logs', label: <>调用日志 <Tag style={{ margin: '0 0 0 4px', fontSize: 11, borderRadius: 12, lineHeight: '18px', padding: '0 6px' }}>{logsTotal}</Tag></> },
             ].map(t => (
               <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
                 padding: '10px 16px', cursor: 'pointer', fontSize: 14, position: 'relative',
@@ -254,11 +254,11 @@ export default function McpMock() {
                             <Text code style={{ fontSize: 11 }}>{l.tool}</Text>
                           </td>
                           <td style={{ padding: '5px 10px' }}>
-                            <Tag color={l.source === 'mock' ? 'orange' : 'green'} style={{ margin: 0, fontSize: 10 }}>{l.source}</Tag>
+                            <Tag color={l.source === 'mock' ? 'orange' : 'cyan'} style={{ margin: 0, fontSize: 10 }}>{l.source}</Tag>
                           </td>
                           <td style={{ padding: '5px 10px', fontSize: 11, color: '#8c8c8c' }}>{MODE_LABEL[l.mode] || l.mode}</td>
                           <td style={{ padding: '5px 10px' }}>
-                            <Tag color={l.isError ? 'red' : 'green'} style={{ margin: 0, fontSize: 10 }}>{l.isError ? '失败' : '成功'}</Tag>
+                            <Tag color={l.isError ? 'red' : 'cyan'} style={{ margin: 0, fontSize: 10 }}>{l.isError ? '失败' : '成功'}</Tag>
                           </td>
                           <td style={{ padding: '5px 10px', textAlign: 'right', fontSize: 11, color: '#8c8c8c', whiteSpace: 'nowrap' }}>{l.elapsedMs}ms</td>
                           <td style={{ padding: '5px 10px', textAlign: 'right' }}>
@@ -322,7 +322,7 @@ export default function McpMock() {
         <div style={{ marginBottom: 16 }}>
           <Text strong>MCP 响应状态：</Text>
           <Radio.Group value={editIsError} onChange={e => setEditIsError(e.target.value)} style={{ marginLeft: 12 }}>
-            <Radio value={false}><Tag color="success">isError: false</Tag></Radio>
+            <Radio value={false}><Tag color="cyan">isError: false</Tag></Radio>
             <Radio value={true}><Tag color="error">isError: true</Tag></Radio>
           </Radio.Group>
         </div>
@@ -337,7 +337,7 @@ export default function McpMock() {
       {/* 调用抽屉 */}
       <Drawer
         title={<Space><PlayCircleOutlined /> 调用 <Text code>{callTool}</Text>
-          {enabled ? <Tag color="orange">Mock</Tag> : <Tag color="green">真实</Tag>}
+          {enabled ? <Tag color="orange">Mock</Tag> : <Tag color="cyan">真实</Tag>}
         </Space>}
         open={!!callTool} onClose={() => { setCallTool(null); setCallResult(null) }} width={600}
       >

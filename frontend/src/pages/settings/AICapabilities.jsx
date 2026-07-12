@@ -178,7 +178,7 @@ export default function AICapabilities() {
                     <Text strong style={{ fontSize: 15 }}>{item.title}</Text>
                   </Space>
                   {item.status === 'done'
-                    ? <Tag color="success" icon={<CheckCircleOutlined />}>可用</Tag>
+                    ? <Tag color="cyan" icon={<CheckCircleOutlined />}>可用</Tag>
                     : <Tag icon={<ClockCircleOutlined />}>规划中</Tag>
                   }
                 </div>

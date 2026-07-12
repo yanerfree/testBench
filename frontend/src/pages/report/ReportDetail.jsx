@@ -197,7 +197,7 @@ function StepDetailDrawer({ step, open, onClose }) {
         {isFailed && step.errorSummary && (
           <div style={{
             display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 14px', marginBottom: 14,
-            background: '#fff2f0', borderRadius: 10, border: '1px solid #ffccc7',
+            background: '#fff2f0', borderRadius: 12, border: '1px solid #ffccc7',
           }}>
             <CloseCircleFilled style={{ color: '#e8453c', fontSize: 14, marginTop: 2, flexShrink: 0 }} />
             <span style={{ fontSize: 12, color: '#4e5969', lineHeight: 1.6 }}>{step.errorSummary}</span>
@@ -341,14 +341,14 @@ function ScenarioExpanded({ scenario }) {
         <div>
           <div style={{ fontSize: 12, color: '#e8453c', marginBottom: 6, fontWeight: 600 }}>失败原因</div>
           {errorSummary && (
-            <div style={{ fontSize: 13, color: '#e8453c', padding: '10px 14px', background: '#fff2f0', borderRadius: 10, border: '1px solid rgba(232,69,60,0.15)', marginBottom: parsed.errorLines.length > 0 ? 8 : 0, lineHeight: 1.6 }}>
+            <div style={{ fontSize: 13, color: '#e8453c', padding: '10px 14px', background: '#fff2f0', borderRadius: 12, border: '1px solid rgba(232,69,60,0.15)', marginBottom: parsed.errorLines.length > 0 ? 8 : 0, lineHeight: 1.6 }}>
               {errorSummary}
             </div>
           )}
           {parsed.errorLines.length > 0 && (
             <pre style={{
               margin: 0, padding: '10px 14px', background: 'rgba(0,0,0,0.02)', color: '#e8453c',
-              borderRadius: 10, fontSize: 12, lineHeight: 1.5, overflow: 'auto', maxHeight: 200,
+              borderRadius: 12, fontSize: 12, lineHeight: 1.5, overflow: 'auto', maxHeight: 200,
               whiteSpace: 'pre-wrap', wordBreak: 'break-all', border: '1px solid rgba(0,0,0,0.04)',
               fontFamily: "'SF Mono', 'Menlo', 'Monaco', monospace",
             }}>{parsed.errorLines.join('\n')}</pre>
@@ -357,7 +357,7 @@ function ScenarioExpanded({ scenario }) {
       )}
 
       {isFailed && (
-        <div style={{ padding: '8px 12px', background: '#edf3ff', borderRadius: 10, border: '1px solid rgba(78,138,240,0.2)' }}>
+        <div style={{ padding: '8px 12px', background: 'rgba(78,138,240,0.06)', borderRadius: 12, border: '1px solid rgba(78,138,240,0.2)' }}>
           <span style={{ fontSize: 12, color: '#4e8af0' }}>
             💡 可在用例管理页使用「AI 评审」分析失败原因，或通过 API 调用失败诊断 Skill
           </span>
@@ -372,7 +372,7 @@ function ScenarioExpanded({ scenario }) {
             {caseSteps.map((step, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 12px',
-                background: 'transparent', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)',
+                background: 'transparent', borderRadius: 12, border: '1px solid rgba(0,0,0,0.04)',
               }}>
                 <span style={{
                   width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
@@ -405,7 +405,7 @@ function ScenarioExpanded({ scenario }) {
           <div style={{ fontSize: 12, color: '#86909c', marginBottom: 6, fontWeight: 600 }}>执行日志</div>
           <pre style={{
             margin: 0, padding: '12px 14px', background: 'rgba(0,0,0,0.02)', color: '#4e5969',
-            borderRadius: 10, fontSize: 12, lineHeight: 1.6, overflow: 'auto', maxHeight: 300,
+            borderRadius: 12, fontSize: 12, lineHeight: 1.6, overflow: 'auto', maxHeight: 300,
             whiteSpace: 'pre-wrap', wordBreak: 'break-all', border: '1px solid rgba(0,0,0,0.04)',
             fontFamily: "'SF Mono', 'Menlo', 'Monaco', monospace",
           }}>{executionLog}</pre>
@@ -416,7 +416,7 @@ function ScenarioExpanded({ scenario }) {
       {expectedResult && (
         <div>
           <div style={{ fontSize: 12, color: '#86909c', marginBottom: 4, fontWeight: 600 }}>预期结果</div>
-          <div style={{ fontSize: 13, color: '#4e5969', padding: '8px 14px', background: '#e0f7f6', borderRadius: 10, border: '1px solid rgba(14,165,160,0.2)', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, color: '#4e5969', padding: '8px 14px', background: '#e0f7f6', borderRadius: 12, border: '1px solid rgba(14,165,160,0.2)', lineHeight: 1.5 }}>
             {expectedResult}
           </div>
         </div>

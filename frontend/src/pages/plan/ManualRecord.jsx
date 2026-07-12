@@ -5,10 +5,10 @@ import { ArrowLeftOutlined, CheckCircleFilled, CloseCircleFilled, ClockCircleOut
 import { api } from '../../utils/request'
 
 const PRIORITY_CONFIG = {
-  P0: { color: '#fff', bg: '#ff7875' },
-  P1: { color: '#fff', bg: '#ffc069' },
-  P2: { color: '#fff', bg: '#85a5ff' },
-  P3: { color: '#fff', bg: '#d9d9d9' },
+  P0: { color: '#fff', bg: '#e8453c' },
+  P1: { color: '#fff', bg: '#ff7d00' },
+  P2: { color: '#fff', bg: '#4e8af0' },
+  P3: { color: '#fff', bg: 'rgba(0,0,0,0.15)' },
 }
 
 const FILTER_OPTIONS = [
@@ -123,7 +123,7 @@ export default function ManualRecord() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} />
           <span style={{ fontSize: 15, fontWeight: 600, color: '#1d2129' }}>{plan?.name || '手动录入'}</span>
-          <Tag color="blue" style={{ borderRadius: 10 }}>手动录入</Tag>
+          <Tag color="blue" style={{ borderRadius: 12 }}>手动录入</Tag>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -174,7 +174,7 @@ export default function ManualRecord() {
             </div>
 
             {/* 录入表单 */}
-            <div style={{ marginTop: 24, padding: '20px 24px', background: 'transparent', borderRadius: 10, border: '1px solid rgba(0,0,0,0.05)' }}>
+            <div style={{ marginTop: 24, padding: '20px 24px', background: 'transparent', borderRadius: 12, border: '1px solid rgba(0,0,0,0.05)' }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#1d2129', marginBottom: 16 }}>录入结果</div>
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 13, color: '#4e5969', marginBottom: 8 }}>测试结果</div>

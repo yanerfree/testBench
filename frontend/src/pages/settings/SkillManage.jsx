@@ -171,7 +171,7 @@ export default function SkillManage() {
                   <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(skill.name)}>编辑</Button>
                 )}
                 {skill.status === 'available'
-                  ? <Tag color="success" icon={<CheckCircleOutlined />}>可用</Tag>
+                  ? <Tag color="cyan" icon={<CheckCircleOutlined />}>可用</Tag>
                   : <Tag icon={<ClockCircleOutlined />}>{skill.phase} 规划中</Tag>
                 }
               </Space>

@@ -340,7 +340,7 @@ export default function LlmMock() {
           {/* URL 栏 */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 0, marginBottom: 8,
-            border: '1px solid rgba(0,0,0,0.08)', borderRadius: 10, overflow: 'hidden', background: 'transparent',
+            border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, overflow: 'hidden', background: 'transparent',
           }}>
             <Select value={routeForm.method} onChange={v => setRouteForm(f => ({ ...f, method: v }))}
               variant="borderless" style={{ width: 100, flexShrink: 0 }} popupMatchSelectWidth={100}>
@@ -359,7 +359,7 @@ export default function LlmMock() {
           {serviceStatus.running && fullUrl && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16,
-              padding: '6px 12px', background: '#e0f7f6', border: '1px solid rgba(14,165,160,0.3)', borderRadius: 10,
+              padding: '6px 12px', background: '#e0f7f6', border: '1px solid rgba(14,165,160,0.3)', borderRadius: 12,
             }}>
               <LinkOutlined style={{ color: '#0ea5a0', fontSize: 12 }} />
               <span style={{ fontSize: 12, fontFamily: MONO, color: '#0ea5a0', flex: 1, userSelect: 'all' }}>{fullUrl}</span>
@@ -512,7 +512,7 @@ export default function LlmMock() {
                       : '输入 AI 回复文本...\n支持: ${request.model}  ${request.messages[-1].content}  ${timestamp}'}
                   />
                 ) : (
-                  <div style={{ padding: '14px', background: 'transparent', borderRadius: 10, border: '1px solid rgba(0,0,0,0.04)', fontSize: 12, color: '#8c8c8c' }}>
+                  <div style={{ padding: '14px', background: 'transparent', borderRadius: 12, border: '1px solid rgba(0,0,0,0.04)', fontSize: 12, color: '#8c8c8c' }}>
                     Tool Calls 函数在右侧「高级设置」中配置
                   </div>
                 )}
@@ -523,7 +523,7 @@ export default function LlmMock() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 12, color: '#8c8c8c', fontWeight: 500 }}>响应预览</span>
-                    <Tag color={(routeForm.statusCode ?? 200) < 400 ? 'green' : 'red'} style={{ margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>
+                    <Tag color={(routeForm.statusCode ?? 200) < 400 ? 'cyan' : 'red'} style={{ margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>
                       {routeForm.statusCode ?? 200}
                     </Tag>
                     <Tag color={MODE_COLORS[responseModeValue]} style={{ margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>
@@ -541,7 +541,7 @@ export default function LlmMock() {
                   margin: 0, padding: 14, flex: 1, minHeight: 200, overflow: 'auto',
                   fontSize: 12, lineHeight: 1.6, fontFamily: MONO,
                   background: '#1e1e2e', color: '#cdd6f4',
-                  whiteSpace: 'pre-wrap', wordBreak: 'break-all', borderRadius: 10,
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-all', borderRadius: 12,
                 }}>
                   {previewJson}
                 </pre>
@@ -736,7 +736,7 @@ export default function LlmMock() {
               const mode = r.responseMode || 'default'
               return (
                 <div key={r.id} onClick={() => selectRoute(r)} style={{
-                  padding: '10px 12px', marginBottom: 4, borderRadius: 10, cursor: 'pointer',
+                  padding: '10px 12px', marginBottom: 4, borderRadius: 12, cursor: 'pointer',
                   background: sel ? 'rgba(14,165,160,0.08)' : 'transparent',
                   borderLeft: `3px solid ${sel ? '#4e8af0' : r.enabled ? '#0ea5a0' : 'rgba(0,0,0,0.1)'}`,
                   transition: 'all .15s',
@@ -776,7 +776,7 @@ export default function LlmMock() {
             <div style={{ display: 'flex', gap: 0 }}>
               {[
                 { key: 'config', label: '路由配置' },
-                { key: 'logs', label: <>请求日志 <Tag style={{ margin: '0 0 0 4px', fontSize: 11, borderRadius: 10, lineHeight: '18px', padding: '0 6px' }}>{serviceStatus.totalRequests}</Tag></> },
+                { key: 'logs', label: <>请求日志 <Tag style={{ margin: '0 0 0 4px', fontSize: 11, borderRadius: 12, lineHeight: '18px', padding: '0 6px' }}>{serviceStatus.totalRequests}</Tag></> },
               ].map(t => (
                 <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
                   padding: '10px 16px', cursor: 'pointer', fontSize: 14, position: 'relative',

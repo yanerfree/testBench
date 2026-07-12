@@ -1020,8 +1020,9 @@ async def run_step(
     if not step or step.scenario_id != scenario_id:
         raise NotFoundError(code="NOT_FOUND", message="步骤不存在")
 
-    # 变量优先级：步骤提取 > 运行时 > 场景 env_variables > 环境/全局
+    # 变量优先级：步骤提取 > 运行时 > 用户选择的环境 > 场景 env_variables
     env: dict = {}
+    env.update(scenario.env_variables or {})
     if body and body.env_id:
         from app.services import environment_service
         try:
@@ -1029,7 +1030,6 @@ async def run_step(
             env.update({item["key"]: item["value"] for item in merged})
         except Exception:
             logger.warning("加载环境变量失败 env_id=%s", body.env_id)
-    env.update(scenario.env_variables or {})
     _inject_runtime_variables(env)
 
     # 从同场景已执行步骤中收集提取的变量

@@ -14,7 +14,7 @@ const REJECT_CATEGORIES = [
   { value: 'other', label: '其他' },
 ]
 
-const SCORE_COLOR = (s) => s >= 85 ? 'green' : s >= 70 ? 'blue' : 'orange'
+const SCORE_COLOR = (s) => s >= 85 ? '#0ea5a0' : s >= 70 ? 'blue' : 'orange'
 
 export default function Stage5Review({ projectId, branchId, taskId }) {
   const [cases, setCases] = useState([])
@@ -111,7 +111,7 @@ export default function Stage5Review({ projectId, branchId, taskId }) {
     {
       title: '审核', dataIndex: 'reviewStatus', key: 'review', width: 80,
       render: (s) => {
-        if (s === 'approved') return <Tag color="success">已通过</Tag>
+        if (s === 'approved') return <Tag color="cyan">已通过</Tag>
         if (s === 'rejected') return <Tag color="error">已拒绝</Tag>
         return <Tag color="processing">待审核</Tag>
       },
@@ -195,7 +195,7 @@ export default function Stage5Review({ projectId, branchId, taskId }) {
 
             {/* 用例详情 */}
             {selectedCase.qualityScore?.warnings?.length > 0 && (
-              <div style={{ marginBottom: 12, padding: 8, background: '#fffbe6', borderRadius: 6, fontSize: 12 }}>
+              <div style={{ marginBottom: 12, padding: 8, background: 'rgba(250,173,20,0.06)', borderRadius: 6, fontSize: 12 }}>
                 {selectedCase.qualityScore.warnings.map((w, i) => (
                   <div key={i} style={{ color: '#d48806' }}>⚠ {w.message || w.rule}</div>
                 ))}
@@ -211,7 +211,7 @@ export default function Stage5Review({ projectId, branchId, taskId }) {
               {(selectedCase.steps || []).map((s, i) => (
                 <div key={i} style={{ fontSize: 12, padding: '3px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                   <strong>{i + 1}.</strong> {s.action || s.step}
-                  {s.expected && <span style={{ color: '#52c41a', marginLeft: 8 }}>→ {s.expected}</span>}
+                  {s.expected && <span style={{ color: '#0ea5a0', marginLeft: 8 }}>→ {s.expected}</span>}
                 </div>
               ))}
             </div>

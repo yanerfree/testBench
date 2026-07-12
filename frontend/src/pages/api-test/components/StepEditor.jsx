@@ -244,16 +244,21 @@ export default function StepEditor({
   onStepChange,
 }) {
   const [bodyText, setBodyText] = useState('')
+  const [activeTab, setActiveTab] = useState('body')
 
   useEffect(() => {
     setBodyText(step?.body ? JSON.stringify(step.body, null, 2) : '')
   }, [step?.id])
 
-  const handleBodySave = () => {
+  useEffect(() => {
+    setActiveTab('body')
+  }, [step?.id])
+
+  const handleBodyBlur = () => {
     try {
       const parsed = JSON.parse(bodyText || '{}')
       onSaveStep(step.id, { body: parsed })
-    } catch { message.error('JSON 格式错误') }
+    } catch { /* JSON 不合法时不保存，用户继续编辑 */ }
   }
 
   if (!step) {
@@ -316,7 +321,8 @@ export default function StepEditor({
 
       <div style={{ flex: 1, overflow: 'auto' }}>
         <Tabs
-          defaultActiveKey="body"
+          activeKey={activeTab}
+          onChange={setActiveTab}
           size="small"
           style={{ padding: '0 20px' }}
           items={[
@@ -325,13 +331,13 @@ export default function StepEditor({
               label: <span>Body {step.body && <span style={{ color: '#0ea5a0' }}>●</span>}</span>,
               children: (
                 <div style={{ background: 'transparent', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                  <div style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 11, color: '#8c8c8c', display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 11, color: '#8c8c8c' }}>
                     <span>JSON</span>
-                    {!readonly && <Button size="small" type="text" style={{ fontSize: 11, height: 18, padding: '0 4px' }} onClick={handleBodySave}>保存</Button>}
                   </div>
                   <textarea
                     value={bodyText}
                     onChange={e => setBodyText(e.target.value)}
+                    onBlur={handleBodyBlur}
                     readOnly={readonly}
                     style={{
                       width: '100%', border: 'none', outline: 'none', resize: 'vertical',
@@ -377,7 +383,20 @@ export default function StepEditor({
             },
             {
               key: 'response',
-              label: <span>响应 {step._runResponse && <span style={{ color: step._runResponse.error ? '#e8453c' : '#0ea5a0' }}>●</span>}</span>,
+              label: (
+                <span>
+                  响应
+                  {step._runResponse && !step._runResponse.error && (
+                    <Tag
+                      color={step._runResponse.statusCode < 400 ? 'cyan' : 'error'}
+                      style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px', marginLeft: 4 }}
+                    >
+                      {step._runResponse.statusCode}
+                    </Tag>
+                  )}
+                  {step._runResponse?.error && <span style={{ color: '#e8453c', marginLeft: 4 }}>●</span>}
+                </span>
+              ),
               children: (
                 <div style={{ background: 'transparent', borderRadius: 8, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
                   {step._runResponse ? (
@@ -386,10 +405,10 @@ export default function StepEditor({
                     ) : (
                       <>
                         <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.3)', borderBottom: '1px solid rgba(0,0,0,0.04)', display: 'flex', gap: 12, fontSize: 12 }}>
-                          <Tag color={step._runResponse.statusCode < 400 ? 'success' : 'error'}>{step._runResponse.statusCode}</Tag>
+                          <Tag color={step._runResponse.statusCode < 400 ? 'cyan' : 'error'}>{step._runResponse.statusCode}</Tag>
                           <span style={{ color: '#8c8c8c' }}>{step._runResponse.duration}ms</span>
                         </div>
-                        <pre style={{ margin: 0, padding: 16, fontSize: 12, fontFamily: 'monospace', lineHeight: 1.5, overflow: 'auto', maxHeight: 400 }}>
+                        <pre style={{ margin: 0, padding: 16, fontSize: 12, fontFamily: "'SF Mono', Monaco, Consolas, monospace", lineHeight: 1.5, overflow: 'auto', maxHeight: 400 }}>
                           {JSON.stringify(step._runResponse.body, null, 2)}
                         </pre>
                       </>

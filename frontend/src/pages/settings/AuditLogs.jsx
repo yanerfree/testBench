@@ -13,8 +13,8 @@ const ACTION_CONFIG = {
   execute: { label: '执行', color: '#faad14', bg: '#fffbe6' },
   import: { label: '导入', color: '#0ea5a0', bg: '#e0f7f6' },
   archive: { label: '归档', color: '#c9cdd4', bg: 'rgba(0,0,0,0.04)' },
-  login: { label: '登录', color: '#7c5cbf', bg: '#f9f0ff' },
-  logout: { label: '登出', color: '#7c5cbf', bg: '#f9f0ff' },
+  login: { label: '登录', color: '#7c5cbf', bg: 'rgba(124,92,191,0.06)' },
+  logout: { label: '登出', color: '#7c5cbf', bg: 'rgba(124,92,191,0.06)' },
   sync: { label: '同步', color: '#0ea5a0', bg: '#e0f7f6' },
   change_password: { label: '改密', color: '#fa8c16', bg: '#fff7e6' },
 }
@@ -225,7 +225,7 @@ export default function AuditLogs() {
               <div>
                 <div style={{ fontSize: 12, color: '#86909c', marginBottom: 6 }}>变更摘要</div>
                 <pre style={{
-                  margin: 0, padding: '12px 14px', background: 'transparent', borderRadius: 10,
+                  margin: 0, padding: '12px 14px', background: 'transparent', borderRadius: 12,
                   fontSize: 12, lineHeight: 1.8, overflow: 'auto', maxHeight: 400,
                   whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                   fontFamily: "Menlo, Monaco, 'Courier New', monospace",

@@ -37,6 +37,22 @@ async def get_environment(session: AsyncSession, env_id: uuid.UUID) -> Environme
     return env
 
 
+@audit_log(action="update", target_type="environment")
+async def update_environment(session: AsyncSession, env_id: uuid.UUID, **kwargs) -> Environment:
+    env = await get_environment(session, env_id)
+    if 'name' in kwargs and kwargs['name'] is not None:
+        env.name = kwargs['name']
+    if 'description' in kwargs:
+        env.description = kwargs['description']
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        raise ConflictError(code="ENV_NAME_EXISTS", message="环境名称已存在")
+    await session.refresh(env)
+    return env
+
+
 @audit_log(action="delete", target_type="environment")
 async def delete_environment(session: AsyncSession, env_id: uuid.UUID) -> None:
     env = await get_environment(session, env_id)

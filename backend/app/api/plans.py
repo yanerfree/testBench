@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_201_CREATED
 
@@ -592,6 +593,108 @@ async def list_reports(
         })
 
     return {"data": data, "pagination": {"page": page, "pageSize": page_size, "total": total}}
+
+
+class AdhocExecuteRequest(BaseModel):
+    case_ids: list[uuid.UUID] = Field(alias="caseIds")
+    branch_id: uuid.UUID = Field(alias="branchId")
+    type: str = Field(pattern="^(api|ui)$")
+    env_id: uuid.UUID = Field(alias="envId")
+    title: str | None = None
+
+    model_config = {"populate_by_name": True}
+
+
+@reports_router.post("/execute-adhoc")
+async def execute_adhoc(
+    project_id: uuid.UUID,
+    body: AdhocExecuteRequest,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_db),
+    user: User = Depends(require_project_role("project_admin", "developer", "tester")),
+):
+    """批量执行选中用例（不走测试计划），直接生成报告。"""
+    from app.models.report import TestReport, TestReportScenario
+    from app.models.case import Case
+    from app.engine.tasks.adhoc_execution import run_adhoc_execution
+
+    if not body.case_ids:
+        raise ValidationError(code="NO_CASES", message="请至少选择一条用例")
+
+    case_id_list = [str(c) for c in body.case_ids]
+    cases = (await session.execute(
+        select(Case).where(Case.id.in_(body.case_ids))
+    )).scalars().all()
+
+    if not cases:
+        raise ValidationError(code="NO_CASES", message="未找到有效用例")
+
+    # 预检：统计可执行 / 跳过
+    executable_count = 0
+    skipped_count = 0
+    for case in cases:
+        has_script = bool(case.script_ref_file) and case.automation_status == "automated"
+        if has_script:
+            executable_count += 1
+        else:
+            skipped_count += 1
+
+    now = datetime.now(timezone.utc)
+    report_title = body.title or f"批量执行 · {now.strftime('%m-%d %H:%M')}"
+
+    report = TestReport(
+        plan_id=None,
+        report_type="adhoc",
+        report_name=report_title,
+        project_id=project_id,
+        branch_id=body.branch_id,
+        environment_id=body.env_id,
+        executed_by=user.id,
+        executed_at=now,
+        total_scenarios=len(cases),
+        skipped=skipped_count,
+    )
+    session.add(report)
+    await session.flush()
+
+    for i, case in enumerate(cases):
+        has_script = bool(case.script_ref_file) and case.automation_status == "automated"
+        scenario = TestReportScenario(
+            report_id=report.id,
+            case_id=case.id,
+            case_code=case.case_code,
+            scenario_name=case.title,
+            status="skipped" if not has_script else "pending",
+            execution_type="automated",
+            sort_order=i,
+        )
+        if not has_script:
+            scenario.error_summary = "无可执行脚本"
+        session.add(scenario)
+    await session.commit()
+
+    task_id = f"adhoc_{report.id}"
+    background_tasks.add_task(
+        run_adhoc_execution,
+        task_id=task_id,
+        report_id=str(report.id),
+        case_ids=case_id_list,
+        env_id=str(body.env_id),
+        test_type=body.type,
+        project_id=str(project_id),
+        branch_id=str(body.branch_id),
+        user_id=str(user.id),
+    )
+
+    return {
+        "data": {
+            "reportId": str(report.id),
+            "taskId": task_id,
+            "total": len(cases),
+            "executable": executable_count,
+            "skipped": skipped_count,
+        }
+    }
 
 
 @reports_router.delete("/{report_id}")

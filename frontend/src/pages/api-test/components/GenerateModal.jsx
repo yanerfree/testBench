@@ -93,7 +93,7 @@ export default function GenerateModal({
                 </div>
                 <div style={{ position: 'relative' }}>
                   <pre style={{
-                    background: '#f6f8fa', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 6,
+                    background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 6,
                     padding: '10px 14px', fontSize: 11, fontFamily: "'SF Mono', Monaco, Consolas, monospace",
                     overflow: 'auto', maxHeight: 140, margin: 0,
                   }}>{mcpConfig}</pre>
@@ -116,7 +116,7 @@ export default function GenerateModal({
                 ].map((cmd, i) => (
                   <div key={i} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '6px 12px', background: '#f6f8fa', borderRadius: 6, marginBottom: 4,
+                    padding: '6px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 6, marginBottom: 4,
                     fontFamily: 'monospace', fontSize: 12,
                   }}>
                     <span style={{ flex: 1 }}>{cmd}</span>

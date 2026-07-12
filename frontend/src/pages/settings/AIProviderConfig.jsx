@@ -170,7 +170,7 @@ export default function AIProviderConfig() {
 
   const statusTag = (record) => {
     if (!record.status) return <Tag>未测试</Tag>
-    if (record.status === 'ok') return <Tag color="success" icon={<CheckCircleOutlined />}>正常</Tag>
+    if (record.status === 'ok') return <Tag color="cyan" icon={<CheckCircleOutlined />}>正常</Tag>
     const msg = record.statusMessage || '异常'
     return (
       <Tooltip title={msg}>

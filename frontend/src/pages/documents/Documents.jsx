@@ -16,7 +16,7 @@ const { Text } = Typography
 const { TextArea } = Input
 
 const DOC_TYPE_LABELS = { manual: '操作手册', acceptance: '验收文档', demo: '演示文档' }
-const DOC_TYPE_COLORS = { manual: 'blue', acceptance: 'green', demo: 'purple' }
+const DOC_TYPE_COLORS = { manual: 'blue', acceptance: 'cyan', demo: 'purple' }
 const LANG_OPTIONS = [
   { value: 'zh', label: '中文' },
   { value: 'en', label: 'English' },
@@ -149,7 +149,7 @@ export default function Documents() {
     },
     { title: '类型', dataIndex: 'docType', width: 100, render: (t) => <Tag color={DOC_TYPE_COLORS[t]}>{DOC_TYPE_LABELS[t] || t}</Tag> },
     { title: '语种', dataIndex: 'language', width: 60, render: (l) => LANG_LABELS[l] || l },
-    { title: '状态', dataIndex: 'status', width: 70, render: (s) => s === 'published' ? <Tag color="success">已生成</Tag> : <Tag>草稿</Tag> },
+    { title: '状态', dataIndex: 'status', width: 70, render: (s) => s === 'published' ? <Tag color="cyan">已生成</Tag> : <Tag>草稿</Tag> },
     { title: '生成时间', dataIndex: 'createdAt', width: 150, render: (t) => <Text type="secondary">{t?.slice(0, 16).replace('T', ' ')}</Text> },
     {
       title: '操作', width: 180,
@@ -190,8 +190,8 @@ export default function Documents() {
       {docs.length === 0 && !loading ? (
         <Card style={{ textAlign: 'center', padding: '40px 0' }}>
           <FileTextOutlined style={{ fontSize: 40, color: 'rgba(0,0,0,0.25)' }} />
-          <div style={{ marginTop: 12, color: '#8c8c8c' }}>暂无文档</div>
-          <div style={{ marginTop: 4, color: '#bfbfbf', fontSize: 12 }}>点击上方「生成文档」按钮，填写系统信息即可自动生成</div>
+          <div style={{ marginTop: 12, color: '#86909c' }}>暂无文档</div>
+          <div style={{ marginTop: 4, color: '#c9cdd4', fontSize: 12 }}>点击上方「生成文档」按钮，填写系统信息即可自动生成</div>
         </Card>
       ) : (
         <Table rowKey="id" columns={columns} dataSource={docs} loading={loading} pagination={false} size="middle" />
@@ -278,8 +278,8 @@ export default function Documents() {
               <div style={{ marginTop: 8, fontWeight: 500 }}>正在生成文档...</div>
             </div>
             {platProgress.length > 0 && (
-              <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 10, maxHeight: 150, overflow: 'auto', marginBottom: 12 }}>
-                {platProgress.map((p, i) => <div key={i} style={{ fontSize: 12, color: '#595959', padding: '2px 0' }}>{p}</div>)}
+              <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.02)', borderRadius: 12, maxHeight: 150, overflow: 'auto', marginBottom: 12 }}>
+                {platProgress.map((p, i) => <div key={i} style={{ fontSize: 12, color: '#4e5969', padding: '2px 0' }}>{p}</div>)}
               </div>
             )}
           </div>
@@ -450,7 +450,7 @@ function DocPreviewWithToc({ content }) {
           width: 220, minWidth: 220, borderRight: '1px solid rgba(0,0,0,0.05)',
           padding: '16px 0', overflowY: 'auto', fontSize: 13, background: 'transparent',
         }}>
-          <div style={{ padding: '0 16px 8px', fontWeight: 600, fontSize: 12, color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div style={{ padding: '0 16px 8px', fontWeight: 600, fontSize: 12, color: '#86909c', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             目录
           </div>
           {headings.map((h) => (

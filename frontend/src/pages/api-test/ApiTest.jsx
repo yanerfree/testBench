@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { Modal, Form, Input, TreeSelect, message, Select, Tag, Button, Tooltip, Drawer, Space } from 'antd'
 import { PlayCircleOutlined, RobotOutlined, CopyOutlined, ScissorOutlined, BranchesOutlined } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { useBranch } from '../../utils/branch'
+import { useEnv } from '../../utils/env'
 import RunResultPanel from './components/RunResultPanel'
+import StepRunDrawer from './components/StepRunDrawer'
 import FolderTree from './components/FolderTree'
 import ScenarioList from './components/ScenarioList'
 import StepList from './components/StepList'
@@ -24,6 +26,9 @@ export default function ApiTest() {
   const [genProgress, setGenProgress] = useState([])
   const [form] = Form.useForm()
   const [running, setRunning] = useState(false)
+  const [runningStepId, setRunningStepId] = useState(null)
+  const [saveStatus, setSaveStatus] = useState(null) // null | 'saving' | 'saved'
+  const saveTimerRef = useRef(null)
   const [searchKeyword, setSearchKeyword] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [folderModalOpen, setFolderModalOpen] = useState(false)
@@ -33,6 +38,8 @@ export default function ApiTest() {
   const [selectedFolderId, setSelectedFolderId] = useState(null)
   const [selectedFolderIds, setSelectedFolderIds] = useState([])
   const [runResponse, setRunResponse] = useState(null)
+  const [showStepDrawer, setShowStepDrawer] = useState(false)
+  const [stepDrawerName, setStepDrawerName] = useState('')
   const [createScenarioOpen, setCreateScenarioOpen] = useState(false)
   const [showRunPanel, setShowRunPanel] = useState(false)
   const [runStepResults, setRunStepResults] = useState([])
@@ -44,7 +51,7 @@ export default function ApiTest() {
   const [optimizePlan, setOptimizePlan] = useState(null)
   const [createForm] = Form.useForm()
   const [environments, setEnvironments] = useState([])
-  const [envId, setEnvId] = useState(() => localStorage.getItem(`apitest_env_${projectId}`) || null)
+  const [envId, setEnvId] = useEnv(projectId)
   const [apiList, setApiList] = useState([])
   const [projectInfo, setProjectInfo] = useState({ name: '', branchName: '' })
 
@@ -77,9 +84,7 @@ export default function ApiTest() {
   }, [projectId, branchId])
 
   const changeEnv = (id) => {
-    setEnvId(id)
-    if (id) localStorage.setItem(`apitest_env_${projectId}`, id)
-    else localStorage.removeItem(`apitest_env_${projectId}`)
+    setEnvId(id || null)
   }
 
   useEffect(() => {
@@ -125,14 +130,25 @@ export default function ApiTest() {
 
   useEffect(() => { fetchScenarios() }, [fetchScenarios])
 
-  const loadScenario = async (id) => {
+  const loadScenario = async (id, { keepStep = false } = {}) => {
     try {
       const res = await api.get(`/projects/${projectId}/branches/${branchId}/api-tests/${id}`)
       setSelectedScenario(res.data)
-      setRunResponse(null)
       const steps = res.data?.steps || []
-      const firstStep = steps.length > 0 ? steps[0] : null
-      setSelectedStep(firstStep)
+      // 初始化步骤快照，避免 onBlur 时误判为"有变化"
+      for (const s of steps) {
+        lastSavedRef.current[s.id] = { name: s.name, method: s.method, url: s.url, body: s.body, headers: s.headers, assertions: s.assertions, variablesExtract: s.variablesExtract }
+      }
+      if (keepStep) {
+        setSelectedStep(prev => {
+          if (!prev) return steps[0] || null
+          const fresh = steps.find(s => s.id === prev.id)
+          return fresh || steps[0] || null
+        })
+      } else {
+        setRunResponse(null)
+        setSelectedStep(steps[0] || null)
+      }
     } catch { /* */ }
   }
 
@@ -180,14 +196,18 @@ export default function ApiTest() {
 
   const handleRunStep = async () => {
     if (!selectedStep) return
-    setRunning(true); setRunResponse(null)
+    setRunningStepId(selectedStep.id); setRunResponse(null)
+    setStepDrawerName(selectedStep.name || '')
     try {
       const res = await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/run-step/${selectedStep.id}`, envId ? { envId } : {})
       setRunResponse(res.data)
-      loadScenario(selectedScenario.id)
+      setShowStepDrawer(true)
+      loadScenario(selectedScenario.id, { keepStep: true })
     } catch (e) {
       setRunResponse({ error: e.message || '执行失败' })
-    } finally { setRunning(false) }
+      setShowStepDrawer(true)
+      message.error(e.message || '执行失败')
+    } finally { setRunningStepId(null) }
   }
 
   const handleRunAll = async () => {
@@ -216,12 +236,12 @@ export default function ApiTest() {
         }
         if (data.type === 'run_done' || data.type === 'scenario_done') {
           setRunning(false)
-          loadScenario(selectedScenario.id)
+          loadScenario(selectedScenario.id, { keepStep: true })
         }
       },
       onDone: () => {
         setRunning(false)
-        loadScenario(selectedScenario.id)
+        loadScenario(selectedScenario.id, { keepStep: true })
       },
       onError: (msg) => { message.error(msg); setRunning(false) },
     })
@@ -260,16 +280,26 @@ export default function ApiTest() {
     } catch (e) { message.error(e.message || '更新版本失败') }
   }
 
+  const lastSavedRef = useRef({})
+
   const saveStep = async (stepId, updates) => {
+    const prev = lastSavedRef.current[stepId] || {}
+    const changed = Object.keys(updates).some(k => JSON.stringify(updates[k]) !== JSON.stringify(prev[k]))
+    if (!changed) return
+
     try {
+      setSaveStatus('saving')
       const res = await api.put(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}/steps/${stepId}`, updates)
-      message.success('已保存')
+      lastSavedRef.current[stepId] = { ...prev, ...res.data }
       if (selectedStep?.id === stepId) {
-        setSelectedStep(prev => ({ ...prev, ...res.data }))
+        setSelectedStep(p => ({ ...p, ...res.data }))
       }
       const scRes = await api.get(`/projects/${projectId}/branches/${branchId}/api-tests/${selectedScenario.id}`)
       setSelectedScenario(scRes.data)
-    } catch { message.error('保存失败') }
+      setSaveStatus('saved')
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = setTimeout(() => setSaveStatus(null), 2000)
+    } catch { message.error('保存失败'); setSaveStatus(null) }
   }
 
   const saveScenario = async (updates) => {
@@ -420,7 +450,7 @@ export default function ApiTest() {
       ) : (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* ── 顶部工具栏（与列表页统一风格） ── */}
-          <div style={{ padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
             <Space size={8} wrap>
               <span style={{ fontWeight: 600, fontSize: 14, color: '#1d2129' }}>{selectedScenario.code}</span>
               <span style={{ color: '#595959', fontSize: 13, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>{selectedScenario.title}</span>
@@ -441,6 +471,11 @@ export default function ApiTest() {
                   options={environments.map(e => ({ value: e.id, label: e.name }))} />
               )}
               <Button size="small" type="primary" icon={<PlayCircleOutlined />} onClick={handleRunAll} loading={running}>运行全部</Button>
+              {saveStatus && (
+                <span style={{ fontSize: 12, color: saveStatus === 'saved' ? '#0ea5a0' : '#86909c', display: 'inline-flex', alignItems: 'center', gap: 4, transition: 'opacity 0.3s', opacity: saveStatus ? 1 : 0 }}>
+                  {saveStatus === 'saving' ? '保存中...' : '✓ 已保存'}
+                </span>
+              )}
             </Space>
             <Space size={8}>
               {selectedScenario.status === 'draft' && (
@@ -464,7 +499,7 @@ export default function ApiTest() {
               scenario={selectedScenario}
               selectedStepId={selectedStep?.id}
               readonly={selectedScenario?.status !== 'draft'}
-              onSelectStep={(step) => { setSelectedStep(step); setRunResponse(null); setShowRunPanel(false) }}
+              onSelectStep={(step) => { setSelectedStep(step); setRunResponse(null) }}
               onAddStep={addStep}
               onReorderSteps={handleReorderSteps}
               splitMode={splitMode}
@@ -472,27 +507,15 @@ export default function ApiTest() {
               onSplitScenario={handleSplitScenario}
             />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'transparent' }}>
-              {showRunPanel ? (
-                <RunResultPanel
-                  results={runStepResults}
-                  scenario={selectedScenario}
-                  running={running}
-                  onClose={() => setShowRunPanel(false)}
-                  reportId={runReportId}
-                  envName={environments.find(e => e.id === envId)?.name}
-                  projectId={projectId}
-                />
-              ) : (
-                <StepEditor
-                  step={stepWithResponse}
-                  running={running}
-                  readonly={selectedScenario?.status !== 'draft'}
-                  onSaveStep={saveStep}
-                  onRemoveStep={removeStep}
-                  onRunStep={handleRunStep}
-                  onStepChange={setSelectedStep}
-                />
-              )}
+              <StepEditor
+                step={stepWithResponse}
+                running={!!runningStepId}
+                readonly={selectedScenario?.status !== 'draft'}
+                onSaveStep={saveStep}
+                onRemoveStep={removeStep}
+                onRunStep={handleRunStep}
+                onStepChange={setSelectedStep}
+              />
             </div>
           </div>
         </div>
@@ -530,7 +553,7 @@ export default function ApiTest() {
           <>
             <div style={{ marginBottom: 12, fontWeight: 600 }}>{optimizePlan.summary}</div>
             {(optimizePlan.changes || []).map((c, i) => (
-              <div key={i} style={{ padding: '8px 12px', marginBottom: 8, borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', background: c.action === 'add' ? '#f6ffed' : c.action === 'delete' ? '#fff2f0' : '#e6f4ff' }}>
+              <div key={i} style={{ padding: '8px 12px', marginBottom: 8, borderRadius: 6, border: '1px solid rgba(0,0,0,0.06)', background: c.action === 'add' ? 'rgba(14,165,160,0.06)' : c.action === 'delete' ? 'rgba(232,69,60,0.06)' : 'rgba(78,138,240,0.06)' }}>
                 <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                   {c.action === 'add' ? '+ 新增' : c.action === 'delete' ? '- 删除' : '~ 修改'}
                   {c.step?.name ? ` — ${c.step.name}` : ''}
@@ -540,6 +563,43 @@ export default function ApiTest() {
             ))}
           </>
         )}
+      </Drawer>
+
+      {/* 运行结果抽屉 */}
+      <Drawer
+        title={null}
+        open={showRunPanel}
+        onClose={() => setShowRunPanel(false)}
+        width={520}
+        destroyOnClose={false}
+        closable={false}
+        styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column', height: '100%' } }}
+      >
+        <RunResultPanel
+          results={runStepResults}
+          scenario={selectedScenario}
+          running={running}
+          onClose={() => setShowRunPanel(false)}
+          reportId={runReportId}
+          envName={environments.find(e => e.id === envId)?.name}
+          projectId={projectId}
+        />
+      </Drawer>
+
+      {/* 单步运行结果抽屉 */}
+      <Drawer
+        title={null}
+        open={showStepDrawer}
+        onClose={() => setShowStepDrawer(false)}
+        width={600}
+        closable={false}
+        styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column', height: '100%' } }}
+      >
+        <StepRunDrawer
+          response={runResponse}
+          stepName={stepDrawerName}
+          onClose={() => setShowStepDrawer(false)}
+        />
       </Drawer>
 
       <GenerateModal

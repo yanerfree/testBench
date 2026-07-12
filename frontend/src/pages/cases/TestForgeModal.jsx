@@ -234,14 +234,14 @@ export default function TestForgeModal({ projectId, branchId, folders, open, onC
               <Space>
                 <span>接口信息</span>
                 <Tag
-                  color={inputMode === 'select' ? 'green' : 'default'}
+                  color={inputMode === 'select' ? 'cyan' : 'default'}
                   style={{ cursor: 'pointer' }}
                   onClick={() => setInputMode('select')}
                 >
                   从项目选择
                 </Tag>
                 <Tag
-                  color={inputMode === 'manual' ? 'green' : 'default'}
+                  color={inputMode === 'manual' ? 'cyan' : 'default'}
                   style={{ cursor: 'pointer' }}
                   onClick={() => setInputMode('manual')}
                 >

@@ -6,7 +6,7 @@ import { api } from '../../../utils/request'
 const { Text } = Typography
 
 const DIM_COLORS = {
-  positive: '#52c41a', negative: '#e8453c', boundary: '#faad14',
+  positive: '#0ea5a0', negative: '#e8453c', boundary: '#faad14',
   permission: '#7c5cbf', data: '#13c2c2', state: '#4e8af0',
 }
 const DIM_LABELS = {
@@ -117,7 +117,7 @@ export default function CoverageMatrix({ projectId, branchId, taskId }) {
             </Text>
           )}
           {summary.zeroCoverage === 0 && summary.weakCoverage === 0 && (
-            <Text style={{ fontSize: 12, color: '#52c41a' }}>
+            <Text style={{ fontSize: 12, color: '#0ea5a0' }}>
               ✓ 全部覆盖
             </Text>
           )}

@@ -109,7 +109,7 @@ export default function ScenarioList({
           onRow={r => ({ onClick: () => onSelectScenario(r.id), style: { cursor: 'pointer' } })}
           columns={[
             {
-              title: '场景ID', dataIndex: 'code', width: 120,
+              title: '场景ID', dataIndex: 'code', width: 100,
               render: v => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#86909c' }}>{v}</span>,
             },
             {
@@ -131,7 +131,7 @@ export default function ScenarioList({
               </Tag>,
             },
             {
-              title: '操作', width: 80,
+              title: '操作', width: 60,
               render: (_, r) => (
                 <Space size={4} onClick={e => e.stopPropagation()}>
                   <Popconfirm title="确认删除？" onConfirm={() => onDelete(r.id)}>

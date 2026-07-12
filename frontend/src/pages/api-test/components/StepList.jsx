@@ -27,11 +27,11 @@ export default function StepList({
   }
 
   return (
-    <div style={{ width: 280, minWidth: 280, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
+    <div style={{ width: 280, minWidth: 280, borderRight: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
 
       {/* 拆分模式提示 */}
       {splitMode && (
-        <div style={{ padding: '8px 12px', background: '#e6fffb', borderBottom: '1px solid #87e8de', fontSize: 12, flexShrink: 0 }}>
+        <div style={{ padding: '8px 12px', background: 'rgba(14,165,160,0.06)', borderBottom: '1px solid rgba(14,165,160,0.3)', fontSize: 12, flexShrink: 0 }}>
           <div style={{ fontWeight: 600, marginBottom: 4, color: '#0ea5a0' }}>
             <ScissorOutlined /> 拆分模式
           </div>

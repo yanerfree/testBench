@@ -15,7 +15,7 @@ const STATUS_MAP = {
   model_ready: { color: 'warning', label: '待确认模型' },
   confirmed: { color: 'blue', label: '已确认' },
   generating: { color: 'processing', label: '生成中' },
-  completed: { color: 'success', label: '已完成' },
+  completed: { color: 'cyan', label: '已完成' },
   partial_failed: { color: 'warning', label: '部分失败' },
   failed: { color: 'error', label: '失败' },
   aborted: { color: 'default', label: '已中止' },
@@ -184,7 +184,7 @@ function TaskDetail({ projectId, taskId }) {
 
       <WizardStepper currentStage={stage} onStageClick={handleStageChange} taskStatus={task?.status} />
 
-      <div style={{ marginTop: 24, padding: 24, background: 'rgba(255,255,255,0.6)', borderRadius: 10,
+      <div style={{ marginTop: 24, padding: 24, background: 'rgba(255,255,255,0.6)', borderRadius: 12,
         border: '1px solid rgba(0,0,0,0.04)', minHeight: 400 }}>
         {taskId === 'new' && stage === 'input' && (
           <Stage1Input

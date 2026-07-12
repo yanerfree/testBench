@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Input, Button, Space, Tag, message, Radio, Switch, InputNumber } from 'antd'
+import { Input, Button, Space, Tag, message, Radio, Switch, InputNumber, Select } from 'antd'
 import {
   ToolOutlined, FormatPainterOutlined, SwapOutlined, ClockCircleOutlined,
   FileSearchOutlined, DatabaseOutlined, DiffOutlined, CopyOutlined,
-  ReloadOutlined, ThunderboltOutlined, LoadingOutlined
+  ReloadOutlined, ThunderboltOutlined, LoadingOutlined, SafetyOutlined
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
@@ -19,6 +19,7 @@ const THEMES = {
   regex:     { primary: '#8e24aa', light: '#f3e5f5', bg: 'rgba(243,229,245,0.5)', pale: 'rgba(243,229,245,0.25)', border: 'rgba(142,36,170,0.25)' },
   datagen:   { primary: '#1e88e5', light: '#e3f2fd', bg: 'rgba(227,242,253,0.5)', pale: 'rgba(227,242,253,0.25)', border: 'rgba(30,136,229,0.25)' },
   diff:      { primary: '#d81b60', light: '#fce4ec', bg: 'rgba(252,228,236,0.5)', pale: 'rgba(252,228,236,0.25)', border: 'rgba(216,27,96,0.25)' },
+  jwt:       { primary: '#f9a825', light: '#fffde7', bg: 'rgba(255,253,231,0.5)', pale: 'rgba(255,253,231,0.25)', border: 'rgba(249,168,37,0.25)' },
 }
 
 const TOOLS = [
@@ -28,6 +29,7 @@ const TOOLS = [
   { key: 'regex', icon: <FileSearchOutlined />, label: '正则测试', desc: '实时匹配 · AI 生成' },
   { key: 'datagen', icon: <DatabaseOutlined />, label: '数据生成', desc: '手机 · 身份证 · UUID' },
   { key: 'diff', icon: <DiffOutlined />, label: '文本对比', desc: 'LCS 逐行差异' },
+  { key: 'jwt', icon: <SafetyOutlined />, label: '认证工具', desc: 'JWT · Basic · HMAC · AK/SK' },
 ]
 
 const copy = (text) => copyToClipboard(text).then(() => message.success('已复制'))
@@ -452,7 +454,7 @@ function RegexTool({ theme }) {
         <span style={{ fontSize: 15, color: theme.primary, flexShrink: 0, fontWeight: 300, fontFamily: MONO }}>/</span>
         <Input value={flags} onChange={e => setFlags(e.target.value)}
           style={{ width: 54, fontFamily: MONO, textAlign: 'center', borderColor: theme.border }} placeholder="g" />
-        {matchCount > 0 && <Tag color="green" style={{ borderRadius: 12 }}>{matchCount} 个匹配</Tag>}
+        {matchCount > 0 && <Tag color="cyan" style={{ borderRadius: 12 }}>{matchCount} 个匹配</Tag>}
         {pattern && matchCount === 0 && !regexError && text && <Tag color="orange" style={{ borderRadius: 12 }}>无匹配</Tag>}
         {regexError && <Tag color="red" style={{ borderRadius: 12 }}>语法错误</Tag>}
       </div>
@@ -743,8 +745,534 @@ function computeLCS(a, b) {
   return result
 }
 
+// ━━━ JWT 工具 ━━━
+function base64urlEncode(str) {
+  return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+function base64urlDecode(str) {
+  str = str.replace(/-/g, '+').replace(/_/g, '/')
+  while (str.length % 4) str += '='
+  return decodeURIComponent(escape(atob(str)))
+}
+
+function JwtTool({ theme }) {
+  const [authMode, setAuthMode] = useState('jwt')
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 20 }}>
+      <div style={{ marginBottom: 14 }}>
+        <Radio.Group value={authMode} onChange={e => setAuthMode(e.target.value)} size="small" buttonStyle="solid">
+          <Radio.Button value="jwt">JWT</Radio.Button>
+          <Radio.Button value="basic">Basic Auth</Radio.Button>
+          <Radio.Button value="hmac">HMAC 签名</Radio.Button>
+          <Radio.Button value="aksk">AK/SK</Radio.Button>
+          <Radio.Button value="oauth2">OAuth2</Radio.Button>
+        </Radio.Group>
+      </div>
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+        {authMode === 'jwt' && <JwtPanel theme={theme} />}
+        {authMode === 'basic' && <BasicAuthPanel theme={theme} />}
+        {authMode === 'hmac' && <HmacPanel theme={theme} />}
+        {authMode === 'aksk' && <AkSkPanel theme={theme} />}
+        {authMode === 'oauth2' && <OAuth2Panel theme={theme} />}
+      </div>
+    </div>
+  )
+}
+
+function JwtPanel({ theme }) {
+  const [secret, setSecret] = useState('')
+  const [expHours, setExpHours] = useState(24)
+  const [customClaims, setCustomClaims] = useState('{\n  "sub": "user123",\n  "role": "admin"\n}')
+  const [result, setResult] = useState(null)
+  const [generating, setGenerating] = useState(false)
+  const [decodeInput, setDecodeInput] = useState('')
+  const [tab, setTab] = useState('generate')
+
+  const handleGenerate = async () => {
+    if (!secret.trim()) { message.warning('请输入 Secret'); return }
+    setGenerating(true)
+    try {
+      let claims = {}
+      try { claims = JSON.parse(customClaims) } catch { claims = { sub: 'user123' } }
+      const now = Math.floor(Date.now() / 1000)
+      const payload = { ...claims, iat: now, exp: now + expHours * 3600 }
+      const res = await api.post('/toolbox/jwt-sign', { payload, secret: secret.trim() })
+      const d = res.data?.data || res.data || res
+      if (d.error || res.error) { message.error(d.error || res.error); return }
+      setResult({ token: d.token, payload, expAt: new Date((now + expHours * 3600) * 1000) })
+    } catch (e) { message.error(e.message) }
+    finally { setGenerating(false) }
+  }
+
+  const decoded = useMemo(() => {
+    if (!decodeInput.trim()) return null
+    const parts = decodeInput.trim().split('.')
+    if (parts.length !== 3) return { error: '格式不正确（需要 3 段）' }
+    try {
+      const header = JSON.parse(base64urlDecode(parts[0]))
+      const pl = JSON.parse(base64urlDecode(parts[1]))
+      const exp = pl.exp ? new Date(pl.exp * 1000) : null
+      return { header, payload: pl, exp, isExpired: exp ? exp < new Date() : false }
+    } catch (e) { return { error: e.message } }
+  }, [decodeInput])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ marginBottom: 14 }}>
+        <Radio.Group value={tab} onChange={e => setTab(e.target.value)} size="small">
+          <Radio value="generate">生成 Token</Radio>
+          <Radio value="decode">解码 Token</Radio>
+        </Radio.Group>
+      </div>
+
+      {tab === 'generate' ? (
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          {/* 输入区 */}
+          <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>Secret 密钥 *</div>
+              <Input.Password value={secret} onChange={e => setSecret(e.target.value)} placeholder="输入你的 JWT Secret" style={{ fontFamily: MONO }} />
+            </div>
+            <div style={{ width: 120 }}>
+              <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>有效期</div>
+              <Select value={expHours} onChange={setExpHours} style={{ width: '100%' }} options={[
+                { value: 1, label: '1 小时' }, { value: 6, label: '6 小时' },
+                { value: 24, label: '1 天' }, { value: 168, label: '7 天' },
+                { value: 720, label: '30 天' }, { value: 8760, label: '1 年' },
+                { value: 876000, label: '永不过期' },
+              ]} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <Button type="primary" onClick={handleGenerate} loading={generating}>生成 Token</Button>
+            </div>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>自定义 Claims（可选）</div>
+            <TextArea value={customClaims} onChange={e => setCustomClaims(e.target.value)} rows={3}
+              style={{ fontFamily: MONO, fontSize: 12, borderColor: theme.border }}
+              placeholder='{"sub": "user123", "role": "admin"}' />
+          </div>
+
+          {/* 结果区 */}
+          {result && (
+            <div style={{ border: `1px solid ${theme.border}`, borderRadius: 12, padding: 16, background: theme.pale }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: theme.primary, marginBottom: 10 }}>生成结果</div>
+
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>JWT Token</div>
+                <div style={{ padding: 10, background: '#fff', borderRadius: 8, fontFamily: MONO, fontSize: 11, wordBreak: 'break-all', border: '1px solid #f0f0f0', position: 'relative' }}>
+                  {result.token}
+                  <Button type="link" size="small" icon={<CopyOutlined />} style={{ position: 'absolute', top: 4, right: 4, fontSize: 11 }}
+                    onClick={() => copy(result.token)}>复制</Button>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>请求时这样用</div>
+                <div style={{ padding: 10, background: '#1e1e2e', color: '#cdd6f4', borderRadius: 8, fontFamily: MONO, fontSize: 12, lineHeight: 1.8 }}>
+                  <div>Authorization: <span style={{ color: '#a6e3a1' }}>Bearer {result.token.substring(0, 20)}...{result.token.substring(result.token.length - 10)}</span></div>
+                </div>
+                <Button size="small" icon={<CopyOutlined />} style={{ marginTop: 6 }}
+                  onClick={() => copy(`Bearer ${result.token}`)}>复制完整 Header 值</Button>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>cURL 示例</div>
+                  <div style={{ padding: 8, background: '#1e1e2e', color: '#cdd6f4', borderRadius: 8, fontFamily: MONO, fontSize: 11, lineHeight: 1.6 }}>
+                    curl -H "Authorization: Bearer {result.token.substring(0, 15)}..." \<br/>
+                    {'  '}https://api.example.com/endpoint
+                  </div>
+                  <Button size="small" icon={<CopyOutlined />} style={{ marginTop: 4 }}
+                    onClick={() => copy(`curl -H "Authorization: Bearer ${result.token}" https://api.example.com/endpoint`)}>复制 cURL</Button>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: '#8c8c8c', lineHeight: 2 }}>
+                    <div>签发时间: {new Date().toLocaleString('zh-CN')}</div>
+                    <div>过期时间: {result.expAt.toLocaleString('zh-CN')}</div>
+                    <div>算法: HS256</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!result && (
+            <div style={{ textAlign: 'center', padding: 30, color: '#c9cdd4', fontSize: 13 }}>
+              输入 Secret 后点击「生成 Token」，会给你一个可直接使用的 JWT
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', gap: 14, minHeight: 0 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>粘贴 Token</div>
+            <TextArea value={decodeInput} onChange={e => setDecodeInput(e.target.value)}
+              style={{ flex: 1, fontFamily: MONO, fontSize: 12, resize: 'none', borderColor: theme.border }}
+              placeholder="粘贴 JWT Token 自动解码..." />
+          </div>
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            {decoded ? (decoded.error ? (
+              <div style={{ color: '#e53935', padding: 12, background: '#fff5f5', borderRadius: 12, fontSize: 12 }}>{decoded.error}</div>
+            ) : (<>
+              {decoded.isExpired && <Tag color="red" style={{ marginBottom: 8 }}>已过期</Tag>}
+              {decoded.exp && !decoded.isExpired && <Tag color="cyan" style={{ marginBottom: 8 }}>有效至 {decoded.exp.toLocaleString('zh-CN')}</Tag>}
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>Header</div>
+                <pre style={{ margin: 0, padding: 8, background: theme.pale, borderRadius: 8, fontSize: 11, fontFamily: MONO, border: `1px solid ${theme.border}` }}>
+                  {JSON.stringify(decoded.header, null, 2)}</pre>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>Payload</div>
+                <pre style={{ margin: 0, padding: 8, background: theme.pale, borderRadius: 8, fontSize: 11, fontFamily: MONO, border: `1px solid ${theme.border}` }}>
+                  {JSON.stringify(decoded.payload, null, 2)}</pre>
+              </div>
+            </>)) : <div style={{ color: '#c9cdd4', padding: 20, textAlign: 'center', fontSize: 13 }}>粘贴 JWT 自动解码</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BasicAuthPanel({ theme }) {
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const result = useMemo(() => {
+    if (!username) return ''
+    return btoa(unescape(encodeURIComponent(`${username}:${password}`)))
+  }, [username, password])
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>用户名</div>
+          <Input value={username} onChange={e => setUsername(e.target.value)} placeholder="username" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>密码</div>
+          <Input.Password value={password} onChange={e => setPassword(e.target.value)} placeholder="password" />
+        </div>
+      </div>
+      {result && (<>
+        <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>Base64 编码</div>
+        <div style={{ padding: 10, background: theme.pale, borderRadius: 10, fontFamily: MONO, fontSize: 12, border: `1px solid ${theme.border}`, marginBottom: 12, wordBreak: 'break-all' }}>
+          {result}
+          <Button type="link" size="small" icon={<CopyOutlined />} style={{ float: 'right', fontSize: 11 }}
+            onClick={() => copy(result)}>复制</Button>
+        </div>
+        <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>Authorization Header</div>
+        <div style={{ padding: 10, background: theme.pale, borderRadius: 10, fontFamily: MONO, fontSize: 12, border: `1px solid ${theme.border}`, wordBreak: 'break-all' }}>
+          Basic {result}
+          <Button type="link" size="small" icon={<CopyOutlined />} style={{ float: 'right', fontSize: 11 }}
+            onClick={() => copy(`Basic ${result}`)}>复制</Button>
+        </div>
+      </>)}
+    </div>
+  )
+}
+
+function HmacPanel({ theme }) {
+  const [message_, setMessage_] = useState('')
+  const [secret, setSecret] = useState('')
+  const [algo, setAlgo] = useState('SHA-256')
+  const [result, setResult] = useState(null)
+  const [signing, setSigning] = useState(false)
+
+  const handleSign = async () => {
+    if (!message_ || !secret) { message.warning('请输入消息和密钥'); return }
+    setSigning(true)
+    try {
+      const res = await api.post('/toolbox/hmac-sign', { message: message_, secret, algorithm: algo })
+      const d = res.data?.data || res.data || res
+      if (d.error || res.error) { message.error(d.error || res.error); return }
+      setResult(d)
+    } catch (e) { message.error(e.message) }
+    finally { setSigning(false) }
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>算法</div>
+        <Radio.Group value={algo} onChange={e => setAlgo(e.target.value)} size="small">
+          <Radio value="SHA-256">SHA256</Radio>
+          <Radio value="SHA-1">SHA1</Radio>
+          <Radio value="SHA-384">SHA384</Radio>
+          <Radio value="SHA-512">SHA512</Radio>
+        </Radio.Group>
+      </div>
+      <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>待签名消息</div>
+          <TextArea value={message_} onChange={e => setMessage_(e.target.value)} rows={4}
+            style={{ fontFamily: MONO, fontSize: 12, borderColor: theme.border }}
+            placeholder={'输入要签名的内容，例如：\nGET\\n/api/users\\ntimestamp=1234567890'} />
+        </div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>密钥 (Secret Key)</div>
+          <Input value={secret} onChange={e => setSecret(e.target.value)}
+            style={{ fontFamily: MONO, fontSize: 12, borderColor: theme.border, marginBottom: 12 }} placeholder="your-secret-key" />
+          <Button type="primary" onClick={handleSign} loading={signing} block>生成签名</Button>
+        </div>
+      </div>
+      {result ? (
+        <div style={{ display: 'flex', gap: 14 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>Hex</div>
+            <div style={{ padding: 10, background: theme.pale, borderRadius: 10, fontFamily: MONO, fontSize: 11, border: `1px solid ${theme.border}`, wordBreak: 'break-all' }}>
+              {result.hex}
+              <Button type="link" size="small" icon={<CopyOutlined />} style={{ float: 'right', padding: 0, fontSize: 10 }}
+                onClick={() => copy(result.hex)}>复制</Button>
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>Base64</div>
+            <div style={{ padding: 10, background: theme.pale, borderRadius: 10, fontFamily: MONO, fontSize: 11, border: `1px solid ${theme.border}`, wordBreak: 'break-all' }}>
+              {result.base64}
+              <Button type="link" size="small" icon={<CopyOutlined />} style={{ float: 'right', padding: 0, fontSize: 10 }}
+                onClick={() => copy(result.base64)}>复制</Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', padding: 20, color: '#c9cdd4', fontSize: 13 }}>输入消息和密钥后点击「生成签名」</div>
+      )}
+    </div>
+  )
+}
+
+function AkSkPanel({ theme }) {
+  const [accessKey, setAccessKey] = useState('')
+  const [secretKey, setSecretKey] = useState('')
+  const [method, setMethod] = useState('GET')
+  const [path, setPath] = useState('/api/resource')
+  const [signTime, setSignTime] = useState(() => {
+    const d = new Date()
+    const pad = n => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  })
+  const [result, setResult] = useState(null)
+  const [signing, setSigning] = useState(false)
+
+  const getTs = () => {
+    const d = new Date(signTime)
+    return isNaN(d.getTime()) ? Math.floor(Date.now() / 1000) : Math.floor(d.getTime() / 1000)
+  }
+
+  const refreshTime = () => {
+    const d = new Date()
+    const pad = n => String(n).padStart(2, '0')
+    setSignTime(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`)
+  }
+
+  const handleSign = async () => {
+    if (!accessKey || !secretKey) { message.warning('请输入 AK/SK'); return }
+    setSigning(true)
+    try {
+      const ts = String(getTs())
+      const stringToSign = `${method}\n${path}\n${ts}\n${accessKey}`
+      const res = await api.post('/toolbox/hmac-sign', { message: stringToSign, secret: secretKey, algorithm: 'SHA-256' })
+      const d = res.data?.data || res.data || res
+      if (d.error || res.error) { message.error(d.error || res.error); return }
+      setResult({ stringToSign, signature: d.base64, auth: `AK ${accessKey}:${d.base64}`, ts })
+    } catch (e) { message.error(e.message) }
+    finally { setSigning(false) }
+  }
+
+  return (
+    <div>
+      {/* AK/SK 输入 */}
+      <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>Access Key (AK)</div>
+          <Input value={accessKey} onChange={e => setAccessKey(e.target.value)} style={{ fontFamily: MONO, fontSize: 12 }} placeholder="输入 Access Key" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>Secret Key (SK)</div>
+          <Input.Password value={secretKey} onChange={e => setSecretKey(e.target.value)} style={{ fontFamily: MONO, fontSize: 12 }} placeholder="输入 Secret Key" />
+        </div>
+      </div>
+
+      {/* 请求信息 + 时间 */}
+      <div style={{ display: 'flex', gap: 14, marginBottom: 16, alignItems: 'flex-end' }}>
+        <div style={{ width: 90 }}>
+          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>Method</div>
+          <Select value={method} onChange={setMethod} style={{ width: '100%' }}
+            options={['GET','POST','PUT','DELETE','PATCH'].map(m => ({ value: m, label: m }))} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>请求路径</div>
+          <Input value={path} onChange={e => setPath(e.target.value)} style={{ fontFamily: MONO, fontSize: 12 }} placeholder="/api/resource" />
+        </div>
+        <div style={{ width: 200 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: theme.primary, fontWeight: 600 }}>签名时间</span>
+            <Button type="link" size="small" style={{ padding: 0, fontSize: 11, height: 'auto', color: theme.primary }}
+              onClick={refreshTime}>当前时间</Button>
+          </div>
+          <Input value={signTime} onChange={e => setSignTime(e.target.value)} style={{ fontSize: 12 }}
+            placeholder="2024-07-01 12:00:00" />
+        </div>
+        <Button type="primary" onClick={handleSign} loading={signing} style={{ height: 32 }}>生成签名</Button>
+      </div>
+
+      {/* 结果 */}
+      {result && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>签名字符串</div>
+              <pre style={{ margin: 0, padding: 10, background: theme.pale, borderRadius: 10, fontFamily: MONO, fontSize: 11, border: `1px solid ${theme.border}`, whiteSpace: 'pre-wrap' }}>{result.stringToSign}</pre>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>Signature (Base64)</div>
+              <div style={{ padding: 10, background: theme.pale, borderRadius: 10, fontFamily: MONO, fontSize: 11, border: `1px solid ${theme.border}`, wordBreak: 'break-all' }}>
+                {result.signature}
+                <Button type="link" size="small" icon={<CopyOutlined />} style={{ float: 'right', padding: 0, fontSize: 10 }}
+                  onClick={() => copy(result.signature)}>复制</Button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>请求头（可直接复制使用）</div>
+            <div style={{ padding: 10, background: theme.pale, borderRadius: 10, fontFamily: MONO, fontSize: 12, border: `1px solid ${theme.border}`, lineHeight: 1.8 }}>
+              <div>Authorization: <strong>{result.auth}</strong>
+                <Button type="link" size="small" icon={<CopyOutlined />} style={{ padding: 0, fontSize: 10, marginLeft: 8 }}
+                  onClick={() => copy(result.auth)}>复制</Button></div>
+              <div>X-Timestamp: <strong>{result.ts}</strong>
+                <Button type="link" size="small" icon={<CopyOutlined />} style={{ padding: 0, fontSize: 10, marginLeft: 8 }}
+                  onClick={() => copy(result.ts)}>复制</Button></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!result && (
+        <div style={{ textAlign: 'center', padding: 30, color: '#c9cdd4', fontSize: 13 }}>
+          填写 AK/SK 和请求信息后点击「生成签名」
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OAuth2Panel({ theme }) {
+  const [grantType, setGrantType] = useState('client_credentials')
+  const [tokenUrl, setTokenUrl] = useState('')
+  const [clientId, setClientId] = useState('')
+  const [clientSecret, setClientSecret] = useState('')
+  const [scope, setScope] = useState('')
+  const [fetching, setFetching] = useState(false)
+  const [tokenResult, setTokenResult] = useState(null)
+
+  const handleFetch = async () => {
+    if (!tokenUrl || !clientId) { message.warning('请填写 Token URL 和 Client ID'); return }
+    setFetching(true); setTokenResult(null)
+    try {
+      const bodyParts = [`grant_type=${grantType}`, `client_id=${encodeURIComponent(clientId)}`]
+      if (clientSecret) bodyParts.push(`client_secret=${encodeURIComponent(clientSecret)}`)
+      if (scope) bodyParts.push(`scope=${encodeURIComponent(scope)}`)
+      const res = await api.post('/toolbox/http-request', {
+        method: 'POST', url: tokenUrl,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: bodyParts.join('&'),
+      })
+      const d = res.data?.data || res.data || res
+      if (d.error) { setTokenResult({ error: d.error }); return }
+      try {
+        const parsed = JSON.parse(d.body)
+        setTokenResult({ raw: d, parsed })
+      } catch { setTokenResult({ raw: d }) }
+    } catch (e) { setTokenResult({ error: e.message }) }
+    finally { setFetching(false) }
+  }
+
+  return (
+    <div>
+      {/* 配置区 — 卡片样式 */}
+      <div style={{ padding: 16, background: theme.pale, borderRadius: 14, border: `1px solid ${theme.border}`, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', marginBottom: 14 }}>
+          <div>
+            <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>Grant Type</div>
+            <Radio.Group value={grantType} onChange={e => setGrantType(e.target.value)} size="small">
+              <Radio value="client_credentials">Client Credentials</Radio>
+              <Radio value="password">Password</Radio>
+            </Radio.Group>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>Token URL *</div>
+            <Input value={tokenUrl} onChange={e => setTokenUrl(e.target.value)} placeholder="https://auth.example.com/oauth/token" style={{ fontFamily: MONO, fontSize: 12 }} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>Client ID *</div>
+            <Input value={clientId} onChange={e => setClientId(e.target.value)} style={{ fontFamily: MONO, fontSize: 12 }} placeholder="your-client-id" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>Client Secret</div>
+            <Input.Password value={clientSecret} onChange={e => setClientSecret(e.target.value)} style={{ fontFamily: MONO, fontSize: 12 }} placeholder="your-client-secret" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>Scope（可选）</div>
+            <Input value={scope} onChange={e => setScope(e.target.value)} placeholder="read write" style={{ fontFamily: MONO, fontSize: 12 }} />
+          </div>
+        </div>
+        <Button type="primary" loading={fetching} onClick={handleFetch}>获取 Token</Button>
+      </div>
+
+      {/* 结果区 */}
+      {tokenResult ? (tokenResult.error ? (
+        <div style={{ color: '#e53935', padding: 14, background: '#fff5f5', borderRadius: 12, fontSize: 12, border: '1px solid #ffcdd2' }}>{tokenResult.error}</div>
+      ) : (
+        <div style={{ padding: 16, border: `1px solid ${theme.border}`, borderRadius: 14, background: '#fff' }}>
+          {tokenResult.parsed?.access_token && (<>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>Access Token</div>
+              <div style={{ padding: 10, background: theme.pale, borderRadius: 10, fontFamily: MONO, fontSize: 11, border: `1px solid ${theme.border}`, wordBreak: 'break-all', position: 'relative' }}>
+                {tokenResult.parsed.access_token}
+                <Button type="link" size="small" icon={<CopyOutlined />} style={{ position: 'absolute', top: 4, right: 4, fontSize: 10 }}
+                  onClick={() => copy(tokenResult.parsed.access_token)}>复制</Button>
+              </div>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>请求时这样用</div>
+              <div style={{ padding: 10, background: '#1e1e2e', color: '#cdd6f4', borderRadius: 10, fontFamily: MONO, fontSize: 12 }}>
+                Authorization: <span style={{ color: '#a6e3a1' }}>Bearer {tokenResult.parsed.access_token.substring(0, 30)}...</span>
+              </div>
+              <Button size="small" icon={<CopyOutlined />} style={{ marginTop: 6 }}
+                onClick={() => copy(`Bearer ${tokenResult.parsed.access_token}`)}>复制完整 Header 值</Button>
+            </div>
+            <div style={{ display: 'flex', gap: 16, fontSize: 11, color: '#8c8c8c' }}>
+              {tokenResult.parsed.expires_in && <span>有效期: {tokenResult.parsed.expires_in}秒</span>}
+              {tokenResult.parsed.token_type && <span>类型: {tokenResult.parsed.token_type}</span>}
+              {tokenResult.parsed.scope && <span>Scope: {tokenResult.parsed.scope}</span>}
+            </div>
+          </>)}
+          {!tokenResult.parsed?.access_token && (
+            <div>
+              <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>响应</div>
+              <pre style={{ padding: 10, background: theme.pale, borderRadius: 10, fontFamily: MONO, fontSize: 11, border: `1px solid ${theme.border}`, whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0, maxHeight: 200, overflow: 'auto' }}>
+                {tokenResult.parsed ? JSON.stringify(tokenResult.parsed, null, 2) : tokenResult.raw?.body || '(empty)'}
+              </pre>
+            </div>
+          )}
+        </div>
+      )) : (
+        <div style={{ textAlign: 'center', padding: 30, color: '#c9cdd4', fontSize: 13 }}>
+          填写 OAuth2 配置后点击「获取 Token」
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ━━━ 主页面 ━━━
-const TOOL_MAP = { json: JsonTool, codec: CodecTool, timestamp: TimestampTool, regex: RegexTool, datagen: DataGenTool, diff: DiffTool }
+// ━━━ 主页面 ━━━
+const TOOL_MAP = { json: JsonTool, codec: CodecTool, timestamp: TimestampTool, regex: RegexTool, datagen: DataGenTool, diff: DiffTool, jwt: JwtTool }
 
 export default function Toolbox() {
   const [activeTool, setActiveTool] = useState('json')
