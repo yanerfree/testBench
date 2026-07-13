@@ -110,6 +110,7 @@ async def mcp_generate(
             all_tool_calls = []
             step_passed = False
             for action_round in range(6):
+                await bridge.wait(500)  # 等页面稳定再 snapshot
                 snap = await bridge.snapshot()
                 hint = (f"\n已执行了 {action_round} 轮。检查当前页面，步骤完成则只输出 browser_snapshot。" if action_round > 0 else "")
                 tool_calls = _plan_step(action + hint, expected, snap, unique_suffix)
@@ -317,12 +318,17 @@ async def _execute_mcp_actions(bridge, tool_calls: list[dict], step_name: str) -
             args = call.get("args", {})
             if not tool:
                 continue
+            # 点击前先等元素就绪
+            if tool == "browser_click" and args.get("target"):
+                try:
+                    await bridge.call_tool("browser_wait_for", {"target": args["target"], "state": "visible", "timeout": 5000})
+                except Exception:
+                    pass
             result = await bridge.call_tool(tool, args)
             if result and "Error" in result[:100]:
                 return {"step": step_name, "status": "failed", "error": result[:300]}
-            # 等待页面稳定
             if tool in ("browser_click", "browser_type", "browser_navigate", "browser_select_option"):
-                await bridge.wait(500)
+                await bridge.wait(1000)
         return {"step": step_name, "status": "passed"}
     except Exception as e:
         return {"step": step_name, "status": "failed", "error": str(e)[:300]}
