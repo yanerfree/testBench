@@ -96,6 +96,80 @@ function findFolderPath(tree, targetId) {
   return null
 }
 
+function StepTable({ steps, updateStep, addStep, removeStep }) {
+  const [actionPct, setActionPct] = useState(60)
+  const dragging = useRef(false)
+  const tableRef = useRef(null)
+
+  useEffect(() => {
+    const onMove = e => {
+      if (!dragging.current || !tableRef.current) return
+      const rect = tableRef.current.getBoundingClientRect()
+      const fixedLeft = 24 + 28 + 30 // drag-handle + seq + gaps
+      const fixedRight = 32 + 10 // delete btn + gap
+      const available = rect.width - fixedLeft - fixedRight
+      const x = e.clientX - rect.left - fixedLeft
+      const pct = Math.max(25, Math.min(75, (x / available) * 100))
+      setActionPct(pct)
+    }
+    const onUp = () => { dragging.current = false; document.body.style.cursor = '' }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [])
+
+  const startDrag = e => { e.preventDefault(); dragging.current = true; document.body.style.cursor = 'col-resize' }
+
+  return (
+    <div ref={tableRef} style={{ borderRadius: 12, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+      <div style={{
+        display: 'flex', gap: 10, padding: '6px 14px', fontSize: 12, fontWeight: 600,
+        background: 'rgba(0,0,0,0.02)', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
+      }}>
+        <span style={{ width: 24, flexShrink: 0 }}></span>
+        <span style={{ width: 28, flexShrink: 0 }}>#</span>
+        <span style={{ flex: `${actionPct} 0 0`, minWidth: 0 }}>操作步骤</span>
+        <div onMouseDown={startDrag}
+          style={{ width: 6, flexShrink: 0, cursor: 'col-resize', alignSelf: 'stretch', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 2, height: 14, borderRadius: 1, background: 'rgba(0,0,0,0.12)' }} />
+        </div>
+        <span style={{ flex: `${100 - actionPct} 0 0`, minWidth: 0 }}>预期结果</span>
+        <span style={{ width: 32, flexShrink: 0 }}></span>
+      </div>
+      {steps.map((s, i) => (
+        <div key={i} style={{
+          display: 'flex', gap: 10, padding: '8px 14px', fontSize: 13,
+          background: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)',
+          borderBottom: i < steps.length - 1 ? '1px solid rgba(0,0,0,0.03)' : 'none', alignItems: 'flex-start',
+        }}>
+          <HolderOutlined style={{ color: 'rgba(0,0,0,0.15)', cursor: 'grab', flexShrink: 0, marginTop: 6 }} />
+          <span style={{
+            width: 28, height: 24, borderRadius: 12, background: '#e0f7f6', color: '#0ea5a0',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0, marginTop: 2,
+          }}>{s.seq}</span>
+          <Input.TextArea value={s.action} onChange={e => updateStep(i, 'action', e.target.value)}
+            placeholder="描述操作步骤..." variant="borderless" autoSize={{ minRows: 1, maxRows: 8 }}
+            style={{ flex: `${actionPct} 0 0`, minWidth: 0, fontSize: 13, resize: 'none' }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey && i === steps.length - 1 && s.action.trim()) {
+                e.preventDefault(); addStep()
+                setTimeout(() => { const inputs = document.querySelectorAll('[placeholder="描述操作步骤..."]'); inputs[inputs.length - 1]?.focus() }, 50)
+              }
+            }} />
+          <div onMouseDown={startDrag}
+            style={{ width: 6, flexShrink: 0, cursor: 'col-resize', alignSelf: 'stretch' }} />
+          <Input.TextArea value={s.expected || ''} onChange={e => updateStep(i, 'expected', e.target.value)}
+            placeholder="预期结果..." variant="borderless" autoSize={{ minRows: 1, maxRows: 8 }}
+            style={{ flex: `${100 - actionPct} 0 0`, minWidth: 0, fontSize: 13, color: '#86909c', resize: 'none' }} />
+          <Button type="text" danger size="small" icon={<DeleteOutlined />}
+            onClick={() => removeStep(i)} disabled={steps.length <= 1}
+            style={{ flexShrink: 0, opacity: steps.length <= 1 ? 0.3 : 1, marginTop: 2 }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function ScenarioStepsView({ steps, extraCol, extraColLabel, extraPlaceholder, extraColor }) {
   if (!steps?.length) return <Empty description="暂无步骤" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: 24 }} />
   return (
@@ -571,7 +645,7 @@ function ScenarioEditor({
           }).catch(() => {})
       }
     }
-  }, [caseId, type])
+  }, [caseId, type, scenario])
 
   // ── UI 类型：专用简洁布局 ──
   if (type !== 'api') {
@@ -1545,44 +1619,7 @@ export default function CaseDetail() {
                     <h4 style={{ fontSize: 13, color: '#86909c', margin: 0 }}>测试步骤</h4>
                     <Button type="primary" ghost size="small" icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
                   </div>
-                  <div style={{ borderRadius: 12, border: '1px solid rgba(0,0,0,0.04)', overflow: 'hidden' }}>
-                    <div style={{
-                      display: 'flex', gap: 10, padding: '6px 14px', fontSize: 12, fontWeight: 600,
-                      background: 'rgba(0,0,0,0.02)', color: '#86909c', borderBottom: '1px solid rgba(0,0,0,0.04)', alignItems: 'center',
-                    }}>
-                      <span style={{ width: 24, flexShrink: 0 }}></span>
-                      <span style={{ width: 28, flexShrink: 0 }}>#</span>
-                      <span style={{ flex: 2 }}>操作步骤</span>
-                      <span style={{ flex: 1 }}>预期结果</span>
-                      <span style={{ width: 32, flexShrink: 0 }}></span>
-                    </div>
-                    {steps.map((s, i) => (
-                      <div key={i} style={{
-                        display: 'flex', gap: 10, padding: '8px 14px', fontSize: 13,
-                        background: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)',
-                        borderBottom: i < steps.length - 1 ? '1px solid rgba(0,0,0,0.03)' : 'none', alignItems: 'center',
-                      }}>
-                        <HolderOutlined style={{ color: 'rgba(0,0,0,0.15)', cursor: 'grab', flexShrink: 0 }} />
-                        <span style={{
-                          width: 28, height: 24, borderRadius: 12, background: '#e0f7f6', color: '#0ea5a0',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0,
-                        }}>{s.seq}</span>
-                        <Input value={s.action} onChange={e => updateStep(i, 'action', e.target.value)}
-                          placeholder="描述操作步骤..." variant="borderless" style={{ flex: 2, fontSize: 13 }}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter' && i === steps.length - 1 && s.action.trim()) {
-                              e.preventDefault(); addStep()
-                              setTimeout(() => { const inputs = document.querySelectorAll('[placeholder="描述操作步骤..."]'); inputs[inputs.length - 1]?.focus() }, 50)
-                            }
-                          }} />
-                        <Input value={s.expected || ''} onChange={e => updateStep(i, 'expected', e.target.value)}
-                          placeholder="预期结果..." variant="borderless" style={{ flex: 1, fontSize: 13, color: '#86909c' }} />
-                        <Button type="text" danger size="small" icon={<DeleteOutlined />}
-                          onClick={() => removeStep(i)} disabled={steps.length <= 1}
-                          style={{ flexShrink: 0, opacity: steps.length <= 1 ? 0.3 : 1 }} />
-                      </div>
-                    ))}
-                  </div>
+                  <StepTable steps={steps} updateStep={updateStep} addStep={addStep} removeStep={removeStep} />
                   <Button type="dashed" block style={{ marginTop: 8, borderRadius: 12 }} icon={<PlusOutlined />} onClick={addStep}>添加步骤</Button>
                 </div>
 

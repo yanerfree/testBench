@@ -239,7 +239,7 @@ def _plan_step(action: str, expected: str, snapshot: str, suffix: str, error: st
 - browser_type: 输入文字 → {{"target": "输入框ref如e20", "text": "要填的值"}}
 - browser_select_option: 选择下拉选项 → {{"target": "下拉框ref", "values": ["选项值"]}}
 - browser_press_key: 按键 → {{"key": "Enter"}}
-- browser_navigate: 导航 → {{"url": "地址"}}
+- browser_navigate: 导航 → {{"url": "地址"}}（注意：不要用这个工具，页面导航靠点击元素完成）
 - browser_snapshot: 获取页面快照 → {{}}
 
 ## 规则
@@ -316,24 +316,29 @@ def _verify_step(action: str, expected: str, snapshot: str) -> dict:
 def _parse_network_requests(network_text: str) -> list[dict]:
     """解析 browser_network_requests 的输出"""
     requests = []
-    lines = network_text.strip().splitlines()
-    for line in lines:
-        if "/api/" in line:
-            parts = line.strip().split()
-            if len(parts) >= 3:
-                method = parts[0] if parts[0] in ("GET", "POST", "PUT", "DELETE", "PATCH") else "GET"
-                url = parts[1] if len(parts) > 1 else ""
-                status = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
-                requests.append({"method": method, "url": url, "path": url.split("//", 1)[-1].split("/", 1)[-1] if "//" in url else url, "status": status})
+    for line in network_text.strip().splitlines():
+        if "/api/" not in line:
+            continue
+        # 格式: "123. [GET] http://..."
+        import re
+        m = re.match(r'\d+\.\s*\[(\w+)\]\s*(\S+)', line.strip())
+        if m:
+            method = m.group(1)
+            url = m.group(2)
+            path = url.split("//", 1)[-1].split("/", 1)[-1] if "//" in url else url
+            requests.append({"method": method, "url": url, "path": "/" + path, "status": 200})
     return requests
 
 
 def _build_script(fixture_name: str, actions: list[dict]) -> str:
     """从 MCP 操作记录构建可重复运行的 Playwright Python 脚本"""
     lines = [
+        "import os",
         "import pytest",
         "from playwright.sync_api import Page, expect",
         "from tea_step import tea_step",
+        "",
+        'BASE_URL = os.getenv("BASE_URL", "")',
         "",
         "",
         f"def test_generated({fixture_name}: Page):",
@@ -347,7 +352,6 @@ def _build_script(fixture_name: str, actions: list[dict]) -> str:
         for call in act.get("tools", []):
             tool = call.get("tool", "")
             args = call.get("args", {})
-            # 从 snapshot_context 获取稳定选择器
             selector = args.get("stable_selector", "")
             if tool == "browser_click":
                 if selector:
@@ -360,11 +364,16 @@ def _build_script(fixture_name: str, actions: list[dict]) -> str:
                 if selector:
                     lines.append(f'        {selector}.fill("{value}")')
                 else:
-                    element = args.get("target", "")
                     lines.append(f'        page.get_by_role("textbox").first.fill("{value}")')
             elif tool == "browser_navigate":
                 url = args.get("url", "")
-                lines.append(f'        page.goto("{url}")')
+                # 不硬编码 URL，用 BASE_URL + 路径
+                if "://" in url:
+                    import re as _re
+                    path = _re.sub(r'https?://[^/]+', '', url)
+                    lines.append(f'        page.goto(BASE_URL + "{path}")')
+                else:
+                    lines.append(f'        page.goto(BASE_URL + "{url}")')
             elif tool == "browser_press_key":
                 key = args.get("key", "Enter")
                 lines.append(f'        page.keyboard.press("{key}")')
