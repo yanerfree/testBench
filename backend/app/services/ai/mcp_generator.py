@@ -110,10 +110,18 @@ async def mcp_generate(
             tool_calls = _plan_step(action, expected, snap, unique_suffix)
 
             # 执行操作
+            snap_before = snap[:200]  # 记录操作前的 snapshot 前缀
             step_result = await _execute_mcp_actions(bridge, tool_calls, action)
             results.append(step_result)
 
-            # 记录工具调用（含 stable_selector）
+            # 验证：操作后页面应该有变化（防止假通过）
+            if step_result["status"] == "passed" and not is_verify:
+                await bridge.wait(500)
+                snap_after = await bridge.snapshot()
+                if snap_after[:200] == snap_before and len(tool_calls) > 0:
+                    # 页面没变化，说明操作可能没生效
+                    logger.warning("Step %d: page unchanged after operations, may be fake pass", i+1)
+
             logger.info("Step %d tools: %s", i+1, json.dumps(tool_calls, ensure_ascii=False)[:500])
 
             if step_result["status"] == "failed":
@@ -230,7 +238,10 @@ def _plan_step(action: str, expected: str, snapshot: str, suffix: str, error: st
     """让 LLM 根据 snapshot 规划 MCP 工具调用"""
     error_hint = f"\n\n上次尝试失败了：{error}\n请换一种方式。" if error else ""
 
-    prompt = f"""你是浏览器自动化 Agent。根据页面快照，规划执行操作需要的工具调用。
+    prompt = f"""你是浏览器自动化 Agent。根据页面快照，规划执行一个步骤所需的**全部**工具调用。
+
+**重要：步骤描述中的每个操作都必须有对应的工具调用。不能只做一个就跳过剩余的。**
+例如"输入邮箱，选择角色，点击发送"需要 3 个工具调用（type + click + click），不是 1 个。
 
 ## 当前页面快照
 {snapshot[:4000]}
