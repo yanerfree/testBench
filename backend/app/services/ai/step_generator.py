@@ -263,28 +263,25 @@ def step_by_step_generate(
                         on_step({"type": "step_done", "seq": i + 1, "action": action, "status": "failed", "error": last_error[:200], "failure_type": failure_type})
                     break
 
-        # 后置清理 — 通过 API 删除创建的服务（比 UI 操作更可靠）
+        # 后置清理 — 通过 API 删除创建的服务
         all_main_passed = all(r["status"] == "passed" for r in results if "[前置]" not in r.get("step", ""))
         if created_name and all_main_passed:
             if on_step:
                 on_step({"type": "step_start", "seq": 999, "action": f"[后置清理] 删除 {created_name}", "phase": "teardown"})
             try:
-                # 通过 JavaScript 调用 API 删除
                 cleanup_code = f'''
-import time
-# 搜索刚创建的服务
-page.get_by_text("服务管理").click()
-page.wait_for_load_state("networkidle")
-time.sleep(1)
-# 通过 API 查找并删除
 result = page.evaluate("""async () => {{
-    const resp = await fetch('/api/v1/services?search={created_name}&page_size=10');
-    const data = await resp.json();
-    const services = (data.data || data.items || []).filter(s => s.name && s.name.includes('{created_name}'));
-    for (const svc of services) {{
-        await fetch('/api/v1/services/' + svc.id, {{ method: 'DELETE' }});
-    }}
-    return services.length;
+    try {{
+        const resp = await fetch('/api/v1/services?page_size=100');
+        const data = await resp.json();
+        const items = data.data || data.items || [];
+        const target = items.find(s => s.name && s.name.includes('{created_name}'));
+        if (target) {{
+            await fetch('/api/v1/services/' + target.id, {{ method: 'DELETE' }});
+            return 'deleted: ' + target.name;
+        }}
+        return 'not found';
+    }} catch(e) {{ return 'error: ' + e.message; }}
 }}""")
 '''
                 teardown_result = _execute_step(page, cleanup_code, f"[后置清理] 删除 {created_name}")
