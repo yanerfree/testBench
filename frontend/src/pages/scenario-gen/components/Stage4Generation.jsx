@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Card, Tag, Progress, Button, Space, Typography, Empty, Tabs } from 'antd'
+import { Card, Tag, Progress, Button, Space, Typography, Empty, Tabs, message } from 'antd'
 import { ReloadOutlined, PauseCircleOutlined } from '@ant-design/icons'
 import { api } from '../../../utils/request'
 
@@ -64,8 +64,11 @@ export default function Stage4Generation({ projectId, branchId, taskId, onDone }
   }
 
   const handleResume = async () => {
-    // S4.6 将实现续跑 API；当前仅刷新状态
-    api.get(basePath).then(res => setTask(res.data)).catch(() => {})
+    try {
+      await api.post(`${basePath}/resume`)
+      message.success('已发起断点续跑')
+      api.get(basePath).then(res => setTask(res.data)).catch(() => {})
+    } catch { /* request.js handles */ }
   }
 
   const filteredCases = dimFilter === 'all'

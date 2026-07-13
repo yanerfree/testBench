@@ -23,7 +23,7 @@ const STATUS_MAP = {
 
 const STAGE_FROM_STATUS = {
   extracting: 'input',
-  model_ready: 'model',
+  model_ready: 'requirements',
   confirmed: 'model',
   generating: 'generate',
   completed: 'review',
@@ -158,7 +158,10 @@ function TaskDetail({ projectId, taskId }) {
     api.get(`/projects/${projectId}/branches/${branchId}/scenario-gen/tasks/${taskId}`)
       .then(res => {
         setTask(res.data)
-        const autoStage = STAGE_FROM_STATUS[res.data.status] || 'input'
+        let autoStage = STAGE_FROM_STATUS[res.data.status] || 'input'
+        if (res.data.status === 'model_ready' && res.data.hasModel) {
+          autoStage = 'model'
+        }
         if (!searchParams.get('stage')) {
           setSearchParams({ taskId, stage: autoStage }, { replace: true })
         }
@@ -182,7 +185,7 @@ function TaskDetail({ projectId, taskId }) {
         {task && <Tag color={STATUS_MAP[task.status]?.color}>{STATUS_MAP[task.status]?.label}</Tag>}
       </div>
 
-      <WizardStepper currentStage={stage} onStageClick={handleStageChange} taskStatus={task?.status} />
+      <WizardStepper currentStage={stage} onStageClick={handleStageChange} taskStatus={task?.status} hasModel={task?.hasModel} />
 
       <div style={{ marginTop: 24, padding: 24, background: 'rgba(255,255,255,0.6)', borderRadius: 12,
         border: '1px solid rgba(0,0,0,0.04)', minHeight: 400 }}>
@@ -201,6 +204,7 @@ function TaskDetail({ projectId, taskId }) {
             projectId={projectId}
             branchId={branchId}
             taskId={taskId}
+            taskStatus={task?.status}
             docContent={task?.docContent}
             healthCheck={task?.healthCheck}
             onConfirm={(data) => {

@@ -40,7 +40,7 @@ EDIT_ROLES = ("project_admin", "developer", "tester")
 READ_ROLES = ("project_admin", "developer", "tester", "viewer")
 
 
-def _task_to_dict(t: GenerationTask, *, last_seq: int | None = None) -> dict:
+def _task_to_dict(t: GenerationTask, *, last_seq: int | None = None, has_model: bool | None = None) -> dict:
     d = {
         "id": str(t.id),
         "project_id": str(t.project_id),
@@ -61,6 +61,8 @@ def _task_to_dict(t: GenerationTask, *, last_seq: int | None = None) -> dict:
     }
     if last_seq is not None:
         d["last_seq"] = last_seq
+    if has_model is not None:
+        d["hasModel"] = has_model
     return d
 
 
@@ -178,7 +180,13 @@ async def get_task(
     """任务全量快照 + last_seq（前端先渲染快照，再带 after_seq=last_seq 订阅增量）"""
     task = await _get_task_checked(session, project_id, branch_id, task_id)
     seq = await pipeline.last_seq(session, task.id)
-    return {"data": _task_to_dict(task, last_seq=seq)}
+    has_model = None
+    if task.status in ("model_ready", "confirmed"):
+        model_exists = (await session.execute(
+            select(ScenarioModel.id).where(ScenarioModel.task_id == task_id).limit(1)
+        )).scalar_one_or_none()
+        has_model = model_exists is not None
+    return {"data": _task_to_dict(task, last_seq=seq, has_model=has_model)}
 
 
 @router.post("/tasks/{task_id}/abort")

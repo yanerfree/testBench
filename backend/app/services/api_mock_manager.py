@@ -210,7 +210,7 @@ class ApiMockServerManager:
     async def _match_route(self, method: str, path: str):
         async with async_session_factory() as session:
             routes = await svc.list_routes(session)
-            enabled = [r for r in routes if r.enabled and r.method.upper() == method.upper()]
+            enabled = [r for r in routes if r.enabled and (r.method.upper() == "ANY" or r.method.upper() == method.upper())]
 
             # 1. 精确匹配
             for r in enabled:

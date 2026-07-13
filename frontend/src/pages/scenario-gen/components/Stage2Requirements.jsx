@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Table, Button, Tag, Input, Alert, Card, Space, Drawer, Typography, Popconfirm, message } from 'antd'
-import { PlusOutlined, SearchOutlined, CheckOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Table, Button, Tag, Input, Alert, Card, Space, Drawer, Typography, Popconfirm, message, Spin } from 'antd'
+import { PlusOutlined, SearchOutlined, CheckOutlined, DeleteOutlined, EditOutlined, LoadingOutlined } from '@ant-design/icons'
 import { api } from '../../../utils/request'
 
 const { Text, Paragraph } = Typography
@@ -11,15 +11,18 @@ const ANCHOR_TAG = {
   unanchored: { color: 'default', label: '未定位' },
 }
 
-export default function Stage2Requirements({ projectId, branchId, taskId, docContent, healthCheck, onConfirm }) {
+export default function Stage2Requirements({ projectId, branchId, taskId, taskStatus, docContent, healthCheck, onConfirm }) {
   const [points, setPoints] = useState([])
   const [loading, setLoading] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedQuote, setSelectedQuote] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [editTitle, setEditTitle] = useState('')
+  const [currentHealthCheck, setCurrentHealthCheck] = useState(healthCheck)
+  const pollRef = useRef(null)
 
   const basePath = `/projects/${projectId}/branches/${branchId}/scenario-gen/tasks/${taskId}`
+  const isExtracting = taskStatus === 'extracting'
 
   const fetchPoints = useCallback(async () => {
     setLoading(true)
@@ -30,7 +33,42 @@ export default function Stage2Requirements({ projectId, branchId, taskId, docCon
     finally { setLoading(false) }
   }, [basePath])
 
+  const fetchTask = useCallback(async () => {
+    try {
+      const res = await api.get(basePath)
+      const task = res.data
+      if (task.status === 'failed') {
+        if (pollRef.current) {
+          clearInterval(pollRef.current)
+          pollRef.current = null
+        }
+        message.error(task.error_message || task.errorMessage || '提取失败')
+        return
+      }
+      if (task.status !== 'extracting') {
+        if (pollRef.current) {
+          clearInterval(pollRef.current)
+          pollRef.current = null
+        }
+        setCurrentHealthCheck(task.health_check || task.healthCheck)
+        fetchPoints()
+      }
+    } catch { /* */ }
+  }, [basePath, fetchPoints])
+
   useEffect(() => { fetchPoints() }, [fetchPoints])
+
+  useEffect(() => {
+    if (isExtracting && !pollRef.current) {
+      pollRef.current = setInterval(fetchTask, 3000)
+    }
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
+    }
+  }, [isExtracting, fetchTask])
 
   const handleDelete = async (id) => {
     try {
@@ -71,9 +109,9 @@ export default function Stage2Requirements({ projectId, branchId, taskId, docCon
     setDrawerOpen(true)
   }
 
-  const score = healthCheck?.score
-  const issues = healthCheck?.issues || []
-  const belowThreshold = healthCheck?.below_threshold
+  const score = currentHealthCheck?.score
+  const issues = currentHealthCheck?.issues || []
+  const belowThreshold = currentHealthCheck?.below_threshold
 
   const columns = [
     { title: '编号', dataIndex: 'code', key: 'code', width: 70,
@@ -127,6 +165,16 @@ export default function Stage2Requirements({ projectId, branchId, taskId, docCon
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
+      {/* 提取中等待 */}
+      {isExtracting && points.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '60px 0' }}>
+          <Spin indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} />
+          <p style={{ marginTop: 12, color: '#8c919e' }}>AI 正在分析需求文档，提取需求点...</p>
+          <p style={{ fontSize: 12, color: '#bfc4cd' }}>每 3 秒自动检查</p>
+        </div>
+      )}
+
+      {(!isExtracting || points.length > 0) && <>
       {/* 质量检测卡 */}
       {score !== null && score !== undefined && (
         <Card size="small" style={{
@@ -185,6 +233,7 @@ export default function Stage2Requirements({ projectId, branchId, taskId, docCon
       </div>
 
       {/* 原文引用抽屉 */}
+      </>}
       <Drawer
         title={selectedQuote ? `${selectedQuote.code} — 原文引用` : '原文引用'}
         open={drawerOpen}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Tabs, Table, Tag, Button, Input, Space, Typography, message, Alert } from 'antd'
 import { CheckOutlined, PlusOutlined, DeleteOutlined, EditOutlined, FastForwardOutlined } from '@ant-design/icons'
 import { api } from '../../../utils/request'
@@ -19,6 +19,7 @@ export default function Stage3ScenarioModel({ projectId, branchId, taskId, onCon
   const [loading, setLoading] = useState(false)
   const [editingCell, setEditingCell] = useState(null)
   const [editValue, setEditValue] = useState('')
+  const pollRef = useRef(null)
 
   const basePath = `/projects/${projectId}/branches/${branchId}/scenario-gen/tasks/${taskId}`
 
@@ -27,11 +28,27 @@ export default function Stage3ScenarioModel({ projectId, branchId, taskId, onCon
     try {
       const res = await api.get(`${basePath}/scenario-model`)
       setModel(res.data)
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
     } catch { /* 可能还没生成 */ }
     finally { setLoading(false) }
   }, [basePath])
 
   useEffect(() => { fetchModel() }, [fetchModel])
+
+  useEffect(() => {
+    if (!model && !pollRef.current) {
+      pollRef.current = setInterval(fetchModel, 3000)
+    }
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
+    }
+  }, [model, fetchModel])
 
   const saveField = async (field, value) => {
     try {
@@ -51,8 +68,9 @@ export default function Stage3ScenarioModel({ projectId, branchId, taskId, onCon
   if (!model) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 0', color: '#8c919e' }}>
-        <p>场景模型生成中或尚未生成...</p>
+        <p>场景模型生成中，请稍候...</p>
         <Button onClick={fetchModel} loading={loading}>刷新</Button>
+        <p style={{ fontSize: 12, marginTop: 8 }}>每 3 秒自动检查</p>
       </div>
     )
   }

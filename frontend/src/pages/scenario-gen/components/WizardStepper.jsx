@@ -10,20 +10,25 @@ const STAGES = [
 
 const STAGE_ORDER = { input: 0, requirements: 1, model: 2, generate: 3, review: 4 }
 
-const STATUS_TO_STAGE_INDEX = {
-  extracting: 0,
-  model_ready: 2,
-  confirmed: 2,
-  generating: 3,
-  completed: 4,
-  partial_failed: 3,
-  failed: 3,
-  aborted: 3,
+function getReachedIndex(taskStatus, hasModel) {
+  const base = {
+    extracting: 0,
+    confirmed: 2,
+    generating: 3,
+    completed: 4,
+    partial_failed: 3,
+    failed: 3,
+    aborted: 3,
+  }
+  if (taskStatus === 'model_ready') {
+    return hasModel ? 2 : 1
+  }
+  return base[taskStatus] ?? 0
 }
 
-export default function WizardStepper({ currentStage, onStageClick, taskStatus }) {
+export default function WizardStepper({ currentStage, onStageClick, taskStatus, hasModel }) {
   const currentIndex = STAGE_ORDER[currentStage] ?? 0
-  const reachedIndex = STATUS_TO_STAGE_INDEX[taskStatus] ?? 0
+  const reachedIndex = getReachedIndex(taskStatus, hasModel)
 
   return (
     <Steps

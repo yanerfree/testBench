@@ -249,8 +249,17 @@ def _plan_step(action: str, expected: str, snapshot: str, suffix: str, error: st
 - 如果快照中找不到目标元素，输出 {{"tool": "browser_snapshot", "args": {{}}}} 重新获取
 
 ## 输出格式（每行一个 JSON）
-{{"tool": "browser_click", "args": {{"target": "e15"}}}}
-{{"tool": "browser_type", "args": {{"target": "e20", "text": "test-{suffix}"}}}}
+每个工具调用必须包含 stable_selector（稳定选择器，用于保存为可重复运行的脚本）：
+{{"tool": "browser_click", "args": {{"target": "e15", "stable_selector": "page.get_by_role(\"button\", name=\"登录\")"}}}}
+{{"tool": "browser_type", "args": {{"target": "e20", "text": "test-{suffix}", "stable_selector": "page.get_by_role(\"textbox\", name=\"you@example.com\")"}}}}
+
+stable_selector 规则：
+- button → page.get_by_role("button", name="按钮文字")
+- textbox → page.get_by_role("textbox", name="占位符或标签")
+- link → page.get_by_role("link", name="链接文字")
+- heading → page.get_by_role("heading", name="标题")
+- 通用文字 → page.get_by_text("文字")
+- 多个匹配 → 加 .first
 """
 
     try:
@@ -317,7 +326,7 @@ def _parse_network_requests(network_text: str) -> list[dict]:
 
 
 def _build_script(fixture_name: str, actions: list[dict]) -> str:
-    """从 MCP 操作记录构建 Playwright Python 脚本"""
+    """从 MCP 操作记录构建可重复运行的 Playwright Python 脚本"""
     lines = [
         "import pytest",
         "from playwright.sync_api import Page, expect",
@@ -335,21 +344,35 @@ def _build_script(fixture_name: str, actions: list[dict]) -> str:
         for call in act.get("tools", []):
             tool = call.get("tool", "")
             args = call.get("args", {})
+            # 从 snapshot_context 获取稳定选择器
+            selector = args.get("stable_selector", "")
             if tool == "browser_click":
-                ref = args.get("ref", "")
-                lines.append(f'        page.locator("[data-ref=\\"{ref}\\"]").click()')
-            elif tool == "browser_fill":
-                ref = args.get("ref", "")
-                value = args.get("value", "")
-                lines.append(f'        page.locator("[data-ref=\\"{ref}\\"]").fill("{value}")')
+                if selector:
+                    lines.append(f'        {selector}.click()')
+                else:
+                    element = args.get("element", args.get("target", ""))
+                    lines.append(f'        page.get_by_text("{element}").first.click()')
+            elif tool == "browser_type":
+                value = args.get("text", "")
+                if selector:
+                    lines.append(f'        {selector}.fill("{value}")')
+                else:
+                    element = args.get("target", "")
+                    lines.append(f'        page.get_by_role("textbox").first.fill("{value}")')
             elif tool == "browser_navigate":
                 url = args.get("url", "")
                 lines.append(f'        page.goto("{url}")')
             elif tool == "browser_press_key":
                 key = args.get("key", "Enter")
                 lines.append(f'        page.keyboard.press("{key}")')
+            elif tool == "browser_select_option":
+                values = args.get("values", [])
+                if selector:
+                    lines.append(f'        {selector}.select_option({json.dumps(values, ensure_ascii=False)})')
+            elif tool in ("browser_snapshot", "browser_wait_for"):
+                pass
             else:
-                lines.append(f'        # {tool}({json.dumps(args, ensure_ascii=False)})')
+                lines.append(f'        pass  # {tool}')
         lines.append(f'        page.wait_for_load_state("networkidle")')
         lines.append("")
     return "\n".join(lines)

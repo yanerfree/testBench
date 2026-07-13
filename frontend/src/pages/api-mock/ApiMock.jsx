@@ -25,6 +25,7 @@ const STATUS_COLOR = (sc) => {
 }
 
 const METHOD_COLOR = (m) => {
+  if (m === 'ANY') return '#d4380d'
   if (m === 'GET') return '#0ea5a0'
   if (m === 'POST') return '#fa8c16'
   if (m === 'DELETE') return '#e8453c'
@@ -378,7 +379,7 @@ export default function ApiMock() {
               style={{ width: 100, flexShrink: 0 }}
               popupMatchSelectWidth={100}
             >
-              {['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].map(m => (
+              {['ANY', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].map(m => (
                 <Select.Option key={m} value={m}>
                   <span style={{ fontWeight: 600, color: METHOD_COLOR(m) }}>{m}</span>
                 </Select.Option>

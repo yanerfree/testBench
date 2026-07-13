@@ -468,8 +468,11 @@ function ScenarioEditor({
         .finally(() => setDebugRunning(false))
       return
     }
-    // UI 类型：运行验证也走 MCP 引擎（和 AI 生成一样的流程）
-    handleAiGenerate()
+    // UI 类型：运行已保存的脚本
+    runScriptWithStream((result) => {
+      if (result.status === 'passed') message.success('验证通过！')
+      else message.warning('验证失败，查看详情')
+    })
   }
 
   const initScenario = (fromManual) => {
