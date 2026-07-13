@@ -113,6 +113,9 @@ async def mcp_generate(
             step_result = await _execute_mcp_actions(bridge, tool_calls, action)
             results.append(step_result)
 
+            # 记录工具调用（含 stable_selector）
+            logger.info("Step %d tools: %s", i+1, json.dumps(tool_calls, ensure_ascii=False)[:500])
+
             if step_result["status"] == "failed":
                 # 修复：重新获取快照，让 LLM 重新规划
                 for retry in range(2):

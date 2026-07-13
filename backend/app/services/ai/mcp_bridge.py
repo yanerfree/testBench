@@ -33,11 +33,12 @@ def _ensure_mcp_server():
     # 启动 MCP Server
     logger.info("Starting Playwright MCP Server on port %d...", MCP_PORT)
     try:
-        _mcp_process = subprocess.Popen(
-            ["npx", "@playwright/mcp", "--port", str(MCP_PORT), "--headless", "--browser", "chromium", "--allowed-hosts", "*", "--ignore-https-errors"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        import os as _os
+        config_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(__file__)))), "playwright-mcp-config.json")
+        cmd = ["npx", "@playwright/mcp", "--port", str(MCP_PORT), "--headless", "--browser", "chromium", "--allowed-hosts", "*", "--ignore-https-errors"]
+        if _os.path.exists(config_path):
+            cmd.extend(["--config", config_path])
+        _mcp_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         # 等待启动
         for _ in range(15):
             time.sleep(1)
