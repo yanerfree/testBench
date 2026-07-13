@@ -130,6 +130,19 @@ async def mcp_generate(
                         break
                     step_result = retry_result
 
+            # 收集本步的网络请求
+            try:
+                net = await bridge.call_tool("browser_network_requests")
+                step_reqs = _parse_network_requests(net)
+                # 去重合并
+                existing_urls = {r["url"] for r in captured_requests}
+                for req in step_reqs:
+                    if req["url"] not in existing_urls:
+                        captured_requests.append(req)
+                        existing_urls.add(req["url"])
+            except Exception:
+                pass
+
             # 记录操作用于脚本生成
             script_actions.append({"step": action, "tools": tool_calls, "status": results[-1]["status"]})
 
@@ -146,12 +159,7 @@ async def mcp_generate(
                 })
                 break
 
-        # 3. 获取网络请求
-        try:
-            net = await bridge.call_tool("browser_network_requests")
-            captured_requests = _parse_network_requests(net)
-        except Exception:
-            pass
+        # 网络请求已在每步收集完毕
 
     finally:
         await bridge.close()
