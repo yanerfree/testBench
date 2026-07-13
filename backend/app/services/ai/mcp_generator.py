@@ -240,10 +240,13 @@ def _plan_step(action: str, expected: str, snapshot: str, suffix: str, error: st
 - browser_snapshot: 获取页面快照 → {{}}
 
 ## 规则
-- 从快照中找到元素的 ref 编号（如 ref=e15），用 ref 操作
+- 从快照中找到元素的 ref 编号（如 [ref=e15]），用 target 参数传 ref
 - 每行输出一个 JSON 工具调用
+- 如果步骤包含多个操作（如"做A，然后做B"），为每个操作输出一行工具调用
+- 操作后如果页面会变化，在最后加 {{"tool": "browser_wait_for", "args": {{"time": 2000}}}} 等待
 - 如果步骤要输入名称，加时间戳后缀：原名-{suffix}
 - 不要编造 ref，只用快照中存在的
+- 如果快照中找不到目标元素，输出 {{"tool": "browser_snapshot", "args": {{}}}} 重新获取
 
 ## 输出格式（每行一个 JSON）
 {{"tool": "browser_click", "args": {{"target": "e15"}}}}
@@ -274,10 +277,14 @@ async def _execute_mcp_actions(bridge, tool_calls: list[dict], step_name: str) -
         for call in tool_calls:
             tool = call.get("tool", "")
             args = call.get("args", {})
+            if not tool:
+                continue
             result = await bridge.call_tool(tool, args)
-            if "Error" in result and "Error" in result[:50]:
+            if result and "Error" in result[:100]:
                 return {"step": step_name, "status": "failed", "error": result[:300]}
-            await bridge.wait(300)
+            # 等待页面稳定
+            if tool in ("browser_click", "browser_type", "browser_navigate", "browser_select_option"):
+                await bridge.wait(500)
         return {"step": step_name, "status": "passed"}
     except Exception as e:
         return {"step": step_name, "status": "failed", "error": str(e)[:300]}
