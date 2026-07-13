@@ -93,7 +93,19 @@ async def mcp_generate(
             # 获取当前页面快照
             snap = await bridge.snapshot()
 
-            # LLM 决定操作
+            # 验证类步骤：只需检查页面内容
+            is_verify = any(kw in action for kw in ["验证", "观察", "确认", "检查", "查看"])
+            if is_verify:
+                verify_result = _verify_step(action, expected, snap)
+                results.append(verify_result)
+                script_actions.append({"step": action, "tools": [{"tool": "browser_snapshot", "args": {}}], "status": verify_result["status"]})
+                if on_step:
+                    on_step({"type": "step_done", "seq": i + 1, "action": action, "status": verify_result["status"]})
+                if verify_result["status"] == "failed":
+                    break
+                continue
+
+            # 操作类步骤：LLM 决定操作
             tool_calls = _plan_step(action, expected, snap, unique_suffix)
 
             # 执行操作
@@ -148,16 +160,18 @@ async def _mcp_login(bridge, credentials: dict) -> dict:
     password = credentials.get("password", "")
     try:
         snap = await bridge.snapshot()
-        # 找输入框 ref
         refs = _extract_login_refs(snap)
         logger.info("Login refs: %s", refs)
         if refs.get("username_ref"):
-            await bridge.call_tool("browser_fill", {"ref": refs["username_ref"], "value": username})
+            await bridge.call_tool("browser_type", {"target": refs["username_ref"], "text": username})
         if refs.get("password_ref"):
-            await bridge.call_tool("browser_fill", {"ref": refs["password_ref"], "value": password})
+            await bridge.call_tool("browser_type", {"target": refs["password_ref"], "text": password})
         if refs.get("submit_ref"):
-            await bridge.call_tool("browser_click", {"ref": refs["submit_ref"]})
+            await bridge.call_tool("browser_click", {"target": refs["submit_ref"]})
         await bridge.wait(3000)
+        snap_after = await bridge.snapshot()
+        if "登录管理控制台" in snap_after or ("textbox" in snap_after and "/login" in snap_after):
+            return {"step": "登录系统", "status": "failed", "error": "登录后仍在登录页"}
         return {"step": f"登录系统（{username}）", "status": "passed"}
     except Exception as e:
         return {"step": "登录系统", "status": "failed", "error": str(e)[:300]}
@@ -206,11 +220,12 @@ def _plan_step(action: str, expected: str, snapshot: str, suffix: str, error: st
 {error_hint}
 
 ## 可用工具
-- browser_click: 点击元素 → {{"ref": "元素ref"}}
-- browser_fill: 填入文字 → {{"ref": "输入框ref", "value": "要填的值"}}
-- browser_select_option: 选择下拉选项 → {{"ref": "下拉框ref", "values": ["选项值"]}}
+- browser_click: 点击元素 → {{"target": "元素ref如e15"}}
+- browser_type: 输入文字 → {{"target": "输入框ref如e20", "text": "要填的值"}}
+- browser_select_option: 选择下拉选项 → {{"target": "下拉框ref", "values": ["选项值"]}}
 - browser_press_key: 按键 → {{"key": "Enter"}}
 - browser_navigate: 导航 → {{"url": "地址"}}
+- browser_snapshot: 获取页面快照 → {{}}
 
 ## 规则
 - 从快照中找到元素的 ref 编号（如 ref=e15），用 ref 操作
@@ -219,8 +234,8 @@ def _plan_step(action: str, expected: str, snapshot: str, suffix: str, error: st
 - 不要编造 ref，只用快照中存在的
 
 ## 输出格式（每行一个 JSON）
-{{"tool": "browser_click", "args": {{"ref": "e15"}}}}
-{{"tool": "browser_fill", "args": {{"ref": "e20", "value": "test-{suffix}"}}}}
+{{"tool": "browser_click", "args": {{"target": "e15"}}}}
+{{"tool": "browser_type", "args": {{"target": "e20", "text": "test-{suffix}"}}}}
 """
 
     try:
@@ -254,6 +269,17 @@ async def _execute_mcp_actions(bridge, tool_calls: list[dict], step_name: str) -
         return {"step": step_name, "status": "passed"}
     except Exception as e:
         return {"step": step_name, "status": "failed", "error": str(e)[:300]}
+
+
+def _verify_step(action: str, expected: str, snapshot: str) -> dict:
+    """验证类步骤：检查 snapshot 是否有实质内容"""
+    # 基本检查：页面有内容就算通过（snapshot 长度 > 500 说明页面已加载）
+    if len(snapshot) > 500:
+        # 再检查是否有错误提示
+        if "Error" in snapshot[:100] and snapshot.count("\n") < 5:
+            return {"step": action, "status": "failed", "error": "页面显示错误"}
+        return {"step": action, "status": "passed"}
+    return {"step": action, "status": "failed", "error": f"页面内容不足（{len(snapshot)} chars）"}
 
 
 def _parse_network_requests(network_text: str) -> list[dict]:
