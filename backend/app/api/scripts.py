@@ -169,13 +169,12 @@ async def generate_script_ai_stream(
         pass
 
     async def run_generate():
-        import anyio
-        result = await anyio.to_thread.run_sync(lambda: step_by_step_generate(
+        from app.services.ai.mcp_generator import mcp_generate
+        result = await mcp_generate(
             base_url=base_url, credentials=creds, steps=case.steps or [],
-            fixture_name=fixture_name, on_step=on_step, healing_history=healing_history,
+            fixture_name=fixture_name, on_step=on_step,
             preconditions=case.preconditions or "",
-            cached_steps=(case.ui_scenario or {}).get("stepCache"),
-        ))
+        )
         queue.put_nowait({"type": "done", "result": result})
 
     task = asyncio.create_task(run_generate())
