@@ -56,6 +56,7 @@ async def mcp_generate(
     results = []
     script_actions = []
     captured_requests = []
+    healing_records = []
     unique_suffix = str(int(time.time()))[-6:]
 
     try:
@@ -114,13 +115,17 @@ async def mcp_generate(
 
             if step_result["status"] == "failed":
                 # 修复：重新获取快照，让 LLM 重新规划
-                await bridge.wait(500)
-                snap2 = await bridge.snapshot()
-                tool_calls2 = _plan_step(action, expected, snap2, unique_suffix, error=step_result.get("error", ""))
-                retry_result = await _execute_mcp_actions(bridge, tool_calls2, f"{action}（修复）")
-                if retry_result["status"] == "passed":
-                    results[-1] = retry_result
-                    tool_calls = tool_calls2
+                for retry in range(2):
+                    await bridge.wait(1000)
+                    snap_retry = await bridge.snapshot()
+                    error_msg = step_result.get("error", "")
+                    tool_calls_retry = _plan_step(action, expected, snap_retry, unique_suffix, error=error_msg)
+                    retry_result = await _execute_mcp_actions(bridge, tool_calls_retry, f"{action}（修复第{retry+1}次）")
+                    if retry_result["status"] == "passed":
+                        results[-1] = retry_result
+                        tool_calls = tool_calls_retry
+                        break
+                    step_result = retry_result
 
             # 记录操作用于脚本生成
             script_actions.append({"step": action, "tools": tool_calls, "status": results[-1]["status"]})
@@ -129,6 +134,13 @@ async def mcp_generate(
                 on_step({"type": "step_done", "seq": i + 1, "action": results[-1].get("step", action), "status": results[-1]["status"]})
 
             if results[-1]["status"] == "failed":
+                # 记录 healing context
+                healing_records.append({
+                    "step_seq": i + 1,
+                    "step_action": action[:500],
+                    "error_summary": results[-1].get("error", "")[:2000],
+                    "resolved": False,
+                })
                 break
 
         # 3. 获取网络请求
@@ -150,7 +162,7 @@ async def mcp_generate(
         "results": results,
         "all_passed": all_passed,
         "captured_requests": captured_requests,
-        "healing_records": [],
+        "healing_records": healing_records,
     }
 
 
