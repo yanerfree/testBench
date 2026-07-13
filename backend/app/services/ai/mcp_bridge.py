@@ -43,10 +43,16 @@ class PlaywrightMCPBridge:
                 await self.call_tool("browser_close", {})
         except Exception:
             pass
-        if self._session_cm:
-            await self._session_cm.__aexit__(None, None, None)
-        if self._sse_cm:
-            await self._sse_cm.__aexit__(None, None, None)
+        try:
+            if self._session_cm:
+                await self._session_cm.__aexit__(None, None, None)
+        except Exception:
+            pass
+        try:
+            if self._sse_cm:
+                await self._sse_cm.__aexit__(None, None, None)
+        except Exception:
+            pass
         self._session = None
 
     def tool_names(self) -> list[str]:
