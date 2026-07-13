@@ -106,37 +106,37 @@ async def mcp_generate(
                     break
                 continue
 
-            # 操作类步骤：LLM 决定操作
-            tool_calls = _plan_step(action, expected, snap, unique_suffix)
-
-            # 执行操作
-            snap_before = snap[:200]  # 记录操作前的 snapshot 前缀
-            step_result = await _execute_mcp_actions(bridge, tool_calls, action)
-            results.append(step_result)
-
-            # 验证：操作后页面应该有变化（防止假通过）
-            if step_result["status"] == "passed" and not is_verify:
-                await bridge.wait(500)
-                snap_after = await bridge.snapshot()
-                if snap_after[:200] == snap_before and len(tool_calls) > 0:
-                    # 页面没变化，说明操作可能没生效
-                    logger.warning("Step %d: page unchanged after operations, may be fake pass", i+1)
-
-            logger.info("Step %d tools: %s", i+1, json.dumps(tool_calls, ensure_ascii=False)[:500])
-
-            if step_result["status"] == "failed":
-                # 修复：重新获取快照，让 LLM 重新规划
-                for retry in range(2):
-                    await bridge.wait(1000)
-                    snap_retry = await bridge.snapshot()
-                    error_msg = step_result.get("error", "")
-                    tool_calls_retry = _plan_step(action, expected, snap_retry, unique_suffix, error=error_msg)
-                    retry_result = await _execute_mcp_actions(bridge, tool_calls_retry, f"{action}（修复第{retry+1}次）")
-                    if retry_result["status"] == "passed":
-                        results[-1] = retry_result
-                        tool_calls = tool_calls_retry
+            # 操作类步骤：多轮交互 — 每次操作后重新看页面再决定下一步
+            all_tool_calls = []
+            step_passed = False
+            for action_round in range(6):
+                snap = await bridge.snapshot()
+                hint = (f"\n已执行了 {action_round} 轮。检查当前页面，步骤完成则只输出 browser_snapshot。" if action_round > 0 else "")
+                tool_calls = _plan_step(action + hint, expected, snap, unique_suffix)
+                if all(c.get("tool") in ("browser_snapshot", "browser_wait_for", None, "") for c in tool_calls):
+                    if action_round == 0:
+                        # 第一轮不允许空操作——LLM 误判了，强制要求操作
+                        tool_calls = _plan_step(action + "\n注意：你必须执行操作（click/type），不能只返回 snapshot。请找到相关元素并点击。", expected, snap, unique_suffix)
+                        if all(c.get("tool") in ("browser_snapshot", "browser_wait_for", None, "") for c in tool_calls):
+                            results.append({"step": action, "status": "failed", "error": "LLM 未生成任何操作"})
+                            break
+                    else:
+                        step_passed = True
                         break
-                    step_result = retry_result
+                result = await _execute_mcp_actions(bridge, tool_calls, action)
+                all_tool_calls.extend(tool_calls)
+                if result["status"] == "failed":
+                    await bridge.wait(500)
+                    snap2 = await bridge.snapshot()
+                    tc2 = _plan_step(action, expected, snap2, unique_suffix, error=result.get("error",""))
+                    r2 = await _execute_mcp_actions(bridge, tc2, f"{action}（修复）")
+                    if r2["status"] == "passed": all_tool_calls.extend(tc2)
+                    else: results.append(result); break
+                await bridge.wait(500)
+            if not any(r.get("step") == action for r in results):
+                results.append({"step": action, "status": "passed" if step_passed or action_round > 0 else "failed"})
+            tool_calls = all_tool_calls
+            logger.info("Step %d: %d rounds, %d calls", i+1, action_round+1, len(all_tool_calls))
 
             # 收集本步的网络请求
             try:
@@ -240,8 +240,15 @@ def _plan_step(action: str, expected: str, snapshot: str, suffix: str, error: st
 
     prompt = f"""你是浏览器自动化 Agent。根据页面快照，规划执行一个步骤所需的**全部**工具调用。
 
-**重要：步骤描述中的每个操作都必须有对应的工具调用。不能只做一个就跳过剩余的。**
-例如"输入邮箱，选择角色，点击发送"需要 3 个工具调用（type + click + click），不是 1 个。
+**重要规则：**
+- 步骤描述中的每个动词（进入/点击/输入/选择/打开）都必须有对应的工具调用
+- "进入XX页面" = 点击导航到那个页面，不是看到就算完成
+- "输入XX，选择YY，点击ZZ" = 3 个工具调用，不是 1 个
+- 如果步骤还没完成（页面上没有预期结果），继续输出操作
+- 只有当页面状态明确显示步骤已完成时，才输出 browser_snapshot 表示结束
+- **绝对不能什么都不做就标记完成**
+- **如果你认为步骤已完成，至少也要输出一个 browser_click 或 browser_type 操作**
+- **永远不要第一轮就只返回 browser_snapshot——至少执行一个操作**
 
 ## 当前页面快照
 {snapshot[:4000]}
