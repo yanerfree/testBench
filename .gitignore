@@ -25,3 +25,4 @@ frontend/ui-*.png
 
 # 测试报告
 discover_test/
+.playwright-mcp/
