@@ -1,15 +1,58 @@
 """Playwright MCP Bridge — 连接 Playwright MCP Server，调用浏览器工具。
 
-不依赖 LangChain，直接用 MCP SDK 的 ClientSession。
+MCP Server 会在首次连接时自动启动，不需要手动管理。
 """
 from __future__ import annotations
 
 import logging
+import subprocess
+import time
 from typing import Any
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
 MCP_URL = "http://localhost:8931/sse"
+MCP_PORT = 8931
+_mcp_process = None
+
+
+def _ensure_mcp_server():
+    """确保 MCP Server 正在运行，没有则自动启动"""
+    global _mcp_process
+
+    # 检查是否已运行
+    try:
+        resp = httpx.get(f"http://localhost:{MCP_PORT}/sse", timeout=2)
+        if resp.status_code == 200:
+            return True
+    except Exception:
+        pass
+
+    # 启动 MCP Server
+    logger.info("Starting Playwright MCP Server on port %d...", MCP_PORT)
+    try:
+        _mcp_process = subprocess.Popen(
+            ["npx", "@playwright/mcp", "--port", str(MCP_PORT), "--headless", "--browser", "chromium", "--allowed-hosts", "*", "--ignore-https-errors"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        # 等待启动
+        for _ in range(15):
+            time.sleep(1)
+            try:
+                resp = httpx.get(f"http://localhost:{MCP_PORT}/sse", timeout=2)
+                if resp.status_code == 200:
+                    logger.info("Playwright MCP Server started (PID %d)", _mcp_process.pid)
+                    return True
+            except Exception:
+                pass
+        logger.error("Playwright MCP Server failed to start")
+        return False
+    except Exception as e:
+        logger.error("Failed to start MCP Server: %s", e)
+        return False
 
 
 class PlaywrightMCPBridge:
@@ -23,6 +66,9 @@ class PlaywrightMCPBridge:
         self._tools: dict[str, dict] = {}
 
     async def connect(self) -> None:
+        # 确保 MCP Server 在运行
+        _ensure_mcp_server()
+
         from mcp import ClientSession
         from mcp.client.sse import sse_client
 
