@@ -252,14 +252,16 @@ def step_by_step_generate(
                     try:
                         current_page.wait_for_timeout(500)
                         new_snap = current_page.locator("body").aria_snapshot()[:6000]
-                        select_code = _generate_one_step(
-                            llm_complete=llm_complete, step_num=i + 1,
-                            action=f"在已打开的下拉列表中选择第一个可用选项",
-                            expected="选中选项", snapshot=new_snap, page_url=current_page.url,
-                        )
-                        select_result = _execute_step(current_page, select_code, f"{action}（选择选项）")
-                        if select_result["status"] == "passed":
-                            code_blocks[-1] += _indent(select_code, 8)
+                        # 只在 Snapshot 中确实有下拉列表（listbox/combobox/option）时才触发
+                        if any(kw in new_snap for kw in ["listbox", "option", "combobox"]):
+                            select_code = _generate_one_step(
+                                llm_complete=llm_complete, step_num=i + 1,
+                                action=f"在已打开的下拉列表中选择第一个可用选项",
+                                expected="选中选项", snapshot=new_snap, page_url=current_page.url,
+                            )
+                            select_result = _execute_step(current_page, select_code, f"{action}（选择选项）")
+                            if select_result["status"] == "passed":
+                                code_blocks[-1] += _indent(select_code, 8)
                     except Exception:
                         pass
 
@@ -736,6 +738,9 @@ def _validate_step_code(code: str, snapshot: str) -> str | None:
         return "代码为空或只有 pass"
     if code.strip().startswith("raise Exception"):
         return "LLM 生成失败，代码不可执行"
+    # LLM 输出了分析文字而非代码
+    if "page." not in code and "expect(" not in code:
+        return "LLM 输出了分析文字而非可执行代码，请只输出 page.xxx 调用"
 
     # 1. 禁止的选择器/API
     forbidden = [
