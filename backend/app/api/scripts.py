@@ -147,6 +147,9 @@ async def generate_script_ai_stream(
     base_url = env_vars.get("BASE_URL", "")
     fixture_name = _detect_fixture(case.preconditions or "")
     creds = _get_credentials(env_vars, fixture_name)
+    # 备用角色凭据（多角色场景用）
+    alt_fixture = "tenant_page" if fixture_name == "logged_in_page" else "logged_in_page"
+    alt_creds = _get_credentials(env_vars, alt_fixture)
 
     queue = asyncio.Queue()
 
@@ -175,6 +178,8 @@ async def generate_script_ai_stream(
             base_url=base_url, credentials=creds, steps=case.steps or [],
             fixture_name=fixture_name, on_step=on_step,
             preconditions=case.preconditions or "",
+            headless=False,
+            alt_credentials=alt_creds,
         ))
         queue.put_nowait({"type": "done", "result": result})
 
@@ -191,12 +196,43 @@ async def generate_script_ai_stream(
                     gen_result = event["result"]
                     script_content = gen_result.get("script", "")
                     if script_content.strip():
-                        script = await script_service.create_script(
-                            session, case_id=case.id, script_type="ui", content=script_content,
-                            file_name=f"test_{case.case_code.lower().replace('-', '_')}_ui.py",
-                            language="python", source="ai_generated",
-                        )
-                        case.ui_scenario_status = "completed" if gen_result["all_passed"] else "debugging"
+                        all_passed = gen_result.get("all_passed", False)
+                        # 转正状态机：通过 → active，失败 → draft（不覆盖已有的好脚本）
+                        if all_passed:
+                            script = await script_service.create_script(
+                                session, case_id=case.id, script_type="ui", content=script_content,
+                                file_name=f"test_{case.case_code.lower().replace('-', '_')}_ui.py",
+                                language="python", source="ai_generated",
+                            )
+                        else:
+                            # 失败脚本存为 draft，不影响现有 active 版本
+                            existing = await script_service.get_active_script(session, case.id, "ui")
+                            if existing:
+                                # 有 active 版本 → 新建 draft，不覆盖
+                                from sqlalchemy import func as sa_func
+                                max_ver_result = await session.execute(
+                                    select(sa_func.max(Script.version)).where(
+                                        Script.case_id == case.id, Script.script_type == "ui"
+                                    )
+                                )
+                                max_ver = max_ver_result.scalar_one_or_none() or 0
+                                script = Script(
+                                    case_id=case.id, script_type="ui", version=max_ver + 1,
+                                    language="python", content=script_content,
+                                    file_name=f"test_{case.case_code.lower().replace('-', '_')}_ui.py",
+                                    status="draft", source="ai_generated",
+                                )
+                                session.add(script)
+                                await session.flush()
+                            else:
+                                # 没有 active 版本 → 直接存（第一次生成，哪怕失败也保留）
+                                script = await script_service.create_script(
+                                    session, case_id=case.id, script_type="ui", content=script_content,
+                                    file_name=f"test_{case.case_code.lower().replace('-', '_')}_ui.py",
+                                    language="python", source="ai_generated",
+                                )
+
+                        case.ui_scenario_status = "completed" if all_passed else "debugging"
                         if not case.ui_scenario:
                             case.ui_scenario = {}
                         case.ui_scenario = {

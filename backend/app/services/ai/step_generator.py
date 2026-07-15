@@ -10,12 +10,17 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
-def _llm_complete_sync(prompt: str, max_tokens: int = 500) -> str:
+def _llm_complete_sync(prompt: str, max_tokens: int = 500, system: str = "") -> str:
     """同步调用 LLM"""
     from app.services.ai.llm_client import _build_headers, _get_endpoint, _get_extra_headers, _build_openai_body
 
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+
     body = _build_openai_body(
-        [{"role": "user", "content": prompt}],
+        messages,
         max_tokens=max_tokens, temperature=0.0,
     )
     headers = {**_build_headers(), **_get_extra_headers()}
@@ -46,6 +51,8 @@ def step_by_step_generate(
     healing_history: list[dict] | None = None,
     preconditions: str = "",
     cached_steps: dict | None = None,
+    headless: bool = False,
+    alt_credentials: dict[str, str] | None = None,
 ) -> dict:
     """
     逐步生成 Playwright 脚本。
@@ -70,7 +77,7 @@ def step_by_step_generate(
         llm_complete = _llm_complete_sync
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, timeout=30000)
+        browser = p.chromium.launch(headless=headless, timeout=30000)
         # 接口流量提取 — 用 HAR 录制（最可靠）
         import tempfile as _tempfile
         har_path = _tempfile.mktemp(suffix=".har")
@@ -81,10 +88,11 @@ def step_by_step_generate(
         page = context.new_page()
         page.set_default_timeout(10000)
 
-        page = context.new_page()
-        page.set_default_timeout(10000)
+        # 多角色检测 — 步骤中是否有角色标记
+        multi_role = _detect_multi_role(steps)
+        alt_page = None
 
-        # 登录
+        # 登录主角色
         login_result = _do_login(page, base_url, credentials)
         results.append(login_result)
         if on_step:
@@ -92,6 +100,21 @@ def step_by_step_generate(
         if login_result["status"] == "failed":
             browser.close()
             return {"script": "", "results": results, "all_passed": False, "healing_records": healing_records}
+
+        # 多角色：创建第二个 context 登录备用角色
+        if multi_role and alt_credentials:
+            alt_context = browser.new_context(
+                locale="zh-CN", viewport={"width": 1280, "height": 720},
+            )
+            alt_page = alt_context.new_page()
+            alt_page.set_default_timeout(10000)
+            alt_login = _do_login(alt_page, base_url, alt_credentials)
+            results.append(alt_login)
+            if on_step:
+                on_step({"type": "step_done", "action": f"[备用角色] {alt_login['step']}", "status": alt_login["status"], "seq": 0})
+            if alt_login["status"] == "failed":
+                logger.warning("备用角色登录失败，降级为单角色模式")
+                alt_page = None
 
         # 前置准备 — 如果步骤中有"创建"操作，生成唯一名称避免冲突
         import time as _time
@@ -133,6 +156,13 @@ def step_by_step_generate(
             if not action:
                 continue
 
+            # 多角色切换 — 根据步骤文字选择对应的 page
+            current_page = page
+            if alt_page:
+                step_role = _detect_step_role(action, fixture_name)
+                if step_role == "alt":
+                    current_page = alt_page
+
             # 检测是否需要拆成"打开下拉+选择"两步
             is_select_step = any(kw in action for kw in ["下拉", "选择", "请选择"])
 
@@ -140,7 +170,7 @@ def step_by_step_generate(
             if on_step:
                 on_step({"type": "step_start", "seq": i + 1, "action": action, "phase": "generating"})
             try:
-                snapshot = page.locator("body").aria_snapshot()[:6000]
+                snapshot = current_page.locator("body").aria_snapshot()[:6000]
             except Exception:
                 snapshot = ""
 
@@ -148,7 +178,7 @@ def step_by_step_generate(
             cache_key = str(i + 1)
             cached_code = (cached_steps or {}).get(cache_key)
             if cached_code:
-                cache_result = _execute_step(page, cached_code, f"{action}（缓存）")
+                cache_result = _execute_step(current_page, cached_code, f"{action}（缓存）")
                 if cache_result["status"] == "passed":
                     results.append(cache_result)
                     code_blocks.append(f'    # Step {i+1}: {action}\n    with tea_step("{action[:50]}", phase="{"verify" if "验证" in action else "action"}"):\n' + _indent(cached_code, 8))
@@ -157,14 +187,27 @@ def step_by_step_generate(
                     continue
                 # 缓存失效，走正常生成
 
-            # 3. 查历史修复记录
+            # 3. 查历史修复记录 — 构造结构化经验
             history_hint = ""
             if healing_history:
-                relevant = [h for h in healing_history if h.get("step_seq") == i + 1 or h.get("page_url") == page.url]
+                relevant = [h for h in healing_history if h.get("step_seq") == i + 1 or h.get("page_url") == current_page.url]
                 if relevant:
-                    failed_codes = [h["original_code"] for h in relevant if not h.get("resolved")]
-                    if failed_codes:
-                        history_hint = "\n以下代码在之前尝试中失败过，请避免类似写法：\n" + "\n".join(f"- {c[:100]}" for c in failed_codes[:3])
+                    # 已修复的教训（成功经验）
+                    resolved = [h for h in relevant if h.get("resolved")]
+                    if resolved:
+                        lessons = []
+                        for h in resolved[:3]:
+                            err = h.get("error_summary", "")[:80]
+                            fix = h.get("fix_code", "")[:80]
+                            lessons.append(f"- {h.get('step_action', '')[:40]}: {err} → 修复为: {fix}")
+                        history_hint += "\n## 历史教训（已成功修复的经验）\n" + "\n".join(lessons)
+
+                    # 未修复的失败代码（避免重复）
+                    unresolved = [h for h in relevant if not h.get("resolved")]
+                    if unresolved:
+                        failed_codes = [h["original_code"][:100] for h in unresolved[:3] if h.get("original_code")]
+                        if failed_codes:
+                            history_hint += "\n## 失败过的代码（必须避免）\n" + "\n".join(f"- {c}" for c in failed_codes)
 
             # 3. LLM 生成这一步的代码
             actual_action = action
@@ -176,12 +219,25 @@ def step_by_step_generate(
                 action=actual_action,
                 expected=expected,
                 snapshot=snapshot,
-                page_url=page.url,
+                page_url=current_page.url,
                 history_hint=history_hint,
             )
 
-            # 3. 执行
-            exec_result = _execute_step(page, step_code, action)
+            # 3. 静态校验（零 token，拦截明显错误）
+            validation_error = _validate_step_code(step_code, snapshot)
+            if validation_error:
+                logger.info("步骤 %d 静态校验失败: %s，重新生成", i + 1, validation_error)
+                step_code = _generate_one_step(
+                    llm_complete=llm_complete, step_num=i + 1,
+                    action=actual_action, expected=expected, snapshot=snapshot, page_url=current_page.url,
+                    history_hint=history_hint + f"\n上次生成的代码未通过静态校验: {validation_error}",
+                )
+
+            # 4. 执行前选择器唯一性验证（纯机械，不调 LLM）
+            step_code = _pre_verify_and_fix_locators(current_page, step_code)
+
+            # 5. 执行
+            exec_result = _execute_step(current_page, step_code, action)
             exec_result["code"] = step_code
             exec_result["snapshot"] = snapshot[:500]
             results.append(exec_result)
@@ -194,14 +250,14 @@ def step_by_step_generate(
                 # 选择类步骤：执行后可能打开了下拉，需要拿新 snapshot 让 AI 选择选项
                 if is_select_step and "选择" in action:
                     try:
-                        page.wait_for_timeout(500)
-                        new_snap = page.locator("body").aria_snapshot()[:6000]
+                        current_page.wait_for_timeout(500)
+                        new_snap = current_page.locator("body").aria_snapshot()[:6000]
                         select_code = _generate_one_step(
                             llm_complete=llm_complete, step_num=i + 1,
                             action=f"在已打开的下拉列表中选择第一个可用选项",
-                            expected="选中选项", snapshot=new_snap, page_url=page.url,
+                            expected="选中选项", snapshot=new_snap, page_url=current_page.url,
                         )
-                        select_result = _execute_step(page, select_code, f"{action}（选择选项）")
+                        select_result = _execute_step(current_page, select_code, f"{action}（选择选项）")
                         if select_result["status"] == "passed":
                             code_blocks[-1] += _indent(select_code, 8)
                     except Exception:
@@ -210,12 +266,14 @@ def step_by_step_generate(
             elif exec_result["status"] == "failed":
                 # 尝试修复，最多 3 次
                 fixed = False
-                last_error = exec_result.get("error", "")
-                current_snapshot = snapshot  # 初始化为当前 snapshot
+                initial_error = exec_result.get("error", "")
+                initial_code = step_code
+                last_error = initial_error
+                current_snapshot = snapshot
                 for fix_attempt in range(3):
                     try:
-                        page.wait_for_load_state("domcontentloaded")
-                        current_snapshot = page.locator("body").aria_snapshot()[:6000]
+                        current_page.wait_for_load_state("domcontentloaded")
+                        current_snapshot = current_page.locator("body").aria_snapshot()[:6000]
                     except Exception:
                         current_snapshot = snapshot
 
@@ -229,14 +287,14 @@ def step_by_step_generate(
                     if not fix_code or fix_code == step_code:
                         break
 
-                    fix_result = _execute_step(page, fix_code, f"{action}（修复第{fix_attempt+1}次）")
+                    fix_result = _execute_step(current_page, fix_code, f"{action}（修复第{fix_attempt+1}次）")
                     if fix_result["status"] == "passed":
                         fix_result["code"] = fix_code
                         results[-1] = fix_result
                         code_blocks[-1] = f'    # Step {i+1}: {action}\n    with tea_step("{action[:50]}", phase="{"verify" if "验证" in action else "action"}"):\n' + _indent(fix_code, 8)
                         fixed = True
                         healing_records.append({
-                            "step_seq": i + 1, "step_action": action[:500], "page_url": page.url,
+                            "step_seq": i + 1, "step_action": action[:500], "page_url": current_page.url,
                             "original_code": step_code, "error_summary": last_error[:2000],
                             "fix_code": fix_code, "fix_method": f"auto_fix_attempt_{fix_attempt+1}",
                             "page_snapshot": current_snapshot[:2000], "resolved": True,
@@ -247,6 +305,40 @@ def step_by_step_generate(
                     else:
                         last_error = fix_result.get("error", "")
                         step_code = fix_code
+
+                if not fixed:
+                    # 最后补救：strict mode violation 自动加 .first
+                    all_errors = initial_error + " " + last_error
+                    if "strict mode violation" in all_errors:
+                        for patch_target in [initial_code, step_code]:
+                            if not patch_target or patch_target.strip().startswith("raise"):
+                                continue
+                            patched = re.sub(
+                                r'(\.get_by_text\([^)]+\))(\.(click|check|uncheck|fill)\()',
+                                r'\1.first\2', patch_target
+                            )
+                            if patched == patch_target:
+                                patched = re.sub(
+                                    r'(\.get_by_role\([^)]+\))(\.(click|check|uncheck|fill)\()',
+                                    r'\1.first\2', patch_target
+                                )
+                            if patched != patch_target:
+                                logger.info("步骤 %d: strict mode 自动补丁 .first", i + 1)
+                                patch_result = _execute_step(current_page, patched, f"{action}（auto .first）")
+                                if patch_result["status"] == "passed":
+                                    patch_result["code"] = patched
+                                    results[-1] = patch_result
+                                    code_blocks[-1] = f'    # Step {i+1}: {action}\n    with tea_step("{action[:50]}", phase="{"verify" if "验证" in action else "action"}"):\n' + _indent(patched, 8)
+                                    fixed = True
+                                    healing_records.append({
+                                        "step_seq": i + 1, "step_action": action[:500], "page_url": current_page.url,
+                                        "original_code": initial_code, "error_summary": initial_error[:2000],
+                                        "fix_code": patched, "fix_method": "auto_first_patch",
+                                        "page_snapshot": current_snapshot[:2000], "resolved": True,
+                                    })
+                                    if on_step:
+                                        on_step({"type": "step_done", "seq": i + 1, "action": f"{action}（auto .first）", "status": "passed"})
+                                    break
 
                 if not fixed:
                     # 分类失败原因
@@ -320,7 +412,9 @@ result = page.evaluate("""async () => {{
 
         browser.close()
     script = _assemble_script(func_name, fixture_name, code_blocks)
-    all_passed = all(r["status"] == "passed" for r in results)
+    # all_passed 只看主步骤（前置/后置失败不影响判定）
+    main_results = [r for r in results if "[前置]" not in r.get("step", "") and "[后置" not in r.get("step", "")]
+    all_passed = bool(main_results) and all(r["status"] == "passed" for r in main_results)
 
     # 收集通过步骤的缓存
     step_cache = {}
@@ -330,6 +424,39 @@ result = page.evaluate("""async () => {{
             step_cache[str(seq)] = r["code"]
 
     return {"script": script, "results": results, "all_passed": all_passed, "healing_records": healing_records, "captured_requests": captured_requests, "step_cache": step_cache}
+
+
+def _detect_multi_role(steps: list[dict]) -> bool:
+    """检测步骤列表中是否涉及多个角色"""
+    role_keywords = {
+        "admin": ["管理员", "admin", "[管理员]", "平台管理员"],
+        "tenant": ["租户", "tenant", "[租户]", "租户管理员"],
+    }
+    found_roles = set()
+    for step in steps:
+        action = step.get("action", "").lower()
+        for role, keywords in role_keywords.items():
+            if any(kw.lower() in action for kw in keywords):
+                found_roles.add(role)
+    # 额外检查：新窗口/新浏览器/切换账号
+    all_text = " ".join(s.get("action", "") for s in steps)
+    if any(kw in all_text for kw in ["新窗口", "新浏览器", "切换账号", "另一个账号", "新的浏览器"]):
+        return True
+    return len(found_roles) > 1
+
+
+def _detect_step_role(action: str, primary_fixture: str) -> str:
+    """判断单步属于主角色还是备用角色。返回 'primary' 或 'alt'"""
+    action_lower = action.lower()
+    # 显式角色标记
+    if any(kw in action_lower for kw in ["[管理员]", "平台管理员", "admin"]):
+        return "primary" if primary_fixture == "logged_in_page" else "alt"
+    if any(kw in action_lower for kw in ["[租户]", "租户管理员", "tenant"]):
+        return "primary" if primary_fixture == "tenant_page" else "alt"
+    # 新窗口/新账号 → 备用角色
+    if any(kw in action for kw in ["新窗口", "新浏览器", "切换账号", "另一个账号", "新的浏览器", "被邀请人"]):
+        return "alt"
+    return "primary"
 
 
 def _do_login(page, base_url: str, credentials: dict) -> dict:
@@ -358,75 +485,66 @@ def _do_login(page, base_url: str, credentials: dict) -> dict:
         return {"step": "登录系统", "status": "failed", "error": str(e)[:300]}
 
 
-def _generate_one_step(llm_complete, step_num: int, action: str, expected: str, snapshot: str, page_url: str, history_hint: str = "") -> str:
-    """调 LLM 生成单个步骤的 Playwright 代码"""
-    prompt = f"""你是 Playwright 代码生成器。根据当前页面的 Aria Snapshot，生成执行一步操作的 Python 代码。
+STEP_SYSTEM_PROMPT = """你是 Playwright 代码生成器。根据页面 Aria Snapshot 生成 Python 代码。
 
-## 当前页面
-URL: {page_url}
-Aria Snapshot:
-```yaml
-{snapshot}
-```
+## ⚠️ 最重要规则：Aria Snapshot 是唯一真相源
+Snapshot 显示页面上实际存在的元素。步骤描述只是"意图"。冲突时以 Snapshot 为准。
+举例：步骤说"成员管理"但 Snapshot 只有 `text: 用户管理` → 用 `page.get_by_text("用户管理")`
 
-## 要执行的操作
-{action}
-
-## 预期结果
-{expected or "无"}
-
-## 选择器规则（必须遵守）
+## 选择器规则
 1. `textbox "xxx"` → `page.get_by_role("textbox", name="xxx")`
 2. `button "xxx"` → `page.get_by_role("button", name="xxx")`
 3. `heading "xxx"` → `page.get_by_role("heading", name="xxx")`
 4. `link "xxx"` → `page.get_by_role("link", name="xxx")`
 5. `checkbox "xxx"` → `page.get_by_role("checkbox", name="xxx")`
-6. 匹配多个元素 → 加 `.first` 或 `.nth(0)`
-7. 下拉菜单/弹窗临时选项 → `page.get_by_text("文字").click()`
-8. 选择下拉框：先 `page.get_by_text("请选择…").click()` 打开，再 `page.get_by_text("选项名").click()`
+6. 匹配多个 → 加 `.first`
+7. 下拉/弹窗选项 → `page.get_by_text("文字").click()`
 
-## 禁止（违反会导致执行失败）
-- ❌ get_by_label — 自定义组件 label 关联不可靠
-- ❌ get_by_placeholder — placeholder 不在 aria snapshot 中
-- ❌ CSS 选择器（.ant-xxx, [class*=xxx]）
-- ❌ get_by_role("option") — 自定义下拉没有 option 角色
-- ❌ import / from / def / class / sync_playwright / browser = 等非操作代码
-- ❌ async def / await（代码在同步环境执行）
-- ❌ 编造 snapshot 中不存在的元素名称
+## 表格操作
+- 点行: `page.get_by_role("row", name="关键词").click()`
+- 行内按钮: `page.get_by_role("row", name="关键词").get_by_role("button").click()`
+- 搜索: `page.get_by_role("textbox", name="搜索...").fill("关键词")`
 
-## 常见操作模式
-- 输入文字: `page.get_by_role("textbox", name="xxx").fill("值")`
-- 清空再输入: `page.get_by_role("textbox", name="xxx").clear()` + `.fill("值")`
-- 输入名称/ID: 在原文后加时间戳避免重复，如 `"core-api-" + str(int(time.time()))[-6:]`
-- 点击按钮: `page.get_by_role("button", name="xxx").click()`
-- 点击菜单: `page.get_by_text("菜单名").click()`
-- 等待加载: `page.wait_for_load_state("networkidle")`
-- 验证可见: `expect(page.get_by_role("heading", name="xxx")).to_be_visible()`
-- 验证包含文字: `expect(page.locator("body")).to_contain_text("xxx")`
-- 等待状态变化: `page.wait_for_timeout(3000)` + `expect(...).to_be_visible(timeout=10000)`
+## 弹窗操作
+有 `dialog` 时用 `page.get_by_role("dialog").get_by_xxx()` 限定范围
 
-## 结果验证（重要！）
-操作步骤（点击按钮/提交表单）后**必须验证结果**：
-- 创建/提交后: 检查是否出现成功 Toast 或页面跳转，如: `expect(page.locator("body")).not_to_contain_text("错误")` + `page.wait_for_url("**/不是原来的路径**")`
-- 如果页面还在原来的 URL 或出现错误提示 → 操作失败
+## 禁止
+❌ get_by_label / get_by_placeholder / CSS选择器 / get_by_role("option")
+❌ import / def / class / async / 编造不存在的元素
 
 ## 输出
-只输出 2-6 行 page.xxx 调用。不要任何其他内容。
-正确示例:
-page.get_by_text("服务管理").click()
-page.wait_for_load_state("networkidle")
+只输出 2-6 行 page.xxx 调用，不要其他内容。"""
+
+
+def _generate_one_step(llm_complete, step_num: int, action: str, expected: str, snapshot: str, page_url: str, history_hint: str = "") -> str:
+    """调 LLM 生成单个步骤的 Playwright 代码"""
+    prompt = f"""当前页面 URL: {page_url}
+Aria Snapshot:
+```yaml
+{snapshot}
+```
+
+要执行的操作（意图，元素名可能不准确）: {action}
+预期结果: {expected or "无"}
 {history_hint}"""
 
     if llm_complete is None:
         return f'page.get_by_text("{action[:20]}").click()\npage.wait_for_load_state("domcontentloaded")'
 
     try:
-        resp = llm_complete(prompt)
+        import inspect
+        sig = inspect.signature(llm_complete)
+        if 'system' in sig.parameters:
+            resp = llm_complete(prompt, system=STEP_SYSTEM_PROMPT)
+        else:
+            resp = llm_complete(STEP_SYSTEM_PROMPT + "\n\n" + prompt)
         code = _clean_step_code(resp)
-        return code if code.strip() else "pass"
+        if not code.strip() or code.strip() == "pass":
+            return 'raise Exception("LLM 返回了空代码，无法执行此步骤")'
+        return code
     except Exception as e:
         logger.warning("LLM 生成步骤 %d 失败: %s", step_num, e)
-        return f'# LLM 生成失败: {e}\npass'
+        return f'raise Exception("LLM 调用失败: {str(e)[:100]}")'
 
 
 def _fix_one_step(llm_complete, action: str, original_code: str, error: str, snapshot: str) -> str | None:
@@ -435,6 +553,10 @@ def _fix_one_step(llm_complete, action: str, original_code: str, error: str, sna
         return None
 
     prompt = f"""修复以下 Playwright 代码。只输出修复后的 2-6 行 page.xxx 调用代码。
+
+## ⚠️ 最重要：Aria Snapshot 是唯一真相源
+Snapshot 显示的是页面上**实际存在**的元素。原代码中使用的元素名称可能与实际不符。
+修复时必须从 Snapshot 中找到**功能最匹配**的实际元素，而不是简单修改原代码的写法。
 
 原代码:
 {original_code}
@@ -448,12 +570,15 @@ def _fix_one_step(llm_complete, action: str, original_code: str, error: str, sna
 ```
 
 修复规则:
-- 从 Snapshot 找正确的 role+name，用 get_by_role/get_by_text
+- 从 Snapshot 找**实际存在**的元素的 role+name，用 get_by_role/get_by_text
+- 如果原代码用的名称在 Snapshot 中不存在，找功能相近的元素（如"成员管理"不存在但有"用户管理"）
 - ❌ 禁止: get_by_placeholder, get_by_label, CSS 选择器, get_by_role("option")
-- strict mode violation → 加 .first 或用更精确文字
+- **strict mode violation（同名元素多个）**→ 按以下顺序尝试：1) 用 `page.get_by_role("dialog").get_by_text("xxx")` 限定 dialog 范围 2) 加 `exact=True` 精确匹配 3) 加 `.first` 取第一个
 - timeout → 换一个 Snapshot 中存在的元素
 - 选择下拉: page.get_by_text("请选择…").click() → page.get_by_text("选项名").click()
-- 不要输出 import/def/class/async/markdown"""
+- 不要输出 import/def/class/async/markdown
+- **不要跳过原代码中的任何操作步骤**，每个操作都必须保留
+- 角色/标签类选择器如果在 Snapshot 中是 text 而非独立元素，用 `get_by_text("名称", exact=True).first.click()`"""
 
     try:
         resp = llm_complete(prompt)
@@ -463,8 +588,79 @@ def _fix_one_step(llm_complete, action: str, original_code: str, error: str, sna
         return None
 
 
+def _pre_verify_and_fix_locators(page, code: str) -> str:
+    """在执行前验证选择器唯一性，自动修复 strict mode 问题（纯机械，不调 LLM）"""
+    code = _clean_step_code(code)
+    lines = code.splitlines()
+    fixed_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            fixed_lines.append(line)
+            continue
+
+        # 提取 get_by_text("xxx") 或 get_by_role(..., name="xxx") 调用
+        # 对于操作类调用（.click()/.fill()/.check()），验证选择器唯一性
+        if ".click()" in stripped or ".fill(" in stripped or ".check()" in stripped:
+            # 提取到 .click()/.fill()/.check() 之前的 locator 部分
+            for action_method in [".click()", ".fill(", ".check()", ".uncheck()"]:
+                if action_method in stripped:
+                    locator_part = stripped.split(action_method)[0]
+                    if ".first" in locator_part or ".nth(" in locator_part or ".last" in locator_part:
+                        break
+                    try:
+                        count = eval(f"{locator_part}.count()", {"page": page})
+                        if count > 1:
+                            # 多个元素 → 自动加 .first
+                            fixed_line = line.replace(action_method, f".first{action_method}", 1)
+                            fixed_lines.append(fixed_line)
+                            logger.info("选择器验证: %s 命中 %d 个元素，已加 .first", locator_part[:60], count)
+                            break
+                        elif count == 0:
+                            logger.info("选择器验证: %s 命中 0 个元素，保持原样等执行报错", locator_part[:60])
+                    except Exception:
+                        pass
+                    break
+            else:
+                fixed_lines.append(line)
+        else:
+            fixed_lines.append(line)
+
+    result = "\n".join(fixed_lines)
+    return result if result != code else code
+
+
 def _execute_step(page, code: str, step_name: str) -> dict:
     """在浏览器中执行一段代码"""
+    # 全角字符兜底清理
+    code = _clean_step_code(code)
+    # 最终兜底：暴力删除常见全角标点（字符串外的）
+    try:
+        compile(code, "<exec_step>", "exec")
+    except SyntaxError:
+        # 暴力清除所有全角 ASCII 标点（U+FF00-FF5E 对应 ASCII 0x21-7E）
+        cleaned = []
+        for ch in code:
+            cp = ord(ch)
+            if 0xFF01 <= cp <= 0xFF5E:
+                cleaned.append(chr(cp - 0xFEE0))
+            elif cp == 0x3002:
+                cleaned.append("\n")
+            elif cp == 0x3001:
+                cleaned.append(",")
+            elif cp in (0x300C, 0x300D):
+                cleaned.append('"')
+            elif cp in (0x3010, 0x3011):
+                cleaned.append("")
+            elif cp in (0x201C, 0x201D):
+                cleaned.append('"')
+            elif cp in (0x2018, 0x2019):
+                cleaned.append("'")
+            else:
+                cleaned.append(ch)
+        code = "".join(cleaned)
+    # 键名修正：LLM 常输出小写键名
+    code = code.replace('.press("enter")', '.press("Enter")').replace('.press("tab")', '.press("Tab")').replace('.press("escape")', '.press("Escape")')
     # 等待/观察类步骤给更长超时
     is_wait_step = any(kw in step_name for kw in ["等待", "观察", "同步"])
     if is_wait_step:
@@ -512,7 +708,72 @@ def _clean_step_code(raw: str) -> str:
         if stripped.startswith("```"):
             continue
         lines.append(line)
-    return "\n".join(lines).strip()
+    result = "\n".join(lines).strip()
+
+    # 语法检查 — 全角字符导致的 SyntaxError 自动修复
+    try:
+        compile(result, "<step>", "exec")
+    except SyntaxError:
+        fullwidth_map = {
+            0xFF08: "(", 0xFF09: ")", 0xFF0C: ",", 0xFF1B: ";",
+            0xFF1A: ":", 0x201C: '"', 0x201D: '"', 0x2018: "'",
+            0x2019: "'", 0x3002: None, 0x300C: '"', 0x300D: '"',
+            0x3010: "[", 0x3011: "]",
+        }
+        fixed = result.translate(fullwidth_map)
+        try:
+            compile(fixed, "<step>", "exec")
+            result = fixed
+        except SyntaxError:
+            pass
+
+    return result
+
+
+def _validate_step_code(code: str, snapshot: str) -> str | None:
+    """零 token 静态校验 — 在执行前拦截明显错误的代码，返回错误描述或 None（通过）"""
+    if not code or not code.strip() or code.strip() == "pass":
+        return "代码为空或只有 pass"
+    if code.strip().startswith("raise Exception"):
+        return "LLM 生成失败，代码不可执行"
+
+    # 1. 禁止的选择器/API
+    forbidden = [
+        (r'get_by_label\(', "禁止使用 get_by_label（自定义组件 label 关联不可靠）"),
+        (r'get_by_placeholder\(', "禁止使用 get_by_placeholder（placeholder 不在 aria snapshot 中）"),
+        (r'get_by_role\(\s*["\']option["\']', "禁止使用 get_by_role('option')（自定义下拉没有 option 角色）"),
+        (r'\.locator\(\s*["\'][\.\#\[]', "禁止使用 CSS 选择器（.class / #id / [attr]）"),
+        (r'query_selector', "禁止使用 query_selector"),
+    ]
+    for pattern, msg in forbidden:
+        if re.search(pattern, code):
+            return msg
+
+    # 2. 禁止的语句（_clean_step_code 应该已清理，这是兜底）
+    for line in code.splitlines():
+        stripped = line.strip()
+        if any(stripped.startswith(p) for p in ("import ", "from ", "def ", "async def ", "class ")):
+            return f"包含禁止语句: {stripped[:60]}"
+
+    # 3. 元素名称存在性 — 检查 get_by_role/get_by_text 的 name 参数是否在 snapshot 中
+    if snapshot:
+        # 提取 get_by_role(..., name="xxx") 中的 name
+        role_names = re.findall(r'get_by_role\([^)]*name=["\']([^"\']+)["\']', code)
+        # 提取 get_by_text("xxx") 中的文字
+        text_names = re.findall(r'get_by_text\(["\']([^"\']+)["\']', code)
+        all_names = role_names + text_names
+        snapshot_lower = snapshot.lower()
+        for name in all_names:
+            if len(name) < 2:
+                continue
+            if name.lower() in snapshot_lower:
+                continue
+            # 临时元素（下拉选项、弹窗按钮）可能不在 snapshot 中，跳过常见的
+            if any(kw in name for kw in ["请选择", "选项", "确定", "取消", "是", "否", "保存", "提交"]):
+                continue
+            return f"元素 '{name}' 在当前页面 Aria Snapshot 中不存在，请从 Snapshot 中找实际存在的元素"
+
+    return None
 
 
 def _classify_failure(llm_complete, action: str, error: str, snapshot: str) -> str:
@@ -541,74 +802,81 @@ def _classify_failure(llm_complete, action: str, error: str, snapshot: str) -> s
 
 
 def _analyze_preconditions(llm_complete, preconditions: str, base_url: str, page) -> list[dict]:
-    """分析前置条件，生成 setup 步骤（如果需要通过 UI 操作准备数据）"""
-    # 跳过不需要准备的常见前置条件
-    skip_keywords = ["已登录", "登录", "账号", "权限", "管理员", "租户", "授权", "集群", "网关", "已存在", "已创建", "存在至少", "已配置"]
+    """分析前置条件，按 Aemeath 前置二分类：环境前置（跳过）vs 业务数据前置（通过 API 准备）"""
+    # 环境前置 — conftest/login 已处理，跳过
+    env_keywords = ["已登录", "登录", "账号", "权限", "管理员", "租户", "授权"]
+    # 业务数据前置 — 需要检查是否存在，不存在则准备
+    data_keywords = ["已存在", "已创建", "存在至少", "已配置", "有在线", "包含健康", "已授权至少"]
+
     lines = [l.strip() for l in preconditions.split("\n") if l.strip()]
-    needs_setup = []
+    data_conditions = []
     for line in lines:
-        # 去掉编号前缀
         clean = re.sub(r'^\d+[\.\、\s]+', '', line)
-        if any(kw in clean for kw in skip_keywords):
+        # 环境前置 → 跳过
+        if any(kw in clean for kw in env_keywords) and not any(kw in clean for kw in data_keywords):
             continue
-        needs_setup.append(clean)
+        # 业务数据前置 → 需要检查
+        if any(kw in clean for kw in data_keywords):
+            data_conditions.append(clean)
 
-    if not needs_setup:
+    if not data_conditions:
         return []
 
-    # 先检查页面上是否已有数据——如果能看到相关内容就跳过
+    # 通过 page.evaluate(fetch) 检查数据是否存在（不走 UI，走 API 更稳定）
+    setup_steps = []
+    for condition in data_conditions:
+        check_code = _generate_data_check(llm_complete, condition, base_url)
+        if check_code:
+            setup_steps.append(check_code)
+
+    return setup_steps[:3]
+
+
+def _generate_data_check(llm_complete, condition: str, base_url: str) -> dict | None:
+    """为一个业务数据前置条件生成 API 检查+准备代码"""
+    if llm_complete is None:
+        return None
     try:
-        body_text = page.inner_text("body")[:2000] if page else ""
-    except Exception:
-        body_text = ""
+        prompt = f"""你需要通过 Playwright 的 page.evaluate() 检查前置条件是否满足。
 
-    # 简单检查：如果页面上有服务/数据/表格行，大概率条件已满足
-    if any(kw in body_text for kw in ["运行中", "已下线", "服务总数", "负载配置", "条 ·"]):
-        return []
+前置条件: {condition}
+目标系统 BASE_URL: {base_url}
 
-    # 让 LLM 判断
-    try:
-        snapshot = page.locator("body").aria_snapshot()[:3000]
-    except Exception:
-        snapshot = ""
+## 重要：代码格式
+代码运行在 Python 的 exec() 中，page 是 Playwright 同步 API 的 Page 对象。
+page.evaluate() 接收一个 JavaScript 字符串，在浏览器中执行。
 
-    try:
-        prompt = f"""分析以下前置条件，判断哪些需要通过操作来准备数据。
+正确示例：
+```
+result = page.evaluate(\"\"\"async () => {{
+    const resp = await fetch('/api/v1/services?page_size=10');
+    const data = await resp.json();
+    return data.total || (data.data || []).length;
+}}\"\"\")
+```
 
-前置条件:
-{chr(10).join(needs_setup)}
+## 禁止
+- ❌ Python 的 await（代码在同步环境执行）
+- ❌ async () => 写在 page.evaluate() 外面
+- ❌ import 语句
 
-当前页面状态:
-{snapshot[:1500]}
+## 常见 API
+- 服务列表: GET /api/v1/services?page_size=10
+- 负载配置: GET /api/v1/upstreams?page_size=10
+- 集群: GET /api/v1/clusters?page_size=10
 
-如果前置条件中的数据可能不存在（如"已存在至少一个服务"），生成准备数据的操作步骤。
-如果数据已经存在（页面上能看到），输出 SKIP。
+只输出 1-5 行 Python 代码（page.evaluate + 简单判断）。
+如果该前置条件不需要通过 API 检查（比如"有在线网关节点"这种基础设施），输出 SKIP"""
 
-对每个需要准备的条件，输出一行 JSON:
-{{"action": "操作描述", "code": "page.xxx 调用代码"}}
-
-如果所有条件都已满足，只输出 SKIP"""
-
-        resp = llm_complete(prompt).strip()
+        resp = llm_complete(prompt, max_tokens=500).strip()
         if "SKIP" in resp.upper():
-            return []
-
-        setup_steps = []
-        for line in resp.splitlines():
-            line = line.strip()
-            if line.startswith("{"):
-                try:
-                    data = json.loads(line)
-                    if data.get("action") and data.get("code"):
-                        code = _clean_step_code(data["code"])
-                        if code:
-                            setup_steps.append({"action": data["action"], "code": code})
-                except Exception:
-                    pass
-        return setup_steps[:3]  # 最多 3 个 setup 步骤
-    except Exception as e:
-        logger.warning("前置条件分析失败: %s", e)
-        return []
+            return None
+        code = _clean_step_code(resp)
+        if code and "page.evaluate" in code:
+            return {"action": f"[数据检查] {condition[:40]}", "code": code}
+        return None
+    except Exception:
+        return None
 
 
 def _assemble_script(func_name: str, fixture_name: str, code_blocks: list[str]) -> str:

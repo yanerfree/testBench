@@ -42,45 +42,108 @@ async def generate_ui_script(
     # 解析前置条件，确定用哪个 fixture
     fixture_name = _detect_fixture(case.preconditions or "")
     creds = _get_credentials(env_vars, fixture_name)
+    alt_fixture = "tenant_page" if fixture_name == "logged_in_page" else "logged_in_page"
+    alt_creds = _get_credentials(env_vars, alt_fixture)
 
     # 逐步生成：一步一步生成+执行，每步基于真实页面
     import anyio
     from app.services.ai.step_generator import step_by_step_generate
+
+    # 查历史修复记录
+    healing_history = []
+    try:
+        from app.models.healing_archive import HealingArchive
+        ha_result = await session.execute(
+            select(HealingArchive).where(HealingArchive.case_id == case.id)
+            .order_by(HealingArchive.created_at.desc()).limit(20)
+        )
+        healing_history = [
+            {"step_seq": h.step_seq, "page_url": h.page_url, "original_code": h.original_code, "resolved": h.resolved}
+            for h in ha_result.scalars().all()
+        ]
+    except Exception:
+        pass
 
     gen_result = await anyio.to_thread.run_sync(lambda: step_by_step_generate(
         base_url=base_url,
         credentials=creds,
         steps=case.steps or [],
         fixture_name=fixture_name,
+        healing_history=healing_history,
+        preconditions=case.preconditions or "",
+        headless=False,
+        alt_credentials=alt_creds,
     ))
 
     script_content = gen_result.get("script", "")
     if not script_content.strip():
         raise ValueError("逐步生成失败，未生成有效脚本")
 
-    # 保存
-    script = await script_service.create_script(
-        session,
-        case_id=case.id,
-        script_type="ui",
-        content=script_content,
-        file_name=f"test_{case.case_code.lower().replace('-', '_')}_ui.py",
-        language="python",
-        source="ai_generated",
-    )
+    # 保存 — 转正状态机：通过 → active，失败 → draft（不覆盖已有好脚本）
+    all_passed = gen_result.get("all_passed", False)
+    if all_passed:
+        script = await script_service.create_script(
+            session, case_id=case.id, script_type="ui", content=script_content,
+            file_name=f"test_{case.case_code.lower().replace('-', '_')}_ui.py",
+            language="python", source="ai_generated",
+        )
+    else:
+        existing = await script_service.get_active_script(session, case.id, "ui")
+        if existing:
+            from sqlalchemy import func as sa_func
+            from app.models.script import Script
+            max_ver_result = await session.execute(
+                select(Script.version).where(Script.case_id == case.id, Script.script_type == "ui")
+                .order_by(Script.version.desc()).limit(1)
+            )
+            max_ver = max_ver_result.scalar_one_or_none() or 0
+            script = Script(
+                case_id=case.id, script_type="ui", version=max_ver + 1,
+                language="python", content=script_content,
+                file_name=f"test_{case.case_code.lower().replace('-', '_')}_ui.py",
+                status="draft", source="ai_generated",
+            )
+            session.add(script)
+            await session.flush()
+        else:
+            script = await script_service.create_script(
+                session, case_id=case.id, script_type="ui", content=script_content,
+                file_name=f"test_{case.case_code.lower().replace('-', '_')}_ui.py",
+                language="python", source="ai_generated",
+            )
 
-    case.ui_scenario_status = "debugging"
-    if not case.ui_scenario and case.steps:
-        case.ui_scenario = {
-            "steps": [
-                {"seq": i + 1, "action": s.get("action", ""), "expected": s.get("expected", "")}
-                for i, s in enumerate(case.steps)
-            ],
-            "variablesUsed": [],
-            "scriptId": str(script.id),
-        }
-    elif case.ui_scenario:
-        case.ui_scenario = {**case.ui_scenario, "scriptId": str(script.id)}
+    case.ui_scenario_status = "completed" if gen_result.get("all_passed") else "debugging"
+    case.ui_scenario = {
+        **(case.ui_scenario or {}),
+        "steps": [
+            {"seq": i + 1, "action": s.get("action", ""), "expected": s.get("expected", "")}
+            for i, s in enumerate(case.steps or [])
+        ],
+        "scriptId": str(script.id),
+        "stepCache": gen_result.get("step_cache", {}),
+        "lastResults": [
+            {"step": r.get("step", ""), "action": r.get("step", ""), "status": r["status"],
+             "error": r.get("error", ""), "code": r.get("code", "")[:200] if r.get("code") else ""}
+            for r in gen_result.get("results", [])
+        ],
+        "capturedRequests": gen_result.get("captured_requests", [])[:50],
+    }
+
+    # 保存修复档案
+    for hr in gen_result.get("healing_records", []):
+        try:
+            from app.models.healing_archive import HealingArchive
+            session.add(HealingArchive(
+                case_id=case.id, step_seq=hr.get("step_seq"),
+                step_action=hr.get("step_action", ""), page_url=hr.get("page_url", ""),
+                failure_type=hr.get("failure_type", "script_bug"),
+                original_code=hr.get("original_code", ""), error_summary=hr.get("error_summary", ""),
+                fix_code=hr.get("fix_code"), fix_method=hr.get("fix_method", ""),
+                page_snapshot=hr.get("page_snapshot", ""), resolved=hr.get("resolved", False),
+            ))
+        except Exception:
+            pass
+
     await session.flush()
 
     return {

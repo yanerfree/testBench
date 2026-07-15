@@ -48,8 +48,9 @@ mcp = FastMCP(
 - 每条用例只验证一个测试点
 - P0 占比不超过 15%
 - case_type 用 e2e
-- preconditions 必填
+- preconditions 必填，分为环境前置（登录/权限）和业务数据前置（已存在XX数据）
 - steps 每项必须有 seq（从1开始）、action、expected
+- 多角色用例步骤前必须加角色标记：[管理员] / [租户]
 """,
 )
 
