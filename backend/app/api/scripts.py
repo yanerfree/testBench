@@ -171,6 +171,22 @@ async def generate_script_ai_stream(
     except Exception:
         pass
 
+    # 查已验证的 SetupRef
+    setup_refs = []
+    try:
+        from app.models.setup_ref import SetupRef as SetupRefModel
+        sr_result = await session.execute(
+            select(SetupRefModel).where(
+                SetupRefModel.base_url == base_url, SetupRefModel.verified == True
+            ).order_by(SetupRefModel.success_count.desc()).limit(20)
+        )
+        setup_refs = [
+            {"condition_pattern": s.condition_pattern, "code": s.code, "verified": s.verified}
+            for s in sr_result.scalars().all()
+        ]
+    except Exception:
+        pass
+
     async def run_generate():
         import anyio
         from app.services.ai.step_generator import step_by_step_generate
@@ -180,6 +196,7 @@ async def generate_script_ai_stream(
             preconditions=case.preconditions or "",
             headless=False,
             alt_credentials=alt_creds,
+            setup_refs=setup_refs,
         ))
         queue.put_nowait({"type": "done", "result": result})
 
@@ -256,6 +273,22 @@ async def generate_script_ai_stream(
                             resolved=hr.get("resolved", False),
                         ))
                     if gen_result.get("healing_records"):
+                        await session.commit()
+
+                    # 保存新生成的 SetupRef（执行通过的前置数据准备代码）
+                    for sr in gen_result.get("new_setup_refs", []):
+                        try:
+                            from app.models.setup_ref import SetupRef as SetupRefModel
+                            session.add(SetupRefModel(
+                                condition_pattern=sr["condition_pattern"],
+                                base_url=sr["base_url"],
+                                code=sr["code"],
+                                verified=gen_result.get("all_passed", False),
+                                success_count=1 if gen_result.get("all_passed") else 0,
+                            ))
+                        except Exception:
+                            pass
+                    if gen_result.get("new_setup_refs"):
                         await session.commit()
 
                     yield f"event: done\ndata: {json_mod.dumps({'status': 'passed' if gen_result['all_passed'] else 'failed', 'all_passed': gen_result['all_passed'], 'results': [{'step': r.get('step',''), 'action': r.get('step',''), 'status': r['status'], 'error': r.get('error','')} for r in gen_result['results']], 'captured_requests': gen_result.get('captured_requests', [])[:50]}, ensure_ascii=False)}\n\n"

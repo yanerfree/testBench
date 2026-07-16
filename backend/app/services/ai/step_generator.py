@@ -53,6 +53,7 @@ def step_by_step_generate(
     cached_steps: dict | None = None,
     headless: bool = False,
     alt_credentials: dict[str, str] | None = None,
+    setup_refs: list[dict] | None = None,
 ) -> dict:
     """
     逐步生成 Playwright 脚本。
@@ -135,9 +136,10 @@ def step_by_step_generate(
             on_step({"type": "step_done", "seq": -1, "action": f"[前置] 使用唯一名称: {created_name}", "status": "passed"})
         results.append({"step": f"[前置] 唯一名称: {created_name or '无创建操作'}", "status": "passed"})
 
+        new_setup_refs = []
         # 前置条件分析 → 生成 setup 步骤
         if preconditions:
-            setup_steps = _analyze_preconditions(llm_complete, preconditions, base_url, page)
+            setup_steps, new_setup_refs = _analyze_preconditions(llm_complete, preconditions, base_url, page, setup_refs=setup_refs)
             for setup in setup_steps:
                 if on_step:
                     on_step({"type": "step_start", "seq": -1, "action": setup["action"], "phase": "setup"})
@@ -425,7 +427,7 @@ result = page.evaluate("""async () => {{
             seq = r.get("seq") or str(results.index(r))
             step_cache[str(seq)] = r["code"]
 
-    return {"script": script, "results": results, "all_passed": all_passed, "healing_records": healing_records, "captured_requests": captured_requests, "step_cache": step_cache}
+    return {"script": script, "results": results, "all_passed": all_passed, "healing_records": healing_records, "captured_requests": captured_requests, "step_cache": step_cache, "new_setup_refs": new_setup_refs if preconditions else []}
 
 
 def _detect_multi_role(steps: list[dict]) -> bool:
@@ -509,6 +511,10 @@ Snapshot 显示页面上实际存在的元素。步骤描述只是"意图"。冲
 
 ## 弹窗操作
 有 `dialog` 时用 `page.get_by_role("dialog").get_by_xxx()` 限定范围
+
+## 复制地址/访问URL
+从页面提取 URL 并访问: `url = page.get_by_text("http").first.text_content()` + `page.goto(url)`
+不要模拟剪贴板操作，直接提取文本。
 
 ## 禁止
 ❌ get_by_label / get_by_placeholder / CSS选择器 / get_by_role("option")
@@ -806,7 +812,7 @@ def _classify_failure(llm_complete, action: str, error: str, snapshot: str) -> s
         return "script_bug"
 
 
-def _analyze_preconditions(llm_complete, preconditions: str, base_url: str, page) -> list[dict]:
+def _analyze_preconditions(llm_complete, preconditions: str, base_url: str, page, setup_refs: list[dict] | None = None) -> list[dict]:
     """分析前置条件，按 Aemeath 前置二分类：环境前置（跳过）vs 业务数据前置（通过 API 准备）"""
     # 环境前置 — conftest/login 已处理，跳过
     env_keywords = ["已登录", "登录", "账号", "权限", "管理员", "租户", "授权"]
@@ -829,12 +835,27 @@ def _analyze_preconditions(llm_complete, preconditions: str, base_url: str, page
 
     # 通过 page.evaluate(fetch) 检查数据是否存在（不走 UI，走 API 更稳定）
     setup_steps = []
+    new_setup_refs = []  # 新生成的 setup 代码，执行通过后持久化
     for condition in data_conditions:
+        # 先查 SetupRef 缓存——已验证的 setup 代码直接复用
+        matched_ref = None
+        if setup_refs:
+            for ref in setup_refs:
+                if ref.get("condition_pattern", "") in condition or condition in ref.get("condition_pattern", ""):
+                    if ref.get("verified"):
+                        matched_ref = ref
+                        break
+        if matched_ref:
+            logger.info("复用已验证的 SetupRef: %s", matched_ref["condition_pattern"][:50])
+            setup_steps.append({"action": f"[数据检查] {condition[:40]}", "code": matched_ref["code"]})
+            continue
+
         check_code = _generate_data_check(llm_complete, condition, base_url)
         if check_code:
             setup_steps.append(check_code)
+            new_setup_refs.append({"condition_pattern": condition, "base_url": base_url, "code": check_code["code"]})
 
-    return setup_steps[:3]
+    return setup_steps[:3], new_setup_refs
 
 
 def _generate_data_check(llm_complete, condition: str, base_url: str) -> dict | None:
