@@ -187,6 +187,9 @@ async def generate_script_ai_stream(
     except Exception:
         pass
 
+    import threading
+    cancel_event = threading.Event()
+
     async def run_generate():
         import anyio
         from app.services.ai.step_generator import step_by_step_generate
@@ -197,6 +200,7 @@ async def generate_script_ai_stream(
             headless=False,
             alt_credentials=alt_creds,
             setup_refs=setup_refs,
+            cancel_event=cancel_event,
         ))
         queue.put_nowait({"type": "done", "result": result})
 
@@ -298,6 +302,7 @@ async def generate_script_ai_stream(
         except Exception as e:
             yield f"event: error\ndata: {json_mod.dumps({'error': str(e)[:300]}, ensure_ascii=False)}\n\n"
         finally:
+            cancel_event.set()
             if not task.done():
                 task.cancel()
 

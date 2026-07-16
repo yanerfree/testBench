@@ -54,6 +54,7 @@ def step_by_step_generate(
     headless: bool = False,
     alt_credentials: dict[str, str] | None = None,
     setup_refs: list[dict] | None = None,
+    cancel_event=None,
 ) -> dict:
     """
     逐步生成 Playwright 脚本。
@@ -153,6 +154,9 @@ def step_by_step_generate(
 
         # 逐步骤生成
         for i, step in enumerate(steps):
+            if cancel_event and cancel_event.is_set():
+                results.append({'step': '[已取消]', 'status': 'failed', 'error': '用户取消'})
+                break
             action = step.get("action", "")
             expected = step.get("expected", "")
             if not action:
