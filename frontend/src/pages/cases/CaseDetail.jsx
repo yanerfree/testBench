@@ -466,6 +466,8 @@ function ScenarioEditor({
     }
     setDebugRunning(false)
     setAiGenerating(false)
+    setLiveSteps(prev => prev.map(s => s.status === 'running' ? { ...s, status: 'cancelled', error: '用户取消' } : s))
+    setDebugResult(prev => prev ? { ...prev, status: 'cancelled' } : prev)
     message.info('已停止执行')
   }
 

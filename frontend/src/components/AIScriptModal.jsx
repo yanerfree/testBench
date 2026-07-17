@@ -90,6 +90,53 @@ export default function AIScriptModal({
     message.success('批量生成完成')
   }
 
+  const retryFailed = async () => {
+    const failedCases = results.filter(r => r.status === 'failed' || r.status === 'error')
+    if (!failedCases.length) return
+    setRunning(true)
+    const token = localStorage.getItem('token')
+    for (const fc of failedCases) {
+      const idx = results.findIndex(r => r.caseId === fc.caseId)
+      setResults(prev => prev.map((r, j) => j === idx ? { ...r, status: 'running' } : r))
+      try {
+        const url = `/api/projects/${projectId}/branches/${branchId}/cases/${fc.caseId}/scripts/generate-stream?type=ui`
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ envId }),
+        })
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = '', finalResult = null
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          while (buffer.includes('\n\n')) {
+            const [eventText, rest] = buffer.split('\n\n', 2)
+            buffer = rest
+            const lines = eventText.trim().split('\n')
+            let etype = null, data = null
+            for (const line of lines) {
+              if (line.startsWith('event: ')) etype = line.slice(7)
+              else if (line.startsWith('data: ')) data = line.slice(6)
+            }
+            if (etype === 'done' && data) finalResult = JSON.parse(data)
+          }
+        }
+        setResults(prev => prev.map((r, j) =>
+          j === idx ? { ...r, status: finalResult?.all_passed ? 'passed' : 'failed', steps: finalResult?.results?.length || 0 } : r
+        ))
+      } catch (e) {
+        setResults(prev => prev.map((r, j) =>
+          j === idx ? { ...r, status: 'error', error: e.message } : r
+        ))
+      }
+    }
+    setRunning(false)
+    message.success('重试完成')
+  }
+
   const passed = results.filter(r => r.status === 'passed').length
   const failed = results.filter(r => r.status === 'failed' || r.status === 'error').length
   const total = caseIds?.length || 0
@@ -143,6 +190,7 @@ export default function AIScriptModal({
                   <CloseCircleOutlined style={{ color: '#e8453c', fontSize: 16 }} />
                 )}
                 <span style={{ flex: 1, fontSize: 13 }}>{r.name}</span>
+                {r.steps > 0 && <span style={{ fontSize: 11, color: '#86909c' }}>{r.steps}步</span>}
                 <Tag color={r.status === 'passed' ? 'cyan' : r.status === 'running' ? 'purple' : 'error'} style={{ margin: 0 }}>
                   {r.status === 'running' ? '生成中...' : r.status === 'passed' ? '通过' : '失败'}
                 </Tag>
@@ -154,6 +202,8 @@ export default function AIScriptModal({
               <Space>
                 <span style={{ color: '#0ea5a0', fontWeight: 600 }}>{passed} 通过</span>
                 {failed > 0 && <span style={{ color: '#e8453c', fontWeight: 600 }}>{failed} 失败</span>}
+                {failed > 0 && <Button type="primary" onClick={retryFailed}
+                  style={{ background: '#7c5cbf', borderColor: '#7c5cbf' }}>重试失败</Button>}
                 <Button onClick={onClose}>关闭</Button>
               </Space>
             </div>
