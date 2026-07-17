@@ -282,7 +282,7 @@ def step_by_step_generate(
                 initial_code = step_code
                 last_error = initial_error
                 current_snapshot = snapshot
-                for fix_attempt in range(3):
+                for fix_attempt in range(5):
                     try:
                         current_page.wait_for_load_state("domcontentloaded")
                         current_snapshot = current_page.locator("body").aria_snapshot()[:6000]
