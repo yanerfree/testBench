@@ -395,7 +395,7 @@ function ScenarioEditor({
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ envId: runEnv }),
+        body: JSON.stringify({ envId: runEnv, stepHints: Object.keys(stepHints).length ? stepHints : undefined }),
         signal: controller.signal,
       })
       const reader = response.body.getReader()
@@ -626,6 +626,9 @@ function ScenarioEditor({
     if (type !== 'api' && caseId) {
       // 从 ui_scenario 恢复上次生成的步骤和接口数据
       const uiData = scenario || {}
+      if (uiData.stepHints && Object.keys(uiData.stepHints).length) {
+        setStepHints(uiData.stepHints)
+      }
       if (uiData.lastResults?.length > 0 && !debugResult) {
         const allPassed = uiData.lastResults.every(r => r.status === 'passed')
         setDebugResult({

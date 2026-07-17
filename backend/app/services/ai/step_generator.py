@@ -55,6 +55,7 @@ def step_by_step_generate(
     alt_credentials: dict[str, str] | None = None,
     setup_refs: list[dict] | None = None,
     cancel_event=None,
+    step_hints: dict | None = None,
 ) -> dict:
     """
     逐步生成 Playwright 脚本。
@@ -217,6 +218,9 @@ def step_by_step_generate(
 
             # 3. LLM 生成这一步的代码
             actual_action = action
+            hint = (step_hints or {}).get(str(i + 1)) or (step_hints or {}).get(str(i))
+            if hint:
+                actual_action += "\n用户指导：" + hint
             if created_name and ("输入" in action and ("名称" in action or "名" in action)):
                 actual_action = action + f"\n注意：使用唯一名称 '{created_name}' 替代用例中的原始名称"
             step_code = _generate_one_step(
@@ -835,7 +839,7 @@ def _analyze_preconditions(llm_complete, preconditions: str, base_url: str, page
             data_conditions.append(clean)
 
     if not data_conditions:
-        return []
+        return [], []
 
     # 通过 page.evaluate(fetch) 检查数据是否存在（不走 UI，走 API 更稳定）
     setup_steps = []

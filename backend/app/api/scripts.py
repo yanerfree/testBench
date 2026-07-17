@@ -95,6 +95,7 @@ async def generate_script_ai(
     case_id: uuid.UUID,
     script_type: str = Query(alias="type", default="ui"),
     env_id: uuid.UUID | None = Body(default=None, alias="envId", embed=True),
+    step_hints: dict | None = Body(default=None, alias="stepHints", embed=True),
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
@@ -201,6 +202,7 @@ async def generate_script_ai_stream(
             alt_credentials=alt_creds,
             setup_refs=setup_refs,
             cancel_event=cancel_event,
+            step_hints=step_hints or {},
         ))
         queue.put_nowait({"type": "done", "result": result})
 
@@ -263,6 +265,7 @@ async def generate_script_ai_stream(
                             "stepCache": gen_result.get("step_cache", {}),
                             "lastResults": [{"step": r.get("step",""), "action": r.get("step",""), "status": r["status"], "error": r.get("error",""), "code": r.get("code","")[:200] if r.get("code") else ""} for r in gen_result["results"]],
                             "capturedRequests": gen_result.get("captured_requests", [])[:50],
+                            "stepHints": step_hints or {},
                         }
                         await session.commit()
 
