@@ -24,6 +24,15 @@ from app.models.scenario_gen import (  # noqa: F401 — 功能场景测试模块
     CaseGenEvent,
     TaskEvent,
 )
+from app.models.protocol_mock import (  # noqa: F401 — 协议 Mock
+    WsMockEndpoint, WsMockLog,
+    TcpMockHandler, TcpMockLog,
+    UdpMockHandler, UdpMockLog,
+    GrpcMockService, GrpcMockLog,
+)
+from app.models.load_test import (  # noqa: F401 — 压力测试
+    LoadTestScenario, LoadTestStep, LoadTestRun,
+)
 
 config = context.config
 if config.config_file_name is not None:

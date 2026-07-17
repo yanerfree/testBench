@@ -26,10 +26,11 @@ const MESSAGES = {
     'menu.aiProviders': 'AI 服务配置',
     'menu.users': '用户管理',
     'menu.llmMock': 'LLM Mock',
-    'menu.apiMock': 'API Mock',
+    'menu.apiMock': '协议 Mock',
     'menu.mcpMock': 'MCP Mock',
     'menu.toolbox': '工具箱',
     'menu.httpClient': 'HTTP 请求',
+    'menu.loadTest': '压力测试',
 
     // 通用
     'common.save': '保存',
@@ -94,10 +95,11 @@ const MESSAGES = {
     'menu.aiProviders': 'AI Providers',
     'menu.users': 'Users',
     'menu.llmMock': 'LLM Mock',
-    'menu.apiMock': 'API Mock',
+    'menu.apiMock': '协议 Mock',
     'menu.mcpMock': 'MCP Mock',
     'menu.toolbox': '工具箱',
     'menu.httpClient': 'HTTP 请求',
+    'menu.loadTest': '压力测试',
 
     'common.save': 'Save',
     'common.cancel': 'Cancel',

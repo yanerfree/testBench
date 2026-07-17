@@ -24,6 +24,8 @@ from app.api.ai import router as ai_router, config_router as ai_config_router
 from app.api.ai_config import router as ai_provider_router, project_router as project_ai_config_router
 from app.api.skill_run import router as skill_run_router
 from app.api.mcp_mock import router as mcp_mock_router
+from app.api.protocol_mock import router as protocol_mock_router
+from app.api.load_test import router as load_test_router
 from app.api.exploratory import router as exploratory_router
 from app.api.documents import router as documents_router
 from app.api.case_file import router as case_file_router
@@ -41,9 +43,6 @@ from app.core.middleware import CamelCaseResponse, TokenRefreshMiddleware, Trace
 from app.mcp import mcp
 _mcp_raw = mcp.http_app(path="/")
 
-# --- MCP Mock Server（独立端点，返回可配置模拟数据，与真实 MCP 解耦） ---
-from app.mcp.mock_server import mock_mcp
-_mock_mcp_app = mock_mcp.http_app(path="/")
 
 # MCP 认证中间件 — 支持环境变量 MCP_API_KEY 或数据库 API Key（SHA-256 校验）
 from starlette.responses import JSONResponse
@@ -114,7 +113,6 @@ async def lifespan(app):
     import asyncio
     from app.services.scenario_gen import pipeline as scenario_gen_pipeline
     async with _mcp_app.lifespan(app):
-        async with _mock_mcp_app.lifespan(app):
             # mock 恢复放后台执行，不阻塞服务启动（恢复慢时曾导致启动卡 10s+）
             restore_task = asyncio.create_task(_restore_mock_services())
             # 功能场景测试模块：孤儿任务扫描 + 看门狗（NFR17）
@@ -127,6 +125,11 @@ async def lifespan(app):
 async def _restore_mock_services():
     from app.services.llm_mock_manager import mock_server
     from app.services.api_mock_manager import api_mock_server
+    from app.services.mcp_mock_manager import mcp_mock_server
+    from app.services.ws_mock_manager import ws_mock_server
+    from app.services.tcp_mock_manager import tcp_mock_server
+    from app.services.udp_mock_manager import udp_mock_server
+    from app.services.grpc_mock_manager import grpc_mock_server
     try:
         if mock_server._load_state():
             _startup_logger.info("自动恢复 LLM Mock 服务 (端口 %d)", mock_server.port)
@@ -139,6 +142,36 @@ async def _restore_mock_services():
             await api_mock_server.start()
     except Exception as e:
         _startup_logger.warning("API Mock 自动恢复失败: %s", e)
+    try:
+        if mcp_mock_server._load_state():
+            _startup_logger.info("自动恢复 MCP Mock 服务 (端口 %d)", mcp_mock_server.port)
+            await mcp_mock_server.start()
+    except Exception as e:
+        _startup_logger.warning("MCP Mock 自动恢复失败: %s", e)
+    try:
+        if ws_mock_server._load_state():
+            _startup_logger.info("自动恢复 WebSocket Mock 服务 (端口 %d)", ws_mock_server.port)
+            await ws_mock_server.start()
+    except Exception as e:
+        _startup_logger.warning("WebSocket Mock 自动恢复失败: %s", e)
+    try:
+        if tcp_mock_server._load_state():
+            _startup_logger.info("自动恢复 TCP Mock 服务 (端口 %d)", tcp_mock_server.port)
+            await tcp_mock_server.start()
+    except Exception as e:
+        _startup_logger.warning("TCP Mock 自动恢复失败: %s", e)
+    try:
+        if udp_mock_server._load_state():
+            _startup_logger.info("自动恢复 UDP Mock 服务 (端口 %d)", udp_mock_server.port)
+            await udp_mock_server.start()
+    except Exception as e:
+        _startup_logger.warning("UDP Mock 自动恢复失败: %s", e)
+    try:
+        if grpc_mock_server._load_state():
+            _startup_logger.info("自动恢复 gRPC Mock 服务 (端口 %d)", grpc_mock_server.port)
+            await grpc_mock_server.start()
+    except Exception as e:
+        _startup_logger.warning("gRPC Mock 自动恢复失败: %s", e)
 
 app = FastAPI(
     title="测试管理平台 API",
@@ -188,6 +221,8 @@ app.include_router(ai_provider_router)
 app.include_router(project_ai_config_router)
 app.include_router(skill_run_router)
 app.include_router(mcp_mock_router)
+app.include_router(protocol_mock_router)
+app.include_router(load_test_router)
 app.include_router(exploratory_router)
 app.include_router(documents_router)
 app.include_router(api_test_router)
@@ -202,6 +237,3 @@ app.include_router(mcp_keys_router)
 
 # --- MCP Server 挂载 ---
 app.mount("/mcp", _mcp_app)
-
-# --- MCP Mock Server 挂载（独立地址，外部客户端联调用） ---
-app.mount("/mcp-mock-server", _mock_mcp_app)

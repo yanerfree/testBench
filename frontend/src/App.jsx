@@ -30,6 +30,7 @@ import ApiMock from './pages/api-mock/ApiMock'
 import McpMock from './pages/mcp-mock/McpMock'
 import Toolbox from './pages/toolbox/Toolbox'
 import HttpClient from './pages/http-client/HttpClient'
+import LoadTest from './pages/load-test/LoadTest'
 import AIProviderConfig from './pages/settings/AIProviderConfig'
 import ProjectAIConfig from './pages/settings/ProjectAIConfig'
 import AICapabilities from './pages/settings/AICapabilities'
@@ -116,11 +117,26 @@ function AppLayout() {
     ] : []),
     { key: '/settings/logs', icon: <FileSearchOutlined />, label: t('menu.logs') },
     { type: 'divider' },
-    { key: '/tools/llm-mock', icon: <RobotOutlined />, label: t('menu.llmMock') },
-    { key: '/tools/api-mock', icon: <CloudServerOutlined />, label: t('menu.apiMock') },
-    { key: '/tools/mcp-mock', icon: <ApiOutlined />, label: t('menu.mcpMock') },
-    { key: '/tools/toolbox', icon: <ToolOutlined />, label: t('menu.toolbox') },
-    { key: '/tools/http-client', icon: <SendOutlined />, label: t('menu.httpClient') },
+    {
+      key: 'mock-services',
+      icon: <CloudServerOutlined />,
+      label: 'Mock 服务',
+      children: [
+        { key: '/tools/api-mock', icon: <GlobalOutlined />, label: t('menu.apiMock') },
+        { key: '/tools/llm-mock', icon: <RobotOutlined />, label: t('menu.llmMock') },
+        { key: '/tools/mcp-mock', icon: <ApiOutlined />, label: t('menu.mcpMock') },
+      ],
+    },
+    {
+      key: 'test-tools',
+      icon: <ToolOutlined />,
+      label: '测试工具',
+      children: [
+        { key: '/tools/http-client', icon: <SendOutlined />, label: t('menu.httpClient') },
+        { key: '/tools/load-test', icon: <ThunderboltOutlined />, label: t('menu.loadTest') },
+        { key: '/tools/toolbox', icon: <ToolOutlined />, label: t('menu.toolbox') },
+      ],
+    },
   ]
 
   const handleLogout = async () => {
@@ -210,6 +226,7 @@ function AppLayout() {
             <Menu
               mode="inline"
               selectedKeys={[location.pathname]}
+              defaultOpenKeys={['mock-services', 'test-tools', 'ai-group', 'system-ai-group']}
               items={menuItems}
               onClick={({ key }) => navigate(key)}
               style={{ border: 'none', fontSize: 13, paddingTop: 8, background: 'transparent' }}
@@ -257,6 +274,7 @@ function AppLayout() {
             <Route path="/tools/mcp-mock" element={<McpMock />} />
             <Route path="/tools/toolbox" element={<Toolbox />} />
             <Route path="/tools/http-client" element={<HttpClient />} />
+            <Route path="/tools/load-test" element={<LoadTest />} />
           </Routes>
         </Content>
       </Layout>

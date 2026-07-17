@@ -23,6 +23,7 @@ dependencies = [
     "fastmcp>=3.4",
     "pytest-playwright>=0.5",
     "playwright>=1.40",
+    "grpcio>=1.60",
 ]
 
 [tool.setuptools.packages.find]

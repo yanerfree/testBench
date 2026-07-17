@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, Fragment, lazy, Suspense } from 'react'
 import {
   Button, Space, Input, Select, Tag, Radio, Popconfirm, Tooltip, Badge, Pagination,
   Empty, Typography, InputNumber, Switch, message, Drawer, Alert, Modal
@@ -7,7 +7,7 @@ import {
   PlusOutlined, DeleteOutlined, SaveOutlined, PlayCircleOutlined, PauseCircleOutlined,
   ReloadOutlined, ExportOutlined, ClearOutlined, CopyOutlined, CloudServerOutlined,
   LockOutlined, SettingOutlined, CheckOutlined,
-  SendOutlined, StarOutlined
+  SendOutlined, StarOutlined, ApiOutlined, WifiOutlined, GlobalOutlined, CloudOutlined
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
@@ -67,7 +67,64 @@ const CT_COLOR = (ct) => {
   return 'default'
 }
 
+const WsMockPanel = lazy(() => import('./WsMockPanel'))
+const TcpMockPanel = lazy(() => import('./TcpMockPanel'))
+const UdpMockPanel = lazy(() => import('./UdpMockPanel'))
+const GrpcMockPanel = lazy(() => import('./GrpcMockPanel'))
+
+const PROTOCOLS = [
+  { key: 'http', label: 'HTTP', color: '#0ea5a0', icon: <ApiOutlined /> },
+  { key: 'ws', label: 'WebSocket', color: '#52c41a', icon: <WifiOutlined /> },
+  { key: 'tcp', label: 'TCP', color: '#fa8c16', icon: <CloudServerOutlined /> },
+  { key: 'udp', label: 'UDP', color: '#1890ff', icon: <GlobalOutlined /> },
+  { key: 'grpc', label: 'gRPC', color: '#7c5cbf', icon: <CloudOutlined /> },
+]
+
 export default function ApiMock() {
+  const [protocol, setProtocol] = useState('http')
+  const activeProto = PROTOCOLS.find(p => p.key === protocol) || PROTOCOLS[0]
+
+  return (
+    <div style={{ height: 'calc(100vh - 70px)', display: 'flex', flexDirection: 'column' }}>
+      {/* 协议标签栏 */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 0, padding: '0 20px',
+        background: 'rgba(255,255,255,0.5)', borderBottom: '1px solid rgba(0,0,0,0.06)',
+        flexShrink: 0, height: 42,
+      }}>
+        {PROTOCOLS.map(p => (
+          <div
+            key={p.key}
+            onClick={() => setProtocol(p.key)}
+            style={{
+              padding: '8px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 500,
+              display: 'flex', alignItems: 'center', gap: 6,
+              color: protocol === p.key ? p.color : '#8c8c8c',
+              borderBottom: protocol === p.key ? `2px solid ${p.color}` : '2px solid transparent',
+              transition: 'all 0.2s',
+            }}
+          >
+            {p.icon} {p.label}
+          </div>
+        ))}
+      </div>
+
+      {/* 面板内容 */}
+      <div style={{ flex: 1, overflow: 'hidden' }}>
+        {protocol === 'http' && <HttpMockPanel />}
+        <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: '#8c8c8c' }}>加载中...</div>}>
+          {protocol === 'ws' && <WsMockPanel />}
+          {protocol === 'tcp' && <TcpMockPanel />}
+          {protocol === 'udp' && <UdpMockPanel />}
+          {protocol === 'grpc' && <GrpcMockPanel />}
+        </Suspense>
+      </div>
+    </div>
+  )
+}
+
+// HTTP Mock 面板（原 ApiMock 组件）
+function HttpMockPanel() {
   const [routes, setRoutes] = useState([])
   const [selectedRouteId, setSelectedRouteId] = useState(null)
   const [routeForm, setRouteForm] = useState(null)
@@ -664,7 +721,7 @@ export default function ApiMock() {
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 70px)', background: 'transparent' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'transparent' }}>
 
       {/* ━━━ 顶栏 ━━━ */}
       <div style={{

@@ -1,0 +1,348 @@
+"""MCP Mock 服务管理器 — 管理独立端口 9300 的 MCP Mock 服务"""
+from __future__ import annotations
+
+import asyncio
+import copy
+import json
+import logging
+import time
+import uuid
+from collections import deque
+from datetime import datetime, timezone
+from pathlib import Path
+
+logger = logging.getLogger("mcp_mock")
+
+_STATE_FILE = Path(__file__).resolve().parent.parent.parent / ".mock_state" / "mcp_mock.json"
+_TOOLS_FILE = Path(__file__).resolve().parent.parent.parent / ".mock_state" / "mcp_mock_tools.json"
+
+# ── 默认工具 ──────────────────────────────────
+
+DEFAULT_TOOLS = [
+    {
+        "name": "tb_list_cases",
+        "description": "列出测试用例",
+        "params": {"branch_id": "string", "page": "integer", "page_size": "integer", "keyword": "string", "folder_id": "string", "priority": "string", "case_type": "string"},
+        "mode": "success",
+        "enabled": True,
+        "customData": None,
+        "customIsError": False,
+        "successData": {
+            "cases": [
+                {"id": "mock-001", "caseCode": "TC-DEMO-00001", "title": "用户登录-正常流程", "type": "api", "priority": "P0"},
+                {"id": "mock-002", "caseCode": "TC-DEMO-00002", "title": "用户登录-密码错误", "type": "api", "priority": "P1"},
+            ],
+            "total": 2, "page": 1, "pageSize": 50,
+        },
+    },
+    {
+        "name": "tb_get_case",
+        "description": "获取用例详情",
+        "params": {"case_id": "string"},
+        "mode": "success",
+        "enabled": True,
+        "customData": None,
+        "customIsError": False,
+        "successData": {"id": "mock-001", "caseCode": "TC-DEMO-00001", "title": "用户登录-正常流程", "type": "api", "priority": "P0", "steps": [{"action": "POST /api/auth/login", "expected": "返回 200"}]},
+    },
+    {
+        "name": "tb_create_case",
+        "description": "创建测试用例",
+        "params": {"branch_id": "string", "title": "string", "module": "string", "case_type": "string", "priority": "string", "preconditions": "string", "steps": "array", "expected_result": "string"},
+        "mode": "success",
+        "enabled": True,
+        "customData": None,
+        "customIsError": False,
+        "successData": {"id": "mock-new", "caseCode": "TC-MOCK-00001", "title": "(mock) 新建的用例", "type": "api", "priority": "P2"},
+    },
+    {
+        "name": "tb_get_folder_tree",
+        "description": "获取文件夹树",
+        "params": {"branch_id": "string"},
+        "mode": "success",
+        "enabled": True,
+        "customData": None,
+        "customIsError": False,
+        "successData": [
+            {"id": "folder-1", "name": "用户管理", "depth": 1, "caseCount": 5, "children": [{"id": "folder-2", "name": "登录", "depth": 2, "caseCount": 3, "children": []}]},
+            {"id": "folder-3", "name": "项目管理", "depth": 1, "caseCount": 8, "children": []},
+        ],
+    },
+    {
+        "name": "tb_list_api_tree",
+        "description": "获取 API 接口树",
+        "params": {"project_id": "string"},
+        "mode": "success",
+        "enabled": True,
+        "customData": None,
+        "customIsError": False,
+        "successData": [
+            {"id": "api-1", "type": "folder", "name": "用户模块", "method": None, "url": None},
+            {"id": "api-2", "type": "endpoint", "name": "用户登录", "method": "POST", "url": "/api/auth/login"},
+            {"id": "api-3", "type": "endpoint", "name": "获取用户列表", "method": "GET", "url": "/api/users"},
+        ],
+    },
+    {
+        "name": "tb_get_api_node",
+        "description": "获取 API 节点详情",
+        "params": {"node_id": "string"},
+        "mode": "success",
+        "enabled": True,
+        "customData": None,
+        "customIsError": False,
+        "successData": {"id": "api-2", "type": "endpoint", "name": "用户登录", "method": "POST", "url": "/api/auth/login", "headers": {"Content-Type": "application/json"}, "body": {"username": "string", "password": "string"}},
+    },
+    {
+        "name": "tb_list_environments",
+        "description": "列出测试环境",
+        "params": {},
+        "mode": "success",
+        "enabled": True,
+        "customData": None,
+        "customIsError": False,
+        "successData": [{"id": "env-1", "name": "development", "description": "开发环境"}, {"id": "env-2", "name": "staging", "description": "预发布环境"}],
+    },
+    {
+        "name": "tb_get_merged_variables",
+        "description": "获取合并变量",
+        "params": {"env_id": "string"},
+        "mode": "success",
+        "enabled": True,
+        "customData": None,
+        "customIsError": False,
+        "successData": {"BASE_URL": "http://localhost:8000", "AUTH_TOKEN": "mock-jwt-xxx", "DB_HOST": "localhost"},
+    },
+]
+
+DEFAULT_ERROR = {"error": "Mock error: tool call failed", "code": "MOCK_ERROR"}
+
+
+class McpMockServerManager:
+    def __init__(self):
+        self.port: int = 9300
+        self.host: str = "0.0.0.0"
+        self.transport: str = "streamable-http"
+        self._server = None
+        self._task: asyncio.Task | None = None
+        self._tools: list[dict] = []
+        self._call_logs: deque[dict] = deque(maxlen=500)
+        self._load_tools()
+
+    # ── 工具管理 ──
+
+    def _load_tools(self):
+        try:
+            if _TOOLS_FILE.exists():
+                self._tools = json.loads(_TOOLS_FILE.read_text())
+                return
+        except Exception:
+            pass
+        self._tools = copy.deepcopy(DEFAULT_TOOLS)
+        self._save_tools()
+
+    def _save_tools(self):
+        try:
+            _TOOLS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            _TOOLS_FILE.write_text(json.dumps(self._tools, ensure_ascii=False, indent=2))
+        except Exception:
+            pass
+
+    def get_tools(self) -> list[dict]:
+        return self._tools
+
+    def get_tool(self, name: str) -> dict | None:
+        return next((t for t in self._tools if t["name"] == name), None)
+
+    def add_tool(self, tool_data: dict) -> dict:
+        tool = {
+            "name": tool_data["name"],
+            "description": tool_data.get("description", ""),
+            "params": tool_data.get("params", {}),
+            "mode": "success",
+            "enabled": True,
+            "customData": None,
+            "customIsError": False,
+            "successData": tool_data.get("successData", {"result": "ok"}),
+        }
+        self._tools.append(tool)
+        self._save_tools()
+        return tool
+
+    def update_tool(self, name: str, data: dict) -> dict | None:
+        tool = self.get_tool(name)
+        if not tool:
+            return None
+        for k in ("description", "mode", "enabled", "customData", "customIsError", "successData", "params"):
+            if k in data:
+                tool[k] = data[k]
+        self._save_tools()
+        return tool
+
+    def delete_tool(self, name: str) -> bool:
+        idx = next((i for i, t in enumerate(self._tools) if t["name"] == name), None)
+        if idx is None:
+            return False
+        self._tools.pop(idx)
+        self._save_tools()
+        return True
+
+    # ── Mock 响应 ──
+
+    def compute_response(self, tool_name: str):
+        tool = self.get_tool(tool_name)
+        if not tool:
+            return None
+        mode = tool["mode"]
+        if mode == "success":
+            return tool.get("successData", {"result": "ok"})
+        elif mode == "error":
+            return copy.deepcopy(DEFAULT_ERROR)
+        elif mode == "custom":
+            data = tool.get("customData") or tool.get("successData", {"result": "ok"})
+            if tool.get("customIsError"):
+                msg = data.get("error", str(data)) if isinstance(data, dict) else str(data)
+                return {"error": msg, "code": "MOCK_CUSTOM_ERROR"}
+            return data
+        return None
+
+    # ── 日志 ──
+
+    def log_call(self, tool_name: str, arguments: dict, response, source: str, mode: str, is_error: bool, t0: float):
+        elapsed = round((time.perf_counter() - t0) * 1000, 1)
+        resp_str = json.dumps(response, ensure_ascii=False, default=str)
+        self._call_logs.appendleft({
+            "id": str(uuid.uuid4())[:8],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "tool": tool_name,
+            "arguments": arguments,
+            "response": resp_str[:5000],
+            "source": source,
+            "mode": mode,
+            "isError": is_error,
+            "elapsedMs": elapsed,
+        })
+
+    def get_logs(self, tool: str | None = None, status: str | None = None, limit: int = 50, offset: int = 0):
+        logs = list(self._call_logs)
+        if tool:
+            logs = [l for l in logs if l["tool"] == tool]
+        if status == "ok":
+            logs = [l for l in logs if not l["isError"]]
+        elif status == "error":
+            logs = [l for l in logs if l["isError"]]
+        return logs[offset:offset + limit], len(logs)
+
+    def clear_logs(self) -> int:
+        count = len(self._call_logs)
+        self._call_logs.clear()
+        return count
+
+    # ── 服务管理 ──
+
+    def _save_state(self, running: bool):
+        try:
+            _STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+            _STATE_FILE.write_text(json.dumps({"running": running, "port": self.port, "transport": self.transport}))
+        except Exception:
+            pass
+
+    def _load_state(self) -> bool:
+        try:
+            data = json.loads(_STATE_FILE.read_text())
+            self.transport = data.get("transport", "streamable-http")
+            return data.get("running", False)
+        except Exception:
+            return False
+
+    @property
+    def running(self) -> bool:
+        if self._server is None:
+            return False
+        if self._task is not None and self._task.done():
+            logger.warning("MCP Mock 服务 task 已意外退出，清理状态")
+            self._server = None
+            self._task = None
+            return False
+        return getattr(self._server, 'started', False)
+
+    async def start(self) -> None:
+        if self.running:
+            return
+        app = self._create_app()
+        import uvicorn
+        config = uvicorn.Config(app, host=self.host, port=self.port, log_level="warning")
+        server = uvicorn.Server(config)
+        self._task = asyncio.create_task(server.serve())
+        self._task.add_done_callback(self._on_task_done)
+        self._server = server
+        for _ in range(50):
+            if server.started:
+                break
+            await asyncio.sleep(0.1)
+        logger.info("MCP Mock 服务已启动 %s:%d", self.host, self.port)
+        self._save_state(True)
+
+    async def stop(self) -> None:
+        if self._server is not None:
+            self._server.should_exit = True
+            if self._task:
+                try:
+                    await asyncio.wait_for(self._task, timeout=5)
+                except (asyncio.TimeoutError, Exception):
+                    pass
+            self._server = None
+            self._task = None
+            logger.info("MCP Mock 服务已停止")
+            self._save_state(False)
+
+    def _on_task_done(self, task: asyncio.Task) -> None:
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc:
+            logger.error("MCP Mock 服务异常退出: %s", exc)
+        self._server = None
+        self._task = None
+
+    def _create_app(self):
+        from fastmcp import FastMCP
+
+        mcp = FastMCP(
+            name="testBench-mock",
+            instructions="testBench MCP Mock Server — 返回可配置的模拟数据，用于 MCP 客户端联调测试。",
+        )
+
+        mgr = self
+
+        def _dispatch(tn):
+            t0 = time.perf_counter()
+            resp = mgr.compute_response(tn)
+            if resp is None:
+                resp = {"result": "ok"}
+            is_error = isinstance(resp, dict) and resp.get("code") in ("MOCK_ERROR", "MOCK_CUSTOM_ERROR")
+            tool = mgr.get_tool(tn)
+            mode = tool["mode"] if tool else "success"
+            mgr.log_call(tn, {}, resp, "mock-server", mode, is_error, t0)
+            if is_error:
+                raise RuntimeError(resp.get("error", "Mock error"))
+            return resp
+
+        for tool_cfg in self._tools:
+            if not tool_cfg.get("enabled", True):
+                continue
+            tool_name = tool_cfg["name"]
+            tool_desc = f"[Mock] {tool_cfg.get('description', tool_name)}"
+            tool_params = tool_cfg.get("params", {})
+
+            param_str = ", ".join(f'{k}: str = ""' for k in tool_params) if tool_params else ""
+            func_code = f"async def {tool_name}({param_str}):\n    return _dispatch('{tool_name}')\n"
+            ns = {"_dispatch": _dispatch}
+            exec(func_code, ns)
+            fn = ns[tool_name]
+            fn.__doc__ = tool_desc
+            mcp.tool(name=tool_name, description=tool_desc)(fn)
+
+        return mcp.http_app(path="/", transport=self.transport)
+
+
+mcp_mock_server = McpMockServerManager()
