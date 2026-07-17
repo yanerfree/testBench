@@ -120,6 +120,7 @@ async def generate_script_ai_stream(
     case_id: uuid.UUID,
     script_type: str = Query(alias="type", default="ui"),
     env_id: uuid.UUID | None = Body(default=None, alias="envId", embed=True),
+    step_hints: dict | None = Body(default=None, alias="stepHints", embed=True),
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
