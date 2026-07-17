@@ -71,7 +71,7 @@ async def generate_ui_script(
         fixture_name=fixture_name,
         healing_history=healing_history,
         preconditions=case.preconditions or "",
-        headless=False,
+        headless=not bool(__import__("os").environ.get("DISPLAY")),
         alt_credentials=alt_creds,
     ))
 

@@ -198,7 +198,7 @@ async def generate_script_ai_stream(
             base_url=base_url, credentials=creds, steps=case.steps or [],
             fixture_name=fixture_name, on_step=on_step,
             preconditions=case.preconditions or "",
-            headless=False,
+            headless=not bool(__import__("os").environ.get("DISPLAY")),
             alt_credentials=alt_creds,
             setup_refs=setup_refs,
             cancel_event=cancel_event,
