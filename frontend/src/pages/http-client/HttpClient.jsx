@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  Button, Input, Select, Tag, Space, message, Popconfirm, Tooltip, Modal, Dropdown, Radio, Switch
+  Button, Input, Select, Tag, Space, message, Popconfirm, Tooltip, Modal, Dropdown, Radio, Switch, InputNumber
 } from 'antd'
 import {
   SendOutlined, DeleteOutlined, CopyOutlined, LoadingOutlined,
@@ -65,6 +65,7 @@ export default function HttpClient() {
   const [activeTabId, setActiveTabId] = useState(null)
   const [responses, setResponses] = useState({})
   const [sending, setSending] = useState({})
+  const [requestTimeout, setRequestTimeout] = useState(120)
   const [history, setHistory] = useState([])
   const [showHistory, setShowHistory] = useState(false)
   const [editingNameId, setEditingNameId] = useState(null)
@@ -161,7 +162,7 @@ export default function HttpClient() {
       if (!finalUrl) { message.warning('请输入 URL'); setSending(s => ({ ...s, [id]: false })); return }
       if (!/^https?:\/\//i.test(finalUrl)) finalUrl = 'http://' + finalUrl
       const hdrs = {}; (activeItem.headers || []).forEach(h => { if (h.enabled !== false && h.key?.trim()) hdrs[h.key.trim()] = h.value || '' })
-      const res = await api.post('/http-client/send', { method: activeItem.method, url: finalUrl, headers: Object.keys(hdrs).length ? hdrs : null, body: ['POST','PUT','PATCH'].includes(activeItem.method) && activeItem.body?.trim() ? activeItem.body.trim() : null })
+      const res = await api.post('/http-client/send', { method: activeItem.method, url: finalUrl, headers: Object.keys(hdrs).length ? hdrs : null, body: ['POST','PUT','PATCH'].includes(activeItem.method) && activeItem.body?.trim() ? activeItem.body.trim() : null, timeout: requestTimeout })
       const d = res.data?.data || res.data || res
       if (d.error || res.error) { setResponses(r => ({ ...r, [id]: { error: d.error || res.error } })); return }
       setResponses(r => ({ ...r, [id]: d })); fetchHistory()
@@ -323,6 +324,11 @@ export default function HttpClient() {
                     {activeItem._dirty ? '保存' : '已保存'}
                   </Button>
                   <Dropdown menu={{ items: moreMenu }} trigger={['click']}><Button size="small">更多</Button></Dropdown>
+                  <Tooltip title="请求超时时间（秒），范围 1-600">
+                    <InputNumber value={requestTimeout} onChange={v => setRequestTimeout(v || 120)}
+                      min={1} max={600} size="small" style={{ width: 80 }}
+                      addonAfter="s" />
+                  </Tooltip>
                   <Button type="primary" icon={isSending ? <LoadingOutlined /> : <SendOutlined />} loading={isSending} onClick={handleSend} size="small"
                     style={{ background: '#0ea5a0', borderColor: '#0ea5a0', paddingLeft: 16, paddingRight: 16 }}>发送</Button>
                 </div>

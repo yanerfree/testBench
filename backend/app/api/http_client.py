@@ -51,7 +51,7 @@ class SendRequest(BaseModel):
     url: str
     headers: dict | None = None
     body: str | None = None
-    timeout: int = Field(default=30, ge=1, le=120)
+    timeout: int = Field(default=120, ge=1, le=600)
 
 
 # ── 请求集合 CRUD ──
