@@ -177,6 +177,7 @@ def step_by_step_generate(
             if on_step:
                 on_step({"type": "step_start", "seq": i + 1, "action": action, "phase": "generating"})
             try:
+                current_page.wait_for_timeout(500)
                 snapshot = current_page.locator("body").aria_snapshot()[:6000]
             except Exception:
                 snapshot = ""
