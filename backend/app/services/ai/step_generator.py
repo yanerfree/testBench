@@ -233,14 +233,16 @@ def step_by_step_generate(
                 history_hint=history_hint,
             )
 
-            # 3. 静态校验（零 token，拦截明显错误）
-            validation_error = _validate_step_code(step_code, snapshot)
-            if validation_error:
-                logger.info("步骤 %d 静态校验失败: %s，重新生成", i + 1, validation_error)
+            # 3. 静态校验（零 token，拦截明显错误）— 最多重试 3 次
+            for _retry in range(3):
+                validation_error = _validate_step_code(step_code, snapshot)
+                if not validation_error:
+                    break
+                logger.info("步骤 %d 静态校验失败(第%d次): %s，重新生成", i + 1, _retry + 1, validation_error)
                 step_code = _generate_one_step(
                     llm_complete=llm_complete, step_num=i + 1,
                     action=actual_action, expected=expected, snapshot=snapshot, page_url=current_page.url,
-                    history_hint=history_hint + f"\n上次生成的代码未通过静态校验: {validation_error}",
+                    history_hint=history_hint + f"\n上次生成的代码未通过静态校验: {validation_error}\n必须包含 click/fill/expect 等操作性调用，不能只有 wait_for_load_state",
                 )
 
             # 4. 执行前选择器唯一性验证（纯机械，不调 LLM）
