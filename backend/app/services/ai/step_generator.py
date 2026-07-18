@@ -267,6 +267,15 @@ def step_by_step_generate(
             exec_result = _execute_step(current_page, step_code, action)
             exec_result["code"] = step_code
             exec_result["snapshot"] = snapshot[:500]
+
+            # 5.5 截图 — 每步执行后截图（失败必截，成功在关键步骤截）
+            try:
+                import base64 as _b64
+                screenshot_bytes = current_page.screenshot(timeout=5000)
+                exec_result["screenshot"] = _b64.b64encode(screenshot_bytes).decode("ascii")
+            except Exception:
+                exec_result["screenshot"] = None
+
             results.append(exec_result)
             code_blocks.append(f'    # Step {i+1}: {action}\n    with tea_step("{action[:50]}", phase="{"verify" if "验证" in action else "action"}"):\n' + _indent(step_code, 8))
 

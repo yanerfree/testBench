@@ -264,7 +264,7 @@ async def generate_script_ai_stream(
                             "steps": [{"seq": j+1, "action": s.get("action",""), "expected": s.get("expected","")} for j, s in enumerate(case.steps or [])],
                             "scriptId": str(script.id),
                             "stepCache": gen_result.get("step_cache", {}),
-                            "lastResults": [{"step": r.get("step",""), "action": r.get("step",""), "status": r["status"], "error": r.get("error",""), "code": r.get("code","")[:200] if r.get("code") else ""} for r in gen_result["results"]],
+                            "lastResults": [{"step": r.get("step",""), "action": r.get("step",""), "status": r["status"], "error": r.get("error",""), "code": r.get("code","")[:200] if r.get("code") else "", "screenshot": r.get("screenshot","")[:200000] if r.get("screenshot") and r["status"] == "failed" else None} for r in gen_result["results"]],
                             "capturedRequests": gen_result.get("captured_requests", [])[:50],
                             "stepHints": step_hints or {},
                         }
@@ -299,7 +299,7 @@ async def generate_script_ai_stream(
                     if gen_result.get("new_setup_refs"):
                         await session.commit()
 
-                    yield f"event: done\ndata: {json_mod.dumps({'status': 'passed' if gen_result['all_passed'] else 'failed', 'all_passed': gen_result['all_passed'], 'results': [{'step': r.get('step',''), 'action': r.get('step',''), 'status': r['status'], 'error': r.get('error','')} for r in gen_result['results']], 'captured_requests': gen_result.get('captured_requests', [])[:50]}, ensure_ascii=False)}\n\n"
+                    yield f"event: done\ndata: {json_mod.dumps({'status': 'passed' if gen_result['all_passed'] else 'failed', 'all_passed': gen_result['all_passed'], 'results': [{'step': r.get('step',''), 'action': r.get('step',''), 'status': r['status'], 'error': r.get('error',''), 'screenshot': r.get('screenshot','')[:200000] if r.get('screenshot') and r['status'] == 'failed' else None} for r in gen_result['results']], 'captured_requests': gen_result.get('captured_requests', [])[:50]}, ensure_ascii=False)}\n\n"
                     break
                 else:
                     yield f"event: {event['type']}\ndata: {json_mod.dumps(event, ensure_ascii=False)}\n\n"

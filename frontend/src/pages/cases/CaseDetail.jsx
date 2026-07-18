@@ -10,7 +10,7 @@ import {
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
-import { useEnv } from '../../utils/env'
+import { useEnv, buildEnvOptions } from '../../utils/env'
 import ScriptEditor from '../../components/ScriptEditor'
 import ApiStepList, { generateApiCodeFromSteps } from '../../components/ApiStepList'
 
@@ -427,7 +427,12 @@ function ScenarioEditor({
                 })
               } else if (currentEvent === 'done') {
                 const live = liveStepsRef.current
-                setDebugResult({ ...data, steps: live.length > 0 ? live : data.results || [], _drawerOpen: true })
+                (() => {
+                  const screenshots = (data.results || [])
+                    .filter(r => r.screenshot && r.status === 'failed')
+                    .map((r, i) => ({ base64: r.screenshot, name: `步骤失败: ${r.step?.substring(0,30) || '未知'}` }))
+                  setDebugResult({ ...data, steps: live.length > 0 ? live : data.results || [], screenshots, _drawerOpen: true })
+                })()
                 if (!scenario) {
                   setScenario({ steps: (manualSteps || []).map((s, i) => ({ seq: i + 1, action: s.action || '', expected: s.expected || '' })), variablesUsed: [] })
                 }
@@ -579,8 +584,9 @@ function ScenarioEditor({
             AI 将分析用例的操作步骤和预期结果，生成可执行的 Playwright Python 测试脚本，并在目标系统上运行验证
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-            <Select size="middle" value={runEnv} onChange={onEnvChange} style={{ width: 180 }}
-              placeholder="选择执行环境" options={(environments || []).map(e => ({ value: e.id, label: e.name }))} />
+            <Select size="middle" value={runEnv} onChange={onEnvChange} style={{ width: 220 }}
+              popupMatchSelectWidth={false}
+              placeholder="选择执行环境" options={buildEnvOptions(environments)} />
             <Button type="primary" size="middle" icon={<ThunderboltOutlined />}
               loading={aiGenerating} disabled={!runEnv}
               onClick={handleAiGenerate}
@@ -660,8 +666,9 @@ function ScenarioEditor({
         {/* 工具栏 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <Space size={8}>
-            <Select size="small" value={runEnv} onChange={onEnvChange} style={{ width: 150 }}
-              placeholder="选择环境" options={(environments || []).map(e => ({ value: e.id, label: e.name }))} />
+            <Select size="small" value={runEnv} onChange={onEnvChange} style={{ width: 180 }}
+              popupMatchSelectWidth={false}
+              placeholder="选择环境" options={buildEnvOptions(environments)} />
             <Button size="small" icon={<ThunderboltOutlined />}
               loading={aiGenerating} disabled={!runEnv}
               onClick={handleAiGenerate}
@@ -1114,8 +1121,9 @@ function ScenarioEditor({
           </Tooltip>
         </Space>
         <Space>
-          <Select size="small" value={runEnv} onChange={onEnvChange} style={{ width: 130 }}
-            placeholder="选择环境" options={(environments || []).map(e => ({ value: e.id, label: e.name }))} />
+          <Select size="small" value={runEnv} onChange={onEnvChange} style={{ width: 160 }}
+            popupMatchSelectWidth={false}
+            placeholder="选择环境" options={buildEnvOptions(environments)} />
           <Button size="small" type="primary" icon={<PlayCircleOutlined />}
             loading={debugRunning} disabled={!runEnv}
             onClick={handleDebugRun}
