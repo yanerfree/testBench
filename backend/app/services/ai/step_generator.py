@@ -178,7 +178,7 @@ def step_by_step_generate(
                 on_step({"type": "step_start", "seq": i + 1, "action": action, "phase": "generating"})
             try:
                 current_page.wait_for_timeout(500)
-                snapshot = current_page.locator("body").aria_snapshot()[:6000]
+                snapshot = current_page.locator("body").aria_snapshot()[:12000]
             except Exception:
                 snapshot = ""
 
@@ -278,7 +278,7 @@ def step_by_step_generate(
                 if is_select_step and "选择" in action:
                     try:
                         current_page.wait_for_timeout(500)
-                        new_snap = current_page.locator("body").aria_snapshot()[:6000]
+                        new_snap = current_page.locator("body").aria_snapshot()[:12000]
                         # 只在 Snapshot 中确实有下拉列表（listbox/combobox/option）时才触发
                         if any(kw in new_snap for kw in ["listbox", "option", "combobox"]):
                             select_code = _generate_one_step(
@@ -302,7 +302,7 @@ def step_by_step_generate(
                 for fix_attempt in range(5):
                     try:
                         current_page.wait_for_load_state("domcontentloaded")
-                        current_snapshot = current_page.locator("body").aria_snapshot()[:6000]
+                        current_snapshot = current_page.locator("body").aria_snapshot()[:12000]
                     except Exception:
                         current_snapshot = snapshot
 
