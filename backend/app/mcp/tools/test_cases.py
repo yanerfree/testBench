@@ -79,6 +79,8 @@ async def create_case(
     warnings = _validate_case_quality(title, module, priority, preconditions, steps, expected_result)
 
     if steps:
+        # 自动拆分粒度过粗的步骤（"一步一动作"规范）
+        steps = _split_coarse_steps(steps)
         for i, s in enumerate(steps):
             if not s.get("seq"):
                 s["seq"] = i + 1
@@ -144,6 +146,67 @@ def _validate_case_quality(title, module, priority, preconditions, steps, expect
                 warnings.append(f"expected_result 含模糊词'{fw}'")
 
     return warnings
+
+
+# 动作连接词——表示一个步骤包含多个独立动作
+_SPLIT_PATTERNS = ["，点击", "，选择", "，配置", "，填写", "，输入", "，确认", "，勾选",
+                   ",点击", ",选择", ",配置", ",填写", ",输入", ",确认", ",勾选"]
+
+
+def _split_coarse_steps(steps: list[dict]) -> list[dict]:
+    """自动拆分粒度过粗的步骤——一个 action 含多个独立动作时拆成多步"""
+    import re
+    result = []
+    for s in steps:
+        action = s.get("action", "")
+        expected = s.get("expected", "")
+
+        # 检测是否有多个动作
+        # 模式：中文逗号/英文逗号 + 动作动词（点击/填写/选择/配置/输入/确认）
+        split_points = []
+        for pat in _SPLIT_PATTERNS:
+            idx = action.find(pat)
+            while idx > 0:
+                split_points.append(idx)
+                idx = action.find(pat, idx + 1)
+
+        if not split_points:
+            result.append(s)
+            continue
+
+        # 去重排序
+        split_points = sorted(set(split_points))
+
+        # 拆分
+        parts = []
+        prev = 0
+        for sp in split_points:
+            part = action[prev:sp].strip().rstrip("，,")
+            if part:
+                parts.append(part)
+            prev = sp + 1  # 跳过逗号
+        last = action[prev:].strip()
+        if last:
+            parts.append(last)
+
+        if len(parts) <= 1:
+            result.append(s)
+            continue
+
+        # 生成拆分后的步骤
+        for j, part in enumerate(parts):
+            new_step = {
+                "seq": len(result) + 1,
+                "action": part,
+                "expected": expected if j == len(parts) - 1 else f"操作完成，页面状态更新",
+            }
+            result.append(new_step)
+
+    # 重新编号
+    for i, s in enumerate(result):
+        s["seq"] = i + 1
+
+    return result
 
 
 async def get_folder_tree(session: AsyncSession, branch_id: str) -> list[dict]:
