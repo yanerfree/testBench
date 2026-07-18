@@ -85,6 +85,7 @@ async def create_case(
 
     if preconditions:
         import re
+        preconditions = preconditions.replace("\\n", "\n")
         preconditions = re.sub(r'；\s*(\d+)\.\s*', r'\n\1. ', preconditions)
         preconditions = re.sub(r';\s*(\d+)\.\s*', r'\n\1. ', preconditions)
 
