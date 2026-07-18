@@ -151,7 +151,7 @@ def step_by_step_generate(
                 if on_step:
                     on_step({"type": "step_done", "seq": -1, "action": f"[前置] {setup['action']}", "status": setup_result["status"]})
                 if setup_result["status"] == "failed":
-                    break
+                    logger.warning("前置数据检查失败，继续执行主步骤: %s", setup['action'][:50])
 
         # 逐步骤生成
         for i, step in enumerate(steps):
@@ -759,6 +759,14 @@ def _clean_step_code(raw: str) -> str:
             result = fixed
         except SyntaxError:
             pass
+
+    # 清理验证断言中的硬编码数字（如 "服务总数 11" → "服务总数"）
+    import re as _re2
+    def _strip_trailing_digits(m):
+        text = m.group(1)
+        cleaned = _re2.sub(r'\s+\d+\s*$', '', text)
+        return 'to_contain_text("' + cleaned + '")'
+    result = _re2.sub(r'to_contain_text\("([^"]*\s\d+\s*)"\)', _strip_trailing_digits, result)
 
     return result
 
