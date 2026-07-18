@@ -777,8 +777,11 @@ def _validate_step_code(code: str, snapshot: str) -> str | None:
         return "代码为空或只有 pass"
     if code.strip().startswith("raise Exception"):
         return "LLM 生成失败，代码不可执行"
-    # LLM 输出了分析文字而非代码
+    # LLM 输出了分析文字或只有 wait_for 没有实际操作
     if "page." not in code and "expect(" not in code:
+        return "LLM 输出了分析文字而非可执行代码，请只输出 page.xxx 调用"
+    action_patterns = [".click(", ".fill(", ".goto(", ".press(", ".check(", ".type(", ".select_option(", "expect(", ".evaluate(", ".inner_text(", ".text_content("]
+    if not any(p in code for p in action_patterns):
         return "LLM 输出了分析文字而非可执行代码，请只输出 page.xxx 调用"
 
     # 1. 禁止的选择器/API
