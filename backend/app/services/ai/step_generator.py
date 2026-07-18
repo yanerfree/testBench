@@ -234,8 +234,14 @@ def step_by_step_generate(
             )
 
             # 3. 静态校验（零 token，拦截明显错误）— 最多重试 3 次
+            is_action_step = any(kw in action for kw in ["点击", "填写", "输入", "选择", "配置", "创建", "新建", "编辑", "删除", "保存", "发布", "提交"])
             for _retry in range(3):
                 validation_error = _validate_step_code(step_code, snapshot)
+                # 操作类步骤必须有 click/fill 等操作，不能只有 expect
+                if not validation_error and is_action_step:
+                    action_ops = [".click(", ".fill(", ".goto(", ".press(", ".check(", ".type(", ".select_option("]
+                    if not any(op in step_code for op in action_ops):
+                        validation_error = f"操作类步骤（{action[:20]}）必须包含 click/fill 等操作，不能只有 expect 断言"
                 if not validation_error:
                     break
                 logger.info("步骤 %d 静态校验失败(第%d次): %s，重新生成", i + 1, _retry + 1, validation_error)
@@ -494,6 +500,11 @@ def _do_login(page, base_url: str, credentials: dict) -> dict:
         submit.first.click()
         page.wait_for_url(lambda u: "/login" not in u, timeout=15000)
         page.wait_for_load_state("networkidle")
+        # SPA 可能还在渲染——等导航菜单出现
+        try:
+            page.locator("nav").wait_for(state="visible", timeout=10000)
+        except Exception:
+            page.wait_for_timeout(3000)
         return {"step": f"登录系统（{username}）", "status": "passed"}
     except Exception as e:
         return {"step": "登录系统", "status": "failed", "error": str(e)[:300]}
@@ -782,9 +793,15 @@ def _validate_step_code(code: str, snapshot: str) -> str | None:
     # LLM 输出了分析文字或只有 wait_for 没有实际操作
     if "page." not in code and "expect(" not in code:
         return "LLM 输出了分析文字而非可执行代码，请只输出 page.xxx 调用"
-    action_patterns = [".click(", ".fill(", ".goto(", ".press(", ".check(", ".type(", ".select_option(", "expect(", ".evaluate(", ".inner_text(", ".text_content("]
-    if not any(p in code for p in action_patterns):
-        return "LLM 输出了分析文字而非可执行代码，请只输出 page.xxx 调用"
+    action_patterns = [".click(", ".fill(", ".goto(", ".press(", ".check(", ".type(", ".select_option(", ".evaluate(", ".inner_text(", ".text_content("]
+    has_action = any(p in code for p in action_patterns)
+    has_expect = "expect(" in code
+    if not has_action and not has_expect:
+        return "代码没有任何操作或断言，请输出 page.xxx 操作或 expect 断言"
+    if not has_action and has_expect:
+        # 只有 expect 没有操作——可能是验证步骤（允许）或假通过（看 snapshot 判断）
+        # 如果当前步骤 action 不含验证关键词，拒绝
+        pass  # 在调用处根据 action 判断
 
     # 1. 禁止的选择器/API
     forbidden = [
