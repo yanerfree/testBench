@@ -548,6 +548,16 @@ Snapshot 显示页面上实际存在的元素。步骤描述只是"意图"。冲
 2. 如果找到 URL: `page.goto(url)` + `page.wait_for_load_state("networkidle")`
 3. 如果找不到，验证页面上有地址相关文字: `expect(page.locator("body")).to_contain_text("http")`
 
+## 下拉菜单（Dropdown）操作
+如果步骤说"选择XX"但 Snapshot 中没有对应的选项元素，说明下拉菜单还没展开。
+此时应该先找到触发下拉的按钮并 click，等 500ms，再 click 选项：
+```
+page.get_by_role("button", name="创建服务").click()
+page.wait_for_timeout(500)
+page.get_by_text("API 服务").click()
+```
+下拉选项可能在 Snapshot 中不可见（动态渲染），直接用 get_by_text 定位。
+
 ## 禁止
 ❌ get_by_label / get_by_placeholder / CSS选择器 / get_by_role("option")
 ❌ import / def / class / async / 编造不存在的元素
@@ -830,23 +840,8 @@ def _validate_step_code(code: str, snapshot: str) -> str | None:
         if any(stripped.startswith(p) for p in ("import ", "from ", "def ", "async def ", "class ")):
             return f"包含禁止语句: {stripped[:60]}"
 
-    # 3. 元素名称存在性 — 检查 get_by_role/get_by_text 的 name 参数是否在 snapshot 中
-    if snapshot:
-        # 提取 get_by_role(..., name="xxx") 中的 name
-        role_names = re.findall(r'get_by_role\([^)]*name=["\']([^"\']+)["\']', code)
-        # 提取 get_by_text("xxx") 中的文字
-        text_names = re.findall(r'get_by_text\(["\']([^"\']+)["\']', code)
-        all_names = role_names + text_names
-        snapshot_lower = snapshot.lower()
-        for name in all_names:
-            if len(name) < 2:
-                continue
-            if name.lower() in snapshot_lower:
-                continue
-            # 临时元素（下拉选项、弹窗按钮）可能不在 snapshot 中，跳过常见的
-            if any(kw in name for kw in ["请选择", "选项", "确定", "取消", "是", "否", "保存", "提交"]):
-                continue
-            return f"元素 '{name}' 在当前页面 Aria Snapshot 中不存在，请从 Snapshot 中找实际存在的元素"
+    # 3. 元素名称存在性检查（已禁用 — 下拉菜单等动态元素不在 Snapshot 中但可以操作）
+    # 让 Playwright 执行时自行报错，由修复循环处理
 
     return None
 
