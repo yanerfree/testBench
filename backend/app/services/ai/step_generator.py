@@ -521,15 +521,24 @@ Snapshot 显示页面上实际存在的元素。步骤描述只是"意图"。冲
 有 `dialog` 时用 `page.get_by_role("dialog").get_by_xxx()` 限定范围
 
 ## 复制地址/访问URL
-从页面提取 URL 并访问: `url = page.get_by_text("http").first.text_content()` + `page.goto(url)`
-不要模拟剪贴板操作，直接提取文本。
+如果步骤说"复制地址并访问"或"在浏览器访问"：
+1. 用 page.evaluate 提取包含 http 的文本: `url = page.evaluate("() => [...document.querySelectorAll('*')].find(e => e.textContent.match(/https?:\/\/[^\\s]+/) && e.children.length === 0)?.textContent.match(/https?:\/\/[^\\s]+/)?.[0]")`
+2. 如果找到 URL: `page.goto(url)` + `page.wait_for_load_state("networkidle")`
+3. 如果找不到，验证页面上有地址相关文字: `expect(page.locator("body")).to_contain_text("http")`
 
 ## 禁止
 ❌ get_by_label / get_by_placeholder / CSS选择器 / get_by_role("option")
 ❌ import / def / class / async / 编造不存在的元素
 
+## 验证类步骤
+如果步骤是"观察"/"确认"/"验证"类（不需要点击操作），用 expect 断言：
+- `expect(page.get_by_role("heading", name="xxx")).to_be_visible()`
+- `expect(page.locator("body")).to_contain_text("xxx")`
+注意：不要硬编码具体数字（如"服务总数 11"），用文字标签断言（如"服务总数"）。
+不要输出分析文字，必须输出可执行的 expect/page 代码。
+
 ## 输出
-只输出 2-6 行 page.xxx 调用，不要其他内容。"""
+只输出 2-6 行 page.xxx/expect(...) 调用，不要其他内容（不要中文解释）。"""
 
 
 def _generate_one_step(llm_complete, step_num: int, action: str, expected: str, snapshot: str, page_url: str, history_hint: str = "") -> str:
