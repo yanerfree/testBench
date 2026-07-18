@@ -844,6 +844,8 @@ def _analyze_preconditions(llm_complete, preconditions: str, base_url: str, page
     # 业务数据前置 — 需要检查是否存在，不存在则准备
     data_keywords = ["已存在", "已创建", "存在至少", "已配置", "有在线", "包含健康", "已授权至少"]
 
+    # 处理 \n 字面量（来自 JSON 序列化的换行）
+    preconditions = preconditions.replace("\\n", "\n")
     lines = [l.strip() for l in preconditions.split("\n") if l.strip()]
     data_conditions = []
     for line in lines:
