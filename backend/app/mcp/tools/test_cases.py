@@ -150,7 +150,9 @@ def _validate_case_quality(title, module, priority, preconditions, steps, expect
 
 # 动作连接词——表示一个步骤包含多个独立动作
 _SPLIT_PATTERNS = ["，点击", "，选择", "，配置", "，填写", "，输入", "，确认", "，勾选",
-                   ",点击", ",选择", ",配置", ",填写", ",输入", ",确认", ",勾选"]
+                   ",点击", ",选择", ",配置", ",填写", ",输入", ",确认", ",勾选",
+                   "、协议", "、配置", "、选择", "、填写", "、输入",
+                   "和负载", "和路由", "并点击", "并选择", "并填写"]
 
 
 def _split_coarse_steps(steps: list[dict]) -> list[dict]:
