@@ -251,6 +251,14 @@ def step_by_step_generate(
                     history_hint=history_hint + f"\n上次生成的代码未通过静态校验: {validation_error}\n必须包含 click/fill/expect 等操作性调用，不能只有 wait_for_load_state",
                 )
 
+            # 3.5 静态校验兜底——3 次重试后仍无效则标记失败
+            if validation_error:
+                logger.warning("步骤 %d 静态校验 3 次重试仍失败: %s", i + 1, validation_error)
+                results.append({"step": action, "status": "failed", "error": f"代码生成质量不足: {validation_error}", "code": step_code})
+                if on_step:
+                    on_step({"type": "step_done", "seq": i + 1, "action": action, "status": "failed", "error": validation_error[:200]})
+                break
+
             # 4. 执行前选择器唯一性验证（纯机械，不调 LLM）
             step_code = _pre_verify_and_fix_locators(current_page, step_code)
 
