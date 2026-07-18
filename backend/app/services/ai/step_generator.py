@@ -676,7 +676,15 @@ def _execute_step(page, code: str, step_name: str) -> dict:
                 cleaned.append(ch)
         code = "".join(cleaned)
     # 键名修正：LLM 常输出小写键名
-    code = code.replace('.press("enter")', '.press("Enter")').replace('.press("tab")', '.press("Tab")').replace('.press("escape")', '.press("Escape")')
+    key_fixes = {
+        '"enter"': '"Enter"', '"tab"': '"Tab"', '"escape"': '"Escape"',
+        '"ctrl"': '"Control"', '"control"': '"Control"', '"shift"': '"Shift"',
+        '"alt"': '"Alt"', '"backspace"': '"Backspace"', '"delete"': '"Delete"',
+        '"arrowup"': '"ArrowUp"', '"arrowdown"': '"ArrowDown"',
+        '"arrowleft"': '"ArrowLeft"', '"arrowright"': '"ArrowRight"',
+    }
+    for wrong, right in key_fixes.items():
+        code = code.replace(f".press({wrong})", f".press({right})")
     # 等待/观察类步骤给更长超时
     is_wait_step = any(kw in step_name for kw in ["等待", "观察", "同步"])
     if is_wait_step:
