@@ -560,7 +560,7 @@ async def create_doc_task(
         "createdBy": str(current_user.id),
     }
 
-    host = body.get("_host", "localhost:8000")
+    host = body.get("_host", "localhost:8756")
     task_url = f"http://{host}/api/projects/{project_id}/documents/tasks/{task_id}"
 
     return {"data": {

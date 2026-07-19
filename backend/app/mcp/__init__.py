@@ -119,6 +119,12 @@ _register(
     description="获取单个 API 节点详情（含 method, url, headers, body, auth 等）。参数: node_id(节点UUID)",
 )
 
+_register(
+    api_endpoints.create_api_node,
+    name="tb_create_api_node",
+    description="创建 API 接口节点（endpoint 或 folder）。参数: project_id(项目UUID), name(名称), node_type(endpoint/folder,默认endpoint), method(GET/POST/PUT/DELETE等), url(接口路径), parent_id(可选,父文件夹UUID), params(可选,查询参数[{key,value,desc}]), headers(可选,[{key,value,desc}]), body(可选,请求体), body_type(可选,json/form/raw/none), auth(可选,{type,token}), description(可选), sort_order(排序,默认0)",
+)
+
 
 # ── 环境变量工具 ──────────────────────────────────
 

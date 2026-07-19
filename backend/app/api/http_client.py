@@ -46,6 +46,14 @@ class RequestUpdate(BaseModel):
     parent_id: str | None = Field(default=None)
     sort_order: int | None = None
 
+class SortItem(BaseModel):
+    id: str
+    sort_order: int
+    parent_id: str | None = None
+
+class BatchSortRequest(BaseModel):
+    items: list[SortItem]
+
 class SendRequest(BaseModel):
     method: str = "GET"
     url: str
@@ -99,6 +107,20 @@ async def update_request(item_id: uuid.UUID, body: RequestUpdate, session: Async
 async def delete_request(item_id: uuid.UUID, session: AsyncSession = Depends(get_db)):
     await session.execute(delete(HttpRequest).where(HttpRequest.parent_id == item_id))
     await session.execute(delete(HttpRequest).where(HttpRequest.id == item_id))
+    return {"ok": True}
+
+
+@router.post("/requests/batch-sort")
+async def batch_sort(body: BatchSortRequest, session: AsyncSession = Depends(get_db)):
+    for item in body.items:
+        values = {"sort_order": item.sort_order}
+        if item.parent_id is not None:
+            values["parent_id"] = uuid.UUID(item.parent_id) if item.parent_id else None
+        await session.execute(
+            update(HttpRequest)
+            .where(HttpRequest.id == uuid.UUID(item.id))
+            .values(**values)
+        )
     return {"ok": True}
 
 

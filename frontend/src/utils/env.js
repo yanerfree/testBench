@@ -15,6 +15,17 @@ export function setEnvId(projectId, envId) {
   window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { projectId, envId } }))
 }
 
+export function buildEnvOptions(environments) {
+  return (environments || []).map(e => {
+    const parts = [e.name]
+    const extra = [e.description, e.base_url || e.baseUrl].filter(Boolean).join(' | ')
+    return {
+      value: e.id,
+      label: extra ? `${e.name} (${extra})` : e.name,
+    }
+  })
+}
+
 export function useEnv(projectId) {
   const [envId, setEnvIdState] = useState(() => projectId ? getEnvId(projectId) : null)
 

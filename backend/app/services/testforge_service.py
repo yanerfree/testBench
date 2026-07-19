@@ -24,7 +24,7 @@ def generate_task(
     target: dict,
     interface_info: str,
     business_rules: list[str],
-    api_url: str = "http://localhost:8000",
+    api_url: str = "http://localhost:8756",
 ) -> dict:
     task_id = f"tf-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6]}"
 

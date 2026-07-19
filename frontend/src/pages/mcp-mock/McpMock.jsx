@@ -32,7 +32,7 @@ export default function McpMock() {
   const [logsTotal, setLogsTotal] = useState(0)
   const [logPage, setLogPage] = useState(1)
   const [expandedLogId, setExpandedLogId] = useState(null)
-  const [serviceStatus, setServiceStatus] = useState({ running: false, port: 9300, transport: 'streamable-http', toolsCount: 0, toolsEnabled: 0, totalLogs: 0 })
+  const [serviceStatus, setServiceStatus] = useState({ running: false, port: 28300, transport: 'streamable-http', toolsCount: 0, toolsEnabled: 0, totalLogs: 0 })
   const [createOpen, setCreateOpen] = useState(false)
   const [newToolName, setNewToolName] = useState('')
   const [newToolDesc, setNewToolDesc] = useState('')
@@ -135,7 +135,9 @@ export default function McpMock() {
         await api.post('/mcp-mock/start'); message.success('MCP Mock 服务已启动')
       }
       setTimeout(fetchStatus, 500)
-    } catch {}
+    } catch (e) {
+      message.error(`操作失败: ${e.message || '未知错误'}`)
+    }
   }
 
   const handleCreateTool = async () => {

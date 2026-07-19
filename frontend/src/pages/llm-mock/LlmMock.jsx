@@ -50,7 +50,7 @@ export default function LlmMock() {
   const [expandedLogId, setExpandedLogId] = useState(null)
   const [expandedLogDetail, setExpandedLogDetail] = useState(null)
   const [logFilter, setLogFilter] = useState('all')
-  const [serviceStatus, setServiceStatus] = useState({ running: false, port: 9100, captureEnabled: true, routesCount: 0, routesEnabled: 0, totalRequests: 0 })
+  const [serviceStatus, setServiceStatus] = useState({ running: false, port: 28100, captureEnabled: true, routesCount: 0, routesEnabled: 0, totalRequests: 0 })
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('config')
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -234,7 +234,9 @@ export default function LlmMock() {
         await api.post('/llm-mock/start'); message.success('Mock 服务已启动')
       }
       setTimeout(fetchStatus, 500)
-    } catch {}
+    } catch (e) {
+      message.error(`操作失败: ${e.message || '未知错误'}`)
+    }
   }
 
   const handleClearLogs = async () => {

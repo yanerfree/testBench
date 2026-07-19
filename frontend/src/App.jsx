@@ -6,7 +6,7 @@ import {
   SettingOutlined, UserOutlined, FileSearchOutlined, ApiOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined, RobotOutlined,
   CloudServerOutlined, ThunderboltOutlined, BugOutlined, ToolOutlined, SendOutlined,
-  GlobalOutlined,
+  GlobalOutlined, SafetyCertificateOutlined,
 } from '@ant-design/icons'
 import { api } from './utils/request'
 import { useLang } from './utils/i18n.jsx'
@@ -28,6 +28,7 @@ import ApiManagement from './pages/apis/ApiManagement'
 import LlmMock from './pages/llm-mock/LlmMock'
 import ApiMock from './pages/api-mock/ApiMock'
 import McpMock from './pages/mcp-mock/McpMock'
+import OAuth2Mock from './pages/oauth2-mock/OAuth2Mock'
 import Toolbox from './pages/toolbox/Toolbox'
 import HttpClient from './pages/http-client/HttpClient'
 import LoadTest from './pages/load-test/LoadTest'
@@ -125,6 +126,7 @@ function AppLayout() {
         { key: '/tools/api-mock', icon: <GlobalOutlined />, label: t('menu.apiMock') },
         { key: '/tools/llm-mock', icon: <RobotOutlined />, label: t('menu.llmMock') },
         { key: '/tools/mcp-mock', icon: <ApiOutlined />, label: t('menu.mcpMock') },
+        { key: '/tools/oauth2-mock', icon: <SafetyCertificateOutlined />, label: 'OAuth2 Mock' },
       ],
     },
     {
@@ -272,6 +274,7 @@ function AppLayout() {
             <Route path="/tools/llm-mock" element={<LlmMock />} />
             <Route path="/tools/api-mock" element={<ApiMock />} />
             <Route path="/tools/mcp-mock" element={<McpMock />} />
+            <Route path="/tools/oauth2-mock" element={<OAuth2Mock />} />
             <Route path="/tools/toolbox" element={<Toolbox />} />
             <Route path="/tools/http-client" element={<HttpClient />} />
             <Route path="/tools/load-test" element={<LoadTest />} />

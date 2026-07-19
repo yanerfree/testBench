@@ -5,7 +5,8 @@ import {
 } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, SaveOutlined, PlayCircleOutlined, PauseCircleOutlined,
-  ReloadOutlined, ClearOutlined, CopyOutlined, CloudServerOutlined, AppstoreOutlined
+  ReloadOutlined, ClearOutlined, CopyOutlined, CloudServerOutlined, AppstoreOutlined,
+  SendOutlined, ThunderboltOutlined
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
@@ -36,11 +37,14 @@ export default function WsMockPanel() {
   const [logPageSize] = useState(50)
   const [expandedLogId, setExpandedLogId] = useState(null)
   const [logEventFilter, setLogEventFilter] = useState(undefined)
-  const [serviceStatus, setServiceStatus] = useState({ running: false, port: 9300, endpointsCount: 0, endpointsEnabled: 0, totalLogs: 0 })
+  const [serviceStatus, setServiceStatus] = useState({ running: false, port: 28400, endpointsCount: 0, endpointsEnabled: 0, totalLogs: 0 })
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('config')
   const [presets, setPresets] = useState([])
   const [presetOpen, setPresetOpen] = useState(false)
+  const [testMessage, setTestMessage] = useState('Hello WebSocket')
+  const [testResult, setTestResult] = useState(null)
+  const [testing, setTesting] = useState(false)
   const pollRef = useRef(null)
 
   useEffect(() => {
@@ -79,6 +83,8 @@ export default function WsMockPanel() {
     setSelectedId(ep.id)
     setForm(formData)
     setOriginalForm(formData)
+    setTestMessage('Hello WebSocket')
+    setTestResult(null)
     setActiveTab('config')
   }, [])
 
@@ -174,7 +180,9 @@ export default function WsMockPanel() {
         message.success('WebSocket Mock 服务已启动')
       }
       setTimeout(fetchStatus, 500)
-    } catch {}
+    } catch (e) {
+      message.error(`操作失败: ${e.message || '未知错误'}`)
+    }
   }
 
   const handleClearLogs = async () => {
@@ -312,6 +320,149 @@ export default function WsMockPanel() {
                 <Input value={form.errorReason || ''} onChange={e => setForm(f => ({ ...f, errorReason: e.target.value }))}
                   placeholder="Connection closed" style={{ fontSize: 13 }} />
               </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  /* ─── Test Tab ─── */
+  const handleTest = async () => {
+    if (!form || !serviceStatus.running) return
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const r = await api.post('/protocol-mock/ws/test', {
+        path: form.path || '/',
+        message: testMessage || 'Hello',
+      })
+      setTestResult(r.data || r)
+      fetchLogs()
+    } catch (e) {
+      setTestResult({ error: e?.response?.data?.error || e.message })
+    } finally { setTesting(false) }
+  }
+
+  const renderTestTab = () => {
+    if (!form) {
+      return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+        <Empty description={<span style={{ color: '#bfbfbf' }}>选择左侧端点进行测试</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      </div>
+    }
+    const wsUrl = `ws://${window.location.hostname}:${serviceStatus.port}${form.path || '/'}`
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: '14px 16px' }}>
+          {/* Target info */}
+          <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 12, background: 'rgba(82,196,26,0.04)', border: '1px solid rgba(82,196,26,0.12)' }}>
+            <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 6 }}>WebSocket URL</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <code style={{ fontFamily: MONO, fontSize: 13, color: ACCENT, fontWeight: 500 }}>{wsUrl}</code>
+              <Button size="small" type="text" icon={<CopyOutlined />} onClick={() => { copyToClipboard(wsUrl); message.success('已复制') }} />
+            </div>
+          </div>
+
+          {/* Message input */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>发送消息</div>
+            <TextArea
+              value={testMessage}
+              onChange={e => setTestMessage(e.target.value)}
+              rows={4}
+              style={{ fontFamily: MONO, fontSize: 12 }}
+              placeholder='Hello WebSocket'
+            />
+          </div>
+
+          {/* Send button */}
+          <div style={{ marginBottom: 16 }}>
+            <Button
+              type="primary" icon={<SendOutlined />}
+              loading={testing} onClick={handleTest}
+              disabled={!serviceStatus.running}
+            >
+              {serviceStatus.running ? '发送消息' : '服务未启动'}
+            </Button>
+            {!serviceStatus.running && (
+              <span style={{ marginLeft: 8, fontSize: 12, color: '#fa8c16' }}>请先启动 WebSocket Mock 服务</span>
+            )}
+          </div>
+
+          {/* wscat hint */}
+          <div style={{ marginBottom: 16, padding: '8px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.04)' }}>
+            <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>命令行测试 (wscat)</div>
+            <code style={{ fontSize: 11, fontFamily: MONO, color: '#595959', wordBreak: 'break-all' }}>
+              wscat -c {wsUrl}
+            </code>
+            <Button size="small" type="text" icon={<CopyOutlined />} style={{ marginLeft: 4 }}
+              onClick={() => { copyToClipboard(`wscat -c ${wsUrl}`); message.success('已复制') }}
+            />
+          </div>
+
+          {/* Result */}
+          {testResult && (
+            <div>
+              {testResult.error ? (
+                <pre style={{
+                  background: '#fff2f0', color: '#e8453c', padding: 12, borderRadius: 12,
+                  overflow: 'auto', fontSize: 11, lineHeight: 1.5, maxHeight: 200,
+                  fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                  border: '1px solid #ffccc7',
+                }}>{testResult.error}</pre>
+              ) : (
+                <div style={{ border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden' }}>
+                  {/* Header bar */}
+                  <div style={{
+                    padding: '8px 14px', background: 'rgba(0,0,0,0.02)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    borderBottom: '1px solid rgba(0,0,0,0.04)',
+                  }}>
+                    <Space size={8}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#262626' }}>请求 / 响应详情</span>
+                      {testResult.duration_ms != null && (
+                        <span style={{ fontSize: 11, color: '#8c8c8c' }}>{testResult.duration_ms}ms</span>
+                      )}
+                    </Space>
+                    <Button size="small" icon={<CopyOutlined />} onClick={() => {
+                      const text = [
+                        '--- REQUEST ---',
+                        `WebSocket URL: ${testResult.url || ''}`,
+                        `Message:`,
+                        testResult.sent || '',
+                        '',
+                        '--- RESPONSE ---',
+                        testResult.received ?? '(无响应)',
+                      ].join('\n')
+                      copyToClipboard(text)
+                      message.success('已复制完整请求/响应')
+                    }}>复制全部</Button>
+                  </div>
+
+                  {/* Request section */}
+                  <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: ACCENT, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Request</div>
+                    <div style={{ fontSize: 12, fontFamily: MONO, color: '#262626', marginBottom: 6 }}>
+                      <span style={{ color: '#8c8c8c' }}>URL: </span>{testResult.url}
+                    </div>
+                    <pre style={{
+                      background: 'rgba(0,0,0,0.02)', color: '#595959', padding: 8, borderRadius: 8,
+                      fontSize: 11, fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                      border: '1px solid rgba(0,0,0,0.04)', maxHeight: 120, overflow: 'auto', margin: 0,
+                    }}>{testResult.sent || ''}</pre>
+                  </div>
+
+                  {/* Response section */}
+                  <div style={{ padding: '10px 14px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#0ea5a0', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Response</div>
+                    <pre style={{
+                      background: '#1e1e2e', color: '#cdd6f4', padding: 12, borderRadius: 10,
+                      overflow: 'auto', fontSize: 11, lineHeight: 1.5, maxHeight: 200,
+                      fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0,
+                    }}>{testResult.received ?? '(无响应)'}</pre>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -527,6 +678,7 @@ export default function WsMockPanel() {
             <div style={{ display: 'flex', gap: 0 }}>
               {[
                 { key: 'config', label: '端点配置' },
+                { key: 'test', label: <>测试 <ThunderboltOutlined style={{ fontSize: 11 }} /></> },
                 { key: 'logs', label: <>连接日志 <Tag style={{ margin: '0 0 0 4px', fontSize: 11, borderRadius: 12, lineHeight: '18px', padding: '0 6px' }}>{serviceStatus.totalLogs}</Tag></> },
               ].map(t => (
                 <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
@@ -542,7 +694,7 @@ export default function WsMockPanel() {
             </div>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-            {activeTab === 'config' ? renderConfigTab() : renderLogsTab()}
+            {activeTab === 'config' ? renderConfigTab() : activeTab === 'test' ? renderTestTab() : renderLogsTab()}
           </div>
         </div>
       </div>

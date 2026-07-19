@@ -3,6 +3,7 @@ import { Tag, Button, Radio, Input, Space, Modal, Form, Select, InputNumber, mes
 import { PlusOutlined, SearchOutlined, ReloadOutlined, PlayCircleOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
+import { buildEnvOptions } from '../../utils/env'
 import { useBranch } from '../../utils/branch'
 import CasePicker from '../../components/CasePicker'
 
@@ -326,7 +327,7 @@ export default function PlanList() {
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="environmentId" label="目标环境"
               rules={planType === 'automated' ? [{ required: true, message: '自动化计划必须选择环境' }] : []} style={{ flex: 1 }}>
-              <Select placeholder="选择环境" allowClear options={environments.map(e => ({ value: e.id, label: e.name }))} />
+              <Select placeholder="选择环境" allowClear popupMatchSelectWidth={false} options={buildEnvOptions(environments)} />
             </Form.Item>
             <Form.Item name="channelId" label="通知渠道" style={{ flex: 1 }}>
               <Select placeholder="选择通知渠道" allowClear options={channels.map(c => ({ value: c.id, label: c.name }))} />

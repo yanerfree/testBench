@@ -1,4 +1,4 @@
-"""MCP Mock 服务管理器 — 管理独立端口 9300 的 MCP Mock 服务"""
+"""MCP Mock 服务管理器 — 管理独立大端口 28300 的 MCP Mock 服务（避开 ELK 等常用端口段）"""
 from __future__ import annotations
 
 import asyncio
@@ -119,7 +119,7 @@ DEFAULT_ERROR = {"error": "Mock error: tool call failed", "code": "MOCK_ERROR"}
 
 class McpMockServerManager:
     def __init__(self):
-        self.port: int = 9300
+        self.port: int = 28300
         self.host: str = "0.0.0.0"
         self.transport: str = "streamable-http"
         self._server = None
@@ -272,12 +272,18 @@ class McpMockServerManager:
         import uvicorn
         config = uvicorn.Config(app, host=self.host, port=self.port, log_level="warning")
         server = uvicorn.Server(config)
-        self._task = asyncio.create_task(server.serve())
-        self._task.add_done_callback(self._on_task_done)
+        from app.services._mock_server_util import guarded_serve
+        task = asyncio.create_task(guarded_serve(server, "MCP Mock"))
+        self._task = task
+        task.add_done_callback(self._on_task_done)
         self._server = server
         for _ in range(50):
             if server.started:
                 break
+            if task.done():
+                self._server = None
+                self._task = None
+                raise RuntimeError(f"MCP Mock 启动失败，端口 {self.port} 可能被占用")
             await asyncio.sleep(0.1)
         logger.info("MCP Mock 服务已启动 %s:%d", self.host, self.port)
         self._save_state(True)

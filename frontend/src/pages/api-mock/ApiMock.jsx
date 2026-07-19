@@ -141,12 +141,18 @@ function HttpMockPanel() {
   const [expandedLogId, setExpandedLogId] = useState(null)
   const [expandedLogDetail, setExpandedLogDetail] = useState(null)
   const [logFilter, setLogFilter] = useState('all')
-  const [serviceStatus, setServiceStatus] = useState({ running: false, port: 9200, captureEnabled: true, routesCount: 0, routesEnabled: 0, totalRequests: 0 })
+  const [serviceStatus, setServiceStatus] = useState({ running: false, port: 28200, captureEnabled: true, routesCount: 0, routesEnabled: 0, totalRequests: 0 })
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('config')
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [copyText, setCopyText] = useState('复制')
   const pollRef = useRef(null)
+  const [testMethod, setTestMethod] = useState('GET')
+  const [testPath, setTestPath] = useState('/')
+  const [testBody, setTestBody] = useState('')
+  const [testHeaders, setTestHeaders] = useState('')
+  const [testResult, setTestResult] = useState(null)
+  const [testing, setTesting] = useState(false)
 
   useEffect(() => {
     fetchRoutes()
@@ -187,6 +193,11 @@ function HttpMockPanel() {
     setOriginalForm(formData)
     setSelectedPreset(undefined)
     setActiveTab('config')
+    setTestMethod(route.method || 'GET')
+    setTestPath(route.path || '/')
+    setTestBody(route.responseBody ? '' : '')
+    setTestHeaders('')
+    setTestResult(null)
   }, [])
 
   const isDirty = useMemo(() => {
@@ -325,7 +336,9 @@ function HttpMockPanel() {
         message.success('API Mock 服务已启动')
       }
       setTimeout(fetchStatus, 500)
-    } catch {}
+    } catch (e) {
+      message.error(`操作失败: ${e.message || '未知错误'}`)
+    }
   }
 
   const handleClearLogs = async () => {
@@ -616,6 +629,222 @@ function HttpMockPanel() {
     )
   }
 
+  // ─── 渲染：测试 Tab ───
+  const handleTest = async () => {
+    if (!serviceStatus.running) return
+    setTesting(true)
+    setTestResult(null)
+    try {
+      let headers = {}
+      if (testHeaders.trim()) {
+        try { headers = JSON.parse(testHeaders) } catch { message.error('Headers JSON 格式错误'); setTesting(false); return }
+      }
+      const r = await api.post('/api-mock/test', {
+        method: testMethod,
+        path: testPath,
+        body: testBody || '',
+        headers,
+      })
+      setTestResult(r.data || r)
+      fetchLogs()
+    } catch (e) {
+      setTestResult({ error: e?.response?.data?.error || e.message })
+    } finally { setTesting(false) }
+  }
+
+  const renderTestTab = () => {
+    if (!routeForm) {
+      return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+        <Empty description={<span style={{ color: '#bfbfbf' }}>选择左侧路由进行测试</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      </div>
+    }
+    const baseUrl = `http://${window.location.hostname}:${serviceStatus.port}`
+    const fullUrl = `${baseUrl}${testPath}`
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: '14px 16px' }}>
+          {/* URL display */}
+          <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 12, background: 'rgba(124,92,191,0.04)', border: '1px solid rgba(124,92,191,0.12)' }}>
+            <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 6 }}>请求 URL</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <code style={{ fontFamily: MONO, fontSize: 13, color: '#7c5cbf', fontWeight: 500 }}>{fullUrl}</code>
+              <Button size="small" type="text" icon={<CopyOutlined />} onClick={() => { copyToClipboard(fullUrl); message.success('已复制') }} />
+            </div>
+          </div>
+
+          {/* Method + Path */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+            <div style={{ width: 100 }}>
+              <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>Method</div>
+              <Select value={testMethod} onChange={v => setTestMethod(v)} size="small" style={{ width: '100%' }}>
+                {['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].map(m => (
+                  <Select.Option key={m} value={m}><span style={{ color: METHOD_COLOR(m), fontWeight: 600 }}>{m}</span></Select.Option>
+                ))}
+              </Select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>Path</div>
+              <Input value={testPath} onChange={e => setTestPath(e.target.value)}
+                style={{ fontFamily: MONO, fontSize: 12 }} placeholder="/api/users" size="small" />
+            </div>
+          </div>
+
+          {/* Headers */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>Headers (JSON, 可选)</div>
+            <TextArea
+              value={testHeaders}
+              onChange={e => setTestHeaders(e.target.value)}
+              rows={2}
+              style={{ fontFamily: MONO, fontSize: 12 }}
+              placeholder='{"Authorization": "Bearer xxx"}'
+            />
+          </div>
+
+          {/* Body */}
+          {!['GET', 'HEAD', 'OPTIONS'].includes(testMethod) && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>Request Body</div>
+              <TextArea
+                value={testBody}
+                onChange={e => setTestBody(e.target.value)}
+                rows={4}
+                style={{ fontFamily: MONO, fontSize: 12 }}
+                placeholder='{"key": "value"}'
+              />
+            </div>
+          )}
+
+          {/* Send button */}
+          <div style={{ marginBottom: 16 }}>
+            <Button
+              type="primary" icon={<SendOutlined />}
+              loading={testing} onClick={handleTest}
+              disabled={!serviceStatus.running}
+            >
+              {serviceStatus.running ? '发送请求' : '服务未启动'}
+            </Button>
+            {!serviceStatus.running && (
+              <span style={{ marginLeft: 8, fontSize: 12, color: '#fa8c16' }}>请先启动 HTTP Mock 服务</span>
+            )}
+          </div>
+
+          {/* curl hint */}
+          <div style={{ marginBottom: 16, padding: '8px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.04)' }}>
+            <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>命令行测试 (curl)</div>
+            <code style={{ fontSize: 11, fontFamily: MONO, color: '#595959', wordBreak: 'break-all' }}>
+              curl {testMethod !== 'GET' ? `-X ${testMethod} ` : ''}{fullUrl}{testBody ? ` -H "Content-Type: application/json" -d '${testBody}'` : ''}
+            </code>
+            <Button size="small" type="text" icon={<CopyOutlined />} style={{ marginLeft: 4 }}
+              onClick={() => {
+                const cmd = `curl ${testMethod !== 'GET' ? `-X ${testMethod} ` : ''}${fullUrl}${testBody ? ` -H "Content-Type: application/json" -d '${testBody}'` : ''}`
+                copyToClipboard(cmd)
+                message.success('已复制')
+              }}
+            />
+          </div>
+
+          {/* Result */}
+          {testResult && (
+            <div>
+              {testResult.error ? (
+                <div>
+                  <div style={{ fontSize: 12, color: '#8c8c8c', fontWeight: 500, marginBottom: 6 }}>错误</div>
+                  <pre style={{
+                    background: '#fff2f0', color: '#e8453c', padding: 12, borderRadius: 12,
+                    overflow: 'auto', fontSize: 11, lineHeight: 1.5, maxHeight: 200,
+                    fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                    border: '1px solid #ffccc7',
+                  }}>{testResult.error}</pre>
+                </div>
+              ) : (
+                <div style={{ border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden' }}>
+                  {/* Header bar */}
+                  <div style={{
+                    padding: '8px 14px', background: 'rgba(0,0,0,0.02)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    borderBottom: '1px solid rgba(0,0,0,0.04)',
+                  }}>
+                    <Space size={8}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#262626' }}>请求 / 响应详情</span>
+                      {testResult.response?.status_code != null && (
+                        <Tag color={testResult.response.status_code < 400 ? 'green' : 'red'} style={{ margin: 0, fontSize: 10, borderRadius: 8 }}>
+                          {testResult.response.status_code}
+                        </Tag>
+                      )}
+                      {testResult.duration_ms != null && (
+                        <span style={{ fontSize: 11, color: '#8c8c8c' }}>{testResult.duration_ms}ms</span>
+                      )}
+                    </Space>
+                    <Button size="small" icon={<CopyOutlined />} onClick={() => {
+                      const req = testResult.request || {}
+                      const res = testResult.response || {}
+                      const text = [
+                        `--- REQUEST ---`,
+                        `${req.method || ''} ${req.url || ''}`,
+                        ...(req.headers ? Object.entries(req.headers).map(([k, v]) => `${k}: ${v}`) : []),
+                        '',
+                        req.body || '',
+                        '',
+                        `--- RESPONSE ---`,
+                        `Status: ${res.status_code || ''}`,
+                        ...(res.headers ? Object.entries(res.headers).map(([k, v]) => `${k}: ${v}`) : []),
+                        '',
+                        typeof res.body === 'object' ? JSON.stringify(res.body, null, 2) : (res.body || ''),
+                      ].join('\n')
+                      copyToClipboard(text)
+                      message.success('已复制完整请求/响应')
+                    }}>复制全部</Button>
+                  </div>
+
+                  {/* Request section */}
+                  <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#7c5cbf', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Request</div>
+                    <div style={{ fontFamily: MONO, fontSize: 12, color: '#262626', marginBottom: 6 }}>
+                      <span style={{ color: METHOD_COLOR(testResult.request?.method), fontWeight: 600 }}>{testResult.request?.method}</span>
+                      {' '}<span>{testResult.request?.url}</span>
+                    </div>
+                    {testResult.request?.headers && (
+                      <pre style={{
+                        background: 'rgba(0,0,0,0.02)', color: '#595959', padding: 8, borderRadius: 8,
+                        fontSize: 11, fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                        border: '1px solid rgba(0,0,0,0.04)', maxHeight: 100, overflow: 'auto', margin: '0 0 6px 0',
+                      }}>{Object.entries(testResult.request.headers).map(([k, v]) => `${k}: ${v}`).join('\n')}</pre>
+                    )}
+                    {testResult.request?.body && (
+                      <pre style={{
+                        background: 'rgba(0,0,0,0.02)', color: '#595959', padding: 8, borderRadius: 8,
+                        fontSize: 11, fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                        border: '1px solid rgba(0,0,0,0.04)', maxHeight: 120, overflow: 'auto', margin: 0,
+                      }}>{testResult.request.body}</pre>
+                    )}
+                  </div>
+
+                  {/* Response section */}
+                  <div style={{ padding: '10px 14px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#0ea5a0', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Response</div>
+                    {testResult.response?.headers && (
+                      <pre style={{
+                        background: 'rgba(0,0,0,0.02)', color: '#595959', padding: 8, borderRadius: 8,
+                        fontSize: 11, fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                        border: '1px solid rgba(0,0,0,0.04)', maxHeight: 100, overflow: 'auto', margin: '0 0 6px 0',
+                      }}>{Object.entries(testResult.response.headers).map(([k, v]) => `${k}: ${v}`).join('\n')}</pre>
+                    )}
+                    <pre style={{
+                      background: '#1e1e2e', color: '#cdd6f4', padding: 12, borderRadius: 10,
+                      overflow: 'auto', fontSize: 11, lineHeight: 1.5, maxHeight: 250,
+                      fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0,
+                    }}>{typeof testResult.response?.body === 'object' ? JSON.stringify(testResult.response.body, null, 2) : (testResult.response?.body || '(empty)')}</pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   // ─── 渲染：请求日志 Tab ───
   const renderLogsTab = () => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -842,6 +1071,7 @@ function HttpMockPanel() {
             <div style={{ display: 'flex', gap: 0 }}>
               {[
                 { key: 'config', label: '路由配置' },
+                { key: 'test', label: <>测试 <SendOutlined style={{ fontSize: 11 }} /></> },
                 { key: 'logs', label: <>请求日志 <Tag style={{ margin: '0 0 0 4px', fontSize: 11, borderRadius: 12, lineHeight: '18px', padding: '0 6px' }}>{serviceStatus.totalRequests}</Tag></> },
               ].map(t => (
                 <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
@@ -857,7 +1087,7 @@ function HttpMockPanel() {
             </div>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-            {activeTab === 'config' ? renderConfigTab() : renderLogsTab()}
+            {activeTab === 'config' ? renderConfigTab() : activeTab === 'test' ? renderTestTab() : renderLogsTab()}
           </div>
         </div>
       </div>

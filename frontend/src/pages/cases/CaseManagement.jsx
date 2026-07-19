@@ -4,7 +4,7 @@ import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, InboxOu
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
 import { useBranch } from '../../utils/branch'
-import { useEnv } from '../../utils/env'
+import { useEnv, buildEnvOptions } from '../../utils/env'
 import TestForgeModal from './TestForgeModal'
 import AIScriptModal from '../../components/AIScriptModal'
 
@@ -952,8 +952,8 @@ export default function CaseManagement() {
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 12, color: '#86909c', marginBottom: 6 }}>执行环境 *</div>
             <Select value={runEnvId} onChange={setRunEnvId} placeholder="请选择环境"
-              style={{ width: '100%' }}
-              options={environments.map(e => ({ value: e.id, label: e.name }))} />
+              style={{ width: '100%' }} popupMatchSelectWidth={false}
+              options={buildEnvOptions(environments)} />
           </div>
           <div style={{ padding: '12px 16px', background: 'rgba(0,0,0,0.02)', borderRadius: 12, fontSize: 13 }}>
             <div style={{ marginBottom: 4 }}>共选中 <b>{batchPrecheck.total}</b> 个用例</div>

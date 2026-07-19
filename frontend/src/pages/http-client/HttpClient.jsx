@@ -72,9 +72,11 @@ export default function HttpClient() {
   const [editingNameValue, setEditingNameValue] = useState('')
   const [expandedFolders, setExpandedFolders] = useState({})
   const [hoverItemId, setHoverItemId] = useState(null)
+  const [popupItemId, setPopupItemId] = useState(null)
   const [selectedFolderId, setSelectedFolderId] = useState(null)
   const [dragId, setDragId] = useState(null)
   const [dragOverId, setDragOverId] = useState(null)
+  const [dragPos, setDragPos] = useState(null)
   const [reqTab, setReqTab] = useState('params')
   const [respTab, setRespTab] = useState('body')
   const [importOpen, setImportOpen] = useState(false)
@@ -100,7 +102,7 @@ export default function HttpClient() {
     const tab = tabsRef.current.find(t => t.id === id)
     if (!tab || !tab._dirty) return
     try {
-      await api.put(`/http-client/requests/${id}`, { name: tab.name, method: tab.method, url: tab.url, headers: tab.headers, body: tab.body, bodyType: tab.bodyType })
+      await api.put(`/http-client/requests/${id}`, { name: tab.name, method: tab.method, url: tab.url, headers: tab.headers, body: tab.body, body_type: tab.bodyType })
       setOpenTabs(tabs => tabs.map(t => t.id === id ? { ...t, _dirty: false } : t))
       fetchItems()
     } catch {}
@@ -130,8 +132,84 @@ export default function HttpClient() {
     if (!name.trim()) { setEditingNameId(null); return }
     try { await api.put(`/http-client/requests/${id}`, { name: name.trim() }); setEditingNameId(null); fetchItems(); setOpenTabs(tabs => tabs.map(t => t.id === id ? { ...t, name: name.trim() } : t)) } catch {}
   }
-  const handleDelete = async (id) => { try { await api.delete(`/http-client/requests/${id}`); message.success('已删除'); closeTab(id); fetchItems() } catch {} }
-  const handleMove = async (id, targetFolderId) => { try { await api.put(`/http-client/requests/${id}`, { parent_id: targetFolderId || '' }); message.success('已移动'); fetchItems() } catch {} }
+  const handleDelete = async (id) => {
+    try {
+      const item = items.find(i => i.id === id)
+      if (item?.type === 'folder') {
+        const children = items.filter(i => i.parentId === id)
+        children.forEach(c => closeTab(c.id))
+      }
+      await api.delete(`/http-client/requests/${id}`)
+      message.success('已删除')
+      closeTab(id)
+      fetchItems()
+    } catch {}
+  }
+  const handleMove = async (id, targetFolderId) => {
+    try {
+      await api.put(`/http-client/requests/${id}`, { parent_id: targetFolderId || '' })
+      message.success('已移动')
+      fetchItems()
+    } catch {}
+  }
+  const handleDragDrop = async (srcId, targetId, pos) => {
+    if (!srcId || srcId === targetId) return
+    const src = items.find(i => i.id === srcId)
+    const target = items.find(i => i.id === targetId)
+    if (!src || !target) return
+    const targetIsFolder = target.type === 'folder'
+
+    if (targetIsFolder && pos === 'inside') {
+      await handleMove(srcId, targetId)
+      setExpandedFolders(s => ({ ...s, [targetId]: true }))
+      return
+    }
+
+    if (targetIsFolder && !target.parentId) {
+      const allFolders = items.filter(i => i.type === 'folder' && i.id !== srcId)
+      const targetIdx = allFolders.findIndex(i => i.id === targetId)
+      if (targetIdx < 0) return
+      const insertIdx = pos === 'below' ? targetIdx + 1 : targetIdx
+      if (src.type === 'folder') {
+        allFolders.splice(insertIdx, 0, src)
+      } else {
+        const sortItems = [{ id: srcId, sort_order: 0, parent_id: '' }]
+        try {
+          await api.post('/http-client/requests/batch-sort', { items: sortItems })
+          fetchItems()
+        } catch {}
+        return
+      }
+      const sortItems = allFolders.map((s, idx) => ({
+        id: s.id, sort_order: (idx + 1) * 100, parent_id: ''
+      }))
+      try {
+        await api.post('/http-client/requests/batch-sort', { items: sortItems })
+        fetchItems()
+      } catch {}
+      return
+    }
+
+    const newParentId = target.parentId || null
+    const siblings = items.filter(i => {
+      if (i.id === srcId) return false
+      if (i.type === 'folder') return false
+      return newParentId ? i.parentId === newParentId : !i.parentId
+    })
+    const targetIdx = siblings.findIndex(i => i.id === targetId)
+    if (targetIdx < 0) return
+    const insertIdx = pos === 'below' ? targetIdx + 1 : targetIdx
+    siblings.splice(insertIdx, 0, src)
+    const sortItems = siblings.map((s, idx) => ({
+      id: s.id,
+      sort_order: (idx + 1) * 100,
+      parent_id: newParentId || ''
+    }))
+    try {
+      await api.post('/http-client/requests/batch-sort', { items: sortItems })
+      fetchItems()
+    } catch {}
+  }
   const handleImportCurl = async () => {
     if (!importCurl.trim()) return
     const parsed = parseCurl(importCurl)
@@ -143,15 +221,30 @@ export default function HttpClient() {
       await fetchItems(); openRequest({ ...d, ...parsed, name }); setImportOpen(false); setImportCurl(''); message.success('已导入')
     } catch { message.error('导入失败') }
   }
+  const handleDuplicateItem = async (item) => {
+    try {
+      const r = await api.post('/http-client/requests', { type: item.type, name: item.name + ' 副本', method: item.method, url: item.url, parent_id: item.parentId || null })
+      const d = r.data || r
+      if (item.type === 'folder') {
+        const children = items.filter(i => i.parentId === item.id)
+        for (const child of children) {
+          const cr = await api.post('/http-client/requests', { type: 'request', name: child.name, method: child.method, url: child.url, parent_id: d.id })
+          const cd = cr.data || cr
+          await api.put(`/http-client/requests/${cd.id}`, { headers: child.headers, body: child.body, body_type: child.bodyType })
+        }
+      } else {
+        await api.put(`/http-client/requests/${d.id}`, { headers: item.headers, body: item.body, body_type: item.bodyType })
+      }
+      await fetchItems()
+      if (item.type !== 'folder') openRequest({ ...d, headers: item.headers, body: item.body })
+      else setExpandedFolders(s => ({ ...s, [d.id]: true }))
+      message.success('已复制')
+    } catch {}
+  }
   const handleDuplicate = async () => {
     if (!activeItem) return
     const original = items.find(i => i.id === activeItem.id)
-    try {
-      const r = await api.post('/http-client/requests', { type: 'request', name: activeItem.name + ' 副本', method: activeItem.method, url: activeItem.url, parent_id: original?.parentId || null })
-      const d = r.data || r
-      await api.put(`/http-client/requests/${d.id}`, { headers: activeItem.headers, body: activeItem.body, bodyType: activeItem.bodyType })
-      await fetchItems(); openRequest({ ...d, headers: activeItem.headers, body: activeItem.body }); message.success('已复制')
-    } catch {}
+    handleDuplicateItem({ ...activeItem, parentId: original?.parentId || null })
   }
   const handleSend = async () => {
     if (!activeItem) return
@@ -186,25 +279,54 @@ export default function HttpClient() {
     const children = isFolder ? requests.filter(r => r.parentId === item.id) : []
     const isEditing = editingNameId === item.id
     const isActive = !isFolder && activeTabId === item.id
-    const isHover = hoverItemId === item.id
+    const isHover = hoverItemId === item.id || popupItemId === item.id
     const isExpanded = expandedFolders[item.id] !== false
+    const isDragOver = dragOverId === item.id
+    const showAbove = isDragOver && dragPos === 'above'
+    const showBelow = isDragOver && dragPos === 'below'
+    const showInside = isDragOver && dragPos === 'inside'
+
+    const getDragPos = (e, el) => {
+      const rect = el.getBoundingClientRect()
+      const y = e.clientY - rect.top
+      const ratio = y / rect.height
+      if (isFolder) {
+        if (ratio < 0.25) return 'above'
+        if (ratio > 0.75) return 'below'
+        return 'inside'
+      }
+      return ratio < 0.5 ? 'above' : 'below'
+    }
+
     return (
       <div key={item.id}>
         <div draggable={!isEditing}
           onDragStart={e => { setDragId(item.id); e.dataTransfer.effectAllowed = 'move' }}
-          onDragEnd={() => { setDragId(null); setDragOverId(null) }}
-          onDragOver={e => { if (isFolder && dragId !== item.id) { e.preventDefault(); setDragOverId(item.id) } }}
-          onDragLeave={() => { if (dragOverId === item.id) setDragOverId(null) }}
-          onDrop={async e => { e.preventDefault(); setDragOverId(null); if (dragId && isFolder && dragId !== item.id) { await handleMove(dragId, item.id); setExpandedFolders(s => ({ ...s, [item.id]: true })); setDragId(null) } }}
+          onDragEnd={() => { setDragId(null); setDragOverId(null); setDragPos(null) }}
+          onDragOver={e => { if (dragId && dragId !== item.id) { e.preventDefault(); const p = getDragPos(e, e.currentTarget); setDragOverId(item.id); setDragPos(p) } }}
+          onDragLeave={() => { if (dragOverId === item.id) { setDragOverId(null); setDragPos(null) } }}
+          onDrop={async e => {
+            e.preventDefault(); e.stopPropagation()
+            const pos = dragPos
+            setDragOverId(null); setDragPos(null)
+            if (dragId && dragId !== item.id) {
+              await handleDragDrop(dragId, item.id, pos)
+              setDragId(null)
+            }
+          }}
           onClick={() => { if (isFolder) { setExpandedFolders(s => ({ ...s, [item.id]: !isExpanded })); setSelectedFolderId(item.id) } else openRequest(item) }}
-          onMouseEnter={() => setHoverItemId(item.id)} onMouseLeave={() => setHoverItemId(null)}
+          onMouseEnter={() => setHoverItemId(item.id)}
+          onMouseLeave={() => { if (popupItemId !== item.id) setHoverItemId(null) }}
           style={{
             padding: `4px 8px 4px ${10 + depth * 16}px`, cursor: dragId ? 'grabbing' : 'pointer',
             display: 'flex', alignItems: 'center', gap: 5, fontSize: 12,
-            background: dragOverId === item.id ? 'rgba(250,173,20,0.06)' : isActive ? 'rgba(14,165,160,0.06)' : 'transparent',
+            background: showInside ? 'rgba(250,173,20,0.06)' : isActive ? 'rgba(14,165,160,0.06)' : 'transparent',
             borderLeft: isActive ? '3px solid #0ea5a0' : '3px solid transparent',
-            border: dragOverId === item.id ? '1px dashed #fa8c16' : '1px solid transparent',
-            borderRadius: dragOverId === item.id ? 4 : 0, opacity: dragId === item.id ? 0.4 : 1,
+            borderTop: showAbove ? '2px solid #0ea5a0' : '2px solid transparent',
+            borderBottom: showBelow ? '2px solid #0ea5a0' : showInside ? '1px dashed #fa8c16' : '2px solid transparent',
+            borderRight: showInside ? '1px dashed #fa8c16' : 'none',
+            borderRadius: showInside ? 4 : 0, opacity: dragId === item.id ? 0.4 : 1,
+            marginTop: showAbove ? -2 : 0, marginBottom: showBelow ? -2 : 0,
           }}>
           {isFolder && <span style={{ fontSize: 10, color: '#bfbfbf', width: 12, textAlign: 'center' }}>{isExpanded ? '▾' : '▸'}</span>}
           {isFolder && <FolderOutlined style={{ color: '#fa8c16', fontSize: 12 }} />}
@@ -217,9 +339,28 @@ export default function HttpClient() {
           {isHover && !isEditing && (
             <span style={{ display: 'flex', gap: 2, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
               {isFolder && <Tooltip title="新建请求"><PlusOutlined style={{ fontSize: 11, color: '#8c8c8c', padding: 2 }} onClick={() => { handleCreate('request', item.id); setExpandedFolders(s => ({ ...s, [item.id]: true })) }} /></Tooltip>}
-              {!isFolder && folders.length > 0 && <Dropdown menu={{ items: [{ key: '__root', label: '根目录', onClick: () => handleMove(item.id, null) }, ...folders.map(f => ({ key: f.id, label: f.name, onClick: () => handleMove(item.id, f.id) }))] }} trigger={['click']}><Tooltip title="移动"><FolderOutlined style={{ fontSize: 11, color: '#8c8c8c', padding: 2 }} /></Tooltip></Dropdown>}
+              {!isFolder && folders.length > 0 && (
+                <Dropdown
+                  onOpenChange={open => { if (open) setPopupItemId(item.id); else { setPopupItemId(null); setHoverItemId(null) } }}
+                  menu={{ items: [
+                    ...(item.parentId ? [{ key: '__root', label: '根目录', onClick: () => handleMove(item.id, null) }] : []),
+                    ...folders.filter(f => f.id !== item.parentId).map(f => ({ key: f.id, label: f.name, onClick: () => handleMove(item.id, f.id) }))
+                  ] }}
+                  trigger={['click']}
+                >
+                  <Tooltip title="移动"><FolderOutlined style={{ fontSize: 11, color: '#8c8c8c', padding: 2 }} /></Tooltip>
+                </Dropdown>
+              )}
+              <Tooltip title="复制"><CopyOutlined style={{ fontSize: 11, color: '#8c8c8c', padding: 2 }} onClick={() => handleDuplicateItem(item)} /></Tooltip>
               <Tooltip title="重命名"><EditOutlined style={{ fontSize: 11, color: '#8c8c8c', padding: 2 }} onClick={() => { setEditingNameId(item.id); setEditingNameValue(item.name) }} /></Tooltip>
-              <Popconfirm title="删除？" onConfirm={() => handleDelete(item.id)} placement="right"><DeleteOutlined style={{ fontSize: 11, color: '#bfbfbf', padding: 2 }} /></Popconfirm>
+              <Popconfirm
+                title="删除？"
+                onConfirm={() => handleDelete(item.id)}
+                onOpenChange={open => { if (open) setPopupItemId(item.id); else { setPopupItemId(null); setHoverItemId(null) } }}
+                placement="right"
+              >
+                <DeleteOutlined style={{ fontSize: 11, color: '#bfbfbf', padding: 2 }} />
+              </Popconfirm>
             </span>
           )}
         </div>
@@ -280,7 +421,7 @@ export default function HttpClient() {
             </div>
             <div style={{ flex: 1, overflow: 'auto' }}
               onDragOver={e => { if (dragId) e.preventDefault() }}
-              onDrop={async e => { e.preventDefault(); if (dragId) { await handleMove(dragId, null); setDragId(null) } }}>
+              onDrop={async e => { e.preventDefault(); if (dragId) { await handleMove(dragId, null); setDragId(null); setDragOverId(null); setDragPos(null) } }}>
               {folders.map(f => renderTreeItem(f))}
               {rootRequests.map(r => renderTreeItem(r))}
               {items.length === 0 && <div style={{ textAlign: 'center', padding: 30, color: '#bfbfbf', fontSize: 12 }}>点击上方新建</div>}

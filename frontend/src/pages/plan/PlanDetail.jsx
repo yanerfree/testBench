@@ -3,6 +3,7 @@ import { Card, Tag, Button, Descriptions, Space, Spin, Empty, message, Input, Se
 import { ClockCircleOutlined, EditOutlined, PlayCircleOutlined, CheckOutlined, ArrowLeftOutlined, SaveOutlined, SyncOutlined, BarChartOutlined, CloseOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../utils/request'
+import { buildEnvOptions } from '../../utils/env'
 import CasePicker from '../../components/CasePicker'
 
 const planStatusMap = {
@@ -207,8 +208,8 @@ export default function PlanDetail() {
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>目标环境</div>
                 <Select value={editEnvId} onChange={setEditEnvId} allowClear placeholder="选择环境"
-                  style={{ width: '100%' }} size="small"
-                  options={environments.map(e => ({ value: e.id, label: e.name }))} />
+                  style={{ width: '100%' }} size="small" popupMatchSelectWidth={false}
+                  options={buildEnvOptions(environments)} />
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, color: '#86909c', marginBottom: 4 }}>通知渠道</div>

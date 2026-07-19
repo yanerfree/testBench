@@ -277,6 +277,15 @@ def step_by_step_generate(
                 exec_result["screenshot"] = None
 
             results.append(exec_result)
+
+            # 最终假通过检测——操作步骤代码必须有实际操作
+            if exec_result["status"] == "passed" and is_action_step:
+                real_ops = [".click(", ".fill(", ".goto(", ".press(", ".type(", ".select_option("]
+                if not any(op in step_code for op in real_ops):
+                    exec_result["status"] = "failed"
+                    exec_result["error"] = f"假通过：操作步骤（{action[:20]}）代码无 click/fill 操作"
+                    logger.warning("假通过检测: 步骤 %d 代码无操作 → 标记 failed", i + 1)
+
             code_blocks.append(f'    # Step {i+1}: {action}\n    with tea_step("{action[:50]}", phase="{"verify" if "验证" in action else "action"}"):\n' + _indent(step_code, 8))
 
             if exec_result["status"] == "passed":

@@ -4,7 +4,7 @@ import { Modal, Form, Input, TreeSelect, message, Select, Tag, Button, Tooltip, 
 import { PlayCircleOutlined, RobotOutlined, CopyOutlined, ScissorOutlined, BranchesOutlined } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { useBranch } from '../../utils/branch'
-import { useEnv } from '../../utils/env'
+import { useEnv, buildEnvOptions } from '../../utils/env'
 import RunResultPanel from './components/RunResultPanel'
 import StepRunDrawer from './components/StepRunDrawer'
 import FolderTree from './components/FolderTree'
@@ -467,8 +467,9 @@ export default function ApiTest() {
               />
               {environments?.length > 0 && (
                 <Select size="small" value={envId} onChange={changeEnv} allowClear
-                  placeholder="运行环境" style={{ width: 140 }}
-                  options={environments.map(e => ({ value: e.id, label: e.name }))} />
+                  popupMatchSelectWidth={false}
+                  placeholder="运行环境" style={{ width: 160 }}
+                  options={buildEnvOptions(environments)} />
               )}
               <Button size="small" type="primary" icon={<PlayCircleOutlined />} onClick={handleRunAll} loading={running}>运行全部</Button>
               {saveStatus && (

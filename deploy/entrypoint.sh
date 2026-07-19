@@ -31,6 +31,6 @@ nginx
 echo "启动后端服务..."
 cd /app && exec uvicorn backend.app.main:app \
     --host 0.0.0.0 \
-    --port 8000 \
+    --port 8756 \
     --workers ${WORKERS:-2} \
     --log-level info

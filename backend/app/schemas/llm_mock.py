@@ -131,7 +131,7 @@ class MockServiceStatus(BaseSchema):
 
 
 class MockServiceConfig(BaseSchema):
-    port: int = 9100
+    port: int = 28100
     capture_enabled: bool = True
     max_log_count: int = 1000
     listen_host: str = "0.0.0.0"

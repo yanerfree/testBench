@@ -33,6 +33,7 @@ class EnvResponse(BaseSchema):
     id: uuid.UUID
     name: str
     description: str | None
+    base_url: str | None = None
 
 class EnvVarItem(BaseSchema):
     key: str

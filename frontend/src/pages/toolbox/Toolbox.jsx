@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Input, Button, Space, Tag, message, Radio, Switch, InputNumber, Select } from 'antd'
+import { Input, Button, Space, Tag, message, Radio, Switch, InputNumber, Select, Tooltip, Popconfirm } from 'antd'
 import {
   ToolOutlined, FormatPainterOutlined, SwapOutlined, ClockCircleOutlined,
   FileSearchOutlined, DatabaseOutlined, DiffOutlined, CopyOutlined,
-  ReloadOutlined, ThunderboltOutlined, LoadingOutlined, SafetyOutlined
+  ReloadOutlined, ThunderboltOutlined, LoadingOutlined, SafetyOutlined,
+  SaveOutlined, DeleteOutlined, ImportOutlined, HistoryOutlined
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
@@ -745,6 +746,85 @@ function computeLCS(a, b) {
   return result
 }
 
+// ━━━ 认证保存 ━━━
+const AUTH_STORAGE_KEY = type => `tb_auth_saved_${type}`
+
+function getAuthSaved(type) {
+  try { return JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY(type)) || '[]') }
+  catch { return [] }
+}
+function setAuthSaved(type, list) {
+  localStorage.setItem(AUTH_STORAGE_KEY(type), JSON.stringify(list))
+}
+function addAuthSaved(type, entry) {
+  const list = getAuthSaved(type)
+  list.unshift({ ...entry, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), savedAt: new Date().toISOString() })
+  if (list.length > 50) list.length = 50
+  setAuthSaved(type, list)
+  return list
+}
+function removeAuthSaved(type, id) {
+  const list = getAuthSaved(type).filter(e => e.id !== id)
+  setAuthSaved(type, list)
+  return list
+}
+
+function AuthSavedList({ type, theme, onRestore, getCopyText }) {
+  const [list, setList] = useState(() => getAuthSaved(type))
+  const [expanded, setExpanded] = useState(false)
+
+  const refresh = () => setList(getAuthSaved(type))
+  const doSave = (entry) => { setList(addAuthSaved(type, entry)); setExpanded(true); message.success('已保存') }
+  const doDelete = (id) => { setList(removeAuthSaved(type, id)); message.success('已删除') }
+
+  return { list, refresh, doSave, expanded, setExpanded, ui: list.length > 0 || expanded ? (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', userSelect: 'none', marginBottom: expanded ? 10 : 0 }}
+        onClick={() => setExpanded(!expanded)}>
+        <HistoryOutlined style={{ color: theme.primary, marginRight: 6, fontSize: 13 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: theme.primary }}>已保存</span>
+        <Tag style={{ marginLeft: 8, borderRadius: 10, fontSize: 11 }}>{list.length}</Tag>
+        <span style={{ marginLeft: 'auto', fontSize: 11, color: '#aaa' }}>{expanded ? '收起 ▴' : '展开 ▾'}</span>
+      </div>
+      {expanded && (list.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 16, color: '#c9cdd4', fontSize: 12 }}>暂无保存记录</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflow: 'auto' }}>
+          {list.map(item => (
+            <div key={item.id} style={{
+              padding: '10px 14px', background: theme.pale, borderRadius: 10,
+              border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 10
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {item.name}
+                </div>
+                <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>
+                  {new Date(item.savedAt).toLocaleString('zh-CN')}
+                </div>
+              </div>
+              {getCopyText && (
+                <Tooltip title="复制 Token / 结果">
+                  <Button type="text" size="small" icon={<CopyOutlined />}
+                    onClick={() => { const t = getCopyText(item); if (t) copy(t) }} />
+                </Tooltip>
+              )}
+              <Tooltip title="恢复到面板">
+                <Button type="text" size="small" icon={<ImportOutlined />}
+                  style={{ color: theme.primary }}
+                  onClick={() => { onRestore(item); message.success('已恢复到面板') }} />
+              </Tooltip>
+              <Popconfirm title="确认删除？" onConfirm={() => doDelete(item.id)} okText="删除" cancelText="取消">
+                <Button type="text" size="small" icon={<DeleteOutlined />} danger />
+              </Popconfirm>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  ) : null }
+}
+
 // ━━━ JWT 工具 ━━━
 function base64urlEncode(str) {
   return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
@@ -788,6 +868,25 @@ function JwtPanel({ theme }) {
   const [generating, setGenerating] = useState(false)
   const [decodeInput, setDecodeInput] = useState('')
   const [tab, setTab] = useState('generate')
+
+  const saved = AuthSavedList({
+    type: 'jwt', theme,
+    onRestore: (item) => {
+      setSecret(item.inputs.secret || '')
+      setExpHours(item.inputs.expHours || 24)
+      setCustomClaims(item.inputs.customClaims || '{}')
+      if (item.result) setResult({ ...item.result, expAt: new Date(item.result.expAt) })
+      setTab('generate')
+    },
+    getCopyText: (item) => item.result?.token,
+  })
+
+  const handleSave = () => {
+    if (!result) return
+    const claims = (() => { try { return JSON.parse(customClaims) } catch { return {} } })()
+    const name = claims.sub ? `JWT · ${claims.sub}` : `JWT · ${new Date().toLocaleTimeString('zh-CN')}`
+    saved.doSave({ name, inputs: { secret, expHours, customClaims }, result: { ...result, expAt: result.expAt.toISOString() } })
+  }
 
   const handleGenerate = async () => {
     if (!secret.trim()) { message.warning('请输入 Secret'); return }
@@ -877,7 +976,7 @@ function JwtPanel({ theme }) {
                   onClick={() => copy(`Bearer ${result.token}`)}>复制完整 Header 值</Button>
               </div>
 
-              <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>cURL 示例</div>
                   <div style={{ padding: 8, background: '#1e1e2e', color: '#cdd6f4', borderRadius: 8, fontFamily: MONO, fontSize: 11, lineHeight: 1.6 }}>
@@ -894,6 +993,10 @@ function JwtPanel({ theme }) {
                     <div>算法: HS256</div>
                   </div>
                 </div>
+              </div>
+
+              <div style={{ borderTop: `1px dashed ${theme.border}`, paddingTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button icon={<SaveOutlined />} onClick={handleSave}>保存此凭证</Button>
               </div>
             </div>
           )}
@@ -932,6 +1035,8 @@ function JwtPanel({ theme }) {
           </div>
         </div>
       )}
+
+      {saved.ui}
     </div>
   )
 }
@@ -943,6 +1048,20 @@ function BasicAuthPanel({ theme }) {
     if (!username) return ''
     return btoa(unescape(encodeURIComponent(`${username}:${password}`)))
   }, [username, password])
+
+  const saved = AuthSavedList({
+    type: 'basic', theme,
+    onRestore: (item) => {
+      setUsername(item.inputs.username || '')
+      setPassword(item.inputs.password || '')
+    },
+    getCopyText: (item) => `Basic ${item.result?.encoded}`,
+  })
+
+  const handleSave = () => {
+    if (!result) return
+    saved.doSave({ name: `Basic · ${username}`, inputs: { username, password }, result: { encoded: result } })
+  }
 
   return (
     <div>
@@ -964,12 +1083,17 @@ function BasicAuthPanel({ theme }) {
             onClick={() => copy(result)}>复制</Button>
         </div>
         <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>Authorization Header</div>
-        <div style={{ padding: 10, background: theme.pale, borderRadius: 10, fontFamily: MONO, fontSize: 12, border: `1px solid ${theme.border}`, wordBreak: 'break-all' }}>
+        <div style={{ padding: 10, background: theme.pale, borderRadius: 10, fontFamily: MONO, fontSize: 12, border: `1px solid ${theme.border}`, marginBottom: 12, wordBreak: 'break-all' }}>
           Basic {result}
           <Button type="link" size="small" icon={<CopyOutlined />} style={{ float: 'right', fontSize: 11 }}
             onClick={() => copy(`Basic ${result}`)}>复制</Button>
         </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button icon={<SaveOutlined />} onClick={handleSave}>保存此凭证</Button>
+        </div>
       </>)}
+
+      {saved.ui}
     </div>
   )
 }
@@ -980,6 +1104,23 @@ function HmacPanel({ theme }) {
   const [algo, setAlgo] = useState('SHA-256')
   const [result, setResult] = useState(null)
   const [signing, setSigning] = useState(false)
+
+  const saved = AuthSavedList({
+    type: 'hmac', theme,
+    onRestore: (item) => {
+      setMessage_(item.inputs.message || '')
+      setSecret(item.inputs.secret || '')
+      setAlgo(item.inputs.algo || 'SHA-256')
+      if (item.result) setResult(item.result)
+    },
+    getCopyText: (item) => item.result?.base64,
+  })
+
+  const handleSave = () => {
+    if (!result) return
+    const preview = message_.length > 20 ? message_.substring(0, 20) + '...' : message_
+    saved.doSave({ name: `HMAC · ${algo} · ${preview}`, inputs: { message: message_, secret, algo }, result })
+  }
 
   const handleSign = async () => {
     if (!message_ || !secret) { message.warning('请输入消息和密钥'); return }
@@ -1018,8 +1159,8 @@ function HmacPanel({ theme }) {
           <Button type="primary" onClick={handleSign} loading={signing} block>生成签名</Button>
         </div>
       </div>
-      {result ? (
-        <div style={{ display: 'flex', gap: 14 }}>
+      {result ? (<>
+        <div style={{ display: 'flex', gap: 14, marginBottom: 12 }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>Hex</div>
             <div style={{ padding: 10, background: theme.pale, borderRadius: 10, fontFamily: MONO, fontSize: 11, border: `1px solid ${theme.border}`, wordBreak: 'break-all' }}>
@@ -1037,9 +1178,14 @@ function HmacPanel({ theme }) {
             </div>
           </div>
         </div>
-      ) : (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button icon={<SaveOutlined />} onClick={handleSave}>保存此凭证</Button>
+        </div>
+      </>) : (
         <div style={{ textAlign: 'center', padding: 20, color: '#c9cdd4', fontSize: 13 }}>输入消息和密钥后点击「生成签名」</div>
       )}
+
+      {saved.ui}
     </div>
   )
 }
@@ -1056,6 +1202,24 @@ function AkSkPanel({ theme }) {
   })
   const [result, setResult] = useState(null)
   const [signing, setSigning] = useState(false)
+
+  const saved = AuthSavedList({
+    type: 'aksk', theme,
+    onRestore: (item) => {
+      setAccessKey(item.inputs.accessKey || '')
+      setSecretKey(item.inputs.secretKey || '')
+      setMethod(item.inputs.method || 'GET')
+      setPath(item.inputs.path || '/api/resource')
+      setSignTime(item.inputs.signTime || '')
+      if (item.result) setResult(item.result)
+    },
+    getCopyText: (item) => item.result?.auth,
+  })
+
+  const handleSave = () => {
+    if (!result) return
+    saved.doSave({ name: `AK/SK · ${method} ${path}`, inputs: { accessKey, secretKey, method, path, signTime }, result })
+  }
 
   const getTs = () => {
     const d = new Date(signTime)
@@ -1147,6 +1311,9 @@ function AkSkPanel({ theme }) {
                   onClick={() => copy(result.ts)}>复制</Button></div>
             </div>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button icon={<SaveOutlined />} onClick={handleSave}>保存此凭证</Button>
+          </div>
         </div>
       )}
 
@@ -1155,6 +1322,8 @@ function AkSkPanel({ theme }) {
           填写 AK/SK 和请求信息后点击「生成签名」
         </div>
       )}
+
+      {saved.ui}
     </div>
   )
 }
@@ -1167,6 +1336,25 @@ function OAuth2Panel({ theme }) {
   const [scope, setScope] = useState('')
   const [fetching, setFetching] = useState(false)
   const [tokenResult, setTokenResult] = useState(null)
+
+  const saved = AuthSavedList({
+    type: 'oauth2', theme,
+    onRestore: (item) => {
+      setGrantType(item.inputs.grantType || 'client_credentials')
+      setTokenUrl(item.inputs.tokenUrl || '')
+      setClientId(item.inputs.clientId || '')
+      setClientSecret(item.inputs.clientSecret || '')
+      setScope(item.inputs.scope || '')
+      if (item.result) setTokenResult(item.result)
+    },
+    getCopyText: (item) => item.result?.parsed?.access_token,
+  })
+
+  const handleSave = () => {
+    if (!tokenResult || tokenResult.error) return
+    const name = `OAuth2 · ${clientId || tokenUrl}`
+    saved.doSave({ name, inputs: { grantType, tokenUrl, clientId, clientSecret, scope }, result: tokenResult })
+  }
 
   const handleFetch = async () => {
     if (!tokenUrl || !clientId) { message.warning('请填写 Token URL 和 Client ID'); return }
@@ -1246,26 +1434,31 @@ function OAuth2Panel({ theme }) {
               <Button size="small" icon={<CopyOutlined />} style={{ marginTop: 6 }}
                 onClick={() => copy(`Bearer ${tokenResult.parsed.access_token}`)}>复制完整 Header 值</Button>
             </div>
-            <div style={{ display: 'flex', gap: 16, fontSize: 11, color: '#8c8c8c' }}>
+            <div style={{ display: 'flex', gap: 16, fontSize: 11, color: '#8c8c8c', marginBottom: 14 }}>
               {tokenResult.parsed.expires_in && <span>有效期: {tokenResult.parsed.expires_in}秒</span>}
               {tokenResult.parsed.token_type && <span>类型: {tokenResult.parsed.token_type}</span>}
               {tokenResult.parsed.scope && <span>Scope: {tokenResult.parsed.scope}</span>}
             </div>
           </>)}
           {!tokenResult.parsed?.access_token && (
-            <div>
+            <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 6 }}>响应</div>
               <pre style={{ padding: 10, background: theme.pale, borderRadius: 10, fontFamily: MONO, fontSize: 11, border: `1px solid ${theme.border}`, whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0, maxHeight: 200, overflow: 'auto' }}>
                 {tokenResult.parsed ? JSON.stringify(tokenResult.parsed, null, 2) : tokenResult.raw?.body || '(empty)'}
               </pre>
             </div>
           )}
+          <div style={{ borderTop: `1px dashed ${theme.border}`, paddingTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button icon={<SaveOutlined />} onClick={handleSave}>保存此凭证</Button>
+          </div>
         </div>
       )) : (
         <div style={{ textAlign: 'center', padding: 30, color: '#c9cdd4', fontSize: 13 }}>
           填写 OAuth2 配置后点击「获取 Token」
         </div>
       )}
+
+      {saved.ui}
     </div>
   )
 }

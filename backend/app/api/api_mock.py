@@ -224,3 +224,67 @@ async def replay_log(log_id: uuid.UUID, session: AsyncSession = Depends(get_db))
     ct = resp.headers.get("content-type", "")
     body = resp.json() if "application/json" in ct else resp.text
     return {"status_code": resp.status_code, "body": body}
+
+
+@router.post("/test")
+async def test_request(body: dict):
+    if not api_mock_server.running:
+        return JSONResponse({"error": "HTTP Mock 服务未启动"}, status_code=400)
+
+    import httpx
+    import time
+
+    method = body.get("method", "GET").upper()
+    path = body.get("path", "/")
+    if not path.startswith("/"):
+        path = "/" + path
+    req_headers = body.get("headers", {})
+    req_body = body.get("body", "")
+
+    port = api_mock_server.port
+    url = f"http://127.0.0.1:{port}{path}"
+    t0 = time.perf_counter()
+    try:
+        headers = {}
+        if isinstance(req_headers, dict):
+            headers = {**req_headers}
+        content = None
+        if req_body and method not in ("GET", "HEAD", "OPTIONS"):
+            content = req_body.encode("utf-8") if isinstance(req_body, str) else req_body
+            if "Content-Type" not in headers and "content-type" not in headers:
+                headers["Content-Type"] = "application/json"
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.request(
+                method=method, url=url, content=content,
+                headers=headers, timeout=30,
+            )
+        duration_ms = round((time.perf_counter() - t0) * 1000, 1)
+        ct = resp.headers.get("content-type", "")
+        try:
+            resp_body = resp.json() if "application/json" in ct else resp.text
+        except Exception:
+            resp_body = resp.text
+        display_url = url.replace("127.0.0.1", "localhost")
+        return {
+            "ok": True,
+            "request": {
+                "url": display_url,
+                "method": method,
+                "headers": dict(resp.request.headers),
+                "body": req_body or None,
+            },
+            "response": {
+                "status_code": resp.status_code,
+                "headers": dict(resp.headers),
+                "body": resp_body,
+            },
+            "duration_ms": duration_ms,
+        }
+    except Exception as e:
+        duration_ms = round((time.perf_counter() - t0) * 1000, 1)
+        return JSONResponse({
+            "error": str(e),
+            "url": url.replace("127.0.0.1", "localhost"),
+            "duration_ms": duration_ms,
+        }, status_code=502)

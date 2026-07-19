@@ -22,7 +22,7 @@ _STATE_FILE = Path(__file__).resolve().parent.parent.parent / ".mock_state" / "w
 
 class WsMockServerManager:
     def __init__(self):
-        self.port: int = 9400
+        self.port: int = 28400
         self.host: str = "0.0.0.0"
         self.max_log_count: int = 1000
         self._server = None
@@ -60,12 +60,18 @@ class WsMockServerManager:
         import uvicorn
         config = uvicorn.Config(self._app, host=self.host, port=self.port, log_level="warning")
         server = uvicorn.Server(config)
-        self._task = asyncio.create_task(server.serve())
-        self._task.add_done_callback(self._on_task_done)
+        from app.services._mock_server_util import guarded_serve
+        task = asyncio.create_task(guarded_serve(server, "WebSocket Mock"))
+        self._task = task
+        task.add_done_callback(self._on_task_done)
         self._server = server
         for _ in range(50):
             if server.started:
                 break
+            if task.done():
+                self._server = None
+                self._task = None
+                raise RuntimeError(f"WebSocket Mock 启动失败，端口 {self.port} 可能被占用")
             await asyncio.sleep(0.1)
         logger.info("WebSocket Mock 服务已启动 %s:%d", self.host, self.port)
         self._save_state(True)

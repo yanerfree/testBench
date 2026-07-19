@@ -39,7 +39,7 @@ class _UdpProtocol(asyncio.DatagramProtocol):
 
 class UdpMockServerManager:
     def __init__(self):
-        self.port: int = 9600
+        self.port: int = 28600
         self.host: str = "0.0.0.0"
         self.max_log_count: int = 1000
         self._transport = None

@@ -258,7 +258,9 @@ class ProtocolServiceStatus(BaseSchema):
     endpoints_count: int = 0
     endpoints_enabled: int = 0
     total_logs: int = 0
+    reflection_version: str | None = None  # gRPC 专用：both | v1 | v1alpha
 
 
 class ProtocolServiceConfig(BaseSchema):
-    port: int
+    port: int | None = None
+    reflection_version: str | None = None  # gRPC 专用

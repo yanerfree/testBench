@@ -18,7 +18,7 @@ _STATE_FILE = Path(__file__).resolve().parent.parent.parent / ".mock_state" / "t
 
 class TcpMockServerManager:
     def __init__(self):
-        self.port: int = 9500
+        self.port: int = 28500
         self.host: str = "0.0.0.0"
         self.max_log_count: int = 1000
         self._server: asyncio.AbstractServer | None = None

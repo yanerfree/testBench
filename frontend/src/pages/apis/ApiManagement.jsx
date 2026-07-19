@@ -12,7 +12,7 @@ import {
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { useBranch } from '../../utils/branch'
-import { useEnv } from '../../utils/env'
+import { useEnv, buildEnvOptions } from '../../utils/env'
 import { copyToClipboard } from '../../utils/clipboard'
 
 const methodColors = {
@@ -935,7 +935,7 @@ export default function ApiManagement() {
           <GlobalOutlined style={{ fontSize: 12, color: '#0ea5a0' }} />
           <Select size="small" value={runEnv || '__none__'} onChange={v => handleEnvChange(v === '__none__' ? null : v)}
             style={{ flex: 1 }} popupMatchSelectWidth={false}
-            options={[{ value: '__none__', label: '无环境' }, ...environments.map(e => ({ value: e.id, label: e.name }))]} />
+            options={[{ value: '__none__', label: '无环境' }, ...buildEnvOptions(environments)]} />
           {envVars.length > 0 && (
             <Popover trigger="click" placement="rightTop" arrow={false}
               content={
@@ -962,7 +962,7 @@ export default function ApiManagement() {
                   }}>保存变量</Button>
                 </div>
               }>
-              <span style={{ fontSize: 10, color: '#0ea5a0', cursor: 'pointer', textDecoration: 'underline' }}>{envVars.length} 变量</span>
+              <span style={{ fontSize: 10, color: '#0ea5a0', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap', flexShrink: 0 }}>{envVars.length} 变量</span>
             </Popover>
           )}
         </div>

@@ -66,8 +66,8 @@ async def delete_global_variable(var_id: uuid.UUID, session: AsyncSession = Depe
 
 @router.get("/api/environments")
 async def list_environments(session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
-    envs = await environment_service.list_environments(session)
-    return {"data": [EnvResponse.model_validate(e, from_attributes=True).model_dump(by_alias=True) for e in envs]}
+    envs = await environment_service.list_environments_with_base_url(session)
+    return {"data": [EnvResponse(**e).model_dump(by_alias=True) for e in envs]}
 
 @router.post("/api/environments", status_code=HTTP_201_CREATED)
 async def create_environment(body: CreateEnvRequest, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):

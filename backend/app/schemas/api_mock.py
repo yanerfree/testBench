@@ -109,7 +109,7 @@ class ApiMockServiceStatus(BaseSchema):
 
 
 class ApiMockServiceConfig(BaseSchema):
-    port: int = 9200
+    port: int = 28200
     capture_enabled: bool = True
     max_log_count: int = 1000
     listen_host: str = "0.0.0.0"

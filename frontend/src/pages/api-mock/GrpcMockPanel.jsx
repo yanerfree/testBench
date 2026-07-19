@@ -5,7 +5,8 @@ import {
 } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, SaveOutlined, PlayCircleOutlined, PauseCircleOutlined,
-  ReloadOutlined, ClearOutlined, CopyOutlined, CloudServerOutlined, AppstoreOutlined
+  ReloadOutlined, ClearOutlined, CopyOutlined, CloudServerOutlined, AppstoreOutlined,
+  SendOutlined, ThunderboltOutlined
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
@@ -40,12 +41,15 @@ export default function GrpcMockPanel() {
   const [logPageSize] = useState(50)
   const [expandedLogId, setExpandedLogId] = useState(null)
   const [logServiceFilter, setLogServiceFilter] = useState(undefined)
-  const [serviceStatus, setServiceStatus] = useState({ running: false, port: 9700, servicesCount: 0, servicesEnabled: 0, totalLogs: 0 })
+  const [serviceStatus, setServiceStatus] = useState({ running: false, port: 28700, servicesCount: 0, servicesEnabled: 0, totalLogs: 0, reflectionVersion: 'both' })
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('config')
   const [presets, setPresets] = useState([])
   const [presetOpen, setPresetOpen] = useState(false)
   const pollRef = useRef(null)
+  const [testBody, setTestBody] = useState('')
+  const [testResult, setTestResult] = useState(null)
+  const [testing, setTesting] = useState(false)
 
   useEffect(() => {
     fetchServices()
@@ -85,6 +89,8 @@ export default function GrpcMockPanel() {
     setForm(formData)
     setOriginalForm(formData)
     setActiveTab('config')
+    setTestBody(svc.requestSample || '{"name": "world"}')
+    setTestResult(null)
   }, [])
 
   const isDirty = useMemo(() => {
@@ -195,7 +201,9 @@ export default function GrpcMockPanel() {
         message.success('gRPC Mock 服务已启动')
       }
       setTimeout(fetchStatus, 500)
-    } catch {}
+    } catch (e) {
+      message.error(`操作失败: ${e.message || '未知错误'}`)
+    }
   }
 
   const handleClearLogs = async () => {
@@ -336,6 +344,185 @@ export default function GrpcMockPanel() {
                 style={{ fontFamily: MONO, fontSize: 12 }}
                 placeholder={'[\n  {"message": "chunk 1"},\n  {"message": "chunk 2"},\n  {"message": "chunk 3"}\n]'}
               />
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ─── Test Tab ───
+  const handleTest = async () => {
+    if (!form || !serviceStatus.running) return
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const r = await api.post('/protocol-mock/grpc/test', {
+        service_name: form.serviceName,
+        method_name: form.methodName,
+        body: testBody || '{}',
+      })
+      setTestResult(r.data || r)
+      fetchLogs()
+    } catch (e) {
+      setTestResult({ error: e?.response?.data?.error || e.message })
+    } finally { setTesting(false) }
+  }
+
+  const renderTestTab = () => {
+    if (!form) {
+      return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+        <Empty description={<span style={{ color: '#bfbfbf' }}>选择左侧 Service 进行测试</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      </div>
+    }
+    const target = `${window.location.hostname}:${serviceStatus.port}`
+    const method = `/${form.serviceName}/${form.methodName}`
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: '14px 16px' }}>
+          {/* Target info */}
+          <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 12, background: 'rgba(124,92,191,0.04)', border: '1px solid rgba(124,92,191,0.12)' }}>
+            <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 6 }}>gRPC 端点</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <code style={{ fontFamily: MONO, fontSize: 13, color: ACCENT, fontWeight: 500 }}>{target}</code>
+              <Button size="small" type="text" icon={<CopyOutlined />} onClick={() => { copyToClipboard(target); message.success('已复制') }} />
+            </div>
+            <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 6 }}>Method</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <code style={{ fontFamily: MONO, fontSize: 12, color: '#595959' }}>{method}</code>
+              <Button size="small" type="text" icon={<CopyOutlined />} onClick={() => { copyToClipboard(method); message.success('已复制') }} />
+            </div>
+          </div>
+
+          {/* Request body */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>Request Body (JSON)</div>
+            <TextArea
+              value={testBody}
+              onChange={e => setTestBody(e.target.value)}
+              rows={5}
+              style={{ fontFamily: MONO, fontSize: 12 }}
+              placeholder='{"name": "world"}'
+            />
+          </div>
+
+          {/* Send button */}
+          <div style={{ marginBottom: 16 }}>
+            <Button
+              type="primary" icon={<SendOutlined />}
+              loading={testing} onClick={handleTest}
+              disabled={!serviceStatus.running}
+            >
+              {serviceStatus.running ? '发送请求' : '服务未启动'}
+            </Button>
+            {!serviceStatus.running && (
+              <span style={{ marginLeft: 8, fontSize: 12, color: '#fa8c16' }}>请先启动 gRPC Mock 服务</span>
+            )}
+          </div>
+
+          {/* grpcurl hint */}
+          <div style={{ marginBottom: 16, padding: '8px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.04)' }}>
+            <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4 }}>命令行测试</div>
+            <div style={{ marginBottom: 6 }}>
+              <span style={{ fontSize: 10, color: '#aaa', marginRight: 6 }}>查看服务列表</span>
+              <code style={{ fontSize: 11, fontFamily: MONO, color: '#595959', wordBreak: 'break-all' }}>
+                grpcurl -plaintext {target} list
+              </code>
+              <Button size="small" type="text" icon={<CopyOutlined />} style={{ marginLeft: 4 }}
+                onClick={() => { copyToClipboard(`grpcurl -plaintext ${target} list`); message.success('已复制') }}
+              />
+            </div>
+            <div>
+              <span style={{ fontSize: 10, color: '#aaa', marginRight: 6 }}>调用方法</span>
+              <code style={{ fontSize: 11, fontFamily: MONO, color: '#595959', wordBreak: 'break-all' }}>
+                grpcurl -plaintext -d '{testBody || '{}'}' {target} {form.serviceName}/{form.methodName}
+              </code>
+              <Button size="small" type="text" icon={<CopyOutlined />} style={{ marginLeft: 4 }}
+                onClick={() => {
+                  copyToClipboard(`grpcurl -plaintext -d '${testBody || '{}'}' ${target} ${form.serviceName}/${form.methodName}`)
+                  message.success('已复制')
+                }}
+              />
+            </div>
+            <div style={{ fontSize: 10, color: '#bbb', marginTop: 4 }}>
+              JSON Mode: 请求/响应为 JSON raw bytes，grpcurl 的 -d 参数中的字段不会做 protobuf 编码
+            </div>
+          </div>
+
+          {/* Result */}
+          {testResult && (
+            <div>
+              {testResult.error && !testResult.target ? (
+                <pre style={{
+                  background: '#fff2f0', color: '#e8453c', padding: 12, borderRadius: 12,
+                  overflow: 'auto', fontSize: 11, lineHeight: 1.5, maxHeight: 200,
+                  fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                  border: '1px solid #ffccc7',
+                }}>{testResult.error}</pre>
+              ) : (
+                <div style={{ border: '1px solid rgba(0,0,0,0.06)', borderRadius: 12, overflow: 'hidden' }}>
+                  {/* Header bar */}
+                  <div style={{
+                    padding: '8px 14px', background: 'rgba(0,0,0,0.02)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    borderBottom: '1px solid rgba(0,0,0,0.04)',
+                  }}>
+                    <Space size={8}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#262626' }}>请求 / 响应详情</span>
+                      {testResult.status_code != null && (
+                        <Tag color={testResult.status_code === 0 ? 'green' : 'red'} style={{ margin: 0, fontSize: 10, borderRadius: 8 }}>
+                          {testResult.status_message || (testResult.status_code === 0 ? 'OK' : `Code ${testResult.status_code}`)}
+                        </Tag>
+                      )}
+                      {testResult.duration_ms != null && (
+                        <span style={{ fontSize: 11, color: '#8c8c8c' }}>{testResult.duration_ms}ms</span>
+                      )}
+                    </Space>
+                    <Button size="small" icon={<CopyOutlined />} onClick={() => {
+                      const text = [
+                        `--- REQUEST ---`,
+                        `Target: ${testResult.target || ''}`,
+                        `Method: ${testResult.method || ''}`,
+                        `Body:`,
+                        formatJson(testResult.sent) || '',
+                        '',
+                        `--- RESPONSE ---`,
+                        `Status: ${testResult.status_code ?? ''} ${testResult.status_message || ''}`,
+                        `Body:`,
+                        formatJson(testResult.received) || '',
+                      ].join('\n')
+                      copyToClipboard(text)
+                      message.success('已复制完整请求/响应')
+                    }}>复制全部</Button>
+                  </div>
+
+                  {/* Request section */}
+                  <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: ACCENT, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Request</div>
+                    <div style={{ display: 'flex', gap: 16, marginBottom: 6, fontSize: 12, fontFamily: MONO }}>
+                      <div><span style={{ color: '#8c8c8c' }}>Target: </span><span style={{ color: '#262626' }}>{testResult.target}</span></div>
+                      <div><span style={{ color: '#8c8c8c' }}>Method: </span><span style={{ color: '#262626' }}>{testResult.method}</span></div>
+                    </div>
+                    {testResult.sent && (
+                      <pre style={{
+                        background: 'rgba(0,0,0,0.02)', color: '#595959', padding: 8, borderRadius: 8,
+                        fontSize: 11, fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                        border: '1px solid rgba(0,0,0,0.04)', maxHeight: 120, overflow: 'auto', margin: 0,
+                      }}>{formatJson(testResult.sent)}</pre>
+                    )}
+                  </div>
+
+                  {/* Response section */}
+                  <div style={{ padding: '10px 14px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#0ea5a0', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Response</div>
+                    <pre style={{
+                      background: '#1e1e2e', color: '#cdd6f4', padding: 12, borderRadius: 10,
+                      overflow: 'auto', fontSize: 11, lineHeight: 1.5, maxHeight: 250,
+                      fontFamily: MONO, whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0,
+                    }}>{formatJson(testResult.received) || '(empty)'}</pre>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -487,6 +674,28 @@ export default function GrpcMockPanel() {
           <Tooltip title="客户端需使用 JSON 编码（如 grpcurl -plaintext）">
             <Tag color="purple" style={{ margin: 0, fontSize: 10, cursor: 'help' }}>JSON 编码</Tag>
           </Tooltip>
+          <Tooltip title="gRPC 服务器反射协议版本。v1alpha 为旧版（Python grpcio 默认），v1 为新版。选「两者」可同时被两种客户端发现，兼容性最好。">
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, color: '#8c8c8c', cursor: 'help' }}>反射</span>
+              <Radio.Group
+                value={serviceStatus.reflectionVersion || 'both'}
+                onChange={async e => {
+                  try {
+                    await api.put('/protocol-mock/grpc/config', { reflectionVersion: e.target.value })
+                    const label = { both: '两者 (v1 + v1alpha)', v1: 'v1', v1alpha: 'v1alpha' }[e.target.value]
+                    message.success(`反射协议已设为 ${label}${serviceStatus.running ? '（服务已重启）' : ''}`)
+                    setTimeout(fetchStatus, 600)
+                  } catch {}
+                }}
+                size="small"
+                buttonStyle="solid"
+              >
+                <Radio.Button value="both" style={{ fontSize: 11, padding: '0 8px' }}>两者</Radio.Button>
+                <Radio.Button value="v1" style={{ fontSize: 11, padding: '0 8px' }}>v1</Radio.Button>
+                <Radio.Button value="v1alpha" style={{ fontSize: 11, padding: '0 8px' }}>v1alpha</Radio.Button>
+              </Radio.Group>
+            </div>
+          </Tooltip>
         </div>
         <Space size={8}>
           {serviceStatus.running && (
@@ -570,6 +779,7 @@ export default function GrpcMockPanel() {
             <div style={{ display: 'flex', gap: 0 }}>
               {[
                 { key: 'config', label: 'Service 配置' },
+                { key: 'test', label: <>测试 <ThunderboltOutlined style={{ fontSize: 11 }} /></> },
                 { key: 'logs', label: <>调用日志 <Tag style={{ margin: '0 0 0 4px', fontSize: 11, borderRadius: 12, lineHeight: '18px', padding: '0 6px' }}>{serviceStatus.totalLogs ?? 0}</Tag></> },
               ].map(t => (
                 <div key={t.key} onClick={() => setActiveTab(t.key)} style={{
@@ -585,7 +795,7 @@ export default function GrpcMockPanel() {
             </div>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-            {activeTab === 'config' ? renderConfigTab() : renderLogsTab()}
+            {activeTab === 'config' ? renderConfigTab() : activeTab === 'test' ? renderTestTab() : renderLogsTab()}
           </div>
         </div>
       </div>

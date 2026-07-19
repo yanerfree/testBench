@@ -16,6 +16,28 @@ async def list_environments(session: AsyncSession) -> list[Environment]:
     return list(result.scalars().all())
 
 
+async def list_environments_with_base_url(session: AsyncSession) -> list[dict]:
+    envs = await list_environments(session)
+    if not envs:
+        return []
+    env_ids = [e.id for e in envs]
+    vars_result = await session.execute(
+        select(EnvironmentVariable)
+        .where(EnvironmentVariable.environment_id.in_(env_ids))
+        .where(EnvironmentVariable.key == "BASE_URL")
+    )
+    base_url_map = {v.environment_id: v.value for v in vars_result.scalars().all()}
+    return [
+        {
+            "id": e.id,
+            "name": e.name,
+            "description": e.description,
+            "base_url": base_url_map.get(e.id),
+        }
+        for e in envs
+    ]
+
+
 @audit_log(action="create", target_type="environment")
 async def create_environment(session: AsyncSession, name: str, description: str | None = None) -> Environment:
     env = Environment(name=name, description=description)

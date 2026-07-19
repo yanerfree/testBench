@@ -119,7 +119,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://127.0.0.1:8756;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -143,7 +143,7 @@ Type=simple
 User=$(whoami)
 WorkingDirectory=$INSTALL_DIR
 EnvironmentFile=$INSTALL_DIR/.env
-ExecStart=$(which uvicorn) backend.app.main:app --host 0.0.0.0 --port 8000 --workers 2
+ExecStart=$(which uvicorn) backend.app.main:app --host 0.0.0.0 --port 8756 --workers 2
 Restart=always
 RestartSec=5
 

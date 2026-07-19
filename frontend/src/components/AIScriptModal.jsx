@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Modal, Button, Progress, Tag, Space, Select, message } from 'antd'
 import { ThunderboltOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
 import { api } from '../utils/request'
-import { useEnv } from '../utils/env'
+import { useEnv, buildEnvOptions } from '../utils/env'
 
 export default function AIScriptModal({
   projectId,
@@ -157,8 +157,9 @@ export default function AIScriptModal({
             将为 {total} 个用例逐一生成 Playwright UI 测试脚本
           </div>
           <Space>
-            <Select value={envId} onChange={setEnvId} style={{ width: 180 }}
-              placeholder="选择执行环境" options={environments.map(e => ({ value: e.id, label: e.name }))} />
+            <Select value={envId} onChange={setEnvId} style={{ width: 220 }}
+              popupMatchSelectWidth={false}
+              placeholder="选择执行环境" options={buildEnvOptions(environments)} />
             <Button type="primary" icon={<ThunderboltOutlined />}
               disabled={!envId} onClick={handleGenerate}
               style={{ background: '#7c5cbf', borderColor: '#7c5cbf' }}>

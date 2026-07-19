@@ -1,10 +1,14 @@
 """Protocol Mock API — WebSocket / TCP / UDP / gRPC mock management"""
 from __future__ import annotations
 
+import asyncio
+import socket
+import time
 import uuid
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps.db import get_db
@@ -366,6 +370,7 @@ async def grpc_list_services(session: AsyncSession = Depends(get_db)):
 @router.post("/grpc/services", response_model=GrpcServiceResponse, status_code=201)
 async def grpc_create_service(body: GrpcServiceCreate, session: AsyncSession = Depends(get_db)):
     row = await grpc_svc.create_service(session, body)
+    await grpc_mock_server.refresh_reflection()
     return GrpcServiceResponse.model_validate(row, from_attributes=True)
 
 
@@ -374,6 +379,7 @@ async def grpc_update_service(service_id: uuid.UUID, body: GrpcServiceUpdate, se
     row = await grpc_svc.update_service(session, service_id, body)
     if not row:
         return JSONResponse({"error": "Service not found"}, status_code=404)
+    await grpc_mock_server.refresh_reflection()
     return GrpcServiceResponse.model_validate(row, from_attributes=True)
 
 
@@ -383,6 +389,7 @@ async def grpc_delete_service(service_id: uuid.UUID, session: AsyncSession = Dep
     if not row:
         return JSONResponse({"error": "Service not found"}, status_code=404)
     await grpc_svc.delete_service(session, service_id)
+    await grpc_mock_server.refresh_reflection()
     return {"ok": True}
 
 
@@ -391,6 +398,7 @@ async def grpc_toggle_service(service_id: uuid.UUID, session: AsyncSession = Dep
     row = await grpc_svc.toggle_service(session, service_id)
     if not row:
         return JSONResponse({"error": "Service not found"}, status_code=404)
+    await grpc_mock_server.refresh_reflection()
     return GrpcServiceResponse.model_validate(row, from_attributes=True)
 
 
@@ -406,6 +414,7 @@ async def grpc_get_status(session: AsyncSession = Depends(get_db)):
         endpoints_count=len(services),
         endpoints_enabled=sum(1 for s in services if s.enabled),
         total_logs=total_logs,
+        reflection_version=grpc_mock_server.reflection_version,
     )
 
 
@@ -428,9 +437,12 @@ async def grpc_update_config(body: ProtocolServiceConfig):
         await grpc_mock_server.stop()
     if body.port is not None:
         grpc_mock_server.port = body.port
+    if body.reflection_version is not None and body.reflection_version in ("both", "v1", "v1alpha"):
+        grpc_mock_server.reflection_version = body.reflection_version
+        grpc_mock_server._save_state(grpc_mock_server.running)
     if was_running:
         await grpc_mock_server.start()
-    return {"ok": True}
+    return {"ok": True, "reflectionVersion": grpc_mock_server.reflection_version}
 
 
 # ───── Logs ─────
@@ -477,4 +489,232 @@ async def udp_get_presets():
 @router.get("/grpc/presets")
 async def grpc_get_presets():
     return {"data": list_grpc_presets()}
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  测试面板
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+class WsTestRequest(BaseModel):
+    path: str = "/"
+    message: str = "Hello"
+
+
+class TcpTestRequest(BaseModel):
+    message: str = "Hello"
+    hex_mode: bool = False
+
+
+class UdpTestRequest(BaseModel):
+    message: str = "Hello"
+    hex_mode: bool = False
+
+
+class GrpcTestRequest(BaseModel):
+    service_name: str = "helloworld.Greeter"
+    method_name: str = "SayHello"
+    body: str = '{"name": "world"}'
+
+
+@router.post("/ws/test")
+async def ws_test(body: WsTestRequest):
+    if not ws_mock_server.running:
+        return JSONResponse({"error": "WebSocket Mock 服务未启动"}, status_code=400)
+
+    import websockets
+
+    port = ws_mock_server.port
+    url = f"ws://127.0.0.1:{port}{body.path if body.path.startswith('/') else '/' + body.path}"
+    t0 = time.perf_counter()
+    try:
+        async with websockets.connect(url, open_timeout=5, close_timeout=5) as ws:
+            await ws.send(body.message)
+            try:
+                response = await asyncio.wait_for(ws.recv(), timeout=5)
+            except asyncio.TimeoutError:
+                response = None
+            duration_ms = round((time.perf_counter() - t0) * 1000, 1)
+            return {
+                "ok": True,
+                "url": url.replace("127.0.0.1", "localhost"),
+                "sent": body.message,
+                "received": response,
+                "duration_ms": duration_ms,
+            }
+    except Exception as e:
+        duration_ms = round((time.perf_counter() - t0) * 1000, 1)
+        return JSONResponse({
+            "error": str(e),
+            "url": url.replace("127.0.0.1", "localhost"),
+            "duration_ms": duration_ms,
+        }, status_code=502)
+
+
+@router.post("/tcp/test")
+async def tcp_test(body: TcpTestRequest):
+    if not tcp_mock_server.running:
+        return JSONResponse({"error": "TCP Mock 服务未启动"}, status_code=400)
+
+    port = tcp_mock_server.port
+    target = f"127.0.0.1:{port}"
+    t0 = time.perf_counter()
+    try:
+        if body.hex_mode:
+            data = bytes.fromhex(body.message.replace(" ", ""))
+        else:
+            data = body.message.encode("utf-8")
+
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection("127.0.0.1", port), timeout=5,
+        )
+        writer.write(data)
+        await writer.drain()
+        try:
+            resp_data = await asyncio.wait_for(reader.read(4096), timeout=5)
+        except asyncio.TimeoutError:
+            resp_data = b""
+        writer.close()
+        await writer.wait_closed()
+        duration_ms = round((time.perf_counter() - t0) * 1000, 1)
+
+        resp_text = resp_data.decode("utf-8", errors="replace") if resp_data else None
+        resp_hex = resp_data.hex(" ") if resp_data else None
+        return {
+            "ok": True,
+            "target": target.replace("127.0.0.1", "localhost"),
+            "sent": body.message,
+            "sent_hex": data.hex(" "),
+            "received": resp_text,
+            "received_hex": resp_hex,
+            "received_bytes": len(resp_data) if resp_data else 0,
+            "duration_ms": duration_ms,
+        }
+    except Exception as e:
+        duration_ms = round((time.perf_counter() - t0) * 1000, 1)
+        return JSONResponse({
+            "error": str(e),
+            "target": target.replace("127.0.0.1", "localhost"),
+            "duration_ms": duration_ms,
+        }, status_code=502)
+
+
+@router.post("/udp/test")
+async def udp_test(body: UdpTestRequest):
+    if not udp_mock_server.running:
+        return JSONResponse({"error": "UDP Mock 服务未启动"}, status_code=400)
+
+    port = udp_mock_server.port
+    target = f"127.0.0.1:{port}"
+    t0 = time.perf_counter()
+    try:
+        if body.hex_mode:
+            data = bytes.fromhex(body.message.replace(" ", ""))
+        else:
+            data = body.message.encode("utf-8")
+
+        def _send():
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.settimeout(5.0)
+            sock.sendto(data, ("127.0.0.1", port))
+            try:
+                resp_data, _ = sock.recvfrom(4096)
+            except socket.timeout:
+                resp_data = b""
+            finally:
+                sock.close()
+            return resp_data
+
+        resp_data = await asyncio.to_thread(_send)
+        duration_ms = round((time.perf_counter() - t0) * 1000, 1)
+
+        resp_text = resp_data.decode("utf-8", errors="replace") if resp_data else None
+        resp_hex = resp_data.hex(" ") if resp_data else None
+        return {
+            "ok": True,
+            "target": target.replace("127.0.0.1", "localhost"),
+            "sent": body.message,
+            "sent_hex": data.hex(" "),
+            "received": resp_text,
+            "received_hex": resp_hex,
+            "received_bytes": len(resp_data) if resp_data else 0,
+            "duration_ms": duration_ms,
+        }
+    except Exception as e:
+        duration_ms = round((time.perf_counter() - t0) * 1000, 1)
+        return JSONResponse({
+            "error": str(e),
+            "target": target.replace("127.0.0.1", "localhost"),
+            "duration_ms": duration_ms,
+        }, status_code=502)
+
+
+@router.post("/grpc/test")
+async def grpc_test(body: GrpcTestRequest):
+    if not grpc_mock_server.running:
+        return JSONResponse({"error": "gRPC Mock 服务未启动"}, status_code=400)
+
+    import grpc as grpc_lib
+
+    port = grpc_mock_server.port
+    target = f"127.0.0.1:{port}"
+    method = f"/{body.service_name}/{body.method_name}"
+    t0 = time.perf_counter()
+
+    def _call():
+        channel = grpc_lib.insecure_channel(target)
+        try:
+            grpc_lib.channel_ready_future(channel).result(timeout=5)
+            resp_bytes = channel.unary_unary(method)(
+                body.body.encode("utf-8"),
+                timeout=10,
+            )
+            return resp_bytes, None
+        except grpc_lib.RpcError as e:
+            return None, e
+        finally:
+            channel.close()
+
+    try:
+        resp_bytes, rpc_err = await asyncio.to_thread(_call)
+        duration_ms = round((time.perf_counter() - t0) * 1000, 1)
+        if rpc_err:
+            return {
+                "ok": False,
+                "target": target.replace("127.0.0.1", "localhost"),
+                "method": method,
+                "sent": body.body,
+                "received": rpc_err.details() if hasattr(rpc_err, "details") else str(rpc_err),
+                "status_code": rpc_err.code().value[0] if hasattr(rpc_err, "code") else -1,
+                "status_message": rpc_err.code().name if hasattr(rpc_err, "code") else str(rpc_err),
+                "duration_ms": duration_ms,
+            }
+        resp_text = resp_bytes.decode("utf-8", errors="replace")
+        # Try decoding as protobuf Struct (gRPC Mock encodes responses this way)
+        try:
+            from google.protobuf import struct_pb2
+            from google.protobuf.json_format import MessageToJson
+            s = struct_pb2.Struct()
+            s.ParseFromString(resp_bytes)
+            resp_text = MessageToJson(s, preserving_proto_field_name=True)
+        except Exception:
+            pass
+        return {
+            "ok": True,
+            "target": target.replace("127.0.0.1", "localhost"),
+            "method": method,
+            "sent": body.body,
+            "received": resp_text,
+            "status_code": 0,
+            "status_message": "OK",
+            "duration_ms": duration_ms,
+        }
+    except Exception as e:
+        duration_ms = round((time.perf_counter() - t0) * 1000, 1)
+        return JSONResponse({
+            "error": str(e),
+            "target": target.replace("127.0.0.1", "localhost"),
+            "method": method,
+            "duration_ms": duration_ms,
+        }, status_code=502)
 

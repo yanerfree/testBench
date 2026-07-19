@@ -127,7 +127,7 @@ export default function Documents() {
     try {
       const v = await ccForm.validateFields()
       const res = await api.post(`/projects/${projectId}/documents/tasks`, {
-        _host: window.location.hostname + ':8000',
+        _host: window.location.hostname + ':8756',
         systemUrl: v.systemUrl, username: v.username, password: v.password,
         title: v.title, docType: v.docType || 'manual',
         modules: v.modules || undefined, audience: v.audience || undefined,
