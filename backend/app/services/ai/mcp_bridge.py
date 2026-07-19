@@ -1,12 +1,16 @@
-"""Playwright MCP Bridge — 通过 stdio 连接 Playwright MCP Server，调用浏览器工具。
+"""Playwright MCP Bridge — 连接 Playwright MCP Server，暴露为 LangChain StructuredTool。
 
-参考 ThemisAI mcp_bridge.py，简化为 stdio 传输（不依赖 LangChain）。
+参考 ThemisAI mcp_bridge.py，支持 stdio（本地启动）和 SSE（长驻服务）两种模式。
 """
 from __future__ import annotations
 
 import logging
 import os
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from langchain_core.tools import StructuredTool
+    from mcp import ClientSession
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +21,14 @@ MCP_CONFIG_PATH = os.path.join(
 
 
 class PlaywrightMCPBridge:
-    """通过 stdio 启动并连接 Playwright MCP Server。"""
+    """连接 Playwright MCP Server，暴露浏览器工具。"""
 
     def __init__(self, *, headless: bool = True, config_path: str | None = None) -> None:
         self._headless = headless
         self._config_path = config_path or MCP_CONFIG_PATH
-        self._session = None
-        self._stdio_cm = None
-        self._session_cm = None
+        self._session: ClientSession | None = None
+        self._stdio_cm: Any = None
+        self._session_cm: Any = None
         self._tools_cache: list[dict] | None = None
 
     async def connect(self) -> None:
@@ -70,8 +74,7 @@ class PlaywrightMCPBridge:
         self._tools_cache = None
         logger.info("playwright_mcp_disconnected")
 
-    async def list_tools(self) -> list[dict]:
-        """列出所有可用的 MCP 工具，返回 [{name, description, input_schema}]"""
+    async def list_mcp_tools(self) -> list[dict]:
         if self._tools_cache is not None:
             return self._tools_cache
         if not self._session:
@@ -89,7 +92,6 @@ class PlaywrightMCPBridge:
         return self._tools_cache
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> str:
-        """调用 MCP 工具，返回文本结果。"""
         if not self._session:
             raise RuntimeError("Not connected to Playwright MCP")
         cleaned = {k: v for k, v in arguments.items() if v is not None}
@@ -113,26 +115,56 @@ class PlaywrightMCPBridge:
             return combined
         return ""
 
-    def get_tools_for_llm(self, *, provider: str = "openai_compatible") -> list[dict]:
-        """将 MCP 工具转换为 LLM API tools 格式。"""
-        if not self._tools_cache:
-            raise RuntimeError("Call list_tools() first")
-        tools = []
-        for t in self._tools_cache:
-            schema = t.get("input_schema", {})
-            if provider == "anthropic":
-                tools.append({
-                    "name": t["name"],
-                    "description": t["description"][:1024],
-                    "input_schema": schema,
-                })
-            else:
-                tools.append({
-                    "type": "function",
-                    "function": {
-                        "name": t["name"],
-                        "description": t["description"][:1024],
-                        "parameters": schema,
-                    },
-                })
-        return tools
+    async def as_langchain_tools(self) -> list[StructuredTool]:
+        """将 MCP 工具转换为 LangChain StructuredTool 列表。"""
+        from langchain_core.tools import StructuredTool
+        from pydantic import Field, create_model
+
+        mcp_tools = await self.list_mcp_tools()
+        langchain_tools = []
+
+        for tool_def in mcp_tools:
+            tool_name = tool_def["name"]
+
+            def _make_fn(name: str):
+                async def _call(**kwargs: Any) -> str:
+                    return await self.call_tool(name, kwargs)
+                return _call
+
+            schema = tool_def.get("input_schema", {})
+            properties = schema.get("properties", {})
+            required = set(schema.get("required", []))
+
+            fields: dict[str, Any] = {}
+            for prop_name, prop_def in properties.items():
+                py_type = _json_schema_to_python_type(prop_def)
+                desc = prop_def.get("description", "")
+                if prop_name in required:
+                    fields[prop_name] = (py_type, Field(description=desc))
+                else:
+                    fields[prop_name] = (py_type | None, Field(default=None, description=desc))
+
+            args_model = create_model(f"{tool_name}_args", **fields) if fields else None
+
+            lc_tool = StructuredTool.from_function(
+                coroutine=_make_fn(tool_name),
+                name=tool_name,
+                description=tool_def["description"][:1024] if tool_def["description"] else tool_name,
+                args_schema=args_model,
+            )
+            langchain_tools.append(lc_tool)
+
+        logger.info("playwright_langchain_tools_loaded count=%d", len(langchain_tools))
+        return langchain_tools
+
+
+def _json_schema_to_python_type(prop_def: dict) -> type:
+    json_type = prop_def.get("type", "string")
+    if json_type == "array":
+        items = prop_def.get("items", {})
+        item_type = _json_schema_to_python_type(items)
+        return list[item_type]  # type: ignore[valid-type]
+    if json_type == "object":
+        return dict[str, Any]
+    type_map = {"string": str, "integer": int, "number": float, "boolean": bool}
+    return type_map.get(json_type, str)

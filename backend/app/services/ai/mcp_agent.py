@@ -1,472 +1,261 @@
-"""MCP Agent — 通过 Playwright MCP 真实操控浏览器，生成可执行的 Playwright 脚本。
+"""MCP Agent — 用 LangGraph ReAct Agent 驱动 Playwright MCP 生成 UI 测试脚本。
 
-核心流程：
-1. 连接 Playwright MCP Server
-2. 构造 LLM tool-use 请求（浏览器工具 + submit_script + verify_script）
-3. Agent 循环：LLM 返回 tool_calls → 执行 → 回传结果 → 直到完成
-4. 生成的脚本通过 pytest 验证
-
-支持 OpenAI-compatible 和 Anthropic 两种 provider。
+照搬 ThemisAI 的 agents/deep/__init__.py 架构：
+- LangGraph create_react_agent 替代 deepagents
+- LangChain ChatOpenAI 调用 LLM
+- Playwright MCP Bridge 提供浏览器工具
+- submit_tool + verify_tool 提交验证脚本
+- SKILL.md 注入 system prompt
 """
 from __future__ import annotations
 
 import json
-import logging
-import re
+import os
+import tempfile
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
-import httpx
+import logging
 
 from app.config import settings
 from app.services.ai.mcp_bridge import PlaywrightMCPBridge
-from app.services.ai.verify_tool import verify_script, MAX_VERIFY_RETRIES
 
 logger = logging.getLogger(__name__)
 
-MAX_AGENT_TURNS = 80
+SKILLS_DIR = str(Path(__file__).parent / "skills")
+ARTIFACTS_BASE = tempfile.gettempdir()
 
 
-@dataclass
-class AgentConfig:
-    provider: str = ""
-    base_url: str = ""
-    api_key: str = ""
-    auth_token: str = ""
-    model: str = ""
-    max_tokens: int = 8192
-    temperature: float = 0.0
-    timeout_seconds: int = 180
-
-    @classmethod
-    def from_settings(cls) -> AgentConfig:
-        return cls(
-            provider=settings.ai_provider,
-            base_url=settings.ai_base_url,
-            api_key=settings.ai_api_key,
-            auth_token=settings.ai_auth_token,
-            model=settings.ai_model,
-            max_tokens=settings.ai_max_tokens,
-            temperature=settings.ai_temperature,
-            timeout_seconds=settings.ai_timeout_seconds,
-        )
-
-
-@dataclass
-class ToolCall:
-    id: str
-    name: str
-    arguments: dict[str, Any]
-
-
-@dataclass
-class AgentResponse:
-    text: str = ""
-    tool_calls: list[ToolCall] = field(default_factory=list)
-    finish_reason: str = ""
-
-
-# ─── LLM API helpers ───────────────────────────────────────
-
-def _build_headers(cfg: AgentConfig) -> dict[str, str]:
-    headers: dict[str, str] = {
-        "content-type": "application/json",
-        "User-Agent": "claude-cli/1.0",
-    }
-    if cfg.provider == "anthropic":
-        headers["anthropic-version"] = "2023-06-01"
-        if cfg.api_key:
-            headers["x-api-key"] = cfg.api_key
-    else:
-        token = cfg.auth_token or cfg.api_key
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
-    return headers
-
-
-def _build_endpoint(cfg: AgentConfig) -> str:
-    base = cfg.base_url.rstrip("/")
-    if cfg.provider == "anthropic":
-        return f"{base}/messages" if base else "https://api.anthropic.com/v1/messages"
-    return f"{base}/chat/completions"
-
-
-def _build_request_body(
-    cfg: AgentConfig, messages: list[dict], tools: list[dict],
-) -> dict:
-    if cfg.provider == "anthropic":
-        system_parts = []
-        chat_msgs = []
-        for m in messages:
-            if m["role"] == "system":
-                system_parts.append(m["content"] if isinstance(m["content"], str) else json.dumps(m["content"]))
-            else:
-                chat_msgs.append(m)
-        body: dict = {
-            "model": cfg.model,
-            "messages": chat_msgs,
-            "max_tokens": cfg.max_tokens,
-            "temperature": cfg.temperature,
-            "tools": tools,
-        }
-        if system_parts:
-            body["system"] = "\n\n".join(system_parts)
-        return body
-    return {
-        "model": cfg.model,
-        "messages": messages,
-        "max_tokens": cfg.max_tokens,
-        "temperature": cfg.temperature,
-        "tools": tools,
-        "tool_choice": "auto",
-    }
-
-
-def _parse_response(cfg: AgentConfig, data: dict) -> AgentResponse:
-    if cfg.provider == "anthropic":
-        return _parse_anthropic_response(data)
-    return _parse_openai_response(data)
-
-
-def _parse_openai_response(data: dict) -> AgentResponse:
-    choice = data.get("choices", [{}])[0]
-    msg = choice.get("message", {})
-    text = msg.get("content", "") or ""
-    tool_calls = []
-    for tc in msg.get("tool_calls", []):
-        fn = tc.get("function", {})
-        try:
-            args = json.loads(fn.get("arguments", "{}"))
-        except json.JSONDecodeError:
-            args = {}
-        tool_calls.append(ToolCall(id=tc["id"], name=fn["name"], arguments=args))
-    return AgentResponse(
-        text=text, tool_calls=tool_calls,
-        finish_reason=choice.get("finish_reason", "stop"),
-    )
-
-
-def _parse_anthropic_response(data: dict) -> AgentResponse:
-    text_parts = []
-    tool_calls = []
-    for block in data.get("content", []):
-        if block.get("type") == "text":
-            text_parts.append(block.get("text", ""))
-        elif block.get("type") == "tool_use":
-            tool_calls.append(ToolCall(
-                id=block["id"], name=block["name"],
-                arguments=block.get("input", {}),
-            ))
-    return AgentResponse(
-        text="\n".join(text_parts), tool_calls=tool_calls,
-        finish_reason=data.get("stop_reason", "end_turn"),
-    )
-
-
-def _build_assistant_message(cfg: AgentConfig, resp: AgentResponse) -> dict:
-    """构造 assistant 消息（含 tool_calls），用于追加到对话历史。"""
-    if cfg.provider == "anthropic":
-        content = []
-        if resp.text:
-            content.append({"type": "text", "text": resp.text})
-        for tc in resp.tool_calls:
-            content.append({"type": "tool_use", "id": tc.id, "name": tc.name, "input": tc.arguments})
-        return {"role": "assistant", "content": content}
-    msg: dict[str, Any] = {"role": "assistant", "content": resp.text or None}
-    if resp.tool_calls:
-        msg["tool_calls"] = [
-            {"id": tc.id, "type": "function", "function": {"name": tc.name, "arguments": json.dumps(tc.arguments, ensure_ascii=False)}}
-            for tc in resp.tool_calls
-        ]
-    return msg
-
-
-def _build_tool_result_messages(cfg: AgentConfig, results: list[tuple[str, str]]) -> list[dict]:
-    """构造 tool_result 消息。results: [(tool_call_id, result_text), ...]"""
-    if cfg.provider == "anthropic":
-        content = [
-            {"type": "tool_result", "tool_use_id": tc_id, "content": text}
-            for tc_id, text in results
-        ]
-        return [{"role": "user", "content": content}]
-    return [{"role": "tool", "tool_call_id": tc_id, "content": text} for tc_id, text in results]
-
-
-async def _llm_call(cfg: AgentConfig, messages: list[dict], tools: list[dict]) -> AgentResponse:
-    """调用 LLM API（支持 tool_use）。"""
-    body = _build_request_body(cfg, messages, tools)
-    headers = _build_headers(cfg)
-    endpoint = _build_endpoint(cfg)
-
-    async with httpx.AsyncClient(timeout=cfg.timeout_seconds) as client:
-        resp = await client.post(endpoint, json=body, headers=headers)
-        if resp.status_code != 200:
-            raise RuntimeError(f"LLM API error {resp.status_code}: {resp.text[:500]}")
-        return _parse_response(cfg, resp.json())
-
-
-# ─── Agent 主循环 ──────────────────────────────────────────
-
-SUBMIT_TOOL_DEF_OPENAI = {
-    "type": "function",
-    "function": {
-        "name": "submit_script",
-        "description": (
-            "提交生成的 Python pytest-playwright 脚本。传入完整脚本内容。"
-            "提交后必须调用 verify_script 验证。如验证失败，修复后再次提交。"
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "script_content": {
-                    "type": "string",
-                    "description": "完整的 Python pytest-playwright 脚本内容",
-                },
-            },
-            "required": ["script_content"],
-        },
-    },
-}
-
-VERIFY_TOOL_DEF_OPENAI = {
-    "type": "function",
-    "function": {
-        "name": "verify_script",
-        "description": (
-            "验证已提交的脚本。无需参数，自动读取最近一次 submit_script 提交的脚本并执行。"
-            "返回 VERIFICATION PASSED 或 VERIFICATION FAILED + 错误详情。"
-        ),
-        "parameters": {"type": "object", "properties": {}},
-    },
-}
-
-SUBMIT_TOOL_DEF_ANTHROPIC = {
-    "name": "submit_script",
-    "description": SUBMIT_TOOL_DEF_OPENAI["function"]["description"],
-    "input_schema": SUBMIT_TOOL_DEF_OPENAI["function"]["parameters"],
-}
-
-VERIFY_TOOL_DEF_ANTHROPIC = {
-    "name": "verify_script",
-    "description": VERIFY_TOOL_DEF_OPENAI["function"]["description"],
-    "input_schema": {"type": "object", "properties": {}},
-}
+def _load_skills(skills_dirs: list[str]) -> str:
+    """加载 skills 目录下所有 SKILL.md / *.md 文件，拼接为 system prompt。"""
+    parts = []
+    for d in skills_dirs:
+        if not os.path.isdir(d):
+            continue
+        for root, dirs, files in os.walk(d):
+            for f in sorted(files):
+                if f.endswith(".md"):
+                    fp = os.path.join(root, f)
+                    try:
+                        content = Path(fp).read_text(encoding="utf-8")
+                        parts.append(content)
+                    except Exception:
+                        pass
+    return "\n\n---\n\n".join(parts)
 
 
 def _build_task_prompt(
     test_case_title: str,
-    test_steps: list[dict],
+    test_case_steps: list[dict],
     expected_result: str | None,
-    preconditions: str,
     base_url: str,
-    credentials: dict[str, str],
-    fixture_name: str = "logged_in_page",
+    preconditions: str | None = None,
+    test_user: str = "admin",
+    test_password: str = "admin123",
 ) -> str:
-    """构造 Agent 任务 prompt。"""
     steps_text = ""
-    for i, step in enumerate(test_steps, 1):
-        action = step.get("action", str(step))
-        expected = step.get("expected", "")
-        steps_text += f"  步骤 {i}: {action}"
+    for i, step in enumerate(test_case_steps, 1):
+        desc = step.get("description", step.get("action", str(step)))
+        expected = step.get("expected", step.get("expected_result", ""))
+        steps_text += f"  步骤 {i}: {desc}"
         if expected:
             steps_text += f" → 预期: {expected}"
         steps_text += "\n"
 
-    username = credentials.get("username", "admin")
-    password = credentials.get("password", "admin123")
+    preconditions_text = preconditions or "无"
 
-    return f"""请基于以下功能用例生成 UI 自动化测试脚本。
+    return f"""请基于以下功能用例生成 UI 自动化测试脚本：
 
 用例标题: {test_case_title}
-前置条件: {preconditions or '无'}
+
+前置条件: {preconditions_text}
+
 测试步骤:
 {steps_text}
 整体预期结果: {expected_result or '无'}
+
 被测应用地址: {base_url}
 
 ## 严格按三阶段执行
 
 ### 阶段一：浏览器探索
-通过 Playwright MCP 工具真实操控浏览器，**只执行**用例步骤描述的操作。
+仅执行测试步骤描述的操作，不要探索步骤之外的功能。
 
-0. 调用 browser_close 关闭任何已有会话（清残留，必须第一步）
-1. 如需登录：
-   - browser_navigate 到 {base_url}
-   - browser_snapshot 看登录页结构
-   - browser_fill 填用户名 '{username}'
-   - browser_fill 填密码 '{password}'
-   - browser_click 登录按钮
-   - 等待登录完成
-2. 按测试步骤逐步操作：
-   - 执行操作（browser_click / browser_fill / browser_select_option 等）
-   - browser_snapshot 记录**每步操作后**的页面状态
+0. **调用 `browser_close` 关闭任何已有浏览器会话**（清除残留 context，必须作为第一步执行）
+1. 如果需要登录：顺序执行（不要并行填表单）
+   - browser_navigate → {base_url}（应用会自动跳转到登录页，不要手动拼接 /login）
+   - browser_snapshot 获取元素引用（先看实际页面结构再操作）
+   - browser_fill 用户名字段（按 snapshot 中的实际 ref 和 accessible name 定位），填入 '{test_user}'（必须用 fill 不是 type）
+   - browser_fill 密码字段（按 snapshot 中的实际 ref 和 accessible name 定位），填入 '{test_password}'
+   - browser_click 点击登录/Sign In 按钮
+   - 等待登录完成（URL 不再是登录页）
+2. 按测试步骤逐步操作浏览器，每步：
+   - 执行操作
+   - browser_snapshot 记录选择器
    - 验证预期结果
 
-### 阶段二：生成 Python 脚本
-根据阶段一记录的**真实选择器**，生成 Python pytest-playwright 脚本：
-- import pytest, from playwright.sync_api import Page, expect
-- 使用 `{fixture_name}` fixture（conftest 已提供登录和浏览器配置）
-- 函数签名: `def test_generated({fixture_name}: Page):`
-- 第一行: `page = {fixture_name}`
-- 使用 get_by_role / get_by_text / locator 等选择器（从阶段一 snapshot 获取的真实选择器）
-- 每步加 expect 断言
-- **禁止 CSS 选择器 / get_by_label / get_by_placeholder**
-- **禁止硬编码完整 URL**：必须用 `page.goto("/路径")`（相对路径），不要写 `page.goto("http://...")`。conftest 中 BASE_URL 已配置好，Playwright 的 page.goto 支持相对路径
-- 表单输入用 page.fill（不用 page.type）
-- 多选择器匹配时加 .first
+### 阶段二：生成脚本
+根据阶段一记录的选择器，按 script-spec.md 格式生成脚本。
+- 必须 import from '../fixtures'
+- 使用 `page` fixture（不要用 authenticatedPage，登录在 test body 中显式写）
+- 使用相对路径（不要硬编码 URL）
+- **数据清理（按需）**：只有在数据**真正被持久化**（提交成功）后才注册 cleanup。验证类用例（空提交报错、格式校验等）不需要 cleanup。
 
 ### 阶段三：提交并验证
-1. 调用 submit_script 提交完整脚本
-2. 调用 verify_script 验证
-3. 如果失败，根据错误修复脚本后重新 submit_script + verify_script，最多 3 轮
+1. submit_script 提交脚本
+2. verify_script 验证
+3. 如果失败，修复后重新提交+验证，最多 3 轮
 
 ## 关键注意事项
-- 表单必须用 browser_fill（清空后填入），不要用 browser_type（会追加）
-- 多个字段必须顺序填写
-- 只探索用例步骤要求的操作，不要自行扩展
-- 禁止注释掉步骤、try/catch 吞错、永真断言
+- 表单输入必须用 browser_fill（清空后填入），不要用 browser_type（会追加）
+- 多个表单字段必须顺序填写，不要并行填写
+- 只探索测试步骤要求的操作，不要自行测试额外功能
+- 禁止注释掉步骤、try/catch 吞错、永真断言、硬编码完整 URL
 """
 
 
 @dataclass
 class SSEEvent:
-    """SSE 事件。"""
     event: str
     data: dict[str, Any]
 
 
-async def run_mcp_agent(
+async def stream_mcp_agent(
     test_case_title: str,
-    test_steps: list[dict],
+    test_case_steps: list[dict],
     expected_result: str | None,
     preconditions: str,
     base_url: str,
-    env_vars: dict[str, str],
-    credentials: dict[str, str],
-    fixture_name: str = "logged_in_page",
-    agent_config: AgentConfig | None = None,
+    test_user: str = "admin",
+    test_password: str = "admin123",
+    model_name: str | None = None,
 ) -> AsyncGenerator[SSEEvent, None]:
-    """运行 MCP Agent，流式产出 SSE 事件。
+    """运行 MCP Agent，流式产出 SSE 事件。"""
+    from langchain_openai import ChatOpenAI
+    from langgraph.prebuilt import create_react_agent
 
-    事件类型：
-    - status: 状态更新
-    - step_start: 开始一个步骤（browser 操作）
-    - step_done: 步骤完成
-    - tool_call: 工具调用
-    - tool_result: 工具结果
-    - token: LLM 文本输出
-    - verification: 脚本验证结果
-    - done: 完成（含 script_content）
-    - error: 错误
-    """
-    cfg = agent_config or AgentConfig.from_settings()
-    bridge = PlaywrightMCPBridge(headless=not bool(__import__("os").environ.get("DISPLAY")))
+    from app.services.ai.submit_tool import create_submit_tool
+    from app.services.ai.verify_tool import create_verify_tool
+
+    execution_id = f"gen-{os.urandom(4).hex()}"
+    artifacts_dir = os.path.join(ARTIFACTS_BASE, "tb-ui-artifacts", execution_id)
+    os.makedirs(artifacts_dir, exist_ok=True)
+
+    bridge = PlaywrightMCPBridge(headless=not bool(os.environ.get("DISPLAY")))
     shared_state: dict[str, Any] = {"script_content": "", "version": 0}
-    step_seq = 0
-
-    verify_env = {**env_vars}
-    verify_env.setdefault("ADMIN_USERNAME", credentials.get("username", ""))
-    verify_env.setdefault("ADMIN_PASSWORD", credentials.get("password", ""))
-    verify_env.setdefault("TENANT_USERNAME", credentials.get("username", ""))
-    verify_env.setdefault("TENANT_PASSWORD", credentials.get("password", ""))
 
     try:
-        yield SSEEvent("status", {"content": "正在启动 Playwright MCP Server..."})
+        yield SSEEvent("status", {"content": "正在连接 Playwright MCP..."})
         await bridge.connect()
-        mcp_tools = await bridge.list_tools()
+        tools = await bridge.as_langchain_tools()
 
-        browser_tools = bridge.get_tools_for_llm(provider=cfg.provider)
-        if cfg.provider == "anthropic":
-            all_tools = browser_tools + [SUBMIT_TOOL_DEF_ANTHROPIC, VERIFY_TOOL_DEF_ANTHROPIC]
-        else:
-            all_tools = browser_tools + [SUBMIT_TOOL_DEF_OPENAI, VERIFY_TOOL_DEF_OPENAI]
+        tools.append(create_submit_tool(shared_state))
+        tools.append(create_verify_tool(
+            base_url=base_url, artifacts_dir=artifacts_dir, shared_state=shared_state,
+            test_user=test_user, test_password=test_password,
+        ))
 
-        yield SSEEvent("status", {"content": f"已连接，{len(mcp_tools)} 个浏览器工具 + submit + verify"})
+        yield SSEEvent("status", {"content": f"已连接，加载了 {len(tools)} 个工具"})
+
+        # 构建 LLM — 照搬 ThemisAI model_factory
+        _model = model_name or settings.ai_model
+        model = ChatOpenAI(
+            model=_model,
+            api_key=settings.ai_auth_token or settings.ai_api_key or "none",
+            base_url=settings.ai_base_url,
+            temperature=0.0,
+            max_tokens=settings.ai_max_tokens,
+            streaming=True,
+            model_kwargs={"stream_options": {"include_usage": True}} if "claude" not in _model.lower() else {},
+            default_headers={"User-Agent": "claude-cli/1.0"},
+            timeout=600,
+        )
+
+        # 加载 SKILL.md 作为 system prompt
+        skills_prompt = _load_skills([SKILLS_DIR])
+        system_prompt = (
+            "你是 UI 自动化测试专家。通过 Playwright MCP 工具操控真实浏览器，"
+            "探索目标页面，生成可执行的 Playwright Test 脚本（TypeScript .spec.ts）。\n\n"
+            + skills_prompt
+        )
+
+        agent = create_react_agent(
+            model=model,
+            tools=tools,
+            prompt=system_prompt,
+        )
 
         task_prompt = _build_task_prompt(
             test_case_title=test_case_title,
-            test_steps=test_steps,
+            test_case_steps=test_case_steps,
             expected_result=expected_result,
-            preconditions=preconditions,
             base_url=base_url,
-            credentials=credentials,
-            fixture_name=fixture_name,
+            preconditions=preconditions,
+            test_user=test_user,
+            test_password=test_password,
         )
-
-        messages: list[dict] = [
-            {"role": "system", "content": (
-                "你是 UI 自动化测试专家。通过 Playwright MCP 工具操控真实浏览器，"
-                "探索目标页面，生成可执行的 Python pytest-playwright 测试脚本。"
-                "你必须先用浏览器工具探索，从 snapshot 中获取真实的元素选择器，"
-                "然后生成使用这些真实选择器的脚本。不要猜测选择器。"
-            )},
-            {"role": "user", "content": task_prompt},
-        ]
 
         yield SSEEvent("status", {"content": "Agent 开始执行..."})
 
-        for turn in range(MAX_AGENT_TURNS):
-            resp = await _llm_call(cfg, messages, all_tools)
+        step_seq = 0
+        try:
+            async for event in agent.astream_events(
+                {"messages": [("human", task_prompt)]},
+                version="v2",
+                config={"recursion_limit": 500},
+            ):
+                kind = event.get("event", "")
 
-            if resp.text:
-                yield SSEEvent("token", {"content": resp.text})
+                if kind == "on_chat_model_stream":
+                    chunk = event.get("data", {}).get("chunk")
+                    if chunk and hasattr(chunk, "content") and chunk.content:
+                        content = chunk.content
+                        if isinstance(content, str):
+                            yield SSEEvent("token", {"content": content})
+                        elif isinstance(content, list):
+                            for block in content:
+                                if isinstance(block, dict) and block.get("type") == "text":
+                                    yield SSEEvent("token", {"content": block["text"]})
 
-            if not resp.tool_calls:
-                break
+                elif kind == "on_tool_start":
+                    tool_name = event.get("name", "unknown")
+                    tool_input = event.get("data", {}).get("input", {})
 
-            messages.append(_build_assistant_message(cfg, resp))
-
-            tool_results: list[tuple[str, str]] = []
-
-            for tc in resp.tool_calls:
-                if tc.name == "submit_script":
-                    content = tc.arguments.get("script_content", "")
-                    if not content.strip():
-                        result_text = "SUBMIT ERROR: 脚本内容为空。"
-                    else:
-                        shared_state["script_content"] = content
-                        shared_state["version"] = shared_state.get("version", 0) + 1
-                        v = shared_state["version"]
-                        result_text = f"SCRIPT SUBMITTED (v{v}): 脚本已保存。请调用 verify_script 验证。"
-                    yield SSEEvent("status", {"content": f"脚本已提交 (v{shared_state.get('version', 0)})"})
-                    tool_results.append((tc.id, result_text))
-
-                elif tc.name == "verify_script":
-                    script = shared_state.get("script_content", "")
-                    if not script.strip():
-                        result_text = "VERIFICATION ERROR: 没有已提交的脚本。请先调用 submit_script。"
-                    else:
+                    if tool_name == "submit_script":
+                        yield SSEEvent("status", {"content": "正在提交脚本..."})
+                    elif tool_name == "verify_script":
                         yield SSEEvent("status", {"content": "正在验证脚本..."})
-                        result_text = await verify_script(script, base_url, verify_env)
-                        v_status = "passed" if "VERIFICATION PASSED" in result_text else "failed"
-                        yield SSEEvent("verification", {"status": v_status, "output": result_text[:2000]})
+                    else:
+                        step_seq += 1
+                        friendly = _friendly_tool_label(tool_name, tool_input)
+                        yield SSEEvent("step_start", {"seq": step_seq, "action": friendly, "phase": "action"})
 
-                        version = shared_state.get("version", 0)
-                        if "VERIFICATION FAILED" in result_text and version >= MAX_VERIFY_RETRIES:
-                            stop_idx = result_text.find("\n\n请根据错误信息修复脚本")
-                            if stop_idx != -1:
-                                result_text = result_text[:stop_idx]
-                            result_text += (
-                                f"\n\n⚠️ 已达到最大验证次数（{version} 次）。"
-                                "不要再次调用 submit_script 或 verify_script。"
-                                "当前版本作为最终提交，直接结束。"
-                            )
-                    tool_results.append((tc.id, result_text))
+                elif kind == "on_tool_end":
+                    tool_name = event.get("name", "unknown")
+                    output = event.get("data", {}).get("output", "")
+                    output_str = str(output)
 
-                else:
-                    step_seq += 1
-                    friendly = _friendly_tool_label(tc.name, tc.arguments)
-                    yield SSEEvent("step_start", {"seq": step_seq, "action": friendly, "phase": "action"})
-                    try:
-                        result_text = await bridge.call_tool(tc.name, tc.arguments)
-                        yield SSEEvent("step_done", {"seq": step_seq, "action": friendly, "status": "passed"})
-                    except Exception as exc:
-                        result_text = f"Tool error: {type(exc).__name__}: {str(exc)[:500]}"
-                        yield SSEEvent("step_done", {"seq": step_seq, "action": friendly, "status": "failed", "error": str(exc)[:200]})
-                    tool_results.append((tc.id, result_text))
+                    if tool_name == "submit_script":
+                        yield SSEEvent("status", {"content": f"脚本已提交 (v{shared_state.get('version', '?')})"})
+                    elif tool_name == "verify_script":
+                        v_status = "passed" if "VERIFICATION PASSED" in output_str else "failed"
+                        yield SSEEvent("verification", {"status": v_status, "output": output_str[:2000]})
+                    else:
+                        yield SSEEvent("step_done", {
+                            "seq": step_seq, "action": _friendly_tool_label(tool_name, {}),
+                            "status": "passed" if "error" not in output_str.lower()[:50] else "failed",
+                        })
 
-            messages.extend(_build_tool_result_messages(cfg, tool_results))
+        except Exception as stream_exc:
+            exc_name = type(stream_exc).__name__
+            if "ClosedResource" in exc_name or "ClosedResource" in str(stream_exc):
+                logger.info("mcp_agent_stream_closed_normally")
+            else:
+                logger.error("mcp_agent_stream_error", exc_info=True)
+                yield SSEEvent("error", {"content": f"Agent 异常: {exc_name}: {stream_exc}"})
+                return
 
         script_content = shared_state.get("script_content", "")
         if script_content:
@@ -478,12 +267,11 @@ async def run_mcp_agent(
             yield SSEEvent("error", {"content": "Agent 未调用 submit_script，脚本未生成。"})
 
     except Exception as exc:
-        error_msg = f"{type(exc).__name__}: {str(exc)[:500]}"
         logger.error("mcp_agent_failed", exc_info=True)
         if shared_state.get("script_content"):
             yield SSEEvent("done", {"script_content": shared_state["script_content"], "all_passed": False})
         else:
-            yield SSEEvent("error", {"content": error_msg})
+            yield SSEEvent("error", {"content": f"{type(exc).__name__}: {str(exc)[:500]}"})
     finally:
         try:
             await bridge.close()
@@ -492,21 +280,25 @@ async def run_mcp_agent(
 
 
 def _friendly_tool_label(name: str, args: dict) -> str:
-    """把 MCP 工具调用转成人类可读的标签。"""
     labels = {
         "browser_navigate": lambda a: f"导航到 {a.get('url', '')}",
         "browser_click": lambda a: f"点击 {a.get('element', a.get('ref', ''))}",
-        "browser_fill": lambda a: f"填写 {a.get('element', a.get('ref', ''))} = {a.get('value', '')[:30]}",
+        "browser_fill": lambda a: f"填写 {a.get('element', a.get('ref', ''))} = {str(a.get('value', ''))[:30]}",
         "browser_type": lambda a: f"输入 {a.get('element', a.get('ref', ''))}",
+        "browser_fill_form": lambda a: "填写表单",
         "browser_select_option": lambda a: f"选择 {a.get('element', a.get('ref', ''))}",
         "browser_snapshot": lambda _: "获取页面快照",
         "browser_take_screenshot": lambda _: "截图",
         "browser_close": lambda _: "关闭浏览器",
-        "browser_go_back": lambda _: "后退",
-        "browser_go_forward": lambda _: "前进",
-        "browser_wait": lambda a: f"等待 {a.get('time', '')}ms",
+        "browser_wait_for": lambda a: f"等待 {a.get('text', a.get('time', ''))}",
         "browser_press_key": lambda a: f"按键 {a.get('key', '')}",
         "browser_hover": lambda a: f"悬停 {a.get('element', a.get('ref', ''))}",
+        "browser_find": lambda a: f"搜索 {a.get('text', '')}",
+        "browser_evaluate": lambda _: "执行 JS",
+        "browser_run_code_unsafe": lambda _: "执行 Playwright 代码",
+        "browser_network_requests": lambda _: "查看网络请求",
+        "browser_console_messages": lambda _: "查看控制台",
+        "browser_tabs": lambda _: "管理标签页",
     }
     fn = labels.get(name)
     if fn:

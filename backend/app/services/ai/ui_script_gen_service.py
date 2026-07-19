@@ -1,4 +1,4 @@
-"""UI 脚本生成服务 — MCP Agent 探索式生成 + 旧引擎兜底"""
+"""UI 脚本生成服务 — MCP Agent 探索式生成 TypeScript Playwright Test 脚本"""
 from __future__ import annotations
 
 import json
@@ -17,63 +17,13 @@ from app.services import script_service
 logger = logging.getLogger(__name__)
 
 
-async def generate_ui_script(
-    case_id: str,
-    session: AsyncSession,
-    env_id: str | None = None,
-) -> dict:
-    """MCP Agent 探索式生成 Playwright 脚本 → 保存"""
-    case = await session.get(Case, uuid.UUID(case_id))
-    if not case:
-        raise ValueError(f"用例不存在: {case_id}")
-
-    env_vars = await _load_env_vars(session, env_id)
-    base_url = env_vars.get("BASE_URL", "")
-    fixture_name = _detect_fixture(case.preconditions or "")
-    creds = _get_credentials(env_vars, fixture_name)
-
-    from app.services.ai.mcp_agent import run_mcp_agent, AgentConfig
-
-    script_content = ""
-    all_passed = False
-
-    async for event in run_mcp_agent(
-        test_case_title=case.title,
-        test_steps=case.steps or [],
-        expected_result=case.expected_result,
-        preconditions=case.preconditions or "",
-        base_url=base_url,
-        env_vars=env_vars,
-        credentials=creds,
-        fixture_name=fixture_name,
-    ):
-        if event.event == "done":
-            script_content = event.data.get("script_content", "")
-            all_passed = event.data.get("all_passed", False)
-        elif event.event == "error":
-            raise ValueError(f"MCP Agent 生成失败: {event.data.get('content', '')}")
-
-    if not script_content.strip():
-        raise ValueError("MCP Agent 未生成有效脚本")
-
-    script = await _save_script(session, case, script_content, all_passed)
-    await session.flush()
-
-    return {
-        "script_id": str(script.id),
-        "content": script_content,
-        "case_id": case_id,
-        "version": script.version,
-    }
-
-
 async def generate_ui_script_stream(
     case_id: str,
     session: AsyncSession,
     env_id: str | None = None,
     step_hints: dict | None = None,
 ) -> AsyncGenerator[str, None]:
-    """SSE 流式 MCP Agent 生成 — 实时推送进度。"""
+    """SSE 流式 MCP Agent 生成。"""
     case = await session.get(Case, uuid.UUID(case_id))
     if not case:
         yield _sse("error", {"error": "用例不存在"})
@@ -81,24 +31,27 @@ async def generate_ui_script_stream(
 
     env_vars = await _load_env_vars(session, env_id)
     base_url = env_vars.get("BASE_URL", "")
+    if not base_url:
+        yield _sse("error", {"error": "环境未配置 BASE_URL"})
+        return
+
     fixture_name = _detect_fixture(case.preconditions or "")
     creds = _get_credentials(env_vars, fixture_name)
 
-    from app.services.ai.mcp_agent import run_mcp_agent
+    from app.services.ai.mcp_agent import stream_mcp_agent
 
     script_content = ""
     all_passed = False
 
     try:
-        async for event in run_mcp_agent(
+        async for event in stream_mcp_agent(
             test_case_title=case.title,
-            test_steps=case.steps or [],
+            test_case_steps=case.steps or [],
             expected_result=case.expected_result,
             preconditions=case.preconditions or "",
             base_url=base_url,
-            env_vars=env_vars,
-            credentials=creds,
-            fixture_name=fixture_name,
+            test_user=creds.get("username", "admin"),
+            test_password=creds.get("password", "admin123"),
         ):
             if event.event == "done":
                 script_content = event.data.get("script_content", "")
@@ -116,10 +69,6 @@ async def generate_ui_script_stream(
                 case.ui_scenario = {}
             case.ui_scenario = {
                 **case.ui_scenario,
-                "steps": [
-                    {"seq": j + 1, "action": s.get("action", ""), "expected": s.get("expected", "")}
-                    for j, s in enumerate(case.steps or [])
-                ],
                 "scriptId": str(script.id),
             }
             await session.commit()
@@ -138,47 +87,53 @@ async def generate_ui_script_stream(
         yield _sse("error", {"error": str(exc)[:300]})
 
 
-# ─── 内部工具函数 ──────────────────────────────────────────
+async def generate_ui_script(
+    case_id: str,
+    session: AsyncSession,
+    env_id: str | None = None,
+) -> dict:
+    """同步生成（MCP 工具调用入口）。"""
+    case = await session.get(Case, uuid.UUID(case_id))
+    if not case:
+        raise ValueError(f"用例不存在: {case_id}")
 
-async def _load_env_vars(session: AsyncSession, env_id: str | None) -> dict[str, str]:
-    if not env_id:
-        return {}
-    rows = await session.execute(
-        select(EnvironmentVariable)
-        .where(EnvironmentVariable.environment_id == uuid.UUID(env_id))
-    )
-    return {v.key: v.value for v in rows.scalars().all()}
+    env_vars = await _load_env_vars(session, env_id)
+    base_url = env_vars.get("BASE_URL", "")
+    fixture_name = _detect_fixture(case.preconditions or "")
+    creds = _get_credentials(env_vars, fixture_name)
 
+    from app.services.ai.mcp_agent import stream_mcp_agent
 
-async def _save_script(session: AsyncSession, case: Case, content: str, all_passed: bool):
-    """转正状态机：通过 → active，失败 → draft（不覆盖已有好脚本）"""
-    file_name = f"test_{case.case_code.lower().replace('-', '_')}_ui.py"
-    if all_passed:
-        return await script_service.create_script(
-            session, case_id=case.id, script_type="ui", content=content,
-            file_name=file_name, language="python", source="ai_generated",
-        )
-    existing = await script_service.get_active_script(session, case.id, "ui")
-    if existing:
-        from sqlalchemy import func as sa_func
-        from app.models.script import Script
-        max_ver_result = await session.execute(
-            select(Script.version).where(Script.case_id == case.id, Script.script_type == "ui")
-            .order_by(Script.version.desc()).limit(1)
-        )
-        max_ver = max_ver_result.scalar_one_or_none() or 0
-        script = Script(
-            case_id=case.id, script_type="ui", version=max_ver + 1,
-            language="python", content=content,
-            file_name=file_name, status="draft", source="ai_generated",
-        )
-        session.add(script)
-        await session.flush()
-        return script
-    return await script_service.create_script(
-        session, case_id=case.id, script_type="ui", content=content,
-        file_name=file_name, language="python", source="ai_generated",
-    )
+    script_content = ""
+    all_passed = False
+
+    async for event in stream_mcp_agent(
+        test_case_title=case.title,
+        test_case_steps=case.steps or [],
+        expected_result=case.expected_result,
+        preconditions=case.preconditions or "",
+        base_url=base_url,
+        test_user=creds.get("username", "admin"),
+        test_password=creds.get("password", "admin123"),
+    ):
+        if event.event == "done":
+            script_content = event.data.get("script_content", "")
+            all_passed = event.data.get("all_passed", False)
+        elif event.event == "error":
+            raise ValueError(f"MCP Agent 生成失败: {event.data.get('content', '')}")
+
+    if not script_content.strip():
+        raise ValueError("MCP Agent 未生成有效脚本")
+
+    script = await _save_script(session, case, script_content, all_passed)
+    await session.commit()
+
+    return {
+        "script_id": str(script.id),
+        "content": script_content,
+        "case_id": case_id,
+        "version": script.version,
+    }
 
 
 async def repair_ui_script(
@@ -187,7 +142,7 @@ async def repair_ui_script(
     error_summary: str,
     stdout: str = "",
 ) -> dict:
-    """分析执行失败原因，读取调试历史，修复脚本。"""
+    """分析执行失败原因，修复脚本。"""
     from sqlalchemy import select as sa_select
     from app.models.script import ScriptRun
     from app.services.ai.llm_client import complete
@@ -222,14 +177,55 @@ async def repair_ui_script(
 
     script = await script_service.create_script(
         session, case_id=case.id, script_type="ui", content=fixed_content,
-        file_name=current_script.file_name, language="python", source="ai_generated",
+        file_name=current_script.file_name, language="typescript", source="ai_generated",
     )
     await session.flush()
     return {"changed": True, "script_id": str(script.id), "version": script.version}
 
 
+# ─── 内部工具函数 ──────────────────────────────────────────
+
+async def _load_env_vars(session: AsyncSession, env_id: str | None) -> dict[str, str]:
+    if not env_id:
+        return {}
+    rows = await session.execute(
+        select(EnvironmentVariable)
+        .where(EnvironmentVariable.environment_id == uuid.UUID(env_id))
+    )
+    return {v.key: v.value for v in rows.scalars().all()}
+
+
+async def _save_script(session: AsyncSession, case: Case, content: str, all_passed: bool):
+    """转正状态机：通过 → active，失败 → draft"""
+    file_name = f"test_{case.case_code.lower().replace('-', '_')}_ui.spec.ts"
+    if all_passed:
+        return await script_service.create_script(
+            session, case_id=case.id, script_type="ui", content=content,
+            file_name=file_name, language="typescript", source="ai_generated",
+        )
+    existing = await script_service.get_active_script(session, case.id, "ui")
+    if existing:
+        from app.models.script import Script
+        max_ver_result = await session.execute(
+            select(Script.version).where(Script.case_id == case.id, Script.script_type == "ui")
+            .order_by(Script.version.desc()).limit(1)
+        )
+        max_ver = max_ver_result.scalar_one_or_none() or 0
+        script = Script(
+            case_id=case.id, script_type="ui", version=max_ver + 1,
+            language="typescript", content=content,
+            file_name=file_name, status="draft", source="ai_generated",
+        )
+        session.add(script)
+        await session.flush()
+        return script
+    return await script_service.create_script(
+        session, case_id=case.id, script_type="ui", content=content,
+        file_name=file_name, language="typescript", source="ai_generated",
+    )
+
+
 def _detect_fixture(preconditions: str) -> str:
-    """从前置条件文本自动检测应该用哪个 fixture"""
     text = preconditions.lower()
     if any(kw in text for kw in ["租户", "tenant", "已授权"]):
         return "tenant_page"
@@ -237,7 +233,6 @@ def _detect_fixture(preconditions: str) -> str:
 
 
 def _get_credentials(env_vars: dict, fixture_name: str) -> dict:
-    """根据 fixture 名称获取对应的登录凭据"""
     if fixture_name == "tenant_page":
         return {
             "username": env_vars.get("TENANT_USERNAME", env_vars.get("ADMIN_USERNAME", "")),
@@ -254,8 +249,7 @@ def _sse(event_type: str, data: dict) -> str:
 
 
 def _extract_code(text: str) -> str:
-    """从 LLM 响应中提取 Python 代码"""
-    match = re.search(r"```(?:python)?\s*\n(.*?)```", text, re.DOTALL)
+    match = re.search(r"```(?:typescript|ts)?\s*\n(.*?)```", text, re.DOTALL)
     if match:
         return match.group(1).strip()
     for pattern in (r"^import ", r"^from "):

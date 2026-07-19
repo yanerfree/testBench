@@ -1,71 +1,113 @@
-"""verify_tool — 用 pytest-playwright 验证生成的 Python 脚本。
+"""verify_script LangChain tool — 用 npx playwright test 验证 TypeScript 脚本。
 
-在临时沙箱中写入脚本 + conftest → 运行 pytest → 解析 JUnit 报告。
+照搬 ThemisAI verify_tool.py 的完整实现：
+- 创建临时 Playwright 项目（tests/ + fixtures/ + playwright.config.js）
+- 写入 authenticatedPage fixture shim
+- 运行 npx playwright test
+- 解析 report.json 错误
 """
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import shutil
-import tempfile
-import xml.etree.ElementTree as ET
-from pathlib import Path
+
+from langchain_core.tools import StructuredTool
 
 logger = logging.getLogger(__name__)
 
 VERIFY_TIMEOUT = 150
 MAX_VERIFY_RETRIES = 3
 
+GLOBAL_SETUP = """\
+module.exports = async function globalSetup() {
+  // Auth is handled per-test inline (login in test body).
+};
+"""
 
-async def verify_script(
-    script_content: str,
-    base_url: str,
-    env_vars: dict[str, str] | None = None,
+FIXTURE_SHIM = """\
+import { test as base, expect, type Page } from '@playwright/test';
+
+type CleanupFn = () => Promise<void> | void;
+type Cleanup = { add: (fn: CleanupFn) => void };
+
+export const test = base.extend<{ cleanup: Cleanup }>({
+  cleanup: async ({}, use, testInfo) => {
+    const stack: CleanupFn[] = [];
+    await use({ add(fn) { stack.push(fn); } });
+    testInfo.setTimeout(testInfo.timeout + 60000);
+    while (stack.length > 0) {
+      const fn = stack.pop()!;
+      try { await fn(); } catch (e) { console.error('cleanup error:', e); }
+    }
+  },
+});
+
+export { expect };
+"""
+
+
+async def _run_playwright_verify(
+    script_content: str, base_url: str, artifacts_dir: str,
+    test_user: str = "", test_password: str = "",
 ) -> str:
-    """验证 Python pytest-playwright 脚本。返回 VERIFICATION PASSED 或 VERIFICATION FAILED + 错误。"""
-    if not script_content.strip():
-        return "VERIFICATION ERROR: 脚本内容为空。"
+    verify_dir = os.path.join(artifacts_dir, "verify")
+    os.makedirs(verify_dir, exist_ok=True)
 
-    ev = env_vars or {}
-    ev.setdefault("BASE_URL", base_url)
-    sandbox = tempfile.mkdtemp(prefix="tb_verify_")
-    try:
-        return await _run_in_sandbox(script_content, sandbox, ev)
-    finally:
-        shutil.rmtree(sandbox, ignore_errors=True)
+    tests_dir = os.path.join(verify_dir, "tests")
+    os.makedirs(tests_dir, exist_ok=True)
 
+    fixtures_dir = os.path.join(verify_dir, "fixtures")
+    os.makedirs(fixtures_dir, exist_ok=True)
+    with open(os.path.join(fixtures_dir, "index.ts"), "w") as f:
+        f.write(FIXTURE_SHIM)
 
-async def _run_in_sandbox(script_content: str, sandbox: str, env_vars: dict[str, str]) -> str:
-    script_path = Path(sandbox) / "test_verify.py"
-    script_path.write_text(script_content, encoding="utf-8")
+    with open(os.path.join(verify_dir, "global-setup.js"), "w") as f:
+        f.write(GLOBAL_SETUP)
 
-    from app.engine.pw_conftest import write_playwright_conftest
-    write_playwright_conftest(sandbox, env_vars)
+    with open(os.path.join(tests_dir, "test.spec.ts"), "w") as f:
+        f.write(script_content)
 
-    _write_tea_step_stub(sandbox)
-    _write_pytest_ini(sandbox, env_vars.get("BASE_URL", ""))
-
-    junit_path = os.path.join(sandbox, "report.xml")
-    import sys
-    cmd = [
-        sys.executable, "-m", "pytest",
-        str(script_path),
-        f"--junitxml={junit_path}",
-        "--tb=short",
-        "-q",
-    ]
-
-    run_env = {**os.environ, **env_vars}
+    config_content = f"""// @ts-check
+const {{ defineConfig }} = require('@playwright/test');
+module.exports = defineConfig({{
+  testDir: './tests',
+  timeout: 120000,
+  retries: 0,
+  globalSetup: './global-setup.js',
+  use: {{
+    baseURL: '{base_url}',
+    headless: true,
+    screenshot: 'on',
+    video: 'on',
+    locale: 'zh-CN',
+  }},
+  reporter: [['json', {{ outputFile: 'report.json' }}]],
+  outputDir: './test-results',
+}});
+"""
+    with open(os.path.join(verify_dir, "playwright.config.js"), "w") as f:
+        f.write(config_content)
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            *cmd,
+            "npx", "playwright", "test",
+            f"--config={os.path.join(verify_dir, 'playwright.config.js')}",
+            cwd=verify_dir,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            cwd=sandbox,
-            env=run_env,
+            env={
+                **os.environ,
+                "CI": "1",
+                "NODE_PATH": "/usr/local/lib/node_modules",
+                "BASE_URL": base_url,
+                "TEST_USER": test_user,
+                "TEST_PASSWORD": test_password,
+            },
         )
+
         try:
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=VERIFY_TIMEOUT)
         except asyncio.TimeoutError:
@@ -76,57 +118,94 @@ async def _run_in_sandbox(script_content: str, sandbox: str, env_vars: dict[str,
         if proc.returncode == 0:
             return "VERIFICATION PASSED: 所有测试通过。脚本已就绪。"
 
-        error_details = _parse_junit_errors(junit_path)
+        report_path = os.path.join(verify_dir, "report.json")
+        error_details = _parse_errors_from_report(report_path)
+
         if not error_details:
             combined = (stderr or b"").decode(errors="replace") + "\n" + (stdout or b"").decode(errors="replace")
             error_details = combined.strip()[-2000:]
 
         return (
             f"VERIFICATION FAILED (exit code {proc.returncode}):\n\n{error_details}\n\n"
-            f"请根据错误信息修复脚本，然后重新调用 submit_script 提交，再调用 verify_script 验证。"
+            f"请根据错误信息修复脚本，然后调用 submit_script 重新提交，再调用 verify_script 验证。"
         )
+
     except FileNotFoundError:
-        return "VERIFICATION ERROR: pytest 未找到。"
+        return "VERIFICATION ERROR: npx 或 playwright 未找到。"
     except Exception as exc:
         return f"VERIFICATION ERROR: {type(exc).__name__}: {str(exc)[:500]}"
 
 
-def _parse_junit_errors(junit_path: str) -> str:
-    if not os.path.isfile(junit_path):
+def _parse_errors_from_report(report_path: str) -> str:
+    if not os.path.isfile(report_path):
         return ""
     try:
-        tree = ET.parse(junit_path)
-        root = tree.getroot()
-        errors = []
-        for tc in root.iter("testcase"):
-            for child in tc:
-                if child.tag in ("failure", "error"):
-                    msg = child.get("message", "")[:500]
-                    text = (child.text or "")[:500]
-                    errors.append(f"Test: {tc.get('name', 'unknown')}\nError: {msg}\n{text}")
-        return "\n\n".join(errors[:5])
+        with open(report_path) as f:
+            raw = json.load(f)
+        errors: list[dict] = []
+        _collect_errors(raw.get("suites", []), errors)
+        if not errors:
+            return ""
+        lines = []
+        for err in errors[:5]:
+            lines.append(f"Test: {err['test']}")
+            lines.append(f"Error: {err['message']}")
+            if err.get("snippet"):
+                lines.append(f"Code: {err['snippet']}")
+            lines.append("")
+        return "\n".join(lines)
     except Exception:
         return ""
 
 
-def _write_tea_step_stub(sandbox: str) -> None:
-    """写入 tea_step 桩模块，让脚本能 import 但不依赖完整插件。"""
-    stub = Path(sandbox) / "tea_step.py"
-    if not stub.exists():
-        stub.write_text(
-            "from contextlib import contextmanager\n"
-            "@contextmanager\n"
-            "def tea_step(name, phase='action'):\n"
-            "    yield\n",
-            encoding="utf-8",
+def _collect_errors(suites: list, out: list) -> None:
+    for suite in suites:
+        for spec in suite.get("specs", []):
+            for test in spec.get("tests", []):
+                for result in test.get("results", []):
+                    if result.get("status") != "passed":
+                        for error in result.get("errors", []):
+                            out.append({
+                                "test": spec.get("title", "unknown"),
+                                "message": error.get("message", "")[:500],
+                                "snippet": error.get("snippet", "")[:300],
+                            })
+        _collect_errors(suite.get("suites", []), out)
+
+
+def create_verify_tool(
+    base_url: str, artifacts_dir: str, shared_state: dict,
+    test_user: str = "", test_password: str = "",
+) -> StructuredTool:
+    async def _verify() -> str:
+        script_content = shared_state.get("script_content", "")
+        if not script_content.strip():
+            return (
+                "VERIFICATION ERROR: 没有已提交的脚本。"
+                "请先调用 submit_script 提交脚本，再调用 verify_script。"
+            )
+        result = await _run_playwright_verify(
+            script_content, base_url, artifacts_dir,
+            test_user=test_user, test_password=test_password,
         )
+        version = shared_state.get("version", 0)
+        if "VERIFICATION FAILED" in result and version >= MAX_VERIFY_RETRIES:
+            stop_idx = result.find("\n\n请根据错误信息修复脚本")
+            if stop_idx != -1:
+                result = result[:stop_idx]
+            result += (
+                f"\n\n⚠️ 已达到最大验证次数（{version} 次）。"
+                "不要再次调用 submit_script 或 verify_script。"
+                "当前版本作为最终提交，直接结束生成流程。"
+            )
+        return result
 
-
-def _write_pytest_ini(sandbox: str, base_url: str) -> None:
-    """写入 pytest.ini 配置 base_url（让 page.goto('/path') 相对路径生效）。"""
-    ini = Path(sandbox) / "pytest.ini"
-    ini.write_text(
-        "[pytest]\n"
-        f"base_url = {base_url}\n",
-        encoding="utf-8",
+    return StructuredTool.from_function(
+        coroutine=_verify,
+        name="verify_script",
+        description=(
+            "验证已提交的 Playwright Test 脚本。"
+            "无需传参，自动读取最近一次 submit_script 提交的脚本并执行。"
+            "返回 VERIFICATION PASSED 或 VERIFICATION FAILED 及错误详情。"
+        ),
     )
