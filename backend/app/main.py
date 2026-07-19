@@ -151,7 +151,8 @@ def _start_standalone_mcp_server():
     config = uvicorn.Config(standalone, host="0.0.0.0", port=mcp_port, log_level="warning")
     server = uvicorn.Server(config)
     try:
-        asyncio.create_task(server.serve())
+        from app.services._mock_server_util import guarded_serve
+        asyncio.create_task(guarded_serve(server, "Standalone MCP"))
         _startup_logger.info("MCP 独立服务已启动: http://0.0.0.0:%d/mcp/", mcp_port)
     except Exception as e:
         _startup_logger.warning("MCP 独立服务启动失败: %s", e)

@@ -250,6 +250,7 @@ class McpMockServerManager:
         try:
             data = json.loads(_STATE_FILE.read_text())
             self.transport = data.get("transport", "streamable-http")
+            self.port = data.get("port", self.port)
             return data.get("running", False)
         except Exception:
             return False
@@ -333,6 +334,7 @@ class McpMockServerManager:
                 raise RuntimeError(resp.get("error", "Mock error"))
             return resp
 
+        import keyword
         for tool_cfg in self._tools:
             if not tool_cfg.get("enabled", True):
                 continue
@@ -340,11 +342,16 @@ class McpMockServerManager:
             tool_desc = f"[Mock] {tool_cfg.get('description', tool_name)}"
             tool_params = tool_cfg.get("params", {})
 
-            param_str = ", ".join(f'{k}: str = ""' for k in tool_params) if tool_params else ""
-            func_code = f"async def {tool_name}({param_str}):\n    return _dispatch('{tool_name}')\n"
-            ns = {"_dispatch": _dispatch}
+            # 安全：函数 def 名/参数名只允许合法标识符（非法则降级为占位名/剔除），
+            # 避免带连字符等的工具名产生 SyntaxError 把整个 MCP Mock 启动永久打死，
+            # 也杜绝代码注入；真实工具名始终经 mcp.tool(name=) 传入、经 ns 传给 _dispatch。
+            safe_name = tool_name if isinstance(tool_name, str) and tool_name.isidentifier() else "_mock_tool"
+            valid_params = [k for k in tool_params if isinstance(k, str) and k.isidentifier() and not keyword.iskeyword(k)]
+            param_str = ", ".join(f'{k}: str = ""' for k in valid_params)
+            func_code = f"async def {safe_name}({param_str}):\n    return _dispatch(_tn)\n"
+            ns = {"_dispatch": _dispatch, "_tn": tool_name}
             exec(func_code, ns)
-            fn = ns[tool_name]
+            fn = ns[safe_name]
             fn.__doc__ = tool_desc
             mcp.tool(name=tool_name, description=tool_desc)(fn)
 

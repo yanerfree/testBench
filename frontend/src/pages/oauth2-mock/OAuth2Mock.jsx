@@ -125,9 +125,17 @@ export default function OAuth2Mock() {
 
   const handleStartStop = async () => {
     try {
-      if (serviceStatus.running) { await api.post('/oauth2-mock/stop') } else { await api.post('/oauth2-mock/start') }
+      if (serviceStatus.running) {
+        await api.post('/oauth2-mock/stop')
+        message.success('OAuth2 Mock 服务已停止')
+      } else {
+        await api.post('/oauth2-mock/start')
+        message.success('OAuth2 Mock 服务已启动')
+      }
       fetchStatus()
-    } catch {}
+    } catch (e) {
+      message.error(`操作失败: ${e?.response?.data?.error || e?.response?.data?.detail || e.message || '未知错误'}`)
+    }
   }
 
   const baseUrl = `http://${window.location.hostname}:${serviceStatus.port}`

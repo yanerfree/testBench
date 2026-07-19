@@ -33,7 +33,9 @@ class TcpMockServerManager:
 
     def _load_state(self) -> bool:
         try:
-            return json.loads(_STATE_FILE.read_text()).get("running", False)
+            data = json.loads(_STATE_FILE.read_text())
+            self.port = data.get("port", self.port)
+            return data.get("running", False)
         except Exception:
             return False
 

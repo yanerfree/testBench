@@ -168,7 +168,7 @@ export default function UdpMockPanel() {
       }
       setTimeout(fetchStatus, 500)
     } catch (e) {
-      message.error(`操作失败: ${e.message || '未知错误'}`)
+      message.error(`操作失败: ${e?.response?.data?.error || e?.response?.data?.detail || e.message || '未知错误'}`)
     }
   }
 

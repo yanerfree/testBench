@@ -110,6 +110,7 @@ class GrpcMockServerManager:
         try:
             data = json.loads(_STATE_FILE.read_text())
             self.reflection_version = data.get("reflection_version", "both")
+            self.port = data.get("port", self.port)
             return data.get("running", False)
         except Exception:
             return False
