@@ -70,23 +70,19 @@ async def _run_playwright_verify(
     with open(os.path.join(tests_dir, "test.spec.ts"), "w") as f:
         f.write(script_content)
 
-    config_content = f"""// @ts-check
-const {{ defineConfig }} = require('@playwright/test');
-module.exports = defineConfig({{
+    config_content = f"""module.exports = {{
   testDir: './tests',
   timeout: 120000,
   retries: 0,
-  globalSetup: './global-setup.js',
   use: {{
     baseURL: '{base_url}',
     headless: true,
     screenshot: 'on',
-    video: 'on',
     locale: 'zh-CN',
   }},
   reporter: [['json', {{ outputFile: 'report.json' }}]],
   outputDir: './test-results',
-}});
+}};
 """
     with open(os.path.join(verify_dir, "playwright.config.js"), "w") as f:
         f.write(config_content)
@@ -101,6 +97,7 @@ module.exports = defineConfig({{
             env={
                 **os.environ,
                 "CI": "1",
+                "NODE_PATH": "/home/dreamer/.nvm/versions/node/v24.14.1/lib/node_modules",
                 "NODE_PATH": "/usr/local/lib/node_modules",
                 "BASE_URL": base_url,
                 "TEST_USER": test_user,

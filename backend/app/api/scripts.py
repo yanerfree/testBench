@@ -260,10 +260,9 @@ async def run_script_stream(
     session: AsyncSession = Depends(get_db),
     user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
-    """SSE 流式执行脚本 — 实时推送步骤进度"""
+    """SSE 流式执行脚本 — 支持 Python pytest 和 TypeScript npx playwright test"""
     import asyncio
     import json
-    import subprocess
     import time as time_mod
 
     script = await script_service.get_active_script(session, case_id, script_type)
@@ -278,7 +277,135 @@ async def run_script_stream(
         for v in rows.scalars().all():
             env_vars[v.key] = v.value
 
-    file_name = script.file_name or f"test_{script_type}.py"
+    is_typescript = (script.language == "typescript"
+                     or (script.file_name or "").endswith(".ts")
+                     or "from '../fixtures'" in script.content
+                     or "from '@playwright/test'" in script.content)
+
+    if is_typescript:
+        return StreamingResponse(
+            _run_typescript_stream(script, case_id, env_vars, user, session),
+            media_type="text/event-stream",
+        )
+
+    return StreamingResponse(
+        _run_python_stream(script, case_id, env_vars, user, session),
+        media_type="text/event-stream",
+    )
+
+
+async def _run_typescript_stream(script, case_id, env_vars, user, session):
+    """用 npx playwright test 执行 TypeScript 脚本"""
+    import asyncio
+    import json
+    import time as time_mod
+
+    sandbox_dir = tempfile.mkdtemp(prefix="tb_ts_run_")
+    try:
+        from app.services.ai.verify_tool import FIXTURE_SHIM, GLOBAL_SETUP
+        import os as os_mod
+
+        tests_dir = Path(sandbox_dir) / "tests"
+        tests_dir.mkdir()
+        fixtures_dir = Path(sandbox_dir) / "fixtures"
+        fixtures_dir.mkdir()
+
+        (tests_dir / "test.spec.ts").write_text(script.content, encoding="utf-8")
+        (fixtures_dir / "index.ts").write_text(FIXTURE_SHIM, encoding="utf-8")
+        (Path(sandbox_dir) / "global-setup.js").write_text(GLOBAL_SETUP, encoding="utf-8")
+
+        base_url = env_vars.get("BASE_URL", "")
+        config = f"""module.exports = {{
+  testDir: './tests',
+  timeout: 120000,
+  retries: 0,
+  use: {{
+    baseURL: '{base_url}',
+    headless: true,
+    screenshot: 'on',
+    video: 'on',
+    locale: 'zh-CN',
+  }},
+  reporter: [['json', {{ outputFile: 'report.json' }}]],
+  outputDir: './test-results',
+}};"""
+        (Path(sandbox_dir) / "playwright.config.js").write_text(config, encoding="utf-8")
+
+        run_env = os_mod.environ.copy()
+        run_env.update(env_vars)
+        run_env["CI"] = "1"
+        run_env["NODE_PATH"] = "/home/dreamer/.nvm/versions/node/v24.14.1/lib/node_modules"
+        run_env["TEST_USER"] = env_vars.get("ADMIN_USERNAME", env_vars.get("TENANT_USERNAME", ""))
+        run_env["TEST_PASSWORD"] = env_vars.get("ADMIN_PASSWORD", env_vars.get("TENANT_PASSWORD", ""))
+
+        start_time = time_mod.time()
+        proc = await asyncio.create_subprocess_exec(
+            "npx", "playwright", "test",
+            f"--config={sandbox_dir}/playwright.config.js",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=sandbox_dir,
+            env=run_env,
+        )
+
+        stdout_chunks = []
+        stderr_chunks = []
+
+        async def drain(stream, buf):
+            async for line in stream:
+                buf.append(line.decode("utf-8", errors="ignore"))
+
+        await asyncio.gather(
+            drain(proc.stdout, stdout_chunks),
+            drain(proc.stderr, stderr_chunks),
+        )
+        await proc.wait()
+
+        duration_ms = int((time_mod.time() - start_time) * 1000)
+        stdout_text = "".join(stdout_chunks)
+        stderr_text = "".join(stderr_chunks)
+
+        status = "passed" if proc.returncode == 0 else "failed"
+        error_summary = None
+        if proc.returncode != 0:
+            from app.services.ai.verify_tool import _parse_errors_from_report
+            report_path = Path(sandbox_dir) / "report.json"
+            error_summary = _parse_errors_from_report(str(report_path))
+            if not error_summary:
+                error_summary = (stderr_text + stdout_text)[-2000:]
+
+        run_record = ScriptRun(
+            case_id=case_id, script_id=script.id, script_type="ui",
+            status=status, duration_ms=duration_ms,
+            error_summary=error_summary,
+            stdout=(stdout_text + stderr_text)[-5000:],
+            executed_by=user.id,
+        )
+        session.add(run_record)
+
+        case = await session.get(Case, case_id)
+        if case:
+            case.ui_scenario_status = "completed" if status == "passed" else "debugging"
+        await session.commit()
+
+        final = json.dumps({
+            "status": status, "duration_ms": duration_ms,
+            "error_summary": error_summary, "steps": [], "screenshots": [],
+        }, ensure_ascii=False, default=str)
+        yield f"event: done\ndata: {final}\n\n"
+
+    finally:
+        shutil.rmtree(sandbox_dir, ignore_errors=True)
+
+
+async def _run_python_stream(script, case_id, env_vars, user, session):
+    """用 pytest 执行 Python 脚本（原有逻辑）"""
+    import asyncio
+    import json
+    import time as time_mod
+    import os as os_mod
+
+    file_name = script.file_name or "test_ui.py"
     content = script.content
     for var_name, var_value in env_vars.items():
         content = re.sub(
@@ -293,7 +420,6 @@ async def run_script_stream(
     script_path.write_text(content, encoding="utf-8")
 
     from app.engine.command_builder import build_pytest_command, is_playwright_script
-    import os as os_mod
 
     pw_output_dir = None
     if is_playwright_script(content):
@@ -322,80 +448,77 @@ async def run_script_stream(
     run_env["PYTHONPATH"] = str(tea_plugins_dir) + ":" + run_env.get("PYTHONPATH", "")
     run_env["TEA_CAPTURE_DIR"] = str(tea_results_dir)
 
-    async def event_generator():
-        start_time = time_mod.time()
-        proc = await asyncio.create_subprocess_exec(
-            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-            cwd=sandbox_dir, env=run_env,
-        )
-        stderr_chunks = []
+    start_time = time_mod.time()
+    proc = await asyncio.create_subprocess_exec(
+        *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        cwd=sandbox_dir, env=run_env,
+    )
+    stderr_chunks = []
 
-        async def drain_stderr():
-            async for line in proc.stderr:
-                stderr_chunks.append(line.decode("utf-8", errors="ignore"))
+    async def drain_stderr():
+        async for line in proc.stderr:
+            stderr_chunks.append(line.decode("utf-8", errors="ignore"))
 
-        stderr_task = asyncio.create_task(drain_stderr())
+    stderr_task = asyncio.create_task(drain_stderr())
+
+    try:
+        async for line in proc.stdout:
+            text = line.decode("utf-8", errors="ignore").rstrip()
+            if text.startswith("##STEP_START##"):
+                data = text[len("##STEP_START##"):]
+                yield f"event: step_start\ndata: {data}\n\n"
+            elif text.startswith("##STEP_END##"):
+                data = text[len("##STEP_END##"):]
+                yield f"event: step_end\ndata: {data}\n\n"
 
         try:
-            async for line in proc.stdout:
-                text = line.decode("utf-8", errors="ignore").rstrip()
-                if text.startswith("##STEP_START##"):
-                    data = text[len("##STEP_START##"):]
-                    yield f"event: step_start\ndata: {data}\n\n"
-                elif text.startswith("##STEP_END##"):
-                    data = text[len("##STEP_END##"):]
-                    yield f"event: step_end\ndata: {data}\n\n"
+            await asyncio.wait_for(proc.wait(), timeout=10)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
 
-            try:
-                await asyncio.wait_for(proc.wait(), timeout=10)
-            except asyncio.TimeoutError:
-                proc.kill()
-                await proc.wait()
+        await stderr_task
+        stderr = "".join(stderr_chunks)
+        duration_ms = int((time_mod.time() - start_time) * 1000)
 
-            await stderr_task
-            stderr = "".join(stderr_chunks)
-            duration_ms = int((time_mod.time() - start_time) * 1000)
+        from app.engine.result_parser import parse_junit_xml, parse_step_json
+        junit_results = parse_junit_xml(junit_path)
 
-            from app.engine.result_parser import parse_junit_xml, parse_step_json
-            junit_results = parse_junit_xml(junit_path)
+        status = "passed"
+        error_summary = None
+        if not junit_results:
+            status = "error" if proc.returncode != 0 else "passed"
+            error_summary = stderr[:2000] if proc.returncode != 0 else None
+        else:
+            statuses = [r["status"] for r in junit_results]
+            if "error" in statuses: status = "error"
+            elif "failed" in statuses: status = "failed"
+            error_msgs = [r["message"] for r in junit_results if r["message"]]
+            error_summary = "; ".join(error_msgs)[:2000] if error_msgs else None
 
-            status = "passed"
-            error_summary = None
-            if not junit_results:
-                status = "error" if proc.returncode != 0 else "passed"
-                error_summary = stderr[:2000] if proc.returncode != 0 else None
-            else:
-                statuses = [r["status"] for r in junit_results]
-                if "error" in statuses: status = "error"
-                elif "failed" in statuses: status = "failed"
-                error_msgs = [r["message"] for r in junit_results if r["message"]]
-                error_summary = "; ".join(error_msgs)[:2000] if error_msgs else None
+        steps = []
+        for jf in sorted(tea_results_dir.glob("*.json")):
+            steps = parse_step_json(str(jf))
+            if steps: break
 
-            steps = []
-            for jf in sorted(tea_results_dir.glob("*.json")):
-                steps = parse_step_json(str(jf))
-                if steps: break
+        from app.engine.executor import _collect_screenshots
+        screenshots = _collect_screenshots(pw_output_dir) if pw_output_dir else []
 
-            from app.engine.executor import _collect_screenshots
-            screenshots = _collect_screenshots(pw_output_dir) if pw_output_dir else []
+        final = json.dumps({
+            "status": status, "duration_ms": duration_ms, "error_summary": error_summary,
+            "steps": steps, "screenshots": screenshots,
+        }, ensure_ascii=False, default=str)
+        yield f"event: done\ndata: {final}\n\n"
 
-            final = json.dumps({
-                "status": status, "duration_ms": duration_ms, "error_summary": error_summary,
-                "steps": steps, "screenshots": screenshots,
-            }, ensure_ascii=False, default=str)
-            yield f"event: done\ndata: {final}\n\n"
-
-        finally:
-            try:
-                proc.kill()
-                await proc.wait()
-            except Exception:
-                pass
-            try: os_mod.unlink(junit_path)
-            except: pass
-            shutil.rmtree(sandbox_dir, ignore_errors=True)
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    finally:
+        try:
+            proc.kill()
+            await proc.wait()
+        except Exception:
+            pass
+        try: os_mod.unlink(junit_path)
+        except: pass
+        shutil.rmtree(sandbox_dir, ignore_errors=True)
 
 
 @router.get("/runs")
