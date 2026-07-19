@@ -124,191 +124,24 @@ async def generate_script_ai_stream(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
-    """SSE 流式 AI 生成 — 实时推送每步生成进度"""
-    import asyncio
-    import json as json_mod
-
+    """SSE 流式 AI 生成 — MCP Agent 探索式脚本生成"""
     if script_type != "ui":
         raise AppError(code="INVALID_TYPE", message="仅支持 UI 脚本")
-
-    from app.models.environment import EnvironmentVariable
-    from app.services.ai.ui_script_gen_service import _detect_fixture, _get_credentials
-    from app.services.ai.step_generator import step_by_step_generate
 
     case = await session.get(Case, case_id)
     if not case:
         raise NotFoundError(code="CASE_NOT_FOUND", message="用例不存在")
 
-    env_vars = {}
-    if env_id:
-        rows = await session.execute(
-            select(EnvironmentVariable).where(EnvironmentVariable.environment_id == env_id)
-        )
-        env_vars = {v.key: v.value for v in rows.scalars().all()}
-
-    base_url = env_vars.get("BASE_URL", "")
-    fixture_name = _detect_fixture(case.preconditions or "")
-    creds = _get_credentials(env_vars, fixture_name)
-    # 备用角色凭据（多角色场景用）
-    alt_fixture = "tenant_page" if fixture_name == "logged_in_page" else "logged_in_page"
-    alt_creds = _get_credentials(env_vars, alt_fixture)
-
-    queue = asyncio.Queue()
-
-    def on_step(event):
-        queue.put_nowait(event)
-
-    # 查历史修复记录
-    healing_history = []
-    try:
-        from app.models.healing_archive import HealingArchive
-        ha_result = await session.execute(
-            select(HealingArchive).where(HealingArchive.case_id == case_id)
-            .order_by(HealingArchive.created_at.desc()).limit(20)
-        )
-        healing_history = [
-            {"step_seq": h.step_seq, "page_url": h.page_url, "original_code": h.original_code, "resolved": h.resolved}
-            for h in ha_result.scalars().all()
-        ]
-    except Exception:
-        pass
-
-    # 查已验证的 SetupRef
-    setup_refs = []
-    try:
-        from app.models.setup_ref import SetupRef as SetupRefModel
-        sr_result = await session.execute(
-            select(SetupRefModel).where(
-                SetupRefModel.base_url == base_url, SetupRefModel.verified == True
-            ).order_by(SetupRefModel.success_count.desc()).limit(20)
-        )
-        setup_refs = [
-            {"condition_pattern": s.condition_pattern, "code": s.code, "verified": s.verified}
-            for s in sr_result.scalars().all()
-        ]
-    except Exception:
-        pass
-
-    import threading
-    cancel_event = threading.Event()
-
-    async def run_generate():
-        import anyio
-        from app.services.ai.step_generator import step_by_step_generate
-        result = await anyio.to_thread.run_sync(lambda: step_by_step_generate(
-            base_url=base_url, credentials=creds, steps=case.steps or [],
-            fixture_name=fixture_name, on_step=on_step,
-            preconditions=case.preconditions or "",
-            headless=not bool(__import__("os").environ.get("DISPLAY")),
-            alt_credentials=alt_creds,
-            setup_refs=setup_refs,
-            cancel_event=cancel_event,
-            step_hints=step_hints or {},
-        ))
-        queue.put_nowait({"type": "done", "result": result})
-
-    task = asyncio.create_task(run_generate())
+    from app.services.ai.ui_script_gen_service import generate_ui_script_stream
 
     async def event_generator():
-        try:
-            while True:
-                try:
-                    event = await asyncio.wait_for(queue.get(), timeout=300)
-                except asyncio.TimeoutError:
-                    break
-                if event["type"] == "done":
-                    gen_result = event["result"]
-                    script_content = gen_result.get("script", "")
-                    if script_content.strip():
-                        all_passed = gen_result.get("all_passed", False)
-                        # 转正状态机：通过 → active，失败 → draft（不覆盖已有的好脚本）
-                        if all_passed:
-                            script = await script_service.create_script(
-                                session, case_id=case.id, script_type="ui", content=script_content,
-                                file_name=f"test_{case.case_code.lower().replace('-', '_')}_ui.py",
-                                language="python", source="ai_generated",
-                            )
-                        else:
-                            # 失败脚本存为 draft，不影响现有 active 版本
-                            existing = await script_service.get_active_script(session, case.id, "ui")
-                            if existing:
-                                # 有 active 版本 → 新建 draft，不覆盖
-                                from sqlalchemy import func as sa_func
-                                max_ver_result = await session.execute(
-                                    select(sa_func.max(Script.version)).where(
-                                        Script.case_id == case.id, Script.script_type == "ui"
-                                    )
-                                )
-                                max_ver = max_ver_result.scalar_one_or_none() or 0
-                                script = Script(
-                                    case_id=case.id, script_type="ui", version=max_ver + 1,
-                                    language="python", content=script_content,
-                                    file_name=f"test_{case.case_code.lower().replace('-', '_')}_ui.py",
-                                    status="draft", source="ai_generated",
-                                )
-                                session.add(script)
-                                await session.flush()
-                            else:
-                                # 没有 active 版本 → 直接存（第一次生成，哪怕失败也保留）
-                                script = await script_service.create_script(
-                                    session, case_id=case.id, script_type="ui", content=script_content,
-                                    file_name=f"test_{case.case_code.lower().replace('-', '_')}_ui.py",
-                                    language="python", source="ai_generated",
-                                )
-
-                        case.ui_scenario_status = "completed" if all_passed else "debugging"
-                        if not case.ui_scenario:
-                            case.ui_scenario = {}
-                        case.ui_scenario = {
-                            **case.ui_scenario,
-                            "steps": [{"seq": j+1, "action": s.get("action",""), "expected": s.get("expected","")} for j, s in enumerate(case.steps or [])],
-                            "scriptId": str(script.id),
-                            "stepCache": gen_result.get("step_cache", {}),
-                            "lastResults": [{"step": r.get("step",""), "action": r.get("step",""), "status": r["status"], "error": r.get("error",""), "code": r.get("code","")[:200] if r.get("code") else "", "screenshot": r.get("screenshot","")[:200000] if r.get("screenshot") and r["status"] == "failed" else None} for r in gen_result["results"]],
-                            "capturedRequests": gen_result.get("captured_requests", [])[:50],
-                            "stepHints": step_hints or {},
-                        }
-                        await session.commit()
-
-                    # 保存修复档案
-                    for hr in gen_result.get("healing_records", []):
-                        from app.models.healing_archive import HealingArchive
-                        session.add(HealingArchive(
-                            case_id=case.id, step_seq=hr["step_seq"], step_action=hr["step_action"],
-                            page_url=hr.get("page_url"), original_code=hr["original_code"],
-                            error_summary=hr["error_summary"], fix_code=hr.get("fix_code"),
-                            fix_method=hr.get("fix_method"), page_snapshot=hr.get("page_snapshot"),
-                            resolved=hr.get("resolved", False),
-                        ))
-                    if gen_result.get("healing_records"):
-                        await session.commit()
-
-                    # 保存新生成的 SetupRef（执行通过的前置数据准备代码）
-                    for sr in gen_result.get("new_setup_refs", []):
-                        try:
-                            from app.models.setup_ref import SetupRef as SetupRefModel
-                            session.add(SetupRefModel(
-                                condition_pattern=sr["condition_pattern"],
-                                base_url=sr["base_url"],
-                                code=sr["code"],
-                                verified=gen_result.get("all_passed", False),
-                                success_count=1 if gen_result.get("all_passed") else 0,
-                            ))
-                        except Exception:
-                            pass
-                    if gen_result.get("new_setup_refs"):
-                        await session.commit()
-
-                    yield f"event: done\ndata: {json_mod.dumps({'status': 'passed' if gen_result['all_passed'] else 'failed', 'all_passed': gen_result['all_passed'], 'results': [{'step': r.get('step',''), 'action': r.get('step',''), 'status': r['status'], 'error': r.get('error',''), 'screenshot': r.get('screenshot','')[:200000] if r.get('screenshot') and r['status'] == 'failed' else None} for r in gen_result['results']], 'captured_requests': gen_result.get('captured_requests', [])[:50]}, ensure_ascii=False)}\n\n"
-                    break
-                else:
-                    yield f"event: {event['type']}\ndata: {json_mod.dumps(event, ensure_ascii=False)}\n\n"
-        except Exception as e:
-            yield f"event: error\ndata: {json_mod.dumps({'error': str(e)[:300]}, ensure_ascii=False)}\n\n"
-        finally:
-            cancel_event.set()
-            if not task.done():
-                task.cancel()
+        async for chunk in generate_ui_script_stream(
+            case_id=str(case_id),
+            session=session,
+            env_id=str(env_id) if env_id else None,
+            step_hints=step_hints,
+        ):
+            yield chunk
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
