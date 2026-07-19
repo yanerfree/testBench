@@ -39,7 +39,7 @@ const cardStyle = { borderRadius: 12, border: '1px solid rgba(0,0,0,0.04)', boxS
 const sectionTitle = { fontSize: 14, fontWeight: 600, color: '#2e3138', marginBottom: 4 }
 
 export default function MCPTools() {
-  const mcpUrl = `http://${window.location.hostname}:8000/mcp/`
+  const mcpUrl = `http://${window.location.hostname}:18800/mcp/`
   const [apiKeys, setApiKeys] = useState([])
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [newKeyName, setNewKeyName] = useState('')

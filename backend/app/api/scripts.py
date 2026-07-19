@@ -302,8 +302,10 @@ async def _run_typescript_stream(script, case_id, env_vars, user, session):
 
     sandbox_dir = tempfile.mkdtemp(prefix="tb_ts_run_")
     try:
-        from app.services.ai.verify_tool import FIXTURE_SHIM, GLOBAL_SETUP
+        from app.services.ai.verify_tool import FIXTURE_SHIM, GLOBAL_SETUP, _link_node_modules
         import os as os_mod
+
+        _link_node_modules(sandbox_dir)
 
         tests_dir = Path(sandbox_dir) / "tests"
         tests_dir.mkdir()
@@ -335,8 +337,16 @@ async def _run_typescript_stream(script, case_id, env_vars, user, session):
         run_env.update(env_vars)
         run_env["CI"] = "1"
         run_env["NODE_PATH"] = "/home/dreamer/.nvm/versions/node/v24.14.1/lib/node_modules"
-        run_env["TEST_USER"] = env_vars.get("ADMIN_USERNAME", env_vars.get("TENANT_USERNAME", ""))
-        run_env["TEST_PASSWORD"] = env_vars.get("ADMIN_PASSWORD", env_vars.get("TENANT_PASSWORD", ""))
+
+        # 根据用例前置条件选正确凭据
+        case = await session.get(Case, case_id)
+        preconditions = (case.preconditions or "").lower() if case else ""
+        if any(kw in preconditions for kw in ["租户", "tenant"]):
+            run_env["TEST_USER"] = env_vars.get("TENANT_USERNAME", env_vars.get("ADMIN_USERNAME", ""))
+            run_env["TEST_PASSWORD"] = env_vars.get("TENANT_PASSWORD", env_vars.get("ADMIN_PASSWORD", ""))
+        else:
+            run_env["TEST_USER"] = env_vars.get("ADMIN_USERNAME", "")
+            run_env["TEST_PASSWORD"] = env_vars.get("ADMIN_PASSWORD", "")
 
         start_time = time_mod.time()
         proc = await asyncio.create_subprocess_exec(

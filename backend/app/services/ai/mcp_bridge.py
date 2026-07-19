@@ -21,18 +21,44 @@ MCP_CONFIG_PATH = os.path.join(
 
 
 class PlaywrightMCPBridge:
-    """连接 Playwright MCP Server，暴露浏览器工具。"""
+    """连接 Playwright MCP Server，暴露浏览器工具。
 
-    def __init__(self, *, headless: bool = True, config_path: str | None = None) -> None:
+    优先用 SSE 连接长驻服务（PLAYWRIGHT_MCP_URL），
+    未配置时回退到 stdio 每次启动 npx。
+    """
+
+    def __init__(self, *, headless: bool = True, config_path: str | None = None,
+                 mcp_url: str | None = None) -> None:
         self._headless = headless
         self._config_path = config_path or MCP_CONFIG_PATH
+        self._mcp_url = mcp_url or os.environ.get("PLAYWRIGHT_MCP_URL", "http://127.0.0.1:8931/sse")
         self._session: ClientSession | None = None
         self._stdio_cm: Any = None
+        self._sse_cm: Any = None
         self._session_cm: Any = None
         self._tools_cache: list[dict] | None = None
 
     async def connect(self) -> None:
         from mcp import ClientSession
+
+        # 优先 SSE 长驻服务
+        if self._mcp_url:
+            try:
+                from mcp.client.sse import sse_client
+                self._sse_cm = sse_client(self._mcp_url, sse_read_timeout=1800)
+                read_stream, write_stream = await self._sse_cm.__aenter__()
+                self._session_cm = ClientSession(read_stream, write_stream)
+                self._session = await self._session_cm.__aenter__()
+                await self._session.initialize()
+                logger.info("playwright_mcp_connected (sse, url=%s)", self._mcp_url)
+                return
+            except Exception as exc:
+                logger.warning("playwright_mcp_sse_failed url=%s err=%s, 回退 stdio", self._mcp_url, exc)
+                self._sse_cm = None
+                self._session_cm = None
+                self._session = None
+
+        # 回退 stdio
         from mcp.client.stdio import StdioServerParameters, stdio_client
 
         args = ["@playwright/mcp@latest"]
@@ -63,6 +89,11 @@ class PlaywrightMCPBridge:
         if self._session_cm:
             try:
                 await self._session_cm.__aexit__(None, None, None)
+            except Exception:
+                pass
+        if self._sse_cm:
+            try:
+                await self._sse_cm.__aexit__(None, None, None)
             except Exception:
                 pass
         if self._stdio_cm:

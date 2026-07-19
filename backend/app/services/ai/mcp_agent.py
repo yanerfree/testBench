@@ -101,6 +101,7 @@ def _build_task_prompt(
 - 必须 import from '../fixtures'
 - 使用 `page` fixture（不要用 authenticatedPage，登录在 test body 中显式写）
 - 使用相对路径（不要硬编码 URL）
+- **阶段一每一步操作都必须在脚本中体现**：如果阶段一中点击按钮后弹出了下拉菜单并选择了选项，脚本中必须包含 click 按钮 + click 菜单选项两个动作，不能跳过中间步骤
 - **数据清理（按需）**：只有在数据**真正被持久化**（提交成功）后才注册 cleanup。验证类用例（空提交报错、格式校验等）不需要 cleanup。
 
 ### 阶段三：提交并验证
@@ -240,7 +241,9 @@ async def stream_mcp_agent(
                     if tool_name == "submit_script":
                         yield SSEEvent("status", {"content": f"脚本已提交 (v{shared_state.get('version', '?')})"})
                     elif tool_name == "verify_script":
-                        v_status = "passed" if "VERIFICATION PASSED" in output_str else "failed"
+                        passed = "VERIFICATION PASSED" in output_str
+                        shared_state["verified"] = passed
+                        v_status = "passed" if passed else "failed"
                         yield SSEEvent("verification", {"status": v_status, "output": output_str[:2000]})
                     else:
                         yield SSEEvent("step_done", {
@@ -261,7 +264,7 @@ async def stream_mcp_agent(
         if script_content:
             yield SSEEvent("done", {
                 "script_content": script_content,
-                "all_passed": shared_state.get("version", 0) > 0,
+                "all_passed": bool(shared_state.get("verified", False)),
             })
         else:
             yield SSEEvent("error", {"content": "Agent 未调用 submit_script，脚本未生成。"})

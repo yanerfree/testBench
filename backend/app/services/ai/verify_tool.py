@@ -21,6 +21,26 @@ logger = logging.getLogger(__name__)
 VERIFY_TIMEOUT = 150
 MAX_VERIFY_RETRIES = 3
 
+# 全局 node_modules（含 @playwright/test），供临时 verify 目录 symlink
+GLOBAL_NODE_MODULES = os.environ.get(
+    "GLOBAL_NODE_MODULES",
+    "/home/dreamer/.nvm/versions/node/v24.14.1/lib/node_modules",
+)
+
+
+def _link_node_modules(target_dir: str) -> None:
+    """在 target_dir 创建 node_modules 软链到全局，让 Playwright 解析 @playwright/test。"""
+    link = os.path.join(target_dir, "node_modules")
+    if os.path.exists(link):
+        return
+    try:
+        if os.path.isdir(GLOBAL_NODE_MODULES):
+            os.symlink(GLOBAL_NODE_MODULES, link)
+    except FileExistsError:
+        pass
+    except Exception as e:
+        logger.warning("link_node_modules failed: %s", e)
+
 GLOBAL_SETUP = """\
 module.exports = async function globalSetup() {
   // Auth is handled per-test inline (login in test body).
@@ -55,6 +75,9 @@ async def _run_playwright_verify(
 ) -> str:
     verify_dir = os.path.join(artifacts_dir, "verify")
     os.makedirs(verify_dir, exist_ok=True)
+
+    # symlink node_modules → 全局，让 Playwright 能解析 @playwright/test
+    _link_node_modules(verify_dir)
 
     tests_dir = os.path.join(verify_dir, "tests")
     os.makedirs(tests_dir, exist_ok=True)

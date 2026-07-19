@@ -25,6 +25,7 @@ from app.api.ai_config import router as ai_provider_router, project_router as pr
 from app.api.skill_run import router as skill_run_router
 from app.api.mcp_mock import router as mcp_mock_router
 from app.api.protocol_mock import router as protocol_mock_router
+from app.api.oauth2_mock import router as oauth2_mock_router
 from app.api.load_test import router as load_test_router
 from app.api.exploratory import router as exploratory_router
 from app.api.documents import router as documents_router
@@ -111,15 +112,51 @@ _startup_logger = logging.getLogger("mock_startup")
 @asynccontextmanager
 async def lifespan(app):
     import asyncio
+    import os
     from app.services.scenario_gen import pipeline as scenario_gen_pipeline
     async with _mcp_app.lifespan(app):
             # mock 恢复放后台执行，不阻塞服务启动（恢复慢时曾导致启动卡 10s+）
             restore_task = asyncio.create_task(_restore_mock_services())
             # 功能场景测试模块：孤儿任务扫描 + 看门狗（NFR17）
             maintenance_task = scenario_gen_pipeline.start_background_maintenance()
+            # MCP 独立端口（给 Claude Code 连接，避免与主服务 8000 端口混用）
+            mcp_server = _start_standalone_mcp_server()
             yield
+            if mcp_server:
+                mcp_server.should_exit = True
             restore_task.cancel()
             maintenance_task.cancel()
+
+
+def _start_standalone_mcp_server():
+    """在独立大端口暴露 MCP（复用主 app 已初始化的 session manager，no-op lifespan）。"""
+    import os
+    import asyncio
+    import uvicorn
+    from contextlib import asynccontextmanager as _acm
+    from starlette.applications import Starlette
+    from starlette.routing import Mount
+
+    mcp_port = int(os.environ.get("MCP_PORT", "18800"))
+
+    @_acm
+    async def _noop_lifespan(_app):
+        # session manager 已由主 app 的 lifespan 初始化，这里不重复初始化
+        yield
+
+    standalone = Starlette(
+        routes=[Mount("/mcp", app=_mcp_app)],
+        lifespan=_noop_lifespan,
+    )
+    config = uvicorn.Config(standalone, host="0.0.0.0", port=mcp_port, log_level="warning")
+    server = uvicorn.Server(config)
+    try:
+        asyncio.create_task(server.serve())
+        _startup_logger.info("MCP 独立服务已启动: http://0.0.0.0:%d/mcp/", mcp_port)
+    except Exception as e:
+        _startup_logger.warning("MCP 独立服务启动失败: %s", e)
+        return None
+    return server
 
 
 async def _restore_mock_services():
@@ -172,6 +209,13 @@ async def _restore_mock_services():
             await grpc_mock_server.start()
     except Exception as e:
         _startup_logger.warning("gRPC Mock 自动恢复失败: %s", e)
+    try:
+        from app.services.oauth2_mock_manager import oauth2_mock_server
+        if oauth2_mock_server._prev_running():
+            _startup_logger.info("自动恢复 OAuth2 Mock 服务 (端口 %d)", oauth2_mock_server.port)
+            await oauth2_mock_server.start()
+    except Exception as e:
+        _startup_logger.warning("OAuth2 Mock 自动恢复失败: %s", e)
 
 app = FastAPI(
     title="测试管理平台 API",
@@ -222,6 +266,7 @@ app.include_router(project_ai_config_router)
 app.include_router(skill_run_router)
 app.include_router(mcp_mock_router)
 app.include_router(protocol_mock_router)
+app.include_router(oauth2_mock_router)
 app.include_router(load_test_router)
 app.include_router(exploratory_router)
 app.include_router(documents_router)
