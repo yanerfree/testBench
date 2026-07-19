@@ -28,6 +28,7 @@ async def create_script(
         current.content = content
         if file_name:
             current.file_name = file_name
+        current.language = language
         current.source = source
         await session.flush()
         return current

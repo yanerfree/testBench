@@ -63,15 +63,20 @@ async def generate_ui_script_stream(
                 yield _sse(event.event, event.data)
 
         if script_content.strip():
-            script = await _save_script(session, case, script_content, all_passed)
-            case.ui_scenario_status = "completed" if all_passed else "debugging"
-            if not case.ui_scenario:
-                case.ui_scenario = {}
-            case.ui_scenario = {
-                **case.ui_scenario,
-                "scriptId": str(script.id),
-            }
-            await session.commit()
+            # SSE 流式期间 endpoint 传入的 session 已被 FastAPI 依赖关闭，
+            # 保存必须用独立 session，否则 commit 静默失效（脚本存不进 DB）。
+            from app.deps.db import async_session_factory
+            async with async_session_factory() as save_session:
+                case2 = await save_session.get(Case, case.id)
+                script = await _save_script(save_session, case2, script_content, all_passed)
+                case2.ui_scenario_status = "completed" if all_passed else "debugging"
+                if not case2.ui_scenario:
+                    case2.ui_scenario = {}
+                case2.ui_scenario = {
+                    **case2.ui_scenario,
+                    "scriptId": str(script.id),
+                }
+                await save_session.commit()
 
             yield _sse("done", {
                 "status": "passed" if all_passed else "failed",

@@ -31,7 +31,8 @@ class PlaywrightMCPBridge:
                  mcp_url: str | None = None) -> None:
         self._headless = headless
         self._config_path = config_path or MCP_CONFIG_PATH
-        self._mcp_url = mcp_url or os.environ.get("PLAYWRIGHT_MCP_URL", "http://127.0.0.1:8931/sse")
+        # 默认 stdio（稳定，无 host 检查/端口冲突）；设 PLAYWRIGHT_MCP_URL 可切 SSE 长驻服务
+        self._mcp_url = mcp_url or os.environ.get("PLAYWRIGHT_MCP_URL", "")
         self._session: ClientSession | None = None
         self._stdio_cm: Any = None
         self._sse_cm: Any = None
@@ -61,7 +62,7 @@ class PlaywrightMCPBridge:
         # 回退 stdio
         from mcp.client.stdio import StdioServerParameters, stdio_client
 
-        args = ["@playwright/mcp@latest"]
+        args = ["@playwright/mcp@latest", "--isolated"]
         if self._headless:
             args.append("--headless")
         if os.path.isfile(self._config_path):

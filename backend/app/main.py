@@ -119,7 +119,7 @@ async def lifespan(app):
             restore_task = asyncio.create_task(_restore_mock_services())
             # 功能场景测试模块：孤儿任务扫描 + 看门狗（NFR17）
             maintenance_task = scenario_gen_pipeline.start_background_maintenance()
-            # MCP 独立端口（给 Claude Code 连接，避免与主服务 8000 端口混用）
+            # MCP 独立端口（给 Claude Code 连接，避免与主服务 8756 端口混用）
             mcp_server = _start_standalone_mcp_server()
             yield
             if mcp_server:

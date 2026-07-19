@@ -51,3 +51,19 @@ await page.waitForURL(url => !/\/login|\/auth|\/signin/i.test(url.href), { timeo
 ## 4. 验证类断言不要硬编码动态数字
 
 「服务总数 18」这种数字会变，断言只匹配标签文本（`toContainText('服务总数')`），不要带具体数字。
+
+## 5. 列表中验证新建数据项：必须先搜索过滤
+
+列表通常有分页（如 18+ 条），新建的数据**不一定在第一页可见**。返回列表页验证刚创建的数据项时，**必须先用搜索框输入名称过滤**，再断言该行可见：
+
+```typescript
+// 返回列表后先搜索，再验证 —— 否则分页导致 element(s) not found
+await page.getByRole('textbox', { name: /搜索/ }).fill(serviceName);
+await page.waitForTimeout(800);  // 等列表过滤刷新
+const row = page.getByRole('row').filter({ hasText: serviceName });
+await expect(row).toBeVisible();
+await expect(row).toContainText('草稿');
+```
+
+**禁止**返回列表后直接 `getByRole('row').filter({ hasText: name })` 断言而不搜索 —— 数据在后面分页时必然找不到。
+
