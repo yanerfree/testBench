@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, Fragment, lazy, Suspense } from 'react'
 import {
   Button, Space, Input, Select, Tag, Radio, Popconfirm, Tooltip, Badge, Pagination,
-  Empty, Typography, InputNumber, Switch, message, Drawer, Alert, Modal
+  Empty, Typography, InputNumber, Switch, message, Drawer, Alert, Modal, Spin
 } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, SaveOutlined, PlayCircleOutlined, PauseCircleOutlined,
@@ -17,7 +17,31 @@ const { TextArea } = Input
 
 const MONO = "'SF Mono', Monaco, Menlo, Consolas, monospace"
 
-const STATUS_COLOR = (sc) => {
+const fmtHeaders = (h) => {
+  if (!h || typeof h !== 'object' || !Object.keys(h).length) return '-'
+  try { return JSON.stringify(h, null, 2) } catch { return String(h) }
+}
+
+// 请求日志详情抽屉内的分块（请求头/请求体/响应头/响应体）
+function LogBlock({ title, content, onCopy }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#595959' }}>{title}</span>
+        <span style={{ flex: 1 }} />
+        {onCopy && content && content !== '-' && (
+          <Button size="small" type="text" icon={<CopyOutlined />}
+            style={{ fontSize: 11, color: '#8c8c8c' }} onClick={onCopy}>复制</Button>
+        )}
+      </div>
+      <pre style={{
+        margin: 0, padding: 12, borderRadius: 12, maxHeight: 280, overflow: 'auto',
+        background: '#1e1e2e', color: '#cdd6f4', fontSize: 12, lineHeight: 1.6, fontFamily: MONO,
+        whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+      }}>{content}</pre>
+    </div>
+  )
+}const STATUS_COLOR = (sc) => {
   if (sc >= 500) return '#e8453c'
   if (sc >= 400) return '#fa8c16'
   if (sc >= 300) return '#7c5cbf'
@@ -140,6 +164,8 @@ function HttpMockPanel() {
   const [logPageSize] = useState(50)
   const [expandedLogId, setExpandedLogId] = useState(null)
   const [expandedLogDetail, setExpandedLogDetail] = useState(null)
+  const [logDrawerOpen, setLogDrawerOpen] = useState(false)
+  const [logDetailLoading, setLogDetailLoading] = useState(false)
   const [logFilter, setLogFilter] = useState('all')
   const [serviceStatus, setServiceStatus] = useState({ running: false, port: 28200, captureEnabled: true, routesCount: 0, routesEnabled: 0, totalRequests: 0 })
   const [saving, setSaving] = useState(false)
@@ -364,13 +390,21 @@ function HttpMockPanel() {
 
   const handleExportLogs = () => window.open('/api/api-mock/logs/export', '_blank')
 
-  const handleToggleLogDetail = async (logId) => {
-    if (expandedLogId === logId) { setExpandedLogId(null); setExpandedLogDetail(null); return }
+  const handleOpenLogDetail = async (logId) => {
+    setExpandedLogId(logId)
+    setExpandedLogDetail(null)
+    setLogDrawerOpen(true)
+    setLogDetailLoading(true)
     try {
       const r = await api.get(`/api-mock/logs/${logId}`)
       setExpandedLogDetail(r.data || r)
-      setExpandedLogId(logId)
-    } catch {}
+    } catch {} finally { setLogDetailLoading(false) }
+  }
+
+  const handleCloseLogDrawer = () => {
+    setLogDrawerOpen(false)
+    setExpandedLogId(null)
+    setExpandedLogDetail(null)
   }
 
   const handleCopyPreview = () => {
@@ -913,7 +947,7 @@ function HttpMockPanel() {
           <tbody>
             {logs.map(l => (
               <Fragment key={l.id}>
-                <tr onClick={() => handleToggleLogDetail(l.id)} style={{
+                <tr onClick={() => handleOpenLogDetail(l.id)} style={{
                   cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.03)', background: 'rgba(255,255,255,0.25)',
                   background: expandedLogId === l.id ? 'rgba(124,92,191,0.06)' : 'transparent',
                 }}>
@@ -933,33 +967,6 @@ function HttpMockPanel() {
                     <Button size="small" type="text" icon={<SendOutlined />} onClick={e => { e.stopPropagation(); handleReplay(l.id) }} />
                   </td>
                 </tr>
-                {expandedLogId === l.id && expandedLogDetail && (
-                  <tr>
-                    <td colSpan={7} style={{ padding: '10px 16px', background: 'transparent', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                      <div style={{ display: 'flex', gap: 24, fontSize: 12 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>请求体</div>
-                          <pre style={{
-                            maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
-                            background: 'transparent', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
-                            whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-                          }}>{expandedLogDetail.requestBody || '-'}</pre>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 11, color: '#8c8c8c', marginBottom: 4, fontWeight: 500 }}>响应体</div>
-                          <pre style={{
-                            maxHeight: 120, overflow: 'auto', margin: 0, padding: 8, borderRadius: 12,
-                            background: 'transparent', border: '1px solid rgba(0,0,0,0.04)', fontSize: 11, fontFamily: MONO,
-                            whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-                          }}>{formatBody(expandedLogDetail.responseBody, expandedLogDetail.contentType)}</pre>
-                        </div>
-                      </div>
-                      <div style={{ marginTop: 8, fontSize: 11, color: '#8c8c8c' }}>
-                        来源: {expandedLogDetail.ip || '-'} · 匹配耗时: {(expandedLogDetail.matchMs ?? 0).toFixed(1)}ms
-                      </div>
-                    </td>
-                  </tr>
-                )}
               </Fragment>
             ))}
             {logs.length === 0 && (
@@ -1235,6 +1242,61 @@ function HttpMockPanel() {
                 placeholder='{"X-Custom-Header": "value", "Cache-Control": "no-cache"}' />
             </div>
           </div>
+        )}
+      </Drawer>
+
+      {/* ━━━ 请求日志详情抽屉 ━━━ */}
+      <Drawer
+        open={logDrawerOpen}
+        onClose={handleCloseLogDrawer}
+        width={680}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 15, fontWeight: 600 }}>请求详情</span>
+            {expandedLogDetail && (
+              <>
+                <span style={{ fontSize: 12, fontWeight: 700, color: METHOD_COLOR(expandedLogDetail.method) }}>{expandedLogDetail.method}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: STATUS_COLOR(expandedLogDetail.statusCode) }}>{expandedLogDetail.statusCode}</span>
+                <span style={{ fontFamily: MONO, fontSize: 12, color: '#595959', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{expandedLogDetail.path}</span>
+              </>
+            )}
+          </div>
+        }
+        extra={expandedLogDetail && (
+          <Button size="small" icon={<SendOutlined />}
+            onClick={() => handleReplay(expandedLogDetail.id)}>重放</Button>
+        )}
+      >
+        {logDetailLoading && !expandedLogDetail ? (
+          <div style={{ textAlign: 'center', padding: 60 }}><Spin /></div>
+        ) : expandedLogDetail ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', fontSize: 12 }}>
+              {[
+                ['时间', new Date(expandedLogDetail.timestamp).toLocaleString('zh-CN', { hour12: false })],
+                ['Content-Type', expandedLogDetail.contentType || '-'],
+                ['来源 IP', expandedLogDetail.ip || '-'],
+                ['来源', expandedLogDetail.caller || '-'],
+                ['总耗时', `${Math.round(expandedLogDetail.totalMs ?? 0)} ms`],
+                ['匹配耗时', `${(expandedLogDetail.matchMs ?? 0).toFixed(1)} ms`],
+              ].map(([k, v]) => (
+                <div key={k} style={{ display: 'flex', gap: 8, minWidth: 0 }}>
+                  <span style={{ color: '#8c8c8c', flexShrink: 0 }}>{k}</span>
+                  <span style={{ color: '#262626', fontFamily: MONO, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <LogBlock title="请求头" content={fmtHeaders(expandedLogDetail.requestHeaders)}
+              onCopy={() => copyToClipboard(fmtHeaders(expandedLogDetail.requestHeaders)).then(() => message.success('已复制'))} />
+            <LogBlock title="请求体" content={expandedLogDetail.requestBody || '-'}
+              onCopy={() => copyToClipboard(expandedLogDetail.requestBody || '').then(() => message.success('已复制'))} />
+            <LogBlock title="响应头" content={fmtHeaders(expandedLogDetail.responseHeadersOut)}
+              onCopy={() => copyToClipboard(fmtHeaders(expandedLogDetail.responseHeadersOut)).then(() => message.success('已复制'))} />
+            <LogBlock title="响应体" content={formatBody(expandedLogDetail.responseBody, expandedLogDetail.contentType)}
+              onCopy={() => copyToClipboard(expandedLogDetail.responseBody || '').then(() => message.success('已复制'))} />
+          </div>
+        ) : (
+          <Empty description="加载失败" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         )}
       </Drawer>
 
