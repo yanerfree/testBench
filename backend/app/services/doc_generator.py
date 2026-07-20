@@ -151,10 +151,35 @@ async def generate_doc_with_screenshots(
 
 
 def _load_format_template(doc_type: str) -> str:
-    """从 SKILL.md 中提取对应文档类型的格式模板。"""
+    """从 SKILL.md 中提取对应文档类型的格式模板。
+
+    SKILL.md 里模板小节形如：
+        #### 操作手册（manual）
+        ```markdown
+        ...模板正文...
+        ```
+    按 doc_type 匹配 `（{doc_type}）` 标记，切出其后的第一个 ```markdown 代码块。
+    """
+    import re
+
+    fallback = "按标准 Markdown 格式输出"
     skill_path = Path(__file__).resolve().parent.parent / "skills" / "preset" / "tb-doc-generate" / "SKILL.md"
     if not skill_path.exists():
-        return "按标准 Markdown 格式输出"
+        return fallback
+    try:
+        text = skill_path.read_text(encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("读取 SKILL.md 失败: %s", e)
+        return fallback
+
+    # 兼容全角/半角括号；training 类型复用 manual 模板
+    dt = "manual" if doc_type == "training" else doc_type
+    pattern = rf"####[^\n]*[（(]{re.escape(dt)}[）)]\s*```markdown\s*\n(.*?)\n```"
+    m = re.search(pattern, text, re.DOTALL)
+    if m:
+        return m.group(1).strip()
+    logger.warning("SKILL.md 中未找到 doc_type=%s 的模板，使用兜底", doc_type)
+    return fallback
 
 
 async def generate_doc_content(
