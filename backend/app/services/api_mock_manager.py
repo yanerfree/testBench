@@ -168,7 +168,12 @@ class ApiMockServerManager:
                 proxy_url, method, path, request, body_bytes, route_dict
             )
         else:
-            resp_body, resp_ct = engine.resolve_body(route_dict, request_body_str, method, path)
+            request_ctx = {
+                "query": dict(request.query_params),
+                "headers": {k: v for k, v in request.headers.items()},
+                "client_ip": request.client.host if request.client else None,
+            }
+            resp_body, resp_ct = engine.resolve_body(route_dict, request_body_str, method, path, request_ctx)
             resp_status = route_dict["status_code"]
             resp_headers = engine.build_headers(route_dict)
 

@@ -34,7 +34,7 @@ const METHOD_COLOR = (m) => {
   return '#595959'
 }
 
-const MODE_LABELS = { default: '默认响应', random: '随机响应', custom: '自定义' }
+const MODE_LABELS = { default: '默认响应', random: '随机响应', custom: '自定义', echo: '回显请求', echo_body: '回显请求体' }
 const MODE_COLORS = { default: 'blue', random: 'purple', custom: 'cyan' }
 
 const CONTENT_TYPES = [
@@ -382,6 +382,8 @@ function HttpMockPanel() {
   }
 
   const responseModeValue = routeForm?.responseMode || 'default'
+  const isEchoMode = responseModeValue === 'echo' || responseModeValue === 'echo_body'
+  const topResponseMode = isEchoMode ? 'echo' : responseModeValue
 
   const formatBody = (body, ct) => {
     if (!body) return ''
@@ -470,13 +472,17 @@ function HttpMockPanel() {
             <div>
               <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>响应模式</div>
               <Radio.Group
-                value={responseModeValue}
-                onChange={e => setRouteForm(f => ({ ...f, responseMode: e.target.value }))}
+                value={topResponseMode}
+                onChange={e => {
+                  const v = e.target.value
+                  setRouteForm(f => ({ ...f, responseMode: v === 'echo' ? 'echo' : v }))
+                }}
                 buttonStyle="solid" size="small"
               >
                 <Radio.Button value="default">默认</Radio.Button>
                 <Radio.Button value="random">随机</Radio.Button>
                 <Radio.Button value="custom">自定义</Radio.Button>
+                <Radio.Button value="echo">回显</Radio.Button>
               </Radio.Group>
             </div>
             <div style={{ minWidth: 80 }}>
@@ -570,8 +576,32 @@ function HttpMockPanel() {
             />
           )}
 
+          {/* 回显模式：子选项 + 提示 */}
+          {isEchoMode && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>回显内容</div>
+                <Radio.Group
+                  value={responseModeValue}
+                  onChange={e => setRouteForm(f => ({ ...f, responseMode: e.target.value }))}
+                  buttonStyle="solid" size="small"
+                >
+                  <Radio.Button value="echo">完整请求</Radio.Button>
+                  <Radio.Button value="echo_body">仅请求体</Radio.Button>
+                </Radio.Group>
+              </div>
+              <Alert
+                type="info" showIcon
+                message={responseModeValue === 'echo_body'
+                  ? '回显请求体：原样返回收到的请求体，Content-Type 跟随请求（状态码仍按上方设置）'
+                  : '回显完整请求：以 JSON 返回本次请求的 method / path / query / headers / body / ip'}
+                style={{ fontSize: 12 }}
+              />
+            </div>
+          )}
+
           {/* 响应内容 + 预览 — 左右分栏 */}
-          {responseModeValue !== 'random' && (
+          {responseModeValue !== 'random' && !isEchoMode && (
             <div style={{ display: 'flex', gap: 12, minHeight: 0 }}>
               {/* 左：响应体编辑 */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
