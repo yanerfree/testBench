@@ -336,7 +336,8 @@ async def _run_typescript_stream(script, case_id, env_vars, user, session):
         run_env = os_mod.environ.copy()
         run_env.update(env_vars)
         run_env["CI"] = "1"
-        run_env["NODE_PATH"] = "/home/dreamer/.nvm/versions/node/v24.14.1/lib/node_modules"
+        from app.engine.ts_runner import resolve_node_path
+        run_env["NODE_PATH"] = resolve_node_path()
 
         # 根据用例前置条件选正确凭据
         case = await session.get(Case, case_id)

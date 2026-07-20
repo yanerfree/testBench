@@ -17,6 +17,16 @@ from app.services import script_service
 logger = logging.getLogger(__name__)
 
 
+def _get_agent_stream():
+    """按配置选 UI 生成引擎：cli（真 CLI 直驱 MCP，快）或 langgraph（旧，慢）。二者 SSEEvent 接口一致。"""
+    from app.config import settings
+    if (settings.ui_agent_engine or "cli").lower() == "cli":
+        from app.services.ai.cli_agent import stream_cli_agent
+        return stream_cli_agent
+    from app.services.ai.mcp_agent import stream_mcp_agent
+    return stream_mcp_agent
+
+
 async def generate_ui_script_stream(
     case_id: str,
     session: AsyncSession,
@@ -38,29 +48,59 @@ async def generate_ui_script_stream(
     fixture_name = _detect_fixture(case.preconditions or "")
     creds = _get_credentials(env_vars, fixture_name)
 
-    from app.services.ai.mcp_agent import stream_mcp_agent
+    stream_agent = _get_agent_stream()
 
+    # 引擎偶发不产脚本（旧引擎不吐 tool_call / CLI 未输出脚本块）→ 整体重试
+    MAX_GEN_ATTEMPTS = 3
     script_content = ""
     all_passed = False
+    collected_steps: list[dict] = []
+    captured_requests: list[dict] = []
 
     try:
-        async for event in stream_mcp_agent(
-            test_case_title=case.title,
-            test_case_steps=case.steps or [],
-            expected_result=case.expected_result,
-            preconditions=case.preconditions or "",
-            base_url=base_url,
-            test_user=creds.get("username", "admin"),
-            test_password=creds.get("password", "admin123"),
-        ):
-            if event.event == "done":
-                script_content = event.data.get("script_content", "")
-                all_passed = event.data.get("all_passed", False)
-            elif event.event == "error":
-                yield _sse("error", {"error": event.data.get("content", "未知错误")})
-                return
+        for attempt in range(1, MAX_GEN_ATTEMPTS + 1):
+            script_content = ""
+            all_passed = False
+            last_error = None
+            collected_steps = []
+            async for event in stream_agent(
+                test_case_title=case.title,
+                test_case_steps=case.steps or [],
+                expected_result=case.expected_result,
+                preconditions=case.preconditions or "",
+                base_url=base_url,
+                test_user=creds.get("username", "admin"),
+                test_password=creds.get("password", "admin123"),
+            ):
+                if event.event == "done":
+                    script_content = event.data.get("script_content", "")
+                    all_passed = event.data.get("all_passed", False)
+                    captured_requests = event.data.get("captured_requests", []) or []
+                elif event.event == "error":
+                    last_error = event.data.get("content", "未知错误")
+                    break
+                else:
+                    # 累积步骤，供保存到 ui_scenario（重开页面能恢复步骤视图）
+                    if event.event == "step_start":
+                        collected_steps.append({
+                            "seq": event.data.get("seq"),
+                            "action": event.data.get("action", ""),
+                            "status": "running",
+                        })
+                    elif event.event == "step_done":
+                        for s in collected_steps:
+                            if s.get("seq") == event.data.get("seq"):
+                                s["status"] = event.data.get("status", "passed")
+                                break
+                    yield _sse(event.event, event.data)
+
+            if script_content.strip():
+                break
+            if attempt < MAX_GEN_ATTEMPTS:
+                yield _sse("status", {"content": f"本轮未生成脚本，重试 ({attempt}/{MAX_GEN_ATTEMPTS})..."})
             else:
-                yield _sse(event.event, event.data)
+                yield _sse("error", {"error": last_error or f"Agent 未生成有效脚本（已重试 {MAX_GEN_ATTEMPTS} 次）"})
+                return
 
         if script_content.strip():
             # SSE 流式期间 endpoint 传入的 session 已被 FastAPI 依赖关闭，
@@ -75,6 +115,8 @@ async def generate_ui_script_stream(
                 case2.ui_scenario = {
                     **case2.ui_scenario,
                     "scriptId": str(script.id),
+                    "lastResults": collected_steps,   # 步骤视图重开可恢复
+                    "capturedRequests": captured_requests,  # 接口视图（执行期 HAR 抓取）
                 }
                 await save_session.commit()
 
@@ -82,7 +124,7 @@ async def generate_ui_script_stream(
                 "status": "passed" if all_passed else "failed",
                 "all_passed": all_passed,
                 "results": [],
-                "captured_requests": [],
+                "captured_requests": captured_requests,
             })
         else:
             yield _sse("error", {"error": "Agent 未生成脚本"})
@@ -107,28 +149,35 @@ async def generate_ui_script(
     fixture_name = _detect_fixture(case.preconditions or "")
     creds = _get_credentials(env_vars, fixture_name)
 
-    from app.services.ai.mcp_agent import stream_mcp_agent
+    stream_agent = _get_agent_stream()
 
+    # 引擎偶发不产脚本 → 整体重试
+    MAX_GEN_ATTEMPTS = 3
     script_content = ""
     all_passed = False
 
-    async for event in stream_mcp_agent(
-        test_case_title=case.title,
-        test_case_steps=case.steps or [],
-        expected_result=case.expected_result,
-        preconditions=case.preconditions or "",
-        base_url=base_url,
-        test_user=creds.get("username", "admin"),
-        test_password=creds.get("password", "admin123"),
-    ):
-        if event.event == "done":
-            script_content = event.data.get("script_content", "")
-            all_passed = event.data.get("all_passed", False)
-        elif event.event == "error":
-            raise ValueError(f"MCP Agent 生成失败: {event.data.get('content', '')}")
+    for attempt in range(1, MAX_GEN_ATTEMPTS + 1):
+        script_content = ""
+        all_passed = False
+        async for event in stream_agent(
+            test_case_title=case.title,
+            test_case_steps=case.steps or [],
+            expected_result=case.expected_result,
+            preconditions=case.preconditions or "",
+            base_url=base_url,
+            test_user=creds.get("username", "admin"),
+            test_password=creds.get("password", "admin123"),
+        ):
+            if event.event == "done":
+                script_content = event.data.get("script_content", "")
+                all_passed = event.data.get("all_passed", False)
+            elif event.event == "error":
+                break
+        if script_content.strip():
+            break
 
     if not script_content.strip():
-        raise ValueError("MCP Agent 未生成有效脚本")
+        raise ValueError(f"MCP Agent 未生成有效脚本（已重试 {MAX_GEN_ATTEMPTS} 次）")
 
     script = await _save_script(session, case, script_content, all_passed)
     await session.commit()

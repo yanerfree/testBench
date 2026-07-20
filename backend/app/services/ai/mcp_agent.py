@@ -144,7 +144,10 @@ async def stream_mcp_agent(
     artifacts_dir = os.path.join(ARTIFACTS_BASE, "tb-ui-artifacts", execution_id)
     os.makedirs(artifacts_dir, exist_ok=True)
 
-    bridge = PlaywrightMCPBridge(headless=not bool(os.environ.get("DISPLAY")))
+    bridge = PlaywrightMCPBridge(
+        headless=not bool(os.environ.get("DISPLAY")),
+        mcp_url=settings.playwright_mcp_url or None,
+    )
     shared_state: dict[str, Any] = {"script_content": "", "version": 0}
 
     try:
@@ -160,15 +163,18 @@ async def stream_mcp_agent(
 
         yield SSEEvent("status", {"content": f"已连接，加载了 {len(tools)} 个工具"})
 
-        # 构建 LLM — 照搬 ThemisAI model_factory
-        _model = model_name or settings.ai_model
+        # 构建 LLM — UI 生成专用强模型（ai_ui_model），回退 ai_model
+        _model = model_name or settings.ai_ui_model or settings.ai_model
         model = ChatOpenAI(
             model=_model,
             api_key=settings.ai_auth_token or settings.ai_api_key or "none",
-            base_url=settings.ai_base_url,
+            base_url=settings.ai_ui_base_url or settings.ai_base_url,
             temperature=0.0,
-            max_tokens=settings.ai_max_tokens,
+            max_tokens=settings.ai_ui_max_tokens or settings.ai_max_tokens,
             streaming=True,
+            max_retries=5,  # 网关瞬时限流(GW-2006)退避重试
+            # claude-proxy 每次 spawn 真 CLI，首字块可能 >120s（默认 chunk 超时太紧）→ 关掉，靠 timeout 兜底
+            stream_chunk_timeout=None,
             model_kwargs={"stream_options": {"include_usage": True}} if "claude" not in _model.lower() else {},
             default_headers={"User-Agent": "claude-cli/1.0"},
             timeout=600,

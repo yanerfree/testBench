@@ -51,6 +51,23 @@ def execute_single_case(
 
     # 检测是否为 Playwright 脚本
     script_content = Path(sandbox_dir, script_ref_file).read_text(encoding="utf-8", errors="ignore")
+
+    # TypeScript Playwright(.spec.ts) 必须用 npx playwright test 执行，不能喂 pytest。
+    # 统一走 ts_runner，消除"生成 TS 却用 pytest 跑"的执行器精分。
+    from app.engine.ts_runner import is_typescript_script, run_typescript_playwright
+    if is_typescript_script(script_content, script_ref_file):
+        try:
+            os.unlink(junit_xml_path)
+        except OSError:
+            pass
+        base_url = (env_vars or {}).get("BASE_URL", "")
+        return run_typescript_playwright(
+            script_content=script_content,
+            base_url=base_url,
+            env_vars=env_vars or {},
+            timeout=timeout,
+        )
+
     pw_output_dir = None
     if is_playwright_script(script_content):
         pw_output_dir = str(Path(sandbox_dir) / ".pw_results")
