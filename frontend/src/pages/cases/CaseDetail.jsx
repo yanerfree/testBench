@@ -426,13 +426,11 @@ function ScenarioEditor({
                   liveStepsRef.current = n; return n
                 })
               } else if (currentEvent === 'done') {
-                const live = liveStepsRef.current
-                (() => {
-                  const screenshots = (data.results || [])
-                    .filter(r => r.screenshot && r.status === 'failed')
-                    .map((r, i) => ({ base64: r.screenshot, name: `步骤失败: ${r.step?.substring(0,30) || '未知'}` }))
-                  setDebugResult({ ...data, steps: live.length > 0 ? live : data.results || [], screenshots, _drawerOpen: true })
-                })()
+                const live = liveStepsRef.current;
+                const screenshots = (data.results || [])
+                  .filter(r => r.screenshot && r.status === 'failed')
+                  .map((r, i) => ({ base64: r.screenshot, name: `步骤失败: ${r.step?.substring(0,30) || '未知'}` }));
+                setDebugResult({ ...data, steps: live.length > 0 ? live : data.results || [], screenshots, _drawerOpen: true });
                 if (!scenario) {
                   setScenario({ steps: (manualSteps || []).map((s, i) => ({ seq: i + 1, action: s.action || '', expected: s.expected || '' })), variablesUsed: [] })
                 }
@@ -907,13 +905,15 @@ function ScenarioEditor({
             const stepList = isRunning ? liveSteps : (debugResult.steps || [])
             return (
             <div>
-              {/* 头部 */}
+              {/* 头部 — sticky 置顶，下滑不被遮挡 */}
               <div style={{
                 padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 12,
-                background: isRunning ? 'linear-gradient(135deg, rgba(124,92,191,0.08), rgba(124,92,191,0.02))'
-                  : passed ? 'linear-gradient(135deg, rgba(14,165,160,0.08), rgba(14,165,160,0.02))'
-                  : 'linear-gradient(135deg, rgba(232,69,60,0.08), rgba(232,69,60,0.02))',
-                borderBottom: '1px solid rgba(0,0,0,0.04)',
+                position: 'sticky', top: 0, zIndex: 10,
+                background: isRunning ? '#f6f3fc'
+                  : passed ? '#eefaf9'
+                  : '#fef1f0',
+                borderBottom: '1px solid rgba(0,0,0,0.06)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
               }}>
                 <div style={{
                   width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',

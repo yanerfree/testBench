@@ -21,25 +21,10 @@ logger = logging.getLogger(__name__)
 VERIFY_TIMEOUT = 150
 MAX_VERIFY_RETRIES = 3
 
-# 全局 node_modules（含 @playwright/test），供临时 verify 目录 symlink
-GLOBAL_NODE_MODULES = os.environ.get(
-    "GLOBAL_NODE_MODULES",
-    "/home/dreamer/.nvm/versions/node/v24.14.1/lib/node_modules",
-)
-
-
-def _link_node_modules(target_dir: str) -> None:
-    """在 target_dir 创建 node_modules 软链到全局，让 Playwright 解析 @playwright/test。"""
-    link = os.path.join(target_dir, "node_modules")
-    if os.path.exists(link):
-        return
-    try:
-        if os.path.isdir(GLOBAL_NODE_MODULES):
-            os.symlink(GLOBAL_NODE_MODULES, link)
-    except FileExistsError:
-        pass
-    except Exception as e:
-        logger.warning("link_node_modules failed: %s", e)
+# node 路径统一由 ts_runner 解析（env GLOBAL_NODE_MODULES → npm root -g → 默认），
+# 去掉原来写死的 /home/dreamer/.nvm/... 机器路径。保留 _link_node_modules 名以兼容 scripts.py 引用。
+from app.engine.ts_runner import link_node_modules as _link_node_modules  # noqa: E402
+from app.engine.ts_runner import resolve_node_path  # noqa: E402
 
 GLOBAL_SETUP = """\
 module.exports = async function globalSetup() {
@@ -102,6 +87,7 @@ async def _run_playwright_verify(
     headless: true,
     screenshot: 'on',
     locale: 'zh-CN',
+    contextOptions: {{ recordHar: {{ path: './api-trace.har', content: 'embed' }} }},
   }},
   reporter: [['json', {{ outputFile: 'report.json' }}]],
   outputDir: './test-results',
@@ -120,8 +106,7 @@ async def _run_playwright_verify(
             env={
                 **os.environ,
                 "CI": "1",
-                "NODE_PATH": "/home/dreamer/.nvm/versions/node/v24.14.1/lib/node_modules",
-                "NODE_PATH": "/usr/local/lib/node_modules",
+                "NODE_PATH": resolve_node_path(),
                 "BASE_URL": base_url,
                 "TEST_USER": test_user,
                 "TEST_PASSWORD": test_password,

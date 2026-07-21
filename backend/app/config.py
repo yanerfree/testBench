@@ -27,9 +27,20 @@ class Settings(BaseSettings):
     ai_api_key: str = ""
     ai_auth_token: str = ""
     ai_model: str = "claude-sonnet-4-6"
+    # UI 脚本生成 agent 专用模型（长链路浏览器探索+代码生成需要强模型）。
+    # 空则回退 ai_model。与 ai_model 分开，避免全局强切 sonnet 拖慢高频廉价任务（用例生成等）。
+    ai_ui_model: str = ""
+    # UI 生成 agent 专用 base_url（指向 claude-proxy，走真 CLI 避开网关对 SDK 的限流）。空=回退 ai_base_url
+    ai_ui_base_url: str = ""
     ai_max_tokens: int = 4096
+    # UI 生成 agent 专用 max_tokens（0=回退 ai_max_tokens），避免全局抬高影响其它任务
+    ai_ui_max_tokens: int = 0
     ai_temperature: float = 0.3
     ai_timeout_seconds: int = 120
+    # 长驻 Playwright MCP 的 SSE 地址（供 UI 生成 agent 用，根治 stdio 的 anyio 崩溃）。空=回退 stdio
+    playwright_mcp_url: str = ""
+    # UI 生成引擎：cli=真 claude CLI 直驱 MCP(原生 tool_use,快)；langgraph=旧 LangGraph+proxy(每步冷启,慢)
+    ui_agent_engine: str = "cli"
     ai_enabled: bool = False
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
