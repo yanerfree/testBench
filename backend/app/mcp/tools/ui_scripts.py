@@ -56,6 +56,10 @@ async def run_ui_script(
         for v in rows.scalars().all():
             env_vars[v.key] = v.value
 
+    # 注入场景变量 SV_*（random 唯一化）——UI 与接口执行共用同一份
+    from app.services.scenario_variable_service import resolve_scenario_variables
+    env_vars.update(await resolve_scenario_variables(session, cid, global_lookup=env_vars))
+
     file_name = script.file_name or "test_ui.py"
     content = script.content
 

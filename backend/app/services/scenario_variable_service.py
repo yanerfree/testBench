@@ -1,0 +1,44 @@
+"""场景变量执行期解析 —— 把用例的场景变量解析成注入执行环境的 SV_* 键值。
+
+kind:
+  - literal    → 直接用 value_template
+  - random     → value_template + _{runId}_{rand}（每次执行唯一、可追溯本脚本造的数据）
+  - global_ref → 从全局数据查（Epic1 提供项目级全局数据；此前先从传入 global_lookup 例如环境变量取）
+
+UI(process.env.SV_x) 与接口(os.environ['SV_x']) 执行器读同一份，做到共用。
+"""
+from __future__ import annotations
+
+import secrets
+import uuid
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.scenario_variable import ScenarioVariable
+
+
+async def resolve_scenario_variables(
+    session: AsyncSession,
+    case_id,
+    global_lookup: dict[str, str] | None = None,
+    run_id: str | None = None,
+) -> dict[str, str]:
+    """返回 {'SV_RUN_ID': runId, 'SV_<name>': value, ...}，供注入执行环境。"""
+    import uuid as _uuid
+    cid = case_id if isinstance(case_id, _uuid.UUID) else _uuid.UUID(str(case_id))
+    rid = run_id or uuid.uuid4().hex[:8]
+    rows = (
+        await session.execute(select(ScenarioVariable).where(ScenarioVariable.case_id == cid))
+    ).scalars().all()
+    out: dict[str, str] = {"SV_RUN_ID": rid}
+    gl = global_lookup or {}
+    for v in rows:
+        if v.kind == "random":
+            val = f"{v.value_template}_{rid}_{secrets.token_hex(2)}"
+        elif v.kind == "global_ref":
+            val = gl.get(v.value_template, "")
+        else:  # literal
+            val = v.value_template
+        out[f"SV_{v.name}"] = str(val)
+    return out
