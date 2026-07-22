@@ -115,6 +115,45 @@ async def run_ui_script(
     }
 
 
+async def run_ui_scripts_batch(
+    case_ids: str,
+    env_id: str,
+    session: AsyncSession = None,
+) -> dict:
+    """批量执行多个用例的 UI 脚本（AI-free，逐个跑真实 Playwright），返回聚合结果。
+    case_ids: 逗号分隔的用例 UUID 列表。用于减少人工、回归批量跑。"""
+    ids = [x.strip() for x in (case_ids or "").split(",") if x.strip()]
+    results = []
+    passed = failed = skipped = 0
+    for cid in ids:
+        try:
+            r = await run_ui_script(case_id=cid, env_id=env_id, session=session)
+            st = r.get("status", "error")
+        except Exception as e:
+            st = "error"
+            r = {"status": "error", "error_summary": str(e)[:200], "duration_ms": None}
+        results.append({
+            "case_id": cid,
+            "status": st,
+            "duration_ms": r.get("duration_ms"),
+            "error_summary": r.get("error_summary"),
+        })
+        if st == "passed":
+            passed += 1
+        elif st == "skipped":
+            skipped += 1
+        else:
+            failed += 1
+    return {
+        "total": len(ids),
+        "passed": passed,
+        "failed": failed,
+        "skipped": skipped,
+        "pass_rate": round(passed / len(ids) * 100, 1) if ids else 0,
+        "results": results,
+    }
+
+
 async def get_ui_script_result(
     case_id: str,
     session: AsyncSession = None,
