@@ -80,7 +80,22 @@ class Case(Base):
     is_ui_template: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     automation_status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pending", server_default="pending"
-    )  # automated / pending / script_removed / archived
+    )  # automated / pending / script_removed / archived （旧字段，保留兼容；新展示用 lifecycle_status）
+    # —— 状态体系 v2（2026-07）——
+    # 整体生命周期：draft(草稿) / done(完成) / deprecated(废弃)
+    lifecycle_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="draft", server_default="draft"
+    )
+    # 三维执行就绪度统一枚举：not_started / draft / debugging / pending_review / executable / needs_fix
+    manual_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="not_started", server_default="not_started"
+    )
+    ui_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="not_started", server_default="not_started"
+    )
+    api_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="not_started", server_default="not_started"
+    )
     source: Mapped[str] = mapped_column(String(10), nullable=False)  # imported / manual
     script_ref_file: Mapped[str | None] = mapped_column(String(500), nullable=True)
     script_ref_func: Mapped[str | None] = mapped_column(String(200), nullable=True)

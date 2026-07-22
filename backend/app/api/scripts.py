@@ -285,6 +285,11 @@ async def run_script(
         case = await session.get(Case, case_id)
         if case:
             case.ui_scenario_status = "completed" if result.get("status") == "passed" else "debugging"
+            if result.get("status") == "passed":
+                if case.ui_status in ("debugging", "not_started", "draft", "needs_fix"):
+                    case.ui_status = "pending_review"
+            else:
+                case.ui_status = "debugging"
 
     await session.commit()
     await session.refresh(run_record)
@@ -445,6 +450,11 @@ async def _run_typescript_stream(script, case_id, env_vars, user, session):
         case = await session.get(Case, case_id)
         if case:
             case.ui_scenario_status = "completed" if status == "passed" else "debugging"
+            if status == "passed":
+                if case.ui_status in ("debugging", "not_started", "draft", "needs_fix"):
+                    case.ui_status = "pending_review"
+            else:
+                case.ui_status = "debugging"
         await session.commit()
 
         final = json.dumps({

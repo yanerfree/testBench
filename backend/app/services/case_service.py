@@ -110,6 +110,15 @@ async def update_case(
         case.review_status = data.review_status
     if data.review_reason is not None:
         case.review_reason = data.review_reason
+    # 状态体系 v2（可编辑；含复制/模板生成后人工调整）
+    if data.lifecycle_status is not None:
+        case.lifecycle_status = data.lifecycle_status
+    if data.manual_status is not None:
+        case.manual_status = data.manual_status
+    if data.ui_status is not None:
+        case.ui_status = data.ui_status
+    if data.api_status is not None:
+        case.api_status = data.api_status
 
     # module 变更时更新 folder
     if data.module is not None:

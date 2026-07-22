@@ -53,6 +53,11 @@ class UpdateCaseRequest(BaseSchema):
     # AI 审核扩展（FR21-FR28）
     review_status: Literal["pending_review", "approved", "rejected"] | None = None
     review_reason: dict | None = None
+    # 状态体系 v2（可编辑）
+    lifecycle_status: Literal["draft", "done", "deprecated"] | None = None
+    manual_status: Literal["not_started", "draft", "debugging", "pending_review", "executable", "needs_fix"] | None = None
+    ui_status: Literal["not_started", "draft", "debugging", "pending_review", "executable", "needs_fix"] | None = None
+    api_status: Literal["not_started", "draft", "debugging", "pending_review", "executable", "needs_fix"] | None = None
 
 
 class BatchCaseRequest(BaseSchema):
@@ -90,6 +95,10 @@ class CaseResponse(BaseSchema):
     is_api_template: bool
     is_ui_template: bool
     automation_status: str
+    lifecycle_status: str = "draft"
+    manual_status: str = "not_started"
+    ui_status: str = "not_started"
+    api_status: str = "not_started"
     source: str
     script_ref_file: str | None
     script_ref_func: str | None
