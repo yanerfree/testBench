@@ -203,6 +203,7 @@ async def preflight_run(
         "missing": report["missing"],
         "role": report["role"],
         "tokenAcquired": report["tokenAcquired"],
+        "scriptUsesToken": report.get("scriptUsesToken", False),
         "envKeys": sorted(report["envVars"].keys()),
     }}
 
