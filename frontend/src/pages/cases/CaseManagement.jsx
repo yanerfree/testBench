@@ -13,6 +13,20 @@ const priorityBg = { P0: '#e8453c', P1: '#ff7d00', P2: '#4e8af0', P3: 'rgba(0,0,
 const statusMap = { automated: '已自动化', pending: '待自动化', script_removed: '脚本已移除', archived: '已归档' }
 const statusColors = { automated: '#0ea5a0', pending: '#faad14', script_removed: '#e8453c', archived: '#bfbfbf' }
 const statusBg = { automated: 'transparent', pending: 'transparent', script_removed: 'transparent', archived: 'transparent' }
+// 状态体系 v2
+const lifecycleMap = {
+  draft: { label: '草稿', color: '#86909c', bg: 'rgba(0,0,0,0.03)' },
+  done: { label: '完成', color: '#0ea5a0', bg: '#e0f7f6' },
+  deprecated: { label: '废弃', color: '#e8453c', bg: '#fff2f0' },
+}
+const dimStatusMap = {
+  not_started: { label: '未开始', color: '#c9cdd4' },
+  draft: { label: '草稿', color: '#86909c' },
+  debugging: { label: '调试中', color: '#faad14' },
+  pending_review: { label: '待审', color: '#4e8af0' },
+  executable: { label: '可执行', color: '#0ea5a0' },
+  needs_fix: { label: '待修改', color: '#e8453c' },
+}
 
 // ---- 主页面 ----
 export default function CaseManagement() {
@@ -394,7 +408,17 @@ export default function CaseManagement() {
     { key: 'priority', title: '优先级', dataIndex: 'priority', width: 56, align: 'center', defaultVisible: true, render: v => <Tag style={{ background: priorityBg[v], color: priorityColors[v], border: 'none', margin: 0 }}>{v}</Tag> },
     { key: 'module', title: '模块', dataIndex: 'module', width: 100, defaultVisible: false, render: v => <span style={{ fontSize: 12 }}>{v || '-'}</span> },
     { key: 'subModule', title: '子模块', dataIndex: 'subModule', width: 100, defaultVisible: false, render: v => <span style={{ fontSize: 12 }}>{v || '-'}</span> },
-    { key: 'automationStatus', title: '状态', dataIndex: 'automationStatus', width: 80, defaultVisible: true, render: v => <Tag style={{ background: statusBg[v] || 'rgba(0,0,0,0.03)', color: statusColors[v] || '#8c8c8c', border: 'none', margin: 0, fontSize: 11 }}>{statusMap[v] || v}</Tag> },
+    { key: 'lifecycleStatus', title: '状态', dataIndex: 'lifecycleStatus', width: 68, defaultVisible: true, render: v => { const m = lifecycleMap[v] || lifecycleMap.draft; return <Tag style={{ background: m.bg, color: m.color, border: 'none', margin: 0, fontSize: 11 }}>{m.label}</Tag> } },
+    { key: 'dimStatus', title: '手动/UI/接口', dataIndex: 'manualStatus', width: 150, defaultVisible: true, render: (_, r) => (
+      <span style={{ display: 'inline-flex', gap: 4 }}>
+        {[['手', r.manualStatus], ['U', r.uiStatus], ['接', r.apiStatus]].map(([k, s]) => {
+          const m = dimStatusMap[s] || dimStatusMap.not_started
+          return <Tooltip key={k} title={`${k === '手' ? '手动' : k === 'U' ? 'UI' : '接口'}：${m.label}`}>
+            <span style={{ fontSize: 10, padding: '0 4px', borderRadius: 6, background: m.color + '1f', color: m.color, lineHeight: '16px' }}>{k}</span>
+          </Tooltip>
+        })}
+      </span>
+    ) },
     { key: 'source', title: '来源', dataIndex: 'source', width: 48, align: 'center', defaultVisible: true, render: v => <span style={{ fontSize: 11, color: v === 'ai' ? '#7cacf8' : '#c9cdd4' }}>{v === 'imported' ? '导入' : v === 'ai' ? 'AI' : '手动'}</span> },
     { key: 'isFlaky', title: 'Flaky', dataIndex: 'isFlaky', width: 40, align: 'center', defaultVisible: true, render: v => v ? <Tag color="#fff7e6" style={{ color: '#faad14', border: 'none', margin: 0 }}>F</Tag> : null },
     { key: 'reviewStatus', title: '审核', dataIndex: 'reviewStatus', width: 52, align: 'center', defaultVisible: true, render: v => {
