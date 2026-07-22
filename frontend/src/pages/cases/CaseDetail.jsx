@@ -29,6 +29,22 @@ const scenarioStatusMap = {
   debugging: { label: '调试中', color: '#faad14', bg: '#fffbe6' },
   completed: { label: '已完成', color: '#0ea5a0', bg: '#e0f7f6' },
 }
+// 状态体系 v2
+const lifecycleMap = {
+  draft: { label: '草稿', color: '#86909c', bg: 'rgba(0,0,0,0.03)' },
+  done: { label: '完成', color: '#0ea5a0', bg: '#e0f7f6' },
+  deprecated: { label: '废弃', color: '#e8453c', bg: '#fff2f0' },
+}
+// 三维统一状态（手动/UI/接口 共用）
+const dimStatusMap = {
+  not_started: { label: '未开始', color: '#c9cdd4', bg: 'rgba(0,0,0,0.02)' },
+  draft: { label: '草稿', color: '#86909c', bg: 'rgba(0,0,0,0.03)' },
+  debugging: { label: '调试中', color: '#faad14', bg: '#fffbe6' },
+  pending_review: { label: '待审', color: '#4e8af0', bg: '#eef4ff' },
+  executable: { label: '可执行', color: '#0ea5a0', bg: '#e0f7f6' },
+  needs_fix: { label: '待修改', color: '#e8453c', bg: '#fff2f0' },
+}
+const DIM_STATUS_KEYS = ['not_started', 'draft', 'debugging', 'pending_review', 'executable', 'needs_fix']
 
 function InlineProp({ icon, value, color, bg, children }) {
   const [open, setOpen] = useState(false)
@@ -1411,6 +1427,10 @@ export default function CaseDetail() {
   const [module, setModule] = useState('')
   const [subModule, setSubModule] = useState('')
   const [automationStatus, setAutomationStatus] = useState('pending')
+  const [lifecycleStatus, setLifecycleStatus] = useState('draft')
+  const [manualStatus, setManualStatus] = useState('not_started')
+  const [uiStatus, setUiStatus] = useState('not_started')
+  const [apiStatus, setApiStatus] = useState('not_started')
   const [flaky, setFlaky] = useState(false)
   const [preconditions, setPreconditions] = useState('')
   const [expectedResult, setExpectedResult] = useState('')
@@ -1491,11 +1511,17 @@ export default function CaseDetail() {
         uiScenarioStatus: c.uiScenarioStatus || 'draft',
         isApiTemplate: c.isApiTemplate || false,
         isUiTemplate: c.isUiTemplate || false,
+        lifecycleStatus: c.lifecycleStatus || 'draft',
+        manualStatus: c.manualStatus || 'not_started',
+        uiStatus: c.uiStatus || 'not_started',
+        apiStatus: c.apiStatus || 'not_started',
       }
 
       setTitle(vals.title); setType(vals.type); setPriority(vals.priority)
       setModule(vals.module); setSubModule(vals.subModule)
       setAutomationStatus(vals.automationStatus); setFlaky(vals.flaky)
+      setLifecycleStatus(vals.lifecycleStatus); setManualStatus(vals.manualStatus)
+      setUiStatus(vals.uiStatus); setApiStatus(vals.apiStatus)
       setPreconditions(vals.preconditions); setExpectedResult(vals.expectedResult)
       setScriptRefFile(vals.scriptRefFile); setScriptRefFunc(vals.scriptRefFunc)
       setRemark(vals.remark); setSteps(vals.steps); setVariablesUsed(vals.variablesUsed)
@@ -1538,6 +1564,7 @@ export default function CaseDetail() {
     preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark,
     steps, variablesUsed, apiScenario, uiScenario,
     apiScenarioStatus, uiScenarioStatus, isApiTemplate, isUiTemplate,
+    lifecycleStatus, manualStatus, uiStatus, apiStatus,
   })
   const isDirty = caseData && currentSnap !== savedRef.current
 
@@ -1588,6 +1615,7 @@ export default function CaseDetail() {
         isFlaky: flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc,
         remark, steps, variablesUsed, apiScenario, uiScenario,
         apiScenarioStatus, uiScenarioStatus, isApiTemplate, isUiTemplate,
+        lifecycleStatus, manualStatus, uiStatus, apiStatus,
       })
       savedRef.current = currentSnap
       setCaseData(prev => ({ ...prev }))
@@ -1631,11 +1659,19 @@ export default function CaseDetail() {
             <DropdownList activeKey={type} onSelect={setType} items={['api','e2e'].map(t => ({ key: t, label: t.toUpperCase() }))} />
           </InlineProp>
           <ReadonlyProp icon={<AppstoreOutlined />} label="模块" value={[module, subModule].filter(Boolean).join(' / ') || '未分类'} />
-          <InlineProp icon={<ThunderboltOutlined />} value={statusLabels[automationStatus] || automationStatus}
-            color={statusColors[automationStatus]} bg={statusBg[automationStatus]}>
-            <DropdownList activeKey={automationStatus} onSelect={setAutomationStatus}
-              items={['automated','pending','removed'].map(s => ({ key: s, label: statusLabels[s], dot: 'circle', color: dotColors[s] }))} />
+          <InlineProp icon={<ThunderboltOutlined />} value={lifecycleMap[lifecycleStatus]?.label || lifecycleStatus}
+            color={lifecycleMap[lifecycleStatus]?.color} bg={lifecycleMap[lifecycleStatus]?.bg}>
+            <DropdownList activeKey={lifecycleStatus} onSelect={setLifecycleStatus}
+              items={['draft','done','deprecated'].map(s => ({ key: s, label: lifecycleMap[s].label, dot: 'circle', color: lifecycleMap[s].color }))} />
           </InlineProp>
+          {/* 三维执行就绪度（手动/UI/接口 统一状态，可编辑）——批量执行按此判断能否跑 */}
+          {[['手动', manualStatus, setManualStatus], ['UI', uiStatus, setUiStatus], ['接口', apiStatus, setApiStatus]].map(([lbl, val, setter]) => (
+            <InlineProp key={lbl} value={`${lbl}·${dimStatusMap[val]?.label || val}`}
+              color={dimStatusMap[val]?.color} bg={dimStatusMap[val]?.bg}>
+              <DropdownList activeKey={val} onSelect={setter}
+                items={DIM_STATUS_KEYS.map(s => ({ key: s, label: dimStatusMap[s].label, dot: 'circle', color: dimStatusMap[s].color }))} />
+            </InlineProp>
+          ))}
           <InlineProp icon={<WarningOutlined />} value={flaky ? 'Flaky' : '正常'} color={flaky ? '#faad14' : '#86909c'} bg={flaky ? '#fffbe6' : 'rgba(0,0,0,0.02)'}>
             <div style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ fontSize: 13 }}>Flaky 标记</span>
