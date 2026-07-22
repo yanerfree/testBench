@@ -58,7 +58,7 @@ def _mcp_config_file() -> str:
     return path
 
 
-def _build_task_prompt(title, steps, expected, base_url, preconditions, user, password) -> str:
+def _build_task_prompt(title, steps, expected, base_url, preconditions, user, password, context_block: str = "") -> str:
     steps_text = ""
     for i, step in enumerate(steps or [], 1):
         desc = step.get("description", step.get("action", str(step)))
@@ -91,8 +91,8 @@ def _build_task_prompt(title, steps, expected, base_url, preconditions, user, pa
 - **场景级数据**（本用例专属、可随意增删的，如"已有一个运行中的服务/一条XX记录"）：脚本里**自己创建**（探索时你会看到创建接口，在 test body 开头用 `page.request.post(...)` 或走 UI 创建）+ **唯一命名**（`` `xxx_${{Date.now()}}` ``），并在 `cleanup.add(async () => {{ ... }})` 里**自己删除**。做到不依赖环境已有数据、可反复跑。
 - **全局级数据**（系统级共享、不该被测试删除的，如"系统已有默认租户/默认网关"、具名共享资源）：脚本里**先查是否存在**（GET/列表接口或 UI 确认）——存在就用、**绝不创建也不删除**；若不存在，在最终回复里注明"缺全局前置数据 <名称>，需先在环境准备"，不要盲目创建全局资源。
 - 判断：措辞含"一个/某条/新建/任意" → 场景级（自建自删）；含"系统/平台/默认/全局/具名共享" → 全局级（查存在、只用不删）。拿不准按场景级处理。
-- **API 造数/清理必须带鉴权**（否则 401）：`page.request` 不会自动带登录态。登录后先取 token —— `const token = await page.evaluate(() => {{ try {{ return JSON.parse(localStorage.getItem('<探索时确认的鉴权key>')||'{{}}')?.state?.token ?? localStorage.getItem('token') ?? ''; }} catch {{ return ''; }} }});`，再在每个 `page.request.post/delete` 里加 `headers: {{ Authorization: `Bearer ${{token}}` }}`。**或**用 `page.evaluate(async () => await fetch(url, {{ method, body, headers, credentials: 'include' }}))` 在浏览器内发（自动带会话 cookie）。探索阶段用 browser_evaluate 看 localStorage 确认 token 存在哪个 key。
-
+- **API 造数/清理必须带鉴权**（否则 401）：`page.request` 不会自动带登录态。**优先用注入的 `process.env.TEST_TOKEN`**（见下方「自动化上下文」，若有）：在每个 `page.request.post/delete` 里加 `headers: {{ Authorization: `Bearer ${{process.env.TEST_TOKEN}}` }}`。若上下文未提供 token，再退而登录后从 localStorage 取（`browser_evaluate` 确认 token 存哪个 key）或用 `page.evaluate(async () => await fetch(url, {{ method, body, headers, credentials: 'include' }}))` 借会话 cookie。
+{context_block}
 ## 效率要求（重要，直接影响生成速度）
 - **不要用 browser_take_screenshot**：生成脚本用不到截图，纯浪费轮次。
 - **每个页面状态只 browser_snapshot 一次**：用这一次快照提取本页需要的所有选择器；页面没跳转/结构没大变，就复用已有快照，**不要每个动作后都重新 snapshot**。
@@ -248,6 +248,8 @@ async def stream_cli_agent(
     test_user: str = "admin",
     test_password: str = "admin123",
     model_name: str | None = None,
+    context_block: str = "",
+    verify_env: dict | None = None,
 ) -> AsyncGenerator[SSEEvent, None]:
     """CLI 引擎主流程：探索+生成 → verify → 失败 resume 自愈（≤3 轮）。"""
     from app.services.ai.verify_tool import _run_playwright_verify
@@ -259,7 +261,7 @@ async def stream_cli_agent(
 
     task = _build_task_prompt(
         test_case_title, test_case_steps, expected_result, base_url,
-        preconditions, test_user, test_password,
+        preconditions, test_user, test_password, context_block,
     )
     # SKILL 作为 system 追加（保留 claude 基础能力），任务作为 prompt
     first_prompt = f"# 生成规范（务必遵守）\n{skill}\n\n# 任务\n{task}"
@@ -369,6 +371,7 @@ async def stream_cli_agent(
             result = await _run_playwright_verify(
                 script_content, base_url, artifacts_dir,
                 test_user=test_user, test_password=test_password,
+                extra_env=verify_env,
             )
             passed = "VERIFICATION PASSED" in result
             yield SSEEvent("verification", {"status": "passed" if passed else "failed", "output": result[:2000]})

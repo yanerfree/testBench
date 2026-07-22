@@ -28,6 +28,22 @@ router = APIRouter(
 )
 
 
+async def _inject_test_token(session, env_id, case_id, env_vars: dict) -> None:
+    """注入鉴权 token TEST_TOKEN（S1.3）——脚本鉴权造数/清理用，避免 401。失败静默降级。"""
+    if not env_id:
+        return
+    try:
+        from app.services.token_service import get_target_token
+        case = await session.get(Case, case_id)
+        pc = (case.preconditions or "") if case else ""
+        role = "TENANT" if any(k in pc for k in ("租户", "tenant", "已授权")) else "ADMIN"
+        tok = await get_target_token(session, env_id, role)
+        if tok:
+            env_vars["TEST_TOKEN"] = tok
+    except Exception:
+        pass
+
+
 @router.get("")
 async def list_script_versions(
     project_id: uuid.UUID,
@@ -194,6 +210,7 @@ async def run_script(
 
     from app.services.scenario_variable_service import resolve_scenario_variables
     env_vars.update(await resolve_scenario_variables(session, case_id, global_lookup=env_vars))
+    await _inject_test_token(session, env_id, case_id, env_vars)
 
     file_name = script.file_name or f"test_{script_type}.py"
     content = script.content
@@ -282,6 +299,7 @@ async def run_script_stream(
 
     from app.services.scenario_variable_service import resolve_scenario_variables
     env_vars.update(await resolve_scenario_variables(session, case_id, global_lookup=env_vars))
+    await _inject_test_token(session, env_id, case_id, env_vars)
 
     is_typescript = (script.language == "typescript"
                      or (script.file_name or "").endswith(".ts")

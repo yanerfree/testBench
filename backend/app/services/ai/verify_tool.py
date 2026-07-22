@@ -57,6 +57,7 @@ export { expect };
 async def _run_playwright_verify(
     script_content: str, base_url: str, artifacts_dir: str,
     test_user: str = "", test_password: str = "",
+    extra_env: dict | None = None,
 ) -> str:
     verify_dir = os.path.join(artifacts_dir, "verify")
     os.makedirs(verify_dir, exist_ok=True)
@@ -110,6 +111,7 @@ async def _run_playwright_verify(
                 "BASE_URL": base_url,
                 "TEST_USER": test_user,
                 "TEST_PASSWORD": test_password,
+                **{k: str(v) for k, v in (extra_env or {}).items()},
             },
         )
 

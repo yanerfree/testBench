@@ -49,6 +49,8 @@ async def generate_ui_script_stream(
     creds = _get_credentials(env_vars, fixture_name)
 
     stream_agent = _get_agent_stream()
+    context_block, verify_env = await _build_gen_context(session, case, env_id, env_vars, fixture_name)
+    extra_kwargs = {"context_block": context_block, "verify_env": verify_env} if _is_cli_engine() else {}
 
     # 引擎偶发不产脚本（旧引擎不吐 tool_call / CLI 未输出脚本块）→ 整体重试
     MAX_GEN_ATTEMPTS = 3
@@ -71,6 +73,7 @@ async def generate_ui_script_stream(
                 base_url=base_url,
                 test_user=creds.get("username", "admin"),
                 test_password=creds.get("password", "admin123"),
+                **extra_kwargs,
             ):
                 if event.event == "done":
                     script_content = event.data.get("script_content", "")
@@ -150,6 +153,8 @@ async def generate_ui_script(
     creds = _get_credentials(env_vars, fixture_name)
 
     stream_agent = _get_agent_stream()
+    context_block, verify_env = await _build_gen_context(session, case, env_id, env_vars, fixture_name)
+    extra_kwargs = {"context_block": context_block, "verify_env": verify_env} if _is_cli_engine() else {}
 
     # 引擎偶发不产脚本 → 整体重试
     MAX_GEN_ATTEMPTS = 3
@@ -167,6 +172,7 @@ async def generate_ui_script(
             base_url=base_url,
             test_user=creds.get("username", "admin"),
             test_password=creds.get("password", "admin123"),
+            **extra_kwargs,
         ):
             if event.event == "done":
                 script_content = event.data.get("script_content", "")
@@ -284,6 +290,41 @@ def _detect_fixture(preconditions: str) -> str:
     if any(kw in text for kw in ["租户", "tenant", "已授权"]):
         return "tenant_page"
     return "logged_in_page"
+
+
+async def _build_gen_context(session, case, env_id, env_vars, fixture_name):
+    """组装生成上下文块 + verify/执行注入环境（TEST_TOKEN + 场景变量 SV_*）。
+    任一步失败都降级为空，绝不阻断生成。"""
+    context_block, verify_env = "", {}
+    role = "TENANT" if fixture_name == "tenant_page" else "ADMIN"
+    try:
+        # project_id via branch
+        project_id = None
+        if case.branch_id:
+            from app.models.project import Branch
+            branch = await session.get(Branch, case.branch_id)
+            project_id = branch.project_id if branch else None
+        from app.services.ai import automation_context_service as acs
+        ctx = await acs.build_context(session, case.id, project_id, env_id, role)
+        context_block = acs.render_prompt_block(ctx)
+        if ctx.token:
+            verify_env["TEST_TOKEN"] = ctx.token
+    except Exception:
+        logger.warning("build_gen_context failed (降级为空上下文)", exc_info=True)
+    # 场景变量（Epic2）：UI/接口共用同一份，唯一化
+    try:
+        from app.services.scenario_variable_service import resolve_scenario_variables
+        sv = await resolve_scenario_variables(session, case.id, global_lookup=env_vars)
+        verify_env.update(sv)
+    except Exception:
+        logger.warning("resolve scenario vars failed", exc_info=True)
+    return context_block, verify_env
+
+
+def _is_cli_engine() -> bool:
+    from app.config import settings
+    return (settings.ui_agent_engine or "cli").lower() == "cli"
+
 
 
 def _get_credentials(env_vars: dict, fixture_name: str) -> dict:

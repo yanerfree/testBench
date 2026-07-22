@@ -60,6 +60,19 @@ async def run_ui_script(
     from app.services.scenario_variable_service import resolve_scenario_variables
     env_vars.update(await resolve_scenario_variables(session, cid, global_lookup=env_vars))
 
+    # 注入鉴权 token TEST_TOKEN（S1.3）——脚本鉴权造数/清理用，避免 401
+    if env_id:
+        try:
+            from app.services.token_service import get_target_token
+            _case = await session.get(Case, cid)
+            _pc = (_case.preconditions or "") if _case else ""
+            _role = "TENANT" if any(k in _pc for k in ("租户", "tenant", "已授权")) else "ADMIN"
+            _tok = await get_target_token(session, env_id, _role)
+            if _tok:
+                env_vars["TEST_TOKEN"] = _tok
+        except Exception:
+            pass
+
     file_name = script.file_name or "test_ui.py"
     content = script.content
 
