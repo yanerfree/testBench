@@ -305,7 +305,7 @@ async def _build_gen_context(session, case, env_id, env_vars, fixture_name):
             branch = await session.get(Branch, case.branch_id)
             project_id = branch.project_id if branch else None
         from app.services.ai import automation_context_service as acs
-        ctx = await acs.build_context(session, case.id, project_id, env_id, role)
+        ctx = await acs.build_context(session, case.id, project_id, env_id, role, token_refresh=True)
         context_block = acs.render_prompt_block(ctx)
         if ctx.token:
             verify_env["TEST_TOKEN"] = ctx.token
