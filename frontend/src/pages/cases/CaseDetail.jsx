@@ -12,6 +12,7 @@ import { api } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
 import { useEnv, buildEnvOptions } from '../../utils/env'
 import ScriptEditor from '../../components/ScriptEditor'
+import ScenarioVariables from '../../components/ScenarioVariables'
 import ApiStepList, { generateApiCodeFromSteps } from '../../components/ApiStepList'
 
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
@@ -730,6 +731,9 @@ function ScenarioEditor({
         {/* 三视图切换 */}
         <Tabs size="small" defaultActiveKey="steps" style={{ marginBottom: 0 }}
           items={[
+            { key: 'scenariovars', label: '场景变量', children: (
+              <ScenarioVariables projectId={projectId} branchId={branchId} caseId={caseId} />
+            ) },
             { key: 'steps', label: '步骤视图', children: (
               <div style={{ padding: '12px 0' }}>
                 {(debugResult?.steps || liveSteps || []).length > 0 ? (
