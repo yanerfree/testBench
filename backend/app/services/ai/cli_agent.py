@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 SKILLS_DIR = str(Path(__file__).parent / "skills")
 GATEWAY_BASE = "http://192.168.51.10:8080"  # 公司网关（真 CLI 走这里，不带 /v1）
-MAX_HEAL_ROUNDS = 3
+MAX_HEAL_ROUNDS = 5
 CLI_TURN_TIMEOUT = 900  # 单次 claude 调用上限（探索+生成）
 
 
@@ -82,7 +82,7 @@ def _build_task_prompt(title, steps, expected, base_url, preconditions, user, pa
    - **page.goto 必须用相对路径**（如 `page.goto('/')`、`page.goto('/services')`）；**绝对禁止**硬编码 `http://localhost:xxxx` 或任何绝对 URL——baseURL 由执行环境注入。**只操作被测应用地址({base_url})对应的页面，绝不导航到其它端口/其它应用**。
    - 若被测地址打不开/探索不到目标页面，**如实停止并说明"被测地址不可达"，不要去试别的端口、不要拿其它应用的页面凑数**（那样会生成假通过脚本）。
    - page.goto 用相对路径；每步至少一条断言；用 expect(...).toBeVisible() 等，禁止 waitForTimeout 死等
-   - 选择器优先 getByRole/getByText/getByLabel；同名多个用 .first() 或 exact 规避 strict mode
+   - 选择器优先 getByRole/getByText/getByLabel；同名多个用 .first() 或 exact 规避 strict mode。**登录按钮尤其注意**：页面常同时有「登录」提交按钮和「企业 SSO 登录 / LDAP / OIDC」等按钮，`name: /登录/` 会命中多个 → 用 `getByRole('button', {{ name: '登录', exact: true }})` 或 `page.locator('button[type=submit]')` 精确点提交按钮。
    - 创建了数据就用 cleanup fixture 注册清理（cleanup.add(async () => {{...}})）
 3. 只探索用例要求的操作，不要顺手测别的。最终回复里除了 ```typescript 脚本块，不要贴多余内容。
 
