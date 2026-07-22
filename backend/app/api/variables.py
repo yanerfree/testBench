@@ -25,6 +25,7 @@ from app.schemas.variable import (
     VarResponse,
 )
 from app.services import channel_service, environment_service, variable_service
+from app.services import token_service
 
 router = APIRouter(tags=["variables"])
 
@@ -105,6 +106,31 @@ async def put_env_variables(env_id: uuid.UUID, body: list[EnvVarItem], session: 
 async def get_merged_variables(env_id: uuid.UUID, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     merged = await environment_service.get_merged_variables(session, env_id)
     return {"data": merged}
+
+
+@router.post("/api/environments/{env_id}/token")
+async def acquire_env_token(
+    env_id: uuid.UUID,
+    role: str = "ADMIN",
+    refresh: bool = False,
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """登录目标系统取 token（回填 Redis 缓存）。用于验证登录配方 + 供自动化注入。
+    role: 角色前缀(ADMIN/TENANT...); refresh=true 强制重登。密码级不回传，仅返回脱敏预览。"""
+    token = await token_service.get_target_token(session, env_id, role, force_refresh=refresh)
+    if token:
+        preview = token[:6] + "…" + token[-4:] if len(token) > 12 else "••••"
+        return {"data": {"ok": True, "role": role.upper(), "tokenPreview": preview, "cached": not refresh}}
+    # 失败时回传具体原因（重新登录一次拿 error，不缓存）
+    from app.models.environment import EnvironmentVariable
+    from sqlalchemy import select
+    rows = await session.execute(
+        select(EnvironmentVariable).where(EnvironmentVariable.environment_id == env_id)
+    )
+    env_vars = {v.key: v.value for v in rows.scalars().all()}
+    _t, err = await token_service.fetch_token(env_vars, role)
+    return {"data": {"ok": False, "role": role.upper(), "error": err or "取 token 失败"}}
 
 @router.post("/api/environments/{env_id}/clone", status_code=HTTP_201_CREATED)
 async def clone_environment(env_id: uuid.UUID, body: CloneEnvRequest, session: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
