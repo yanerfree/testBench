@@ -184,6 +184,29 @@ async def repair_script_ai(
     return {"data": result}
 
 
+@router.get("/preflight")
+async def preflight_run(
+    project_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    case_id: uuid.UUID,
+    env_id: uuid.UUID | None = Query(default=None, alias="envId"),
+    role: str | None = Query(default=None),
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """执行前门禁：预检全局资源(缺→待确认) + 报告 token/场景变量就绪情况。
+    前端跑前调用；envVars 不回传敏感值(仅键名 + token 是否就绪)。"""
+    from app.services import run_context_service
+    report = await run_context_service.preflight(session, case_id, env_id, role)
+    return {"data": {
+        "ready": report["ready"],
+        "missing": report["missing"],
+        "role": report["role"],
+        "tokenAcquired": report["tokenAcquired"],
+        "envKeys": sorted(report["envVars"].keys()),
+    }}
+
+
 @router.post("/run")
 async def run_script(
     project_id: uuid.UUID,
