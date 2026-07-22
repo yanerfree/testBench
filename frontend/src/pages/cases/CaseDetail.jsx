@@ -7,6 +7,7 @@ import {
   ThunderboltOutlined, TagOutlined, AppstoreOutlined, ApiOutlined,
   FlagOutlined, WarningOutlined, CodeOutlined, CopyOutlined, FileTextOutlined,
   DesktopOutlined, CheckCircleOutlined, StarOutlined, StarFilled, ImportOutlined,
+  DatabaseOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
@@ -751,9 +752,6 @@ function ScenarioEditor({
         {/* 三视图切换 */}
         <Tabs size="small" defaultActiveKey="steps" style={{ marginBottom: 0 }}
           items={[
-            { key: 'scenariovars', label: '场景变量', children: (
-              <ScenarioVariables projectId={projectId} branchId={branchId} caseId={caseId} />
-            ) },
             { key: 'steps', label: '步骤视图', children: (
               <div style={{ padding: '12px 0' }}>
                 {(debugResult?.steps || liveSteps || []).length > 0 ? (() => {
@@ -1432,6 +1430,7 @@ export default function CaseDetail() {
   // 模板弹窗
   const [templateModalOpen, setTemplateModalOpen] = useState(false)
   const [templateModalType, setTemplateModalType] = useState('api')
+  const [svDrawerOpen, setSvDrawerOpen] = useState(false)
 
   // 脚本查看
   const [scriptContent, setScriptContent] = useState(null)
@@ -1617,6 +1616,9 @@ export default function CaseDetail() {
           <Button type="primary" size="small" icon={<SaveOutlined />} disabled={!isDirty} onClick={handleSave}>保存</Button>
           <Input value={title} onChange={e => setTitle(e.target.value)} variant="borderless"
             style={{ fontSize: 16, fontWeight: 600, flex: 1, padding: '2px 4px' }} />
+          <Tooltip title="场景变量（UI 与接口测试共用，${变量名} 引用，random 执行时唯一化）">
+            <Button size="small" icon={<DatabaseOutlined />} onClick={() => setSvDrawerOpen(true)}>场景变量</Button>
+          </Tooltip>
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
@@ -1878,6 +1880,17 @@ export default function CaseDetail() {
           message.success('模板已导入，记得保存')
         }}
       />
+
+      <Drawer
+        title="场景变量"
+        placement="right"
+        width={720}
+        open={svDrawerOpen}
+        onClose={() => setSvDrawerOpen(false)}
+        styles={{ body: { padding: 16 } }}
+      >
+        <ScenarioVariables projectId={projectId} branchId={branchId} caseId={caseId} />
+      </Drawer>
 
       <Modal open={runModalOpen} onCancel={() => { setRunModalOpen(false); setRunResult(null); setRunStatus('idle') }} footer={null} title="执行用例" width={560}>
         <div style={{ padding: '12px 0' }}>
