@@ -119,6 +119,12 @@ async def run_ui_script(
     case = await session.get(Case, cid)
     if case:
         case.ui_scenario_status = "completed" if result.get("status") == "passed" else "debugging"
+        # 状态体系 v2：运行失败→调试中；通过则从调试中/未开始/草稿 恢复为待审，已可执行/待审保持不降级
+        if result.get("status") == "passed":
+            if case.ui_status in ("debugging", "not_started", "draft", "needs_fix"):
+                case.ui_status = "pending_review"
+        else:
+            case.ui_status = "debugging"
 
     await session.commit()
 
