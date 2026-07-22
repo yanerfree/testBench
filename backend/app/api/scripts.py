@@ -192,6 +192,9 @@ async def run_script(
         for v in rows.scalars().all():
             env_vars[v.key] = v.value
 
+    from app.services.scenario_variable_service import resolve_scenario_variables
+    env_vars.update(await resolve_scenario_variables(session, case_id, global_lookup=env_vars))
+
     file_name = script.file_name or f"test_{script_type}.py"
     content = script.content
 
@@ -276,6 +279,9 @@ async def run_script_stream(
         )
         for v in rows.scalars().all():
             env_vars[v.key] = v.value
+
+    from app.services.scenario_variable_service import resolve_scenario_variables
+    env_vars.update(await resolve_scenario_variables(session, case_id, global_lookup=env_vars))
 
     is_typescript = (script.language == "typescript"
                      or (script.file_name or "").endswith(".ts")
