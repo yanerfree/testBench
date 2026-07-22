@@ -483,10 +483,9 @@ function ScenarioEditor({
     const controller = new AbortController()
     abortRef.current = controller
     setLiveSteps([])
-    setDebugResult(null)
     setDebugRunning(true)
-    // 打开 Drawer 显示实时进度
-    setDebugResult({ status: 'running', _drawerOpen: true, steps: [] })
+    // 打开 Drawer 显示实时进度；保留生成时抓到的接口，别让「运行」把接口视图清空
+    setDebugResult(prev => ({ status: 'running', _drawerOpen: true, steps: [], captured_requests: prev?.captured_requests || [] }))
 
     fetch(url, {
       method: 'POST',
@@ -519,7 +518,8 @@ function ScenarioEditor({
                   // 优先用 liveSteps（有完整步骤名），fallback 到 data.steps
                   const live = liveStepsRef.current
                   const steps = live.length > 0 ? live : (data.steps || [])
-                  setDebugResult({ ...data, steps, _drawerOpen: true })
+                  // 运行结果不含接口流量 → 保留生成时抓到的接口，别把「接口视图」清空
+                  setDebugResult(prev => ({ ...data, steps, captured_requests: (data.captured_requests?.length ? data.captured_requests : prev?.captured_requests) || [], _drawerOpen: true }))
                   setDebugRunning(false)
                   setLiveSteps([]); liveStepsRef.current = []
                   scriptEditorRef.current?.refresh()
