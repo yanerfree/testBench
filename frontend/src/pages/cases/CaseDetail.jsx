@@ -383,6 +383,7 @@ function ScenarioEditor({
   const handleAiGenerate = async () => {
     if (type === 'api') return
     if (!runEnv) { message.warning('请先选择执行环境（需要 BASE_URL）'); return }
+    const genStart = Date.now()
     setAiGenerating(true)
     setDebugResult({ status: 'running', _drawerOpen: true, steps: [] })
     setLiveSteps([])
@@ -432,7 +433,7 @@ function ScenarioEditor({
                 const screenshots = (data.results || [])
                   .filter(r => r.screenshot && r.status === 'failed')
                   .map((r, i) => ({ base64: r.screenshot, name: `步骤失败: ${r.step?.substring(0,30) || '未知'}` }));
-                setDebugResult({ ...data, steps: live.length > 0 ? live : data.results || [], screenshots, _drawerOpen: true });
+                setDebugResult({ ...data, durationMs: data.durationMs ?? data.duration_ms ?? (Date.now() - genStart), steps: live.length > 0 ? live : data.results || [], screenshots, _drawerOpen: true });
                 if (!scenario) {
                   setScenario({ steps: (manualSteps || []).map((s, i) => ({ seq: i + 1, action: s.action || '', expected: s.expected || '' })), variablesUsed: [] })
                 }
