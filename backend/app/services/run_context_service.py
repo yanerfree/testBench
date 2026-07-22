@@ -60,10 +60,21 @@ async def preflight(session: AsyncSession, case_id, env_id, role: str | None = N
         except Exception:
             pass
 
+    # 3) 该用例的 UI 脚本是否依赖鉴权 token（用于前端跑前提示：需 token 但当前环境取不到 → 会 401）
+    script_uses_token = False
+    try:
+        from app.services import script_service
+        script = await script_service.get_active_script(session, cid, "ui")
+        if script and "TEST_TOKEN" in (script.content or ""):
+            script_uses_token = True
+    except Exception:
+        pass
+
     return {
         "ready": len(missing) == 0,
         "missing": missing,
         "envVars": env_vars,
         "tokenAcquired": token_acquired,
+        "scriptUsesToken": script_uses_token,
         "role": role,
     }

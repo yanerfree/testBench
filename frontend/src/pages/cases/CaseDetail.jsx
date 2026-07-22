@@ -538,7 +538,7 @@ function ScenarioEditor({
     })
   }
 
-  const handleDebugRun = () => {
+  const handleDebugRun = async () => {
     if (!runEnv) { message.warning('请先选择执行环境'); return }
     if (type === 'api') {
       // 接口类型走原来的同步方式
@@ -549,11 +549,29 @@ function ScenarioEditor({
         .finally(() => setDebugRunning(false))
       return
     }
-    // UI 类型：运行已保存的脚本
-    runScriptWithStream((result) => {
+    const doRun = () => runScriptWithStream((result) => {
       if (result.status === 'passed') message.success('验证通过！')
       else message.warning('验证失败，查看详情')
     })
+    // UI 类型：跑前预检（缺全局前置 / 环境取不到鉴权 token 时提示，避免跑错环境后拿到晦涩报错）
+    try {
+      const pf = await api.get(`/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/preflight?type=ui&envId=${runEnv}`)
+      const d = pf.data || {}
+      const warns = []
+      if (!d.ready) (d.missing || []).forEach(m => warns.push(`缺全局前置资源「${m.name}」（${m.reason || '不存在'}）`))
+      if (d.scriptUsesToken && !d.tokenAcquired) warns.push('当前环境未能取得鉴权 token —— 脚本含鉴权 API 调用，很可能 401。请检查该环境的 BASE_URL / 登录配置(LOGIN_URL) / 账号密码是否正确，或换用脚本对应的环境。')
+      if (warns.length) {
+        Modal.confirm({
+          title: '执行前检查',
+          width: 520,
+          content: <div style={{ marginTop: 8 }}>{warns.map((w, i) => <div key={i} style={{ marginBottom: 8, color: '#d46b08' }}>⚠️ {w}</div>)}</div>,
+          okText: '仍要执行', cancelText: '取消',
+          onOk: doRun,
+        })
+        return
+      }
+    } catch { /* 预检失败不阻断执行 */ }
+    doRun()
   }
 
   const initScenario = (fromManual) => {
