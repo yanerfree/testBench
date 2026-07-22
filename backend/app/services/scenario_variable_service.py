@@ -2,7 +2,8 @@
 
 kind:
   - literal    → 直接用 value_template
-  - random     → value_template + _{runId}_{rand}（每次执行唯一、可追溯本脚本造的数据）
+  - random     → value_template + -{runId}-{rand}（每次执行唯一、可追溯本脚本造的数据；
+                 用连字符分隔而非下划线——服务名/slug/DNS 名等多数只允许 [a-z0-9-]，下划线常被拒）
   - global_ref → 从全局数据查（Epic1 提供项目级全局数据；此前先从传入 global_lookup 例如环境变量取）
 
 UI(process.env.SV_x) 与接口(os.environ['SV_x']) 执行器读同一份，做到共用。
@@ -35,7 +36,7 @@ async def resolve_scenario_variables(
     gl = global_lookup or {}
     for v in rows:
         if v.kind == "random":
-            val = f"{v.value_template}_{rid}_{secrets.token_hex(2)}"
+            val = f"{v.value_template}-{rid}-{secrets.token_hex(2)}"
         elif v.kind == "global_ref":
             val = gl.get(v.value_template, "")
         else:  # literal
