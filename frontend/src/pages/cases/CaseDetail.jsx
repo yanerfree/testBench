@@ -826,7 +826,15 @@ function ScenarioEditor({
                           setApiArranging(true)
                           try {
                             const selected = selectedApis.map(idx => debugResult.captured_requests[idx])
-                            const apiInfo = selected.map(r => `${r.method} ${r.url} → ${r.status}`).join('\n')
+                            // 传完整请求信息（含 query/请求体/响应样例），让生成的接口测试有真实字段而非只有 URL
+                            const apiInfo = selected.map(r => {
+                              const parts = [`${r.method} ${r.url} → ${r.status}`]
+                              if (r.queryParams && Object.keys(r.queryParams).length) parts.push(`  query: ${JSON.stringify(r.queryParams)}`)
+                              if (r.requestContentType) parts.push(`  reqContentType: ${r.requestContentType}`)
+                              if (r.requestBody) parts.push(`  reqBody: ${String(r.requestBody).slice(0, 1500)}`)
+                              if (r.responseBody) parts.push(`  respSample: ${String(r.responseBody).slice(0, 1200)}`)
+                              return parts.join('\n')
+                            }).join('\n\n')
                             await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/generate`, {
                               apiInfo, folderName: caseTitle || 'UI流量提取',
                             })

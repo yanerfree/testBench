@@ -268,6 +268,12 @@ _register(
 )
 
 _register(
+    ui_scripts.run_ui_scripts_batch,
+    name="tb_run_ui_scripts_batch",
+    description="批量执行多个用例的 UI 脚本（不依赖 AI，逐个跑真实 Playwright），返回通过/失败聚合。用于回归/减少人工。参数: case_ids(逗号分隔的用例UUID列表), env_id(环境UUID，含 BASE_URL)",
+)
+
+_register(
     ui_scripts.get_ui_script_result,
     name="tb_get_ui_script_result",
     description="获取用例最近一次 UI 脚本执行结果（状态、耗时、错误摘要、截图数）。参数: case_id(用例UUID)",

@@ -86,6 +86,13 @@ def _build_task_prompt(title, steps, expected, base_url, preconditions, user, pa
    - 创建了数据就用 cleanup fixture 注册清理（cleanup.add(async () => {{...}})）
 3. 只探索用例要求的操作，不要顺手测别的。最终回复里除了 ```typescript 脚本块，不要贴多余内容。
 
+## 前置数据处理（重要 — 区分全局 vs 场景，保证脚本自包含、可反复执行）
+前置条件里的"业务数据前置"必须分两类处理：
+- **场景级数据**（本用例专属、可随意增删的，如"已有一个运行中的服务/一条XX记录"）：脚本里**自己创建**（探索时你会看到创建接口，在 test body 开头用 `page.request.post(...)` 或走 UI 创建）+ **唯一命名**（`` `xxx_${{Date.now()}}` ``），并在 `cleanup.add(async () => {{ ... }})` 里**自己删除**。做到不依赖环境已有数据、可反复跑。
+- **全局级数据**（系统级共享、不该被测试删除的，如"系统已有默认租户/默认网关"、具名共享资源）：脚本里**先查是否存在**（GET/列表接口或 UI 确认）——存在就用、**绝不创建也不删除**；若不存在，在最终回复里注明"缺全局前置数据 <名称>，需先在环境准备"，不要盲目创建全局资源。
+- 判断：措辞含"一个/某条/新建/任意" → 场景级（自建自删）；含"系统/平台/默认/全局/具名共享" → 全局级（查存在、只用不删）。拿不准按场景级处理。
+- **API 造数/清理必须带鉴权**（否则 401）：`page.request` 不会自动带登录态。登录后先取 token —— `const token = await page.evaluate(() => {{ try {{ return JSON.parse(localStorage.getItem('<探索时确认的鉴权key>')||'{{}}')?.state?.token ?? localStorage.getItem('token') ?? ''; }} catch {{ return ''; }} }});`，再在每个 `page.request.post/delete` 里加 `headers: {{ Authorization: `Bearer ${{token}}` }}`。**或**用 `page.evaluate(async () => await fetch(url, {{ method, body, headers, credentials: 'include' }}))` 在浏览器内发（自动带会话 cookie）。探索阶段用 browser_evaluate 看 localStorage 确认 token 存在哪个 key。
+
 ## 效率要求（重要，直接影响生成速度）
 - **不要用 browser_take_screenshot**：生成脚本用不到截图，纯浪费轮次。
 - **每个页面状态只 browser_snapshot 一次**：用这一次快照提取本页需要的所有选择器；页面没跳转/结构没大变，就复用已有快照，**不要每个动作后都重新 snapshot**。
@@ -145,9 +152,25 @@ def _extract_script(text: str) -> str:
     return ""
 
 
+_SENSITIVE_HEADERS = {"authorization", "cookie", "set-cookie", "x-auth-token", "x-api-key", "token"}
+
+
+def _headers_to_dict(hlist: list | None) -> dict:
+    """HAR headers[] → dict；敏感头脱敏值但保留 key（结构完整 + 不泄密）。"""
+    out = {}
+    for h in (hlist or []):
+        name = h.get("name", "")
+        val = h.get("value", "")
+        if name.lower() in _SENSITIVE_HEADERS:
+            val = "***"
+        out[name] = val
+    return out
+
+
 def _parse_har(har_path: str) -> list[dict]:
-    """从执行期录制的 HAR 提取被测应用的 API 请求（供接口视图/接口测试编排）。
-    只留 /api/ 或 json 响应，丢静态资源；截断大 body。"""
+    """从执行期录制的 HAR 提取被测应用的**全部** API 请求（供接口视图/接口测试编排）。
+    不去重、字段完整（method/url/query/请求头/请求体/响应头/响应体/status）；
+    只滤掉静态资源（保留 /api/ 或 json 响应）；敏感头脱敏值保留 key。"""
     if not os.path.exists(har_path):
         return []
     try:
@@ -155,28 +178,29 @@ def _parse_har(har_path: str) -> list[dict]:
     except Exception:
         return []
     out: list[dict] = []
-    seen = set()
     for e in data.get("log", {}).get("entries", []):
         req = e.get("request", {}) or {}
         resp = e.get("response", {}) or {}
         url = req.get("url", "")
         ct = ((resp.get("content", {}) or {}).get("mimeType") or "")
+        # 只丢静态资源；接口请求（/api/ 或 json 响应）全部保留，不去重
         if "/api/" not in url and "json" not in ct.lower():
             continue
-        method = req.get("method", "")
-        key = f"{method} {url.split('?')[0]}"
-        if key in seen:
-            continue
-        seen.add(key)
+        post = req.get("postData") or {}
         out.append({
-            "method": method,
+            "method": req.get("method", ""),
             "url": url,
+            "queryParams": {q.get("name"): q.get("value") for q in (req.get("queryString") or [])},
+            "requestHeaders": _headers_to_dict(req.get("headers")),
+            "requestContentType": post.get("mimeType", ""),
+            "requestBody": (post.get("text") or "")[:8000],
             "status": resp.get("status"),
-            "contentType": ct,
-            "requestBody": ((req.get("postData") or {}).get("text") or "")[:2000],
-            "responseBody": ((resp.get("content") or {}).get("text") or "")[:2000],
+            "responseHeaders": _headers_to_dict(resp.get("headers")),
+            "responseContentType": ct,
+            "responseBody": ((resp.get("content", {}) or {}).get("text") or "")[:8000],
+            "startedDateTime": e.get("startedDateTime", ""),
         })
-        if len(out) >= 50:
+        if len(out) >= 300:  # 仅安全上限，正常远不会到
             break
     return out
 
