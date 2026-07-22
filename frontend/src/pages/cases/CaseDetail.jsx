@@ -367,6 +367,7 @@ function ScenarioEditor({
   const [aiGenerating, setAiGenerating] = useState(false)
   const [previewScreenshot, setPreviewScreenshot] = useState(null)
   const [stepHints, setStepHints] = useState({})
+  const [showNoiseSteps, setShowNoiseSteps] = useState(false)
   const [selectedApis, setSelectedApis] = useState([])
   const [apiArranging, setApiArranging] = useState(false)
   const [debugHistory, setDebugHistory] = useState([])
@@ -736,9 +737,25 @@ function ScenarioEditor({
             ) },
             { key: 'steps', label: '步骤视图', children: (
               <div style={{ padding: '12px 0' }}>
-                {(debugResult?.steps || liveSteps || []).length > 0 ? (
+                {(debugResult?.steps || liveSteps || []).length > 0 ? (() => {
+                  const allSteps = liveSteps.length > 0 ? liveSteps : (debugResult?.steps || [])
+                  // 探索类噪音（快照/JS求值/查找/网络/关闭浏览器/Glob）默认折叠，突出真实动作；失败步骤始终显示
+                  const NOISE = /^(获取页面快照|执行 JS|关闭浏览器|Glob|browser_find|browser_network|browser_snapshot|browser_evaluate|Read|Bash)/
+                  const isNoise = (s) => NOISE.test(s.step_name || s.action || s.step || '') && s.status !== 'failed'
+                  const hiddenCount = allSteps.filter(isNoise).length
+                  const shownSteps = showNoiseSteps ? allSteps : allSteps.filter(s => !isNoise(s))
+                  return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                    {(liveSteps.length > 0 ? liveSteps : (debugResult?.steps || [])).map((s, i) => {
+                    {hiddenCount > 0 && (
+                      <div style={{ padding: '4px 12px', marginBottom: 4, fontSize: 12, color: '#86909c' }}>
+                        显示 {shownSteps.length} 个关键步骤
+                        <Button type="link" size="small" style={{ fontSize: 12, padding: '0 4px' }}
+                          onClick={() => setShowNoiseSteps(v => !v)}>
+                          {showNoiseSteps ? '收起' : `展开 ${hiddenCount} 条探索日志`}
+                        </Button>
+                      </div>
+                    )}
+                    {shownSteps.map((s, i) => {
                       const ok = s.status === 'passed'
                       const isRunning = s.status === 'running'
                       const phase = s.step_phase || s.phase
@@ -784,7 +801,7 @@ function ScenarioEditor({
                       )
                     })}
                   </div>
-                ) : (
+                  )})() : (
                   <div style={{ padding: 32, textAlign: 'center', color: '#c9cdd4' }}>点击「AI 生成」生成脚本后查看执行步骤</div>
                 )}
               </div>
@@ -1621,7 +1638,7 @@ export default function CaseDetail() {
               }}>
                 {isUiTemplate && <StarFilled style={{ fontSize: 9, color: '#faad14' }} />}
                 <DesktopOutlined style={{ fontSize: 10 }} /> UI
-                {hasUi && <span>({uiScenario?.steps?.length || 0}步 · {(scenarioStatusMap[uiScenarioStatus] || {}).label || '草稿'})</span>}
+                {hasUi && <span>({(uiScenario?.steps?.length || uiScenario?.lastResults?.length || 0)}步 · {(scenarioStatusMap[uiScenarioStatus] || {}).label || '草稿'})</span>}
               </span>
             </Tooltip>
           </div>
@@ -1697,7 +1714,7 @@ export default function CaseDetail() {
               />
             )},
 
-            { key: 'ui', label: <span><DesktopOutlined style={{ marginRight: 4, color: hasUi ? '#7c5cbf' : undefined }} />UI 测试{hasUi && <span style={{ fontSize: 11, color: '#7c5cbf', marginLeft: 4 }}>({uiScenario?.steps?.length || 0}步)</span>}</span>, children: (
+            { key: 'ui', label: <span><DesktopOutlined style={{ marginRight: 4, color: hasUi ? '#7c5cbf' : undefined }} />UI 测试{hasUi && <span style={{ fontSize: 11, color: '#7c5cbf', marginLeft: 4 }}>({(uiScenario?.steps?.length || uiScenario?.lastResults?.length || 0)}步)</span>}</span>, children: (
               <ScenarioEditor
                 scenario={uiScenario} setScenario={setUiScenario}
                 scenarioStatus={uiScenarioStatus} setScenarioStatus={setUiScenarioStatus}
