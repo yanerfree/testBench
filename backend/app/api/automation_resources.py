@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,6 +57,20 @@ async def list_resources(
         select(AutomationResource).where(AutomationResource.project_id == project_id).order_by(AutomationResource.name)
     )
     return {"data": [_dump(r) for r in rows.scalars().all()]}
+
+
+@router.get("/precheck")
+async def precheck_resources(
+    project_id: uuid.UUID,
+    env_id: uuid.UUID | None = Query(None, alias="envId"),
+    role: str = "ADMIN",
+    session: AsyncSession = Depends(get_db),
+    _: User = Depends(require_project_role("project_admin", "developer", "tester", "guest")),
+):
+    """跑自动化前预检全局资源存在性。缺失项在 missing 里返回，交用户确认/补建，不自动创建。"""
+    from app.services import precheck_service
+    report = await precheck_service.check_resources(session, project_id, env_id, role)
+    return {"data": report}
 
 
 @router.post("")
