@@ -16,6 +16,7 @@ from app.api.tasks import router as tasks_router
 from app.api.logs import router as logs_router
 from app.api.scripts import router as scripts_router, export_router as scripts_export_router
 from app.api.scenario_variables import router as scenario_variables_router
+from app.api.automation_resources import router as automation_resources_router
 from app.api.testforge import router as testforge_router
 from app.api.debug import router as debug_router
 from app.api.api_collections import router as api_collections_router
@@ -256,6 +257,7 @@ app.include_router(tasks_router)
 app.include_router(logs_router)
 app.include_router(scripts_router)
 app.include_router(scenario_variables_router)
+app.include_router(automation_resources_router)
 app.include_router(scripts_export_router)
 app.include_router(testforge_router)
 app.include_router(debug_router)
