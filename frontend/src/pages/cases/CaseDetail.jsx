@@ -875,13 +875,39 @@ function ScenarioEditor({
                               if (r.responseBody) parts.push(`  respSample: ${String(r.responseBody).slice(0, 1200)}`)
                               return parts.join('\n')
                             }).join('\n\n')
-                            await api.post(`/projects/${projectId}/branches/${branchId}/api-tests/generate`, {
-                              apiInfo, folderName: caseTitle || 'UI流量提取',
+                            // 该端点是 SSE 流式（AI 逐条生成，多接口耗时较长）——必须按流消费，
+                            // 不能用普通 POST（会误报「编排失败」，实际后端已生成）。
+                            const token = localStorage.getItem('token')
+                            const resp = await fetch(`/api/projects/${projectId}/branches/${branchId}/api-tests/generate`, {
+                              method: 'POST',
+                              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ apiInfo, folderName: caseTitle || 'UI流量提取' }),
                             })
-                            message.success(`已编排 ${selected.length} 个接口为测试场景`)
-                            setSelectedApis([])
+                            if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+                            const reader = resp.body.getReader()
+                            const decoder = new TextDecoder()
+                            let buf = '', createdCount = 0, errMsg = null, finished = false
+                            const hide = message.loading(`正在编排 ${selected.length} 个接口为测试场景（AI 生成中，请稍候）...`, 0)
+                            try {
+                              while (true) {
+                                const { done, value } = await reader.read()
+                                if (value) buf += decoder.decode(value, { stream: true })
+                                const lines = buf.split('\n'); buf = done ? '' : (lines.pop() || '')
+                                for (const line of lines) {
+                                  if (!line.startsWith('data:')) continue
+                                  try {
+                                    const ev = JSON.parse(line.slice(5))
+                                    if (ev.type === 'done') { createdCount = (ev.scenarioIds || []).length || createdCount; finished = true }
+                                    else if (ev.type === 'error') errMsg = ev.message || '生成失败'
+                                  } catch {}
+                                }
+                                if (done) break
+                              }
+                            } finally { hide() }
+                            if (errMsg && !finished) { message.error(`编排失败：${errMsg}`) }
+                            else { message.success(`已编排为 ${createdCount || selected.length} 个接口测试场景，见「接口测试」`); setSelectedApis([]) }
                           } catch (e) {
-                            message.error(e?.response?.data?.error?.message || '编排失败')
+                            message.error(e?.message || '编排失败')
                           } finally {
                             setApiArranging(false)
                           }
