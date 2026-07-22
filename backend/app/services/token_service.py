@@ -28,6 +28,28 @@ from app.config import settings
 from app.models.environment import EnvironmentVariable
 
 _DEFAULT_TTL = 1800  # 30 分钟
+# 缓存 token 至少要留这么多余命，覆盖一次长任务(多轮生成/长测试套件)全程
+_TOKEN_MARGIN = 600  # 10 分钟
+
+
+def _jwt_remaining_seconds(token: str) -> int | None:
+    """解 JWT 的 exp，返回距现在的剩余秒数；非 JWT/无 exp 返回 None。"""
+    import base64
+    import json
+    import time
+    try:
+        parts = token.split(".")
+        if len(parts) < 2:
+            return None
+        p = parts[1] + "=" * (-len(parts[1]) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(p))
+        exp = payload.get("exp")
+        if not exp:
+            return None
+        return int(exp) - int(time.time())
+    except Exception:
+        return None
+
 
 
 def _redis() -> Redis:
@@ -160,6 +182,14 @@ async def get_target_token(
             ttl = int(env_vars.get("LOGIN_TOKEN_TTL") or _DEFAULT_TTL)
         except (TypeError, ValueError):
             ttl = _DEFAULT_TTL
+        # 按 JWT 剩余寿命封顶：缓存的 token 始终留足余命(≥_TOKEN_MARGIN)，
+        # 避免把一个快过期的 token 缓存整个 TTL、被长任务(生成/长测试)中途用到而 401。
+        rem = _jwt_remaining_seconds(token)
+        if rem is not None:
+            usable = rem - _TOKEN_MARGIN
+            if usable <= 0:
+                return token  # 余命不足，本次直接用、不缓存(下次重新登录)
+            ttl = min(ttl, usable)
         await r.set(key, token, ex=ttl)
         return token
     finally:

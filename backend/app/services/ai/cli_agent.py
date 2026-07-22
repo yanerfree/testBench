@@ -92,6 +92,9 @@ def _build_task_prompt(title, steps, expected, base_url, preconditions, user, pa
 - **全局级数据**（系统级共享、不该被测试删除的，如"系统已有默认租户/默认网关"、具名共享资源）：脚本里**先查是否存在**（GET/列表接口或 UI 确认）——存在就用、**绝不创建也不删除**；若不存在，在最终回复里注明"缺全局前置数据 <名称>，需先在环境准备"，不要盲目创建全局资源。
 - 判断：措辞含"一个/某条/新建/任意" → 场景级（自建自删）；含"系统/平台/默认/全局/具名共享" → 全局级（查存在、只用不删）。拿不准按场景级处理。
 - **API 造数/清理必须带鉴权**（否则 401）：`page.request` 不会自动带登录态。**优先用注入的 `process.env.TEST_TOKEN`**（见下方「自动化上下文」，若有）：在每个 `page.request.post/delete` 里加 `headers: {{ Authorization: `Bearer ${{process.env.TEST_TOKEN}}` }}`。若上下文未提供 token，再退而登录后从 localStorage 取（`browser_evaluate` 确认 token 存哪个 key）或用 `page.evaluate(async () => await fetch(url, {{ method, body, headers, credentials: 'include' }}))` 借会话 cookie。
+- **造数/清理的每个 `page.request` 调用后必须校验响应、失败时抛出响应体**（关键——否则失败只剩 `status` 数字，无法知道缺哪些字段，自愈只能瞎猜）：
+  `const _r = await page.request.post(url, {{ headers, data }}); if (!_r.ok()) throw new Error(`setup失败 ${{_r.status()}}: ${{await _r.text()}}`);`
+  这样 422/400 的字段校验详情（如"缺 Name/ServiceType/Protocol"）会进错误信息，下一轮才能精准补字段。**造数的请求体字段务必来自探索时观察到的真实创建请求**（在 UI 里真实创建一次、看它发出的 POST body 有哪些字段），不要凭空只填 name。
 {context_block}
 ## 效率要求（重要，直接影响生成速度）
 - **不要用 browser_take_screenshot**：生成脚本用不到截图，纯浪费轮次。

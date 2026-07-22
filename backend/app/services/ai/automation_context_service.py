@@ -30,6 +30,7 @@ async def build_context(
     project_id,
     env_id,
     role: str = "ADMIN",
+    token_refresh: bool = False,
 ) -> AutomationContext:
     ctx = AutomationContext(role=(role or "ADMIN").upper())
 
@@ -55,7 +56,7 @@ async def build_context(
 
     # 3) 鉴权 token（S1.3）——作为 process.env.TEST_TOKEN 注入
     if env_id:
-        token = await token_service.get_target_token(session, env_id, ctx.role)
+        token = await token_service.get_target_token(session, env_id, ctx.role, force_refresh=token_refresh)
         ctx.token = token
         ctx.has_token = bool(token)
 
