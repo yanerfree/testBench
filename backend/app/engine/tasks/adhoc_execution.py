@@ -27,6 +27,64 @@ _execution_semaphore = asyncio.Semaphore(6)
 _EXECUTION_TIMEOUT = 600
 
 
+async def _has_new_style_script(session: AsyncSession, case_id, test_type: str):
+    """返回该用例指定类型(ui/api)的活跃脚本(scripts 表)，无则 None。"""
+    from app.services import script_service
+    stype = "api" if test_type == "api" else "ui"
+    return await script_service.get_active_script(session, case_id, stype)
+
+
+async def _run_new_style_script(session: AsyncSession, case, test_type: str, base_env_vars: dict, env_id: str, script):
+    """执行 AI 生成的活跃脚本(scripts 表)——复用单用例运行那套：注入场景变量 SV_* + 鉴权 TEST_TOKEN，再跑。"""
+    import re as _re
+    import shutil
+    import tempfile
+    from pathlib import Path as _P
+
+    from app.engine.executor import execute_single_case
+    from app.services.scenario_variable_service import resolve_scenario_variables
+
+    env_vars = dict(base_env_vars or {})
+    try:
+        env_vars.update(await resolve_scenario_variables(session, case.id, global_lookup=env_vars))
+    except Exception:
+        pass
+    if env_id:
+        try:
+            from app.services.token_service import get_target_token
+            pc = case.preconditions or ""
+            role = "TENANT" if any(k in pc for k in ("租户", "tenant", "已授权")) else "ADMIN"
+            tok = await get_target_token(session, env_id, role)
+            if tok:
+                env_vars["TEST_TOKEN"] = tok
+        except Exception:
+            pass
+
+    file_name = script.file_name or ("test_ui.py" if test_type != "api" else "test_api.py")
+    content = script.content or ""
+    # Python 脚本把 os.getenv 默认值替换为实际值；TS 脚本靠 process.env 注入(ts_runner 传 env)
+    for vn, vv in env_vars.items():
+        content = _re.sub(
+            rf'({_re.escape(vn)}\s*=\s*os\.getenv\(\s*"{_re.escape(vn)}"\s*,\s*)(["\']).*?\2',
+            lambda m, v=vv: f'{m.group(1)}{m.group(2)}{v}{m.group(2)}',
+            content, count=1,
+        )
+    sandbox = tempfile.mkdtemp(prefix="tb_batch_")
+    try:
+        sp = _P(sandbox) / file_name
+        sp.parent.mkdir(parents=True, exist_ok=True)
+        sp.write_text(content, encoding="utf-8")
+        return await anyio.to_thread.run_sync(
+            lambda: execute_single_case(
+                sandbox_dir=sandbox, script_ref_file=file_name,
+                script_ref_func=script.func_name, env_vars=env_vars, timeout=180,
+            )
+        )
+    finally:
+        shutil.rmtree(sandbox, ignore_errors=True)
+
+
+
 async def run_adhoc_execution(
     task_id: str,
     report_id: str,
@@ -102,11 +160,16 @@ async def _execute_adhoc(
         report.variables_snapshot = merged
         await session.flush()
 
-    # 判断哪些用例有脚本
+    # 判断哪些用例可执行：新式(该维度==executable + scripts表有活跃脚本) 优先；兼容旧式(script_ref_file+automated)
     executable = []
+    new_scripts = {}  # case.id -> 活跃脚本（新式 AI 生成）
     for case in cases:
-        has_script = bool(case.script_ref_file) if test_type == "api" else bool(case.script_ref_file)
-        if has_script and case.automation_status == "automated":
+        dim = case.api_status if test_type == "api" else case.ui_status
+        script = await _has_new_style_script(session, case.id, test_type)
+        if dim == "executable" and script:
+            executable.append(case)
+            new_scripts[case.id] = script
+        elif bool(case.script_ref_file) and case.automation_status == "automated":
             executable.append(case)
 
     # 创建沙箱（如果有可执行用例且项目配置了脚本路径）
@@ -156,15 +219,22 @@ async def _execute_adhoc(
             scenario.started_at = datetime.now(timezone.utc)
             await session.commit()
 
-            case_result = await anyio.to_thread.run_sync(
-                lambda c=case: execute_single_case(
-                    sandbox_dir=str(sandbox_dir) if sandbox_dir else None,
-                    script_ref_file=c.script_ref_file,
-                    script_ref_func=c.script_ref_func,
-                    env_vars=env_vars,
-                    timeout=300,
+            if case.id in new_scripts:
+                # 新式：跑 scripts 表的 AI 生成脚本(注入场景变量+token)
+                case_result = await _run_new_style_script(
+                    session, case, test_type, env_vars, env_id, new_scripts[case.id]
                 )
-            )
+            else:
+                # 旧式：沙箱 + script_ref_file
+                case_result = await anyio.to_thread.run_sync(
+                    lambda c=case: execute_single_case(
+                        sandbox_dir=str(sandbox_dir) if sandbox_dir else None,
+                        script_ref_file=c.script_ref_file,
+                        script_ref_func=c.script_ref_func,
+                        env_vars=env_vars,
+                        timeout=300,
+                    )
+                )
 
             case_completed = datetime.now(timezone.utc)
             scenario.status = case_result["status"]
