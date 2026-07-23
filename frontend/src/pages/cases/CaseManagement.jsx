@@ -393,7 +393,7 @@ export default function CaseManagement() {
         style={{ color: '#1d2129', cursor: 'pointer', fontWeight: 500 }}
         onMouseEnter={e => e.target.style.color = '#0ea5a0'}
         onMouseLeave={e => e.target.style.color = '#1d2129'}
-      >{v}</span>
+      >{row.isCore && <Tooltip title="核心/标杆用例（供其他用例参考生成）"><StarFilled style={{ color: '#fa8c16', marginRight: 4, fontSize: 12 }} /></Tooltip>}{v}</span>
     )},
     { key: 'type', title: '类型', dataIndex: 'type', width: 50, defaultVisible: true, render: v => <span style={{ fontSize: 11, color: '#86909c' }}>{v?.toUpperCase()}</span> },
     { key: 'scenarios', title: '场景', width: 105, defaultVisible: true, render: (_, row) => {

@@ -46,6 +46,7 @@ class UpdateCaseRequest(BaseSchema):
     ui_scenario_status: Literal["draft", "debugging", "completed"] | None = None
     is_api_template: bool | None = None
     is_ui_template: bool | None = None
+    is_core: bool | None = None
     script_ref_file: str | None = None
     script_ref_func: str | None = None
     is_flaky: bool | None = None
@@ -94,6 +95,7 @@ class CaseResponse(BaseSchema):
     ui_scenario_status: str
     is_api_template: bool
     is_ui_template: bool
+    is_core: bool = False
     automation_status: str
     lifecycle_status: str = "draft"
     manual_status: str = "not_started"

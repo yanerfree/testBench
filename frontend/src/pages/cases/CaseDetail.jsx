@@ -1431,6 +1431,7 @@ export default function CaseDetail() {
   const [manualStatus, setManualStatus] = useState('not_started')
   const [uiStatus, setUiStatus] = useState('not_started')
   const [apiStatus, setApiStatus] = useState('not_started')
+  const [isCore, setIsCore] = useState(false)
   const [flaky, setFlaky] = useState(false)
   const [preconditions, setPreconditions] = useState('')
   const [expectedResult, setExpectedResult] = useState('')
@@ -1515,6 +1516,7 @@ export default function CaseDetail() {
         manualStatus: c.manualStatus || 'not_started',
         uiStatus: c.uiStatus || 'not_started',
         apiStatus: c.apiStatus || 'not_started',
+        isCore: c.isCore || false,
       }
 
       setTitle(vals.title); setType(vals.type); setPriority(vals.priority)
@@ -1522,6 +1524,7 @@ export default function CaseDetail() {
       setAutomationStatus(vals.automationStatus); setFlaky(vals.flaky)
       setLifecycleStatus(vals.lifecycleStatus); setManualStatus(vals.manualStatus)
       setUiStatus(vals.uiStatus); setApiStatus(vals.apiStatus)
+      setIsCore(vals.isCore)
       setPreconditions(vals.preconditions); setExpectedResult(vals.expectedResult)
       setScriptRefFile(vals.scriptRefFile); setScriptRefFunc(vals.scriptRefFunc)
       setRemark(vals.remark); setSteps(vals.steps); setVariablesUsed(vals.variablesUsed)
@@ -1564,7 +1567,7 @@ export default function CaseDetail() {
     preconditions, expectedResult, scriptRefFile, scriptRefFunc, remark,
     steps, variablesUsed, apiScenario, uiScenario,
     apiScenarioStatus, uiScenarioStatus, isApiTemplate, isUiTemplate,
-    lifecycleStatus, manualStatus, uiStatus, apiStatus,
+    lifecycleStatus, manualStatus, uiStatus, apiStatus, isCore,
   })
   const isDirty = caseData && currentSnap !== savedRef.current
 
@@ -1615,7 +1618,7 @@ export default function CaseDetail() {
         isFlaky: flaky, preconditions, expectedResult, scriptRefFile, scriptRefFunc,
         remark, steps, variablesUsed, apiScenario, uiScenario,
         apiScenarioStatus, uiScenarioStatus, isApiTemplate, isUiTemplate,
-        lifecycleStatus, manualStatus, uiStatus, apiStatus,
+        lifecycleStatus, manualStatus, uiStatus, apiStatus, isCore,
       })
       savedRef.current = currentSnap
       setCaseData(prev => ({ ...prev }))
@@ -1646,6 +1649,14 @@ export default function CaseDetail() {
             style={{ fontSize: 16, fontWeight: 600, flex: 1, padding: '2px 4px' }} />
           <Tooltip title="场景变量（UI 与接口测试共用，${变量名} 引用，random 执行时唯一化）">
             <Button size="small" icon={<DatabaseOutlined />} onClick={() => setSvDrawerOpen(true)}>场景变量</Button>
+          </Tooltip>
+          <Tooltip title={isCore ? '取消核心（标杆用例，供其他用例参考应用它来生成）' : '设为核心（标杆用例，供其他用例参考应用它来生成）'}>
+            <Button size="small" type={isCore ? 'primary' : 'default'}
+              icon={isCore ? <StarFilled /> : <StarOutlined />}
+              onClick={() => setIsCore(v => !v)}
+              style={isCore ? { background: '#fff7e6', borderColor: '#ffc069', color: '#fa8c16' } : {}}>
+              {isCore ? '核心' : '设为核心'}
+            </Button>
           </Tooltip>
         </div>
 

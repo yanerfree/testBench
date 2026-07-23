@@ -94,6 +94,8 @@ async def update_case(
         case.is_api_template = data.is_api_template
     if data.is_ui_template is not None:
         case.is_ui_template = data.is_ui_template
+    if data.is_core is not None:
+        case.is_core = data.is_core
     if data.script_ref_file is not None:
         case.script_ref_file = data.script_ref_file
     if data.script_ref_func is not None:
