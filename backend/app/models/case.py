@@ -78,6 +78,8 @@ class Case(Base):
     )
     is_api_template: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     is_ui_template: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # 核心/标杆用例：供其他用例参考应用它来生成（用例级，区别于 per-scenario 的模板）
+    is_core: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     automation_status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pending", server_default="pending"
     )  # automated / pending / script_removed / archived （旧字段，保留兼容；新展示用 lifecycle_status）
