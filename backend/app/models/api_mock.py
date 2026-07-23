@@ -18,6 +18,7 @@ class ApiMockRoute(Base):
     method: Mapped[str] = mapped_column(String(10), nullable=False, default="GET")
     path: Mapped[str] = mapped_column(String(500), nullable=False, default="/api/example")
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     delay_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

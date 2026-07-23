@@ -15,6 +15,7 @@ class ApiMockRouteCreate(BaseSchema):
     method: str = Field(default="GET", max_length=10)
     path: str = Field(default="/api/example", max_length=500)
     enabled: bool = True
+    locked: bool = False
     delay_ms: int = Field(default=0, ge=0)
     status_code: int = Field(default=200)
     content_type: str = Field(default="application/json", max_length=100)
@@ -33,6 +34,7 @@ class ApiMockRouteUpdate(BaseSchema):
     method: str | None = None
     path: str | None = None
     enabled: bool | None = None
+    locked: bool | None = None
     delay_ms: int | None = None
     status_code: int | None = None
     content_type: str | None = None
@@ -52,6 +54,7 @@ class ApiMockRouteResponse(BaseSchema):
     method: str
     path: str
     enabled: bool
+    locked: bool
     sort_order: int
     delay_ms: int
     status_code: int

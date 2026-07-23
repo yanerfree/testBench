@@ -60,6 +60,16 @@ async def toggle_route(session: AsyncSession, route_id: uuid.UUID) -> ApiMockRou
     return route
 
 
+async def toggle_lock(session: AsyncSession, route_id: uuid.UUID) -> ApiMockRoute | None:
+    route = await session.get(ApiMockRoute, route_id)
+    if not route:
+        return None
+    route.locked = not route.locked
+    await session.flush()
+    await session.refresh(route)
+    return route
+
+
 async def reorder_routes(session: AsyncSession, items: list[dict]) -> None:
     for item in items:
         await session.execute(

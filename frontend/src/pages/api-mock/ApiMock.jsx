@@ -6,7 +6,7 @@ import {
 import {
   PlusOutlined, DeleteOutlined, SaveOutlined, PlayCircleOutlined, PauseCircleOutlined,
   ReloadOutlined, ExportOutlined, ClearOutlined, CopyOutlined, CloudServerOutlined,
-  LockOutlined, SettingOutlined, CheckOutlined,
+  LockOutlined, LockFilled, UnlockOutlined, HolderOutlined, SettingOutlined, CheckOutlined,
   SendOutlined, StarOutlined, ApiOutlined, WifiOutlined, GlobalOutlined, CloudOutlined
 } from '@ant-design/icons'
 import { api } from '../../utils/request'
@@ -151,6 +151,7 @@ export default function ApiMock() {
 function HttpMockPanel() {
   const [routes, setRoutes] = useState([])
   const [selectedRouteId, setSelectedRouteId] = useState(null)
+  const [dragIdx, setDragIdx] = useState(null)
   const [routeForm, setRouteForm] = useState(null)
   const [originalForm, setOriginalForm] = useState(null)
   const [presets, setPresets] = useState([])
@@ -295,6 +296,35 @@ function HttpMockPanel() {
     } catch {}
   }
 
+  const handleToggleLock = async () => {
+    if (!routeForm) return
+    try {
+      const r = await api.patch(`/api-mock/routes/${routeForm.id}/lock`)
+      const d = r.data || r
+      message.success(d.locked ? '路由已锁定，需解锁后才能编辑' : '路由已解锁')
+      setRouteForm(f => ({ ...f, locked: d.locked }))
+      setOriginalForm(f => ({ ...f, locked: d.locked }))
+      await fetchRoutes()
+    } catch {}
+  }
+
+  // 拖动调整路由顺序：本地乐观更新 + 持久化 sort_order
+  const handleDropRoute = async (targetIdx) => {
+    const from = dragIdx
+    setDragIdx(null)
+    if (from === null || from === targetIdx) return
+    const next = [...routes]
+    const [moved] = next.splice(from, 1)
+    next.splice(targetIdx, 0, moved)
+    setRoutes(next)
+    try {
+      await api.put('/api-mock/routes/reorder', {
+        items: next.map((r, i) => ({ id: r.id, sortOrder: i })),
+      })
+      await fetchRoutes()
+    } catch { await fetchRoutes() }
+  }
+
   const handlePresetChange = async (key) => {
     if (!routeForm) return
     setSelectedPreset(key)
@@ -418,6 +448,7 @@ function HttpMockPanel() {
   const responseModeValue = routeForm?.responseMode || 'default'
   const isEchoMode = responseModeValue === 'echo' || responseModeValue === 'echo_body'
   const topResponseMode = isEchoMode ? 'echo' : responseModeValue
+  const locked = !!routeForm?.locked
 
   const formatBody = (body, ct) => {
     if (!body) return ''
@@ -445,24 +476,42 @@ function HttpMockPanel() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {isDefault && <Tag color="default" style={{ margin: 0, fontSize: 11 }}>默认</Tag>}
+            {locked && <Tag color="orange" icon={<LockFilled />} style={{ margin: 0, fontSize: 11 }}>已锁定</Tag>}
             <Input
               value={routeForm.name}
               onChange={e => setRouteForm(f => ({ ...f, name: e.target.value }))}
               variant="borderless"
+              disabled={locked}
               style={{ fontSize: 15, fontWeight: 600, width: 200, padding: '0 4px' }}
               placeholder="路由名称"
             />
           </div>
           <Space size={8}>
-            <Button type="primary" icon={<SaveOutlined />} size="small" onClick={handleSaveRoute} loading={saving} disabled={!isDirty}>保存</Button>
+            <Button type="primary" icon={<SaveOutlined />} size="small" onClick={handleSaveRoute} loading={saving} disabled={!isDirty || locked}>保存</Button>
             <Switch
               checked={routeForm.enabled}
               onChange={(v) => handleToggle(routeForm.id, v)}
+              disabled={locked}
               checkedChildren="启用" unCheckedChildren="禁用" size="small"
             />
-            <Button size="small" onClick={() => setAdvancedOpen(true)}>高级</Button>
+            <Tooltip title={locked ? '解锁后可编辑' : '锁定后不可编辑，需先解锁'}>
+              <Button
+                size="small"
+                icon={locked ? <UnlockOutlined /> : <LockOutlined />}
+                onClick={handleToggleLock}
+                type={locked ? 'primary' : 'default'}
+                ghost={locked}
+              >
+                {locked ? '解锁' : '锁定'}
+              </Button>
+            </Tooltip>
+            <Tooltip title={locked ? '已锁定，请先解锁' : ''}>
+              <Button size="small" onClick={() => setAdvancedOpen(true)} disabled={locked}>高级</Button>
+            </Tooltip>
             {isDefault ? (
               <Tooltip title="默认路由不可删除"><Button icon={<DeleteOutlined />} size="small" disabled /></Tooltip>
+            ) : locked ? (
+              <Tooltip title="已锁定，请先解锁"><Button icon={<DeleteOutlined />} size="small" danger disabled /></Tooltip>
             ) : (
               <Popconfirm title="确认删除？" onConfirm={() => handleDeleteRoute(routeForm.id)}>
                 <Button icon={<DeleteOutlined />} size="small" danger />
@@ -473,6 +522,13 @@ function HttpMockPanel() {
 
         {/* 可滚动配置区 */}
         <div style={{ flex: 1, overflow: 'auto', padding: '14px 16px' }}>
+          {locked && (
+            <Alert
+              type="warning" showIcon icon={<LockFilled />}
+              message="此路由已锁定，配置为只读。点击右上角「解锁」后才能编辑。"
+              style={{ fontSize: 12, marginBottom: 14 }}
+            />
+          )}
           {/* URL 栏 */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 0, marginBottom: 16,
@@ -482,6 +538,7 @@ function HttpMockPanel() {
               value={routeForm.method}
               onChange={v => setRouteForm(f => ({ ...f, method: v }))}
               variant="borderless"
+              disabled={locked}
               style={{ width: 100, flexShrink: 0 }}
               popupMatchSelectWidth={100}
             >
@@ -496,6 +553,7 @@ function HttpMockPanel() {
               value={routeForm.path}
               onChange={e => setRouteForm(f => ({ ...f, path: e.target.value }))}
               variant="borderless"
+              disabled={locked}
               style={{ fontFamily: MONO, fontSize: 13, background: 'transparent' }}
               placeholder="/mock/api-example"
             />
@@ -511,6 +569,7 @@ function HttpMockPanel() {
                   const v = e.target.value
                   setRouteForm(f => ({ ...f, responseMode: v === 'echo' ? 'echo' : v }))
                 }}
+                disabled={locked}
                 buttonStyle="solid" size="small"
               >
                 <Radio.Button value="default">默认</Radio.Button>
@@ -525,6 +584,7 @@ function HttpMockPanel() {
                 value={routeForm.statusCode ?? 200}
                 onChange={v => setRouteForm(f => ({ ...f, statusCode: v }))}
                 min={100} max={599} size="small" style={{ width: 80 }}
+                disabled={locked}
               />
             </div>
             <div style={{ minWidth: 130 }}>
@@ -533,6 +593,7 @@ function HttpMockPanel() {
                 value={routeForm.contentType || 'application/json'}
                 onChange={v => setRouteForm(f => ({ ...f, contentType: v }))}
                 size="small" style={{ width: 130 }}
+                disabled={locked}
                 showSearch options={CONTENT_TYPES}
               />
             </div>
@@ -543,6 +604,7 @@ function HttpMockPanel() {
                 placeholder="选择预设填充..."
                 size="small" style={{ width: '100%' }}
                 value={selectedPreset}
+                disabled={locked}
               >
                 <Select.OptGroup label="JSON">
                   {presets.filter(p => p.group === 'json').map(p =>
@@ -584,11 +646,11 @@ function HttpMockPanel() {
             <div>
               <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>延迟 (ms)</div>
               <InputNumber value={routeForm.delayMs ?? 0} onChange={v => setRouteForm(f => ({ ...f, delayMs: v }))}
-                min={0} step={100} size="small" style={{ width: 80 }} placeholder="0" />
+                min={0} step={100} size="small" style={{ width: 80 }} placeholder="0" disabled={locked} />
             </div>
             <div>
               <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>匹配模式</div>
-              <Radio.Group value={routeForm.matchMode || 'exact'} onChange={e => setRouteForm(f => ({ ...f, matchMode: e.target.value }))} size="small">
+              <Radio.Group value={routeForm.matchMode || 'exact'} onChange={e => setRouteForm(f => ({ ...f, matchMode: e.target.value }))} size="small" disabled={locked}>
                 <Radio value="exact">精确</Radio>
                 <Radio value="prefix">前缀</Radio>
                 <Radio value="regex">正则</Radio>
@@ -618,6 +680,7 @@ function HttpMockPanel() {
                 <Radio.Group
                   value={responseModeValue}
                   onChange={e => setRouteForm(f => ({ ...f, responseMode: e.target.value }))}
+                  disabled={locked}
                   buttonStyle="solid" size="small"
                 >
                   <Radio.Button value="echo">完整请求</Radio.Button>
@@ -651,6 +714,7 @@ function HttpMockPanel() {
                 <TextArea
                   value={routeForm.responseBody}
                   onChange={e => setRouteForm(f => ({ ...f, responseBody: e.target.value }))}
+                  disabled={locked}
                   style={{ fontFamily: MONO, fontSize: 12, flex: 1, minHeight: 200, resize: 'vertical' }}
                   placeholder={'输入响应内容...\n\n例如:\n{"code":0,"message":"success","data":null}'}
                 />
@@ -1053,18 +1117,38 @@ function HttpMockPanel() {
             </Tooltip>
           </div>
           <div style={{ flex: 1, overflow: 'auto', padding: '6px 8px' }}>
-            {routes.map(r => {
+            {routes.map((r, i) => {
               const sel = selectedRouteId === r.id
               const isDef = r.id === defaultRouteId
+              const isDragging = dragIdx === i
               return (
-                <div key={r.id} onClick={() => selectRoute(r)} style={{
-                  padding: '10px 12px', marginBottom: 4, borderRadius: 12, cursor: 'pointer',
-                  background: sel ? 'rgba(124,92,191,0.06)' : 'transparent',
-                  borderLeft: `3px solid ${sel ? '#7c5cbf' : r.enabled ? '#0ea5a0' : 'rgba(0,0,0,0.1)'}`,
-                  transition: 'all .15s',
-                }}>
+                <div
+                  key={r.id}
+                  draggable
+                  onClick={() => selectRoute(r)}
+                  onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDragIdx(i) }}
+                  onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderTop = '2px solid #7c5cbf' }}
+                  onDragLeave={e => { e.currentTarget.style.borderTop = '2px solid transparent' }}
+                  onDrop={e => { e.preventDefault(); e.currentTarget.style.borderTop = '2px solid transparent'; handleDropRoute(i) }}
+                  onDragEnd={() => setDragIdx(null)}
+                  style={{
+                    padding: '10px 12px', marginBottom: 4, borderRadius: 12, cursor: 'pointer',
+                    background: sel ? 'rgba(124,92,191,0.06)' : 'transparent',
+                    borderLeft: `3px solid ${sel ? '#7c5cbf' : r.enabled ? '#0ea5a0' : 'rgba(0,0,0,0.1)'}`,
+                    borderTop: '2px solid transparent',
+                    opacity: isDragging ? 0.4 : 1,
+                    transition: 'opacity .15s',
+                  }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Tooltip title="拖动调整顺序">
+                      <HolderOutlined style={{ fontSize: 11, color: '#c8c8c8', cursor: 'grab', flexShrink: 0 }} />
+                    </Tooltip>
                     {isDef && <LockOutlined style={{ fontSize: 10, color: '#bfbfbf' }} />}
+                    {r.locked && (
+                      <Tooltip title="已锁定，不可编辑">
+                        <LockFilled style={{ fontSize: 11, color: '#fa8c16', flexShrink: 0 }} />
+                      </Tooltip>
+                    )}
                     <Tag style={{
                       margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 4px', borderRadius: 8,
                       fontWeight: 600, color: METHOD_COLOR(r.method), borderColor: METHOD_COLOR(r.method),
