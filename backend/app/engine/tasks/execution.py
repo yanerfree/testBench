@@ -66,6 +66,7 @@ async def _run_execution_inner(task_id: str, plan_id: str, report_id: str, user_
 async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id: str) -> dict:
     """执行核心逻辑。"""
     from app.engine.executor import execute_single_case
+    from app.engine.tasks.adhoc_execution import _has_new_style_script, _run_new_style_script
     from app.engine.sandbox import cleanup_sandbox, create_sandbox
     from app.services.environment_service import get_merged_variables
 
@@ -101,23 +102,20 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
         report.variables_snapshot = merged
         await session.flush()
 
-    # 3. 创建沙箱
-    if not project.script_base_path or not branch.last_commit_sha:
-        await set_task_status(task_id, "failed", message="项目未配置脚本路径或分支未同步")
-        return {"error": "missing script_base_path or commit_sha"}
-
-    bare_repo = Path(project.script_base_path) / ".repos" / "repo.git"
-    execution_id = str(rid)
-    sandbox_dir = Path(project.script_base_path) / ".sandboxes" / execution_id
-
-    await set_task_status(task_id, "running", message="正在创建执行沙箱...")
-    try:
-        await anyio.to_thread.run_sync(
-            lambda: create_sandbox(bare_repo, sandbox_dir, branch.last_commit_sha)
-        )
-    except Exception as e:
-        await set_task_status(task_id, "failed", message=f"创建沙箱失败: {str(e)[:200]}")
-        return {"error": str(e)}
+    # 3. 创建沙箱（仅旧式 script_ref_file 用例需要；AI 生成脚本走各自 tempdir，不依赖 git 脚本库）
+    sandbox_dir = None
+    if project.script_base_path and branch.last_commit_sha:
+        bare_repo = Path(project.script_base_path) / ".repos" / "repo.git"
+        execution_id = str(rid)
+        sandbox_dir = Path(project.script_base_path) / ".sandboxes" / execution_id
+        await set_task_status(task_id, "running", message="正在创建执行沙箱...")
+        try:
+            await anyio.to_thread.run_sync(
+                lambda: create_sandbox(bare_repo, sandbox_dir, branch.last_commit_sha)
+            )
+        except Exception as e:
+            await set_task_status(task_id, "failed", message=f"创建沙箱失败: {str(e)[:200]}")
+            return {"error": str(e)}
 
     # 4. 逐条执行
     total = len(plan_cases)
@@ -194,7 +192,14 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
                 continue
 
             # 跳过非自动化用例（保持 pending，等待手动录入）
-            if case.automation_status != "automated" or not case.script_ref_file:
+            # 新式(该维度==executable + scripts表有活跃脚本) 优先；兼容旧式(script_ref_file+automated)
+            _dim = case.api_status if plan.test_type == "api" else case.ui_status
+            new_script = await _has_new_style_script(session, case.id, plan.test_type)
+            if new_script and _dim == "executable":
+                pass  # 新式可执行
+            elif case.automation_status == "automated" and case.script_ref_file:
+                new_script = None  # 走旧式沙箱路径
+            else:
                 continue
 
             # Flaky 用例跳过
@@ -226,12 +231,15 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
                 attempt_start = datetime.now(timezone.utc)
                 case_result = await anyio.to_thread.run_sync(
                     lambda c=case: execute_single_case(
-                        sandbox_dir=str(sandbox_dir),
+                        sandbox_dir=str(sandbox_dir) if sandbox_dir else None,
                         script_ref_file=c.script_ref_file,
                         script_ref_func=c.script_ref_func,
                         env_vars=env_vars,
                         timeout=300,
                     )
+                ) if not new_script else await _run_new_style_script(
+                    session, case, plan.test_type, env_vars,
+                    str(plan.environment_id) if plan.environment_id else None, new_script,
                 )
                 attempt_end = datetime.now(timezone.utc)
                 attempt_duration = f"{(attempt_end - attempt_start).total_seconds():.1f}s"
@@ -303,14 +311,15 @@ async def _execute(session: AsyncSession, task_id: str, plan_id: str, report_id:
                 consecutive_failures += 1
 
     finally:
-        # 5. 清理沙箱（无论成败）
-        await set_task_status(task_id, "running", message="正在清理执行沙箱...")
-        try:
-            await anyio.to_thread.run_sync(
-                lambda: cleanup_sandbox(bare_repo, sandbox_dir)
-            )
-        except Exception:
-            logger.exception("Failed to cleanup sandbox: %s", sandbox_dir)
+        # 5. 清理沙箱（无论成败；仅旧式创建了沙箱时才清理）
+        if sandbox_dir:
+            await set_task_status(task_id, "running", message="正在清理执行沙箱...")
+            try:
+                await anyio.to_thread.run_sync(
+                    lambda: cleanup_sandbox(bare_repo, sandbox_dir)
+                )
+            except Exception:
+                logger.exception("Failed to cleanup sandbox: %s", sandbox_dir)
 
     # 6. 汇总报告
     from app.services.execution_service import complete_execution
