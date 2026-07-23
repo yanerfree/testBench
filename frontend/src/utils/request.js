@@ -2,7 +2,79 @@ import { message } from 'antd'
 
 const BASE_URL = '/api'
 
-async function request(url, options = {}) {
+// --- 令牌刷新（access 短命 + refresh 轮换）---
+
+/** 解析 JWT payload 里的 exp（秒）；解析失败返回 0 */
+function parseJwtExp(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.exp || 0
+  } catch {
+    return 0
+  }
+}
+
+function clearAuthStorage() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  localStorage.removeItem('refreshToken')
+}
+
+function redirectToLogin() {
+  clearAuthStorage()
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login'
+  }
+}
+
+// 单飞：并发请求同时 401 时只发一次刷新
+let refreshPromise = null
+
+/** 用 refreshToken 换新令牌。成功存储并返回 true，失败清本地返回 false。 */
+function doRefresh() {
+  if (refreshPromise) return refreshPromise
+  refreshPromise = (async () => {
+    const refreshToken = localStorage.getItem('refreshToken')
+    if (!refreshToken) return false
+    try {
+      const res = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      })
+      if (!res.ok) {
+        clearAuthStorage()
+        return false
+      }
+      const data = await res.json()
+      localStorage.setItem('token', data.data.token)
+      localStorage.setItem('refreshToken', data.data.refreshToken)
+      return true
+    } catch {
+      return false
+    }
+  })().finally(() => { refreshPromise = null })
+  return refreshPromise
+}
+
+/**
+ * 返回一个可用的 access token：若已过期/临近过期（<60s）则先刷新。
+ * 供无法反应式重试的流式/下载请求在发起前调用。刷新失败会跳登录页并返回 null。
+ */
+export async function getValidToken() {
+  const token = localStorage.getItem('token')
+  if (!token) return null
+  const exp = parseJwtExp(token)
+  const now = Math.floor(Date.now() / 1000)
+  if (exp && exp - now < 60) {
+    const ok = await doRefresh()
+    if (!ok) { redirectToLogin(); return null }
+    return localStorage.getItem('token')
+  }
+  return token
+}
+
+async function request(url, options = {}, _retried = false) {
   const token = localStorage.getItem('token')
 
   const config = {
@@ -20,19 +92,16 @@ async function request(url, options = {}) {
 
   const res = await fetch(`${BASE_URL}${url}`, config)
 
-  // JWT 滑动续期：后端剩余 <2h 时返回新 token
-  const newToken = res.headers.get('X-New-Token')
-  if (newToken) {
-    localStorage.setItem('token', newToken)
-  }
-
-  // 401 → 登录页面的请求直接返回错误，不跳转
+  // 401 → 登录/刷新请求本身直接走错误处理，不触发刷新
   if (res.status === 401) {
-    const isLoginRequest = url === '/auth/login'
-    if (!isLoginRequest) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
+    const isAuthFlow = url === '/auth/login' || url === '/auth/refresh'
+    if (!isAuthFlow) {
+      // 用 refresh token 静默刷新后重试一次
+      if (!_retried) {
+        const ok = await doRefresh()
+        if (ok) return request(url, options, true)
+      }
+      redirectToLogin()
       return Promise.reject(new Error('未登录或登录已过期'))
     }
   }
@@ -71,7 +140,7 @@ export const api = {
   del: (url) => request(url, { method: 'DELETE' }),
   delete: (url) => request(url, { method: 'DELETE' }),
   download: async (url) => {
-    const token = localStorage.getItem('token')
+    const token = await getValidToken()
     const res = await fetch(`${BASE_URL}${url}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
@@ -86,11 +155,11 @@ export const api = {
    * @returns {{ abort: () => void }}
    */
   stream: (url, body, { onChunk, onDone, onError } = {}) => {
-    const token = localStorage.getItem('token')
     const controller = new AbortController()
 
     ;(async () => {
       try {
+        const token = await getValidToken()
         const res = await fetch(`${BASE_URL}${url}`, {
           method: 'POST',
           headers: {
@@ -158,7 +227,6 @@ export const api = {
    * @returns {{ abort: () => void }}
    */
   sseStream: (url, { afterSeq = 0, onEvent, onEnd, onError, reconnectMs = 3000, maxRetries = 30 } = {}) => {
-    const token = localStorage.getItem('token')
     let controller = new AbortController()
     let cursor = afterSeq
     let retries = 0
@@ -167,6 +235,7 @@ export const api = {
     const connect = async () => {
       if (stopped) return
       controller = new AbortController()
+      const token = await getValidToken()
       const sep = url.includes('?') ? '&' : '?'
       const fullUrl = `${BASE_URL}${url}${sep}afterSeq=${cursor}`
       try {

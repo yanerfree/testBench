@@ -9,7 +9,11 @@ class Settings(BaseSettings):
 
     # 安全
     secret_key: str = "change-me-in-production"
-    jwt_expire_hours: int = 8
+    jwt_expire_hours: int = 8  # 已废弃：access token 改用 access_token_expire_minutes
+    # 短期 access token（分钟）。可配 15–30，默认 30。
+    access_token_expire_minutes: int = 30
+    # 长期 refresh token（天），默认 7。
+    refresh_token_expire_days: int = 7
     bcrypt_cost: int = 12  # >= 10
 
     # Redis

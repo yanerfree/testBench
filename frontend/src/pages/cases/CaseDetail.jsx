@@ -9,7 +9,7 @@ import {
   DesktopOutlined, CheckCircleOutlined, StarOutlined, StarFilled, ImportOutlined,
   DatabaseOutlined,
 } from '@ant-design/icons'
-import { api } from '../../utils/request'
+import { api, getValidToken } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
 import { useEnv, buildEnvOptions } from '../../utils/env'
 import ScriptEditor from '../../components/ScriptEditor'
@@ -406,7 +406,7 @@ function ScenarioEditor({
     setLiveSteps([])
     liveStepsRef.current = []
 
-    const token = localStorage.getItem('token')
+    const token = await getValidToken()
     const url = `/api/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/generate-stream?type=ui`
     const controller = new AbortController()
     abortRef.current = controller
@@ -495,7 +495,6 @@ function ScenarioEditor({
   }
 
   const runScriptWithStream = (onDone) => {
-    const token = localStorage.getItem('token')
     const url = `/api/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts/run-stream?type=ui`
     const controller = new AbortController()
     abortRef.current = controller
@@ -504,12 +503,12 @@ function ScenarioEditor({
     // 打开 Drawer 显示实时进度；保留生成时抓到的接口，别让「运行」把接口视图清空
     setDebugResult(prev => ({ status: 'running', _drawerOpen: true, steps: [], captured_requests: prev?.captured_requests || [] }))
 
-    fetch(url, {
+    getValidToken().then(token => fetch(url, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ envId: runEnv }),
       signal: controller.signal,
-    }).then(response => {
+    })).then(response => {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
@@ -891,7 +890,7 @@ function ScenarioEditor({
                             }).join('\n\n')
                             // 该端点是 SSE 流式（AI 逐条生成，多接口耗时较长）——必须按流消费，
                             // 不能用普通 POST（会误报「编排失败」，实际后端已生成）。
-                            const token = localStorage.getItem('token')
+                            const token = await getValidToken()
                             const resp = await fetch(`/api/projects/${projectId}/branches/${branchId}/api-tests/generate`, {
                               method: 'POST',
                               headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },

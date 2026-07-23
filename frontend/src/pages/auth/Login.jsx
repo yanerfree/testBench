@@ -17,8 +17,9 @@ export default function Login() {
         username: values.username,
         password: values.password,
       })
-      const { token, user } = res.data
+      const { token, refreshToken, user } = res.data
       localStorage.setItem('token', token)
+      localStorage.setItem('refreshToken', refreshToken)
       localStorage.setItem('user', JSON.stringify(user))
       message.success(t('login.success'))
       navigate('/', { replace: true })

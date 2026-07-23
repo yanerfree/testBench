@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin, TreeSelect, Checkbox } from 'antd'
 import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, InboxOutlined, SettingOutlined, EditOutlined, DeleteOutlined, CopyOutlined, StarFilled, RobotOutlined, CodeOutlined, LoadingOutlined, ApiOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PlayCircleOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
-import { api } from '../../utils/request'
+import { api, getValidToken } from '../../utils/request'
 import { useBranch } from '../../utils/branch'
 import { useEnv, buildEnvOptions } from '../../utils/env'
 import TestForgeModal from './TestForgeModal'
@@ -318,7 +318,7 @@ export default function CaseManagement() {
       if (statusFilter) params.set('automationStatus', statusFilter)
       if (selectedFolderId) params.set('folderId', selectedFolderId)
 
-      const token = localStorage.getItem('token')
+      const token = await getValidToken()
       const res = await fetch(`/api/projects/${projectId}/branches/${globalBranchId}/cases/export/excel?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -350,7 +350,7 @@ export default function CaseManagement() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const token = localStorage.getItem('token')
+      const token = await getValidToken()
       const res = await fetch(`/api/projects/${projectId}/branches/${globalBranchId}/cases/import`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },

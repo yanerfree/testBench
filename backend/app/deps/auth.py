@@ -20,7 +20,7 @@ async def get_current_user(request: Request, session: AsyncSession = Depends(get
         raise UnauthorizedError(code="MISSING_TOKEN", message="未提供认证凭据")
 
     token = auth_header[7:]  # 去掉 "Bearer " 前缀
-    claims = decode_token(token)  # 失败时内部抛 UnauthorizedError
+    claims = decode_token(token, expected_type="access")  # 失败时内部抛 UnauthorizedError
 
     user_id = claims.get("sub")
     if not user_id:

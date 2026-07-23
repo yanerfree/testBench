@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Modal, Button, Progress, Tag, Space, Select, message } from 'antd'
 import { ThunderboltOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
-import { api } from '../utils/request'
+import { api, getValidToken } from '../utils/request'
 import { useEnv, buildEnvOptions } from '../utils/env'
 
 export default function AIScriptModal({
@@ -36,7 +36,7 @@ export default function AIScriptModal({
     if (!envId) { message.warning('请先选择执行环境'); return }
     setRunning(true)
     setResults([])
-    const token = localStorage.getItem('token')
+    const token = await getValidToken()
 
     for (let i = 0; i < caseIds.length; i++) {
       const caseId = caseIds[i]
@@ -94,7 +94,7 @@ export default function AIScriptModal({
     const failedCases = results.filter(r => r.status === 'failed' || r.status === 'error')
     if (!failedCases.length) return
     setRunning(true)
-    const token = localStorage.getItem('token')
+    const token = await getValidToken()
     for (const fc of failedCases) {
       const idx = results.findIndex(r => r.caseId === fc.caseId)
       setResults(prev => prev.map((r, j) => j === idx ? { ...r, status: 'running' } : r))

@@ -33,6 +33,7 @@ from app.models.protocol_mock import (  # noqa: F401 — 协议 Mock
 from app.models.load_test import (  # noqa: F401 — 压力测试
     LoadTestScenario, LoadTestStep, LoadTestRun,
 )
+from app.models.refresh_token import RefreshToken  # noqa: F401 — 登录 refresh token
 
 config = context.config
 if config.config_file_name is not None:

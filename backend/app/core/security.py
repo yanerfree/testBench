@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 import time
 import uuid
 
@@ -26,23 +28,41 @@ def _get_key() -> OctKey:
 
 
 def create_access_token(user_id: uuid.UUID, role: str) -> str:
-    """签发 JWT token，有效期 settings.jwt_expire_hours 小时"""
+    """签发短期 access JWT，有效期 settings.access_token_expire_minutes 分钟。"""
     now = int(time.time())
     payload = {
         "sub": str(user_id),
         "role": role,
+        "type": "access",
         "iat": now,
-        "exp": now + settings.jwt_expire_hours * 3600,
+        "exp": now + settings.access_token_expire_minutes * 60,
     }
     return jwt.encode({"alg": "HS256"}, payload, _get_key())
 
 
-def decode_token(token: str) -> dict:
-    """解码并验证 JWT token，返回 claims dict。失败抛出 UnauthorizedError。"""
+def decode_token(token: str, expected_type: str | None = None) -> dict:
+    """解码并验证 JWT token，返回 claims dict。失败抛出 UnauthorizedError。
+
+    expected_type 非空时，额外校验 claims["type"]（缺失或不匹配即视为无效），
+    防止不同用途的 token 被混用。
+    """
     try:
         tok = jwt.decode(token, _get_key())
         claims_registry = JWTClaimsRegistry(exp={"essential": True})
         claims_registry.validate(tok.claims)
+        if expected_type is not None and tok.claims.get("type") != expected_type:
+            raise ValueError("token type mismatch")
         return tok.claims
     except Exception:
         raise UnauthorizedError(code="INVALID_TOKEN", message="token 无效或已过期")
+
+
+def generate_refresh_token() -> str:
+    """生成不透明的 refresh token 明文（返回给客户端，服务端只存其哈希）。"""
+    return secrets.token_urlsafe(48)
+
+
+def hash_refresh_token(raw: str) -> str:
+    """对 refresh token 明文做 SHA-256，用于落库比对（不存明文）。"""
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+

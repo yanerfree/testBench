@@ -9,7 +9,7 @@ import {
   RobotOutlined, LoadingOutlined, CopyOutlined, DownloadOutlined, CodeOutlined,
 } from '@ant-design/icons'
 import { marked } from 'marked'
-import { api } from '../../utils/request'
+import { api, getValidToken } from '../../utils/request'
 import { copyToClipboard } from '../../utils/clipboard'
 
 const { Text } = Typography
@@ -484,7 +484,7 @@ function DocPreviewWithToc({ content }) {
 }
 
 async function downloadFromApi(url, filename) {
-  const token = localStorage.getItem('token')
+  const token = await getValidToken()
   const res = await fetch(`/api${url}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
   if (!res.ok) { message.error('下载失败'); return }
   const blob = await res.blob()

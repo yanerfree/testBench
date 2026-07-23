@@ -8,7 +8,7 @@ import {
   PauseCircleOutlined, ThunderboltOutlined, HistoryOutlined,
   CaretRightOutlined, CloseOutlined,
 } from '@ant-design/icons'
-import { api } from '../../utils/request'
+import { api, getValidToken } from '../../utils/request'
 
 const MONO = "'SF Mono', Monaco, Menlo, Consolas, monospace"
 const ACCENT = '#e8453c'
@@ -196,12 +196,12 @@ export default function LoadTest() {
 
   /* ─────── SSE stream ─────── */
   const startSSE = (rid) => {
-    const token = localStorage.getItem('token')
     const controller = new AbortController()
     sseRef.current = controller
 
     ;(async () => {
       try {
+        const token = await getValidToken()
         const res = await fetch(`/api/load-test/runs/${rid}/stream`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           signal: controller.signal,

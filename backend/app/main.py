@@ -40,7 +40,7 @@ from app.api.toolbox import router as toolbox_router
 from app.api.http_client import router as http_client_router
 from app.api.scenario_gen import router as scenario_gen_router
 from app.api.mcp_keys import router as mcp_keys_router
-from app.core.middleware import CamelCaseResponse, TokenRefreshMiddleware, TraceIdMiddleware
+from app.core.middleware import CamelCaseResponse, TraceIdMiddleware
 
 # --- MCP Server ---
 from app.mcp import mcp
@@ -235,7 +235,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(TraceIdMiddleware)
-app.add_middleware(TokenRefreshMiddleware)
 
 # --- 异常处理器 ---
 app.add_exception_handler(AppError, app_error_handler)

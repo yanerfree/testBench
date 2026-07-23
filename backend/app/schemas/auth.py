@@ -11,4 +11,16 @@ class LoginRequest(BaseSchema):
 class TokenResponse(BaseSchema):
     """登录成功响应"""
     token: str
+    refresh_token: str
     user: UserResponse
+
+
+class RefreshRequest(BaseSchema):
+    """刷新令牌请求（前端传 camelCase refreshToken，经 alias 自动映射）"""
+    refresh_token: str
+
+
+class RefreshResponse(BaseSchema):
+    """刷新令牌响应"""
+    token: str
+    refresh_token: str

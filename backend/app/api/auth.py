@@ -4,11 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import write_audit_log
 from app.core.exceptions import ValidationError
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import hash_password, verify_password
 from app.deps.auth import get_current_user
 from app.deps.db import get_db
 from app.models.user import User
-from app.schemas.auth import LoginRequest, TokenResponse
+from app.schemas.auth import LoginRequest, RefreshRequest, RefreshResponse, TokenResponse
 from app.schemas.common import BaseSchema, MessageResponse
 from app.schemas.user import UserResponse
 from app.services import auth_service
@@ -23,9 +23,9 @@ class ChangePasswordRequest(BaseSchema):
 
 @router.post("/login")
 async def login(body: LoginRequest, session: AsyncSession = Depends(get_db)):
-    """用户名 + 密码登录，返回 JWT token"""
+    """用户名 + 密码登录，返回短期 access token + 长期 refresh token"""
     user = await auth_service.authenticate(session, body.username, body.password)
-    token = create_access_token(user.id, user.role)
+    access, refresh = await auth_service.issue_token_pair(session, user)
     await write_audit_log(
         session, action="login", target_type="user",
         target_id=user.id, target_name=user.username,
@@ -33,9 +33,19 @@ async def login(body: LoginRequest, session: AsyncSession = Depends(get_db)):
     )
     return {
         "data": TokenResponse(
-            token=token,
+            token=access,
+            refresh_token=refresh,
             user=UserResponse.model_validate(user, from_attributes=True),
         ).model_dump(by_alias=True)
+    }
+
+
+@router.post("/refresh")
+async def refresh(body: RefreshRequest, session: AsyncSession = Depends(get_db)):
+    """用 refresh token 换取新的 access + refresh（轮换）。不需要 access token。"""
+    access, new_refresh, _user = await auth_service.rotate_refresh_token(session, body.refresh_token)
+    return {
+        "data": RefreshResponse(token=access, refresh_token=new_refresh).model_dump(by_alias=True)
     }
 
 
@@ -53,10 +63,11 @@ async def change_password(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
-    """修改当前用户密码"""
+    """修改当前用户密码，成功后吊销该用户全部 refresh token（强制全端重登）"""
     if not verify_password(body.old_password, current_user.password):
         raise ValidationError(code="WRONG_PASSWORD", message="原密码错误")
     current_user.password = hash_password(body.new_password)
+    await auth_service.revoke_all_user_tokens(session, current_user.id)
     await session.flush()
     await write_audit_log(
         session, action="change_password", target_type="user",
@@ -71,7 +82,8 @@ async def logout(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
-    """登出（前端清除 token，后端记录审计日志）"""
+    """登出：吊销该用户全部 refresh token，前端清除本地令牌"""
+    await auth_service.revoke_all_user_tokens(session, current_user.id)
     await write_audit_log(
         session, action="logout", target_type="user",
         target_id=current_user.id, target_name=current_user.username,

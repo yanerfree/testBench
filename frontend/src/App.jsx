@@ -146,6 +146,7 @@ function AppLayout() {
   const handleLogout = async () => {
     try { await api.post('/auth/logout') } catch { /* 忽略，重点是清本地 */ }
     localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
     message.success('已退出登录')
     navigate('/login', { replace: true })
@@ -161,6 +162,7 @@ function AppLayout() {
       setPwdOpen(false)
       pwdForm.resetFields()
       localStorage.removeItem('token')
+      localStorage.removeItem('refreshToken')
       localStorage.removeItem('user')
       navigate('/login', { replace: true })
     } catch { /* request.js 已展示错误 */ } finally { setPwdLoading(false) }

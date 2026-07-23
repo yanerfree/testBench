@@ -6,6 +6,7 @@ import {
 } from '@ant-design/icons'
 import Editor from '@monaco-editor/react'
 import { copyToClipboard } from '../utils/clipboard'
+import { getValidToken } from '../utils/request'
 
 const langMap = { python: 'python', typescript: 'typescript' }
 
@@ -33,13 +34,13 @@ const ScriptEditor = forwardRef(function ScriptEditor({
   const editorRef = useRef(null)
 
   const apiBase = `/api/projects/${projectId}/branches/${branchId}/cases/${caseId}/scripts`
-  const token = localStorage.getItem('token')
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+  // 每次请求前按需取（必要时刷新）access token，避免长会话拿到过期令牌
+  const authHeaders = async () => ({ Authorization: `Bearer ${await getValidToken()}`, 'Content-Type': 'application/json' })
 
   const fetchActive = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${apiBase}/active?type=${scriptType}`, { headers })
+      const res = await fetch(`${apiBase}/active?type=${scriptType}`, { headers: await authHeaders() })
       const data = await res.json()
       if (data.data) {
         setScript(data.data)
@@ -55,7 +56,7 @@ const ScriptEditor = forwardRef(function ScriptEditor({
 
   const fetchVersions = async () => {
     try {
-      const res = await fetch(`${apiBase}?type=${scriptType}`, { headers })
+      const res = await fetch(`${apiBase}?type=${scriptType}`, { headers: await authHeaders() })
       const data = await res.json()
       setVersions(data.data || [])
     } catch { /* */ }
@@ -71,7 +72,7 @@ const ScriptEditor = forwardRef(function ScriptEditor({
     setSaving(true)
     try {
       const res = await fetch(apiBase, {
-        method: 'POST', headers,
+        method: 'POST', headers: await authHeaders(),
         body: JSON.stringify({
           scriptType,
           content: body,
@@ -102,7 +103,7 @@ const ScriptEditor = forwardRef(function ScriptEditor({
 
   const handleActivateVersion = async (scriptId) => {
     try {
-      const res = await fetch(`${apiBase}/${scriptId}/activate`, { method: 'POST', headers })
+      const res = await fetch(`${apiBase}/${scriptId}/activate`, { method: 'POST', headers: await authHeaders() })
       const data = await res.json()
       if (data.data) {
         setScript(data.data)
@@ -122,7 +123,7 @@ const ScriptEditor = forwardRef(function ScriptEditor({
     try {
       const res = await fetch(`${apiBase}/run?type=${scriptType}`, {
         method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ envId: envId || null }),
       })
       const data = await res.json()
