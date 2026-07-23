@@ -145,6 +145,10 @@ async def list_cases(
     keyword: str | None = None,
     include_deleted: bool = False,
     review_status: str | None = None,
+    lifecycle_status: str | None = None,
+    manual_status: str | None = None,
+    ui_status: str | None = None,
+    api_status: str | None = None,
 ) -> tuple[list[Case], int]:
     """分页查询用例列表，支持多条件筛选。返回 (cases, total)。"""
     from sqlalchemy import func, or_
@@ -175,6 +179,14 @@ async def list_cases(
         base = base.where(or_(Case.title.ilike(like), Case.case_code.ilike(like)))
     if review_status:
         base = base.where(Case.review_status == review_status)
+    if lifecycle_status:
+        base = base.where(Case.lifecycle_status == lifecycle_status)
+    if manual_status:
+        base = base.where(Case.manual_status == manual_status)
+    if ui_status:
+        base = base.where(Case.ui_status == ui_status)
+    if api_status:
+        base = base.where(Case.api_status == api_status)
 
     # 总数
     count_result = await session.execute(

@@ -51,6 +51,7 @@ export default function CaseManagement() {
   const [loading, setLoading] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [readyFilter, setReadyFilter] = useState('')
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
@@ -126,15 +127,22 @@ export default function CaseManagement() {
         params.set('includeDeleted', 'true')
       } else if (statusFilter === 'pending_review') {
         params.set('reviewStatus', 'pending_review')
+      } else if (['draft', 'done', 'deprecated'].includes(statusFilter)) {
+        params.set('lifecycleStatus', statusFilter)
       } else if (statusFilter) {
         params.set('automationStatus', statusFilter)
+      }
+      // 维度就绪度筛选（如 ui:executable）——供批量执行前挑"该维度可跑"的用例
+      if (readyFilter) {
+        const [dim, st] = readyFilter.split(':')
+        params.set(`${dim}Status`, st)
       }
       if (selectedFolderId) params.set('folderId', selectedFolderId)
       const res = await api.get(`/projects/${projectId}/branches/${globalBranchId}/cases?${params}`)
       setCases(res.data || [])
       setTotal(res.pagination?.total || 0)
     } catch { /* */ } finally { setLoading(false) }
-  }, [projectId, globalBranchId, page, pageSize, keyword, statusFilter, selectedFolderId])
+  }, [projectId, globalBranchId, page, pageSize, keyword, statusFilter, readyFilter, selectedFolderId])
 
   useEffect(() => { fetchFolders() }, [fetchFolders])
   useEffect(() => { fetchCases() }, [fetchCases])
@@ -612,12 +620,22 @@ export default function CaseManagement() {
                 onPressEnter={fetchCases} />
               <Radio.Group value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }} size="small" buttonStyle="solid">
                 <Radio.Button value="">全部</Radio.Button>
-                <Radio.Button value="automated">已自动化</Radio.Button>
-                <Radio.Button value="pending">待自动化</Radio.Button>
-                <Radio.Button value="archived">已归档</Radio.Button>
-                <Radio.Button value="deleted">已删除</Radio.Button>
+                <Radio.Button value="draft">草稿</Radio.Button>
+                <Radio.Button value="done">完成</Radio.Button>
+                <Radio.Button value="deprecated">废弃</Radio.Button>
                 <Radio.Button value="pending_review">待审核</Radio.Button>
+                <Radio.Button value="deleted">已删除</Radio.Button>
               </Radio.Group>
+              <Select size="small" value={readyFilter} onChange={v => { setReadyFilter(v); setPage(1) }}
+                style={{ width: 150 }} popupMatchSelectWidth={false}
+                options={[
+                  { value: '', label: '就绪度：不限' },
+                  { value: 'ui:executable', label: 'UI 可执行' },
+                  { value: 'ui:pending_review', label: 'UI 待审' },
+                  { value: 'api:executable', label: '接口 可执行' },
+                  { value: 'api:pending_review', label: '接口 待审' },
+                  { value: 'manual:executable', label: '手动 可执行' },
+                ]} />
               <span style={{ flex: 1 }} />
               <Space size={6} wrap>
                 <Tooltip title="粘贴需求文档（PRD/用户故事），AI 自动生成手工测试用例（操作步骤+预期结果）">
