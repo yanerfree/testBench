@@ -614,6 +614,7 @@ async def execute_adhoc(
     user: User = Depends(require_project_role("project_admin", "developer", "tester")),
 ):
     """批量执行选中用例（不走测试计划），直接生成报告。"""
+    from sqlalchemy import select
     from app.models.report import TestReport, TestReportScenario
     from app.models.case import Case
     from app.engine.tasks.adhoc_execution import run_adhoc_execution
@@ -633,7 +634,8 @@ async def execute_adhoc(
     executable_count = 0
     skipped_count = 0
     for case in cases:
-        has_script = bool(case.script_ref_file) and case.automation_status == "automated"
+        _dim = case.api_status if body.type == "api" else case.ui_status
+        has_script = (_dim == "executable") or (bool(case.script_ref_file) and case.automation_status == "automated")
         if has_script:
             executable_count += 1
         else:
@@ -658,7 +660,8 @@ async def execute_adhoc(
     await session.flush()
 
     for i, case in enumerate(cases):
-        has_script = bool(case.script_ref_file) and case.automation_status == "automated"
+        _dim = case.api_status if body.type == "api" else case.ui_status
+        has_script = (_dim == "executable") or (bool(case.script_ref_file) and case.automation_status == "automated")
         scenario = TestReportScenario(
             report_id=report.id,
             case_id=case.id,

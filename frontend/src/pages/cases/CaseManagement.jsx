@@ -170,19 +170,24 @@ export default function CaseManagement() {
   const [batchExecType, setBatchExecType] = useState('api')
   const [batchPrecheck, setBatchPrecheck] = useState({ total: 0, executable: 0, skipped: 0 })
 
+  const countExecutable = (selected, type) => selected.filter(c => {
+    const dim = type === 'api' ? c.apiStatus : c.uiStatus
+    return dim === 'executable' || (c.scriptRefFile && c.automationStatus === 'automated')
+  }).length
+
   const openBatchExec = () => {
     if (!selectedRowKeys.length) { message.warning('请先选择用例'); return }
     const selected = cases.filter(c => selectedRowKeys.includes(c.id))
-    const apiCount = selected.filter(c => c.automationStatus === 'automated').length
-    setBatchExecType('api')
-    setBatchPrecheck({ total: selected.length, executable: apiCount, skipped: selected.length - apiCount })
+    const execCount = countExecutable(selected, 'ui')
+    setBatchExecType('ui')
+    setBatchPrecheck({ total: selected.length, executable: execCount, skipped: selected.length - execCount })
     setBatchExecOpen(true)
   }
 
   const updatePrecheck = (type) => {
     setBatchExecType(type)
     const selected = cases.filter(c => selectedRowKeys.includes(c.id))
-    const execCount = selected.filter(c => c.automationStatus === 'automated').length
+    const execCount = countExecutable(selected, type)
     setBatchPrecheck({ total: selected.length, executable: execCount, skipped: selected.length - execCount })
   }
 
