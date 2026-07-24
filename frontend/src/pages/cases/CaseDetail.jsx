@@ -894,7 +894,7 @@ function ScenarioEditor({
                             const resp = await fetch(`/api/projects/${projectId}/branches/${branchId}/api-tests/generate`, {
                               method: 'POST',
                               headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ apiInfo, folderName: caseTitle || 'UI流量提取' }),
+                              body: JSON.stringify({ apiInfo, folderName: caseTitle || 'UI流量提取', caseId }),
                             })
                             if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
                             const reader = resp.body.getReader()

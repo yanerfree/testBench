@@ -307,10 +307,22 @@ async def run_scenario(
     token_cache: TokenCache | None = None,
 ) -> AsyncIterator[RunEvent]:
     async with _run_semaphore:
-        # 变量优先级：步骤提取 > 运行时 > 用户选择的环境(base_env) > 场景 env_variables
+        # 变量优先级：步骤提取 > 场景变量(SV_*) > 运行时 > 用户选择的环境(base_env) > 场景 env_variables
         env = dict(scenario.env_variables or {})
         env.update(base_env or {})
         _inject_runtime_variables(env)
+        # 源用例的场景变量：与 UI 脚本共用同一份定义（random 每次执行唯一）
+        # 接口步骤里既可写 ${名字}（与抽屉提示一致），也可写 ${SV_名字}（与 UI 脚本 process.env.SV_x 同名）
+        if getattr(scenario, "source_case_id", None):
+            try:
+                from app.services.scenario_variable_service import resolve_scenario_variables
+                sv = await resolve_scenario_variables(session, scenario.source_case_id, global_lookup=env)
+                for k, val in sv.items():
+                    env[k] = val  # SV_<name> / SV_RUN_ID
+                    if k.startswith("SV_") and k != "SV_RUN_ID":
+                        env.setdefault(k[3:], val)  # 裸名 ${名字}，不覆盖已有环境变量
+            except Exception as e:
+                logger.warning("解析源用例场景变量失败 case_id=%s: %s", scenario.source_case_id, e)
         if token_cache is None:
             token_cache = TokenCache(env)
 

@@ -892,6 +892,7 @@ class GenerateRequest(BaseSchema):
     env_variables: dict | None = None
     env_id: str | None = None
     folder_id: str | None = None
+    case_id: str | None = None
 
 
 @router.post("/generate")
@@ -932,6 +933,7 @@ async def generate_api_tests(
                 api_ids=body.api_ids,
                 env_variables=env_vars or None,
                 folder_id=uuid.UUID(body.folder_id) if body.folder_id else None,
+                case_id=uuid.UUID(body.case_id) if body.case_id else None,
                 ai_config=ai_config,
                 session=session,
                 user_id=current_user.id,

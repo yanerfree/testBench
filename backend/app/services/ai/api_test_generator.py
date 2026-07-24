@@ -33,6 +33,7 @@ async def generate_api_test(
     api_ids: list[str] | None,
     env_variables: dict | None,
     folder_id: uuid.UUID | None = None,
+    case_id: uuid.UUID | None = None,
     ai_config: ResolvedAIConfig,
     session: AsyncSession,
     user_id: uuid.UUID,
@@ -100,12 +101,31 @@ async def generate_api_test(
     if env_variables:
         env_str = "\n".join(f"- ${{{k}}} = {v}" for k, v in env_variables.items())
 
+    # 源用例的场景变量：提示 AI 用 ${名字} 引用，保证 UI/接口共用同一份、造数唯一
+    sv_str = ""
+    if case_id:
+        try:
+            from app.models.scenario_variable import ScenarioVariable
+            sv_rows = (
+                await session.execute(select(ScenarioVariable).where(ScenarioVariable.case_id == case_id))
+            ).scalars().all()
+            if sv_rows:
+                lines = []
+                for v in sv_rows:
+                    hint = {"random": "每次执行唯一值(造数用)", "global_ref": "引用全局数据", "literal": "固定值"}.get(v.kind, v.kind)
+                    lines.append(f"- ${{{v.name}}} — {v.description or hint}")
+                sv_str = "\n".join(lines)
+        except Exception as e:
+            logger.warning("加载源用例场景变量失败 case_id=%s: %s", case_id, e)
+
     messages = [
         {"role": "system", "content": f"""你是资深 QA 工程师。严格按照以下规范生成接口测试场景。
 
 {skill_content}
 
 {f'当前项目环境变量：\n{env_str}' if env_str else ''}
+{f'''本场景可用的场景变量（造数/唯一数据请优先用这些，格式 ${{名字}}，与 UI 测试共用同一份）：
+{sv_str}''' if sv_str else ''}
 
 直接输出 JSON，不要用 ```json 包裹。"""},
         {"role": "user", "content": f"""请根据以下接口定义生成测试场景：
@@ -176,6 +196,7 @@ async def generate_api_test(
             description=sc.get("description", ""),
             status="draft",
             source_api_ids=api_ids,
+            source_case_id=case_id,
             env_variables=env_variables,
             folder_id=sc_folder_id,
             created_by=user_id,

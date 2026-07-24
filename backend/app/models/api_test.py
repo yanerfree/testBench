@@ -23,6 +23,8 @@ class ApiTestScenario(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="draft")  # draft | published | deprecated
     source: Mapped[str] = mapped_column(String(10), default="ai")  # ai | manual
+    # 源用例：从功能用例「编排为接口测试」而来时回填，运行时据此解析该用例的场景变量(SV_*)，实现 UI/接口共用一份场景变量
+    source_case_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("cases.id", ondelete="SET NULL"), nullable=True)
     pre_steps: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # 场景级前置操作(如auth)
     source_api_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     env_variables: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
