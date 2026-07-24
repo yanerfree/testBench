@@ -24,6 +24,13 @@ const statusLabels = { automated: '已自动化', pending: '待自动化', remov
 const dotColors = { P0: '#e8453c', P1: '#ff7d00', P2: '#4e8af0', P3: 'rgba(0,0,0,0.15)', automated: '#0ea5a0', pending: '#faad14', removed: '#e8453c' }
 const phaseColor = { setup: '#7c5cbf', action: '#0ea5a0', verify: '#0ea5a0' }
 const phaseLabel = { setup: '准备', action: '操作', verify: '验证' }
+
+// 接口视图详情：JSON 串美化展示，非 JSON 原样返回
+function prettyJson(s) {
+  if (s == null) return ''
+  const str = String(s)
+  try { return JSON.stringify(JSON.parse(str), null, 2) } catch { return str }
+}
 const scenarioStatusMap = {
   draft: { label: '草稿', color: '#86909c', bg: 'rgba(0,0,0,0.02)' },
   debugging: { label: '调试中', color: '#faad14', bg: '#fffbe6' },
@@ -387,6 +394,7 @@ function ScenarioEditor({
   const [showNoiseSteps, setShowNoiseSteps] = useState(false)
   const [selectedApis, setSelectedApis] = useState([])
   const [apiArranging, setApiArranging] = useState(false)
+  const [expandedApi, setExpandedApi] = useState(null)  // 接口视图展开查看请求/响应详情的行索引
   const [debugHistory, setDebugHistory] = useState([])
   const scriptEditorRef = useRef(null)
 
@@ -941,8 +949,14 @@ function ScenarioEditor({
                       <span style={{ flex: 1 }}>URL</span>
                       <span style={{ width: 60, textAlign: 'right' }}>状态</span>
                     </div>
-                    {debugResult.captured_requests.map((r, i) => (
-                      <div key={i} style={{
+                    {debugResult.captured_requests.map((r, i) => {
+                      const reqBody = r.requestBody || r.post_data || ''
+                      const respBody = r.responseBody || ''
+                      const hasDetail = reqBody || respBody || (r.queryParams && Object.keys(r.queryParams).length)
+                      const expanded = expandedApi === i
+                      return (
+                      <div key={i}>
+                      <div style={{
                         display: 'flex', padding: '4px 12px', fontSize: 12, alignItems: 'center',
                         borderBottom: '1px solid rgba(0,0,0,0.02)',
                         background: selectedApis.includes(i) ? 'rgba(14,165,160,0.04)' : i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.01)',
@@ -957,15 +971,50 @@ function ScenarioEditor({
                           <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#4e5969', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {(r.path || r.url || '').replace(/^https?:\/\/[^/]+/, '')}
                           </div>
-                          {r.post_data && (
+                          {reqBody && (
                             <div style={{ fontSize: 10, color: '#86909c', fontFamily: 'monospace', marginTop: 2, maxHeight: 40, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {r.post_data.substring(0, 120)}{r.post_data.length > 120 ? '...' : ''}
+                              {String(reqBody).substring(0, 120)}{String(reqBody).length > 120 ? '...' : ''}
                             </div>
                           )}
                         </div>
-                        <Tag color={r.status < 400 ? undefined : 'error'} style={{ margin: 0, fontSize: 11, ...(r.status < 400 ? { background: '#e0f7f6', color: '#0ea5a0', border: 'none' } : {}) }}>{r.status}</Tag>
+                        {hasDetail && (
+                          <a style={{ fontSize: 11, marginRight: 10, color: expanded ? '#0ea5a0' : '#86909c', whiteSpace: 'nowrap' }}
+                            onClick={e => { e.stopPropagation(); setExpandedApi(expanded ? null : i) }}>
+                            {expanded ? '收起' : '详情'}
+                          </a>
+                        )}
+                        <Tag color={r.status < 400 ? undefined : 'error'} style={{ margin: 0, fontSize: 11, ...(r.status < 400 && r.status >= 0 ? { background: '#e0f7f6', color: '#0ea5a0', border: 'none' } : {}) }}>{r.status}</Tag>
                       </div>
-                    ))}
+                      {expanded && (
+                        <div style={{ padding: '10px 12px 12px 44px', background: 'rgba(14,165,160,0.03)', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: 12 }}>
+                          <div style={{ color: '#4e5969', wordBreak: 'break-all', marginBottom: 6, fontFamily: 'monospace', fontSize: 11 }}>
+                            <b style={{ color: '#1d2129' }}>{r.method}</b> {r.url}
+                          </div>
+                          {r.queryParams && Object.keys(r.queryParams).length > 0 && (
+                            <div style={{ marginBottom: 8 }}>
+                              <div style={{ color: '#86909c', fontWeight: 600, marginBottom: 2 }}>Query 参数</div>
+                              <pre style={{ margin: 0, padding: 8, background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 6, fontSize: 11, maxHeight: 140, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{JSON.stringify(r.queryParams, null, 2)}</pre>
+                            </div>
+                          )}
+                          {reqBody ? (
+                            <div style={{ marginBottom: 8 }}>
+                              <div style={{ color: '#86909c', fontWeight: 600, marginBottom: 2 }}>请求体{r.requestContentType ? ` (${r.requestContentType})` : ''}</div>
+                              <pre style={{ margin: 0, padding: 8, background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 6, fontSize: 11, maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{prettyJson(reqBody)}</pre>
+                            </div>
+                          ) : (r.method !== 'GET' && <div style={{ color: '#c9cdd4', marginBottom: 8 }}>（无请求体）</div>)}
+                          {respBody ? (
+                            <div>
+                              <div style={{ color: '#86909c', fontWeight: 600, marginBottom: 2 }}>响应体{r.responseContentType ? ` (${r.responseContentType})` : ''}{r.status >= 0 ? ` · ${r.status}` : ''}</div>
+                              <pre style={{ margin: 0, padding: 8, background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 6, fontSize: 11, maxHeight: 240, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{prettyJson(respBody)}</pre>
+                            </div>
+                          ) : (
+                            <div style={{ color: '#c9cdd4' }}>（无响应体{r.status < 0 ? '，请求未完成' : ''}）</div>
+                          )}
+                        </div>
+                      )}
+                      </div>
+                      )
+                    })}
                   </div>
                 </div>
               ) : (

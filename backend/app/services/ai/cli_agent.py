@@ -88,7 +88,8 @@ def _build_task_prompt(title, steps, expected, base_url, preconditions, user, pa
 
 ## 前置数据处理（重要 — 区分全局 vs 场景，保证脚本自包含、可反复执行）
 前置条件里的"业务数据前置"必须分两类处理：
-- **场景级数据**（本用例专属、可随意增删的，如"已有一个运行中的服务/一条XX记录"）：脚本里**自己创建**（探索时你会看到创建接口，在 test body 开头用 `page.request.post(...)` 或走 UI 创建）+ **唯一命名**（`` `xxx_${{Date.now()}}` ``），并在 `cleanup.add(async () => {{ ... }})` 里**自己删除**。做到不依赖环境已有数据、可反复跑。
+- **场景级数据**（本用例专属、可随意增删的，如"已有一个运行中的服务/一条XX记录"）：脚本里**自己创建**（探索时你会看到创建接口，在 test body 开头用 `page.request.post(...)` 或走 UI 创建）+ **唯一命名**，并在 `cleanup.add(async () => {{ ... }})` 里**自己删除**。做到不依赖环境已有数据、可反复跑。
+  - **唯一命名务必优先用场景变量**：若下方「自动化上下文」列出了场景变量（`process.env.SV_<名>`），**必须直接引用它们作为数据的名字/值**（random 类已自动带唯一后缀，可据此识别本脚本造的数据）。**严禁再自己拼 `` `xxx_${{Date.now()}}` `` 或任何随机串**——那样会导致 UI 与接口测试造出的名字对不上、且无法识别本脚本造的数据。**只有当某项数据在场景变量里确实没有对应项时**，才退回用 `` `xxx_${{Date.now()}}` `` 生成唯一名。
 - **全局级数据**（系统级共享、不该被测试删除的，如"系统已有默认租户/默认网关"、具名共享资源）：脚本里**先查是否存在**（GET/列表接口或 UI 确认）——存在就用、**绝不创建也不删除**；若不存在，在最终回复里注明"缺全局前置数据 <名称>，需先在环境准备"，不要盲目创建全局资源。
 - 判断：措辞含"一个/某条/新建/任意" → 场景级（自建自删）；含"系统/平台/默认/全局/具名共享" → 全局级（查存在、只用不删）。拿不准按场景级处理。
 - **API 造数/清理必须带鉴权**（否则 401）：`page.request` 不会自动带登录态。**优先用注入的 `process.env.TEST_TOKEN`**（见下方「自动化上下文」，若有）：在每个 `page.request.post/delete` 里加 `headers: {{ Authorization: `Bearer ${{process.env.TEST_TOKEN}}` }}`。若上下文未提供 token，再退而登录后从 localStorage 取（`browser_evaluate` 确认 token 存哪个 key）或用 `page.evaluate(async () => await fetch(url, {{ method, body, headers, credentials: 'include' }}))` 借会话 cookie。
