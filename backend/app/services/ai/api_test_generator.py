@@ -133,24 +133,50 @@ async def generate_api_test(
 {full_api_info}"""},
     ]
 
+    # 带重试的生成：haiku 等模型偶发「输出超 max_tokens 被截断 → JSON 不完整/无法解析」，
+    # 直接表现为「编排后接口测试没数据」或静默丢场景。对策：
+    #  1) max_tokens 拉高到 16000（网关允许 >8192），给完整 JSON 留足空间；
+    #  2) 解析失败或 finish_reason=length（截断）就重试，最多 3 次，彻底消除「无数据」。
+    GEN_MAX_TOKENS = 16000
+    MAX_ATTEMPTS = 3
     full_content = ""
-    try:
-        async for chunk in llm_client.stream(messages, config=ai_config, max_tokens=8192):
-            if chunk.delta:
-                full_content += chunk.delta
-                yield GenEvent(type="step_progress", data={"step": 2, "chunk": chunk.delta})
-    except Exception as e:
-        yield GenEvent(type="error", data={"message": f"AI 生成失败: {str(e)[:200]}"})
-        return
+    parsed: list[dict] = []
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        full_content = ""
+        finish_reason = None
+        try:
+            async for chunk in llm_client.stream(messages, config=ai_config, max_tokens=GEN_MAX_TOKENS):
+                if chunk.delta:
+                    full_content += chunk.delta
+                    yield GenEvent(type="step_progress", data={"step": 2, "chunk": chunk.delta})
+                if chunk.finish_reason:
+                    finish_reason = chunk.finish_reason
+        except Exception as e:
+            if attempt < MAX_ATTEMPTS:
+                logger.warning("接口场景生成第 %d 次 LLM 调用异常，重试: %s", attempt, e)
+                continue
+            yield GenEvent(type="error", data={"message": f"AI 生成失败: {str(e)[:200]}"})
+            return
+
+        parsed = _parse_scenarios(full_content)
+        truncated = finish_reason == "length"
+        # 只有「解析出场景 且 未被截断」才算干净成功；截断即便侥幸解析出部分也重试，保证完整不丢场景
+        if parsed and not truncated:
+            break
+        if attempt < MAX_ATTEMPTS:
+            logger.warning(
+                "接口场景生成第 %d 次结果不可靠(parsed=%d truncated=%s len=%d)，重试",
+                attempt, len(parsed), truncated, len(full_content),
+            )
+            yield GenEvent(type="step_progress", data={"step": 2, "chunk": f"\n[结果不完整，正在第 {attempt + 1} 次重试…]\n"})
 
     yield GenEvent(type="step_done", data={"step": 2, "summary": f"生成完成 {len(full_content)} 字符"})
 
     # Step 3: 解析 + 入库
     yield GenEvent(type="step_start", data={"step": 3, "title": "解析结果并入库"})
 
-    parsed = _parse_scenarios(full_content)
     if not parsed:
-        yield GenEvent(type="error", data={"message": "无法解析 AI 返回的 JSON"})
+        yield GenEvent(type="error", data={"message": "无法解析 AI 返回的 JSON（已重试多次仍失败，请重试或减少所选接口数量）"})
         return
 
     # 获取当前最大编号

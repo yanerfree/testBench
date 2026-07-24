@@ -103,6 +103,15 @@ async def run_ui_script(
     finally:
         shutil.rmtree(sandbox_dir, ignore_errors=True)
 
+    # MCP 无登录上下文：executed_by 取一个真实用户（优先 admin），
+    # 否则会命中 script_runs.executed_by 外键约束，导致「脚本明明跑通了却存不下结果」。
+    from app.models.user import User
+    executor_id = (
+        await session.execute(
+            select(User.id).where(User.is_active.is_(True)).order_by(User.role.asc(), User.created_at.asc()).limit(1)
+        )
+    ).scalar_one_or_none()
+
     run_record = ScriptRun(
         case_id=cid,
         script_id=script.id,
@@ -112,7 +121,7 @@ async def run_ui_script(
         error_summary=result.get("error_summary"),
         stdout=result.get("stdout"),
         screenshots=result.get("screenshots") or None,
-        executed_by=uuid.UUID("00000000-0000-0000-0000-000000000000"),
+        executed_by=executor_id,
     )
     session.add(run_record)
 
