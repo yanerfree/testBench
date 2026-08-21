@@ -61,7 +61,7 @@ export default function ReviewReport() {
       render: (_, r) => (
         <span style={{ fontSize: 12 }}>
           <b style={{ color: '#0ea5a0' }}>{r.approved}</b> / <b style={{ color: '#e8453c' }}>{r.rejected}</b>
-          {' / '}<b style={{ color: '#fa8c16' }}>{r.resubmitted}</b>
+          {' / '}<b style={{ color: '#ff7d00' }}>{r.resubmitted}</b>
         </span>
       ) },
     { title: '未审', dataIndex: 'notReviewed', width: 68, align: 'center',
@@ -88,7 +88,7 @@ export default function ReviewReport() {
             }>
               <span style={{ fontSize: 12 }}>
                 <Tag color={g.count > 1 ? 'warning' : undefined}
-                  style={{ fontSize: 10, margin: '0 6px 0 0' }}>{g.count}×</Tag>
+                  style={{ fontSize: 11, margin: '0 6px 0 0' }}>{g.count}×</Tag>
                 <b>{g.display || g.topic || g.gap}</b>
                 {/* 话题命中了才把原话作为副文本跟在后面；没命中时 display 本身就是原话，
                     再跟一遍就是重复（而话题键那串实词签名不该露给人看）。 */}

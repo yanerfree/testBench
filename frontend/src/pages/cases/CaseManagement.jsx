@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { timeColumn } from '../../utils/timeCol'
 import { Card, Input, Table, Tag, Button, Tree, Radio, Space, Pagination, Select, Modal, Upload, message, Form, Popconfirm, Tooltip, Empty, Spin, TreeSelect, Checkbox, Dropdown, Alert, Progress } from 'antd'
 import { SearchOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, InboxOutlined, SettingOutlined, EditOutlined, DeleteOutlined, CopyOutlined, StarFilled, LoadingOutlined, ApiOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PlayCircleOutlined, ReloadOutlined, ClearOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -18,7 +19,7 @@ const REJECT_CATEGORIES = [
 const priorityColors = { P0: '#fff', P1: '#fff', P2: '#fff', P3: '#fff' }
 const priorityBg = { P0: '#e8453c', P1: '#ff7d00', P2: '#4e8af0', P3: 'rgba(0,0,0,0.08)' }
 const statusMap = { automated: '已自动化', pending: '待自动化', script_removed: '脚本已移除', archived: '已归档' }
-const statusColors = { automated: '#0ea5a0', pending: '#faad14', script_removed: '#e8453c', archived: '#bfbfbf' }
+const statusColors = { automated: '#0ea5a0', pending: '#faad14', script_removed: '#e8453c', archived: '#c9cdd4' }
 const statusBg = { automated: 'transparent', pending: 'transparent', script_removed: 'transparent', archived: 'transparent' }
 // 状态体系 v2
 
@@ -26,8 +27,8 @@ const statusBg = { automated: 'transparent', pending: 'transparent', script_remo
 //
 const lifecycleMap = {
   draft: { label: '草稿', color: '#86909c', bg: 'rgba(0,0,0,0.03)' },
-  done: { label: '完成', color: '#0ea5a0', bg: '#e0f7f6' },
-  deprecated: { label: '废弃', color: '#e8453c', bg: '#fff2f0' },
+  done: { label: '完成', color: '#0ea5a0', bg: 'rgba(14,165,160,0.1)' },
+  deprecated: { label: '废弃', color: '#e8453c', bg: 'rgba(232,69,60,0.1)' },
 }
 // 叫法必须和上面 TIER 的档位、和详情页的 dimStatusMap 三处一字不差。
 // 三维只有 3 态，直接显示存储值 —— 不再压成档位再显示（那是三次
@@ -628,9 +629,9 @@ export default function CaseManagement() {
 
   // ---- 列表列（可配置） ----
   const allColumns = [
-    { key: 'caseCode', title: '用例ID', dataIndex: 'caseCode', width: 158, defaultVisible: true,
+    { key: 'caseCode', title: '用例ID', dataIndex: 'caseCode', width: 112, defaultVisible: true,
       render: v => <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#86909c', whiteSpace: 'nowrap' }}>{v}</span> },
-    { key: 'title', title: '标题', dataIndex: 'title', ellipsis: { showTitle: false }, defaultVisible: true, fixed: true, render: (v, row) => (
+    { key: 'title', title: '标题', dataIndex: 'title', width: 200, ellipsis: { showTitle: false }, defaultVisible: true, alwaysOn: true, render: (v, row) => (
       <Tooltip title={v} placement="topLeft" mouseEnterDelay={0.3}><span
         // 必须 stopPropagation：行上 onRow 也挂了同一个 navigate，而它的放行判断只认
         // .ant-btn/.ant-checkbox-wrapper/a —— 这里是裸 span，两个 handler 都会跑，
@@ -639,7 +640,7 @@ export default function CaseManagement() {
         style={{ color: '#1d2129', cursor: 'pointer', fontWeight: 500 }}
         onMouseEnter={e => e.target.style.color = '#0ea5a0'}
         onMouseLeave={e => e.target.style.color = '#1d2129'}
-      >{row.isCore && <StarFilled title="核心/标杆用例（供其他用例参考生成）" style={{ color: '#fa8c16', marginRight: 4, fontSize: 12 }} />}{v}</span></Tooltip>
+      >{row.isCore && <StarFilled title="核心/标杆用例（供其他用例参考生成）" style={{ color: '#ff7d00', marginRight: 4, fontSize: 12 }} />}{v}</span></Tooltip>
     )},
     // 类型 = **这条用例在测什么形态的东西**，只有两类：
     //   场景   —— 验证一个完整功能，多步编排（配下去 → 真生效 → 看得见的地方验出来）
@@ -650,7 +651,7 @@ export default function CaseManagement() {
     // 存储值 e2e/api 一直是这个意思，只是从没写清楚过，于是被当成
     // 「做不做 UI」在用（实测 6 条全是场景，3 条被标成了 api）。
     // 做不做 UI 是 target_level 的事，跟类型无关 —— 一条单接口用例也可能要验页面报错提示。
-    { key: 'type', title: '类型', dataIndex: 'type', width: 62, defaultVisible: true,
+    { key: 'type', title: '类型', dataIndex: 'type', width: 56, defaultVisible: true,
       render: v => (
         <Tooltip title={<span style={{ fontSize: 12 }}>
           场景：验证一个完整功能，多步编排。<br />
@@ -665,22 +666,22 @@ export default function CaseManagement() {
     // 「场景」列已并入下面的「三件套」列 —— 「有没有」是「什么状态」的子集：
     // 状态只要不是「无」就说明有。两列并排是把同一件事说两遍，而且它们
     // 各自读不同字段，实测出现过一列说有、另一列说未开始。
-    { key: 'priority', title: '优先级', dataIndex: 'priority', width: 56, align: 'center', defaultVisible: true, render: v => <Tag style={{ background: priorityBg[v], color: priorityColors[v], border: 'none', margin: 0 }}>{v}</Tag> },
+    { key: 'priority', title: '优先级', dataIndex: 'priority', width: 68, align: 'center', defaultVisible: true, render: v => <Tag style={{ background: priorityBg[v], color: priorityColors[v], border: 'none', margin: 0 }}>{v}</Tag> },
     // 模块/子模块**没有对应字段**：cases.module / submodule 早在迁移 zza0dead1 里删了，
     // 接口也不返回，于是这两列一直渲染 '-'（用户截图指出来的就是这个）。
     // 模块信息真实存在于目录树上，这里按 folderId 现推：顶层目录=模块，叶子目录=子模块。
-    { key: 'module', title: '模块', dataIndex: 'folderId', width: 110, defaultVisible: true,
+    { key: 'module', title: '模块', dataIndex: 'folderId', width: 96, defaultVisible: true,
       ellipsis: { showTitle: false },
       render: v => { const m = folderPathOf(v)[0] || '-'
         return <Tooltip title={m} placement="topLeft"><span style={{ fontSize: 12, whiteSpace: 'nowrap' }}>{m}</span></Tooltip> } },
-    { key: 'subModule', title: '子模块', dataIndex: 'folderId', width: 110, defaultVisible: false,
+    { key: 'subModule', title: '子模块', dataIndex: 'folderId', width: 96, defaultVisible: false,
       ellipsis: { showTitle: false },
       render: v => { const p = folderPathOf(v), m = p.length > 1 ? p[p.length - 1] : '-'
         return <Tooltip title={m} placement="topLeft"><span style={{ fontSize: 12, whiteSpace: 'nowrap' }}>{m}</span></Tooltip> } },
-    { key: 'lifecycleStatus', title: '状态', dataIndex: 'lifecycleStatus', width: 68, defaultVisible: true, render: v => { const m = lifecycleMap[v] || lifecycleMap.draft; return <Tag style={{ background: m.bg, color: m.color, border: 'none', margin: 0, fontSize: 11 }}>{m.label}</Tag> } },
+    { key: 'lifecycleStatus', title: '状态', dataIndex: 'lifecycleStatus', width: 64, defaultVisible: true, render: v => { const m = lifecycleMap[v] || lifecycleMap.draft; return <Tag style={{ background: m.bg, color: m.color, border: 'none', margin: 0, fontSize: 11 }}>{m.label}</Tag> } },
     // 三个维度挤成 10px 的小圆点，得逐个 hover 才知道是什么 —— 字号提到 11、
     // 整组一个 tooltip 一次说清三维，不用挨个悬停
-    { key: 'dimStatus', title: '覆盖', dataIndex: 'manualStatus', width: 214, defaultVisible: true, render: (_, r) => {
+    { key: 'dimStatus', title: '覆盖', dataIndex: 'manualStatus', width: 210, defaultVisible: true, render: (_, r) => {
       const dims = [['手动', 'manual', r.manualStatus], ['UI', 'ui', r.uiStatus],
                     ['接口', 'api', r.apiStatus]]
       const badge = (d, v) => dimBadge(r.targetLevel, d, v)
@@ -728,7 +729,7 @@ export default function CaseManagement() {
         )
         if (r.flakyEvidence) return (
           <Tooltip title={`${r.flakyEvidence?.note || '结果反复翻转'}。**仍会照常执行** —— 打开用例详情看"该往哪儿看"`}>
-            <Tag color="#fff7e6" style={{ color: '#fa8c16', border: 'none', margin: 0 }}>不稳定</Tag>
+            <Tag color="#fff7e6" style={{ color: '#ff7d00', border: 'none', margin: 0 }}>不稳定</Tag>
           </Tooltip>
         )
         return null
@@ -745,10 +746,14 @@ export default function CaseManagement() {
     // 关联 bug 一列两态。**留痕是这一列存在的主要理由** ——
     // 「这条用例曾经抓到过 bug」以前只存在于当时那次对话里，会话一结束就没了，
     // 而"哪些用例真抓到过问题"是评估用例价值的唯一依据。
-    { key: 'bugRefs', title: '关联bug', dataIndex: 'bugRefs', width: 136, defaultVisible: true,
+    // 关联bug / 标签默认收起：13 列固定宽度合计 1244px，1600 视口下内容区只有
+    // 1142px，全开必然横向滚动，「审核」和「更新时间」会被挤到看不见的地方。
+    // 这两列在实测数据里整列都是「—」，收起后整张表在 1600 宽下完整可见；
+    // 需要看的话表头右上角齿轮里一键打开。
+    { key: 'bugRefs', title: '关联bug', dataIndex: 'bugRefs', width: 96, defaultVisible: false,
       render: (v, row) => {
         const refs = v || []
-        if (!refs.length) return <span style={{ fontSize: 11, color: '#d9d9d9' }}>—</span>
+        if (!refs.length) return <span style={{ fontSize: 11, color: '#c9cdd4' }}>—</span>
         const openRefs = refs.filter(r => (r.status || 'open') === 'open')
         const label = openRefs.length
           ? openRefs.map(r => r.ref).join('、')
@@ -772,22 +777,22 @@ export default function CaseManagement() {
         return (
           <Tooltip title={tip} placement="topLeft">
             <Tag color={openRefs.length ? 'error' : undefined}
-              style={{ fontSize: 10, margin: 0, maxWidth: 124, overflow: 'hidden',
+              style={{ fontSize: 11, margin: 0, maxWidth: 124, overflow: 'hidden',
                        textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                       ...(openRefs.length ? {} : { background: '#f2f3f5', color: '#86909c', border: 'none' }) }}
+                       ...(openRefs.length ? {} : { background: 'rgba(0,0,0,0.04)', color: '#86909c', border: 'none' }) }}
               onClick={e => e.stopPropagation()}>{label}</Tag>
           </Tooltip>
         )
       } },
-    { key: 'tags', title: '标签', dataIndex: 'tags', width: 120, defaultVisible: true,
+    { key: 'tags', title: '标签', dataIndex: 'tags', width: 88, defaultVisible: false,
       render: v => {
         const tags = v || []
-        if (!tags.length) return <span style={{ fontSize: 11, color: '#d9d9d9' }}>—</span>
+        if (!tags.length) return <span style={{ fontSize: 11, color: '#c9cdd4' }}>—</span>
         return (
           <Tooltip title={tags.join('、')} placement="topLeft">
             <span style={{ display: 'inline-flex', gap: 2, maxWidth: 112, overflow: 'hidden' }}>
               {tags.map(t => (
-                <Tag key={t} style={{ fontSize: 10, margin: 0, background: '#f2f3f5', color: '#4e5969',
+                <Tag key={t} style={{ fontSize: 11, margin: 0, background: 'rgba(0,0,0,0.04)', color: '#4e5969',
                                       border: 'none', maxWidth: 108, overflow: 'hidden',
                                       textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t}</Tag>
               ))}
@@ -797,7 +802,7 @@ export default function CaseManagement() {
       } },
     { key: 'reviewStatus', title: '审核', dataIndex: 'reviewStatus', width: 62, align: 'center', defaultVisible: true, render: (v, row) => {
       // 没提审过要给占位。原来 return null，那一格空着像列坏了
-      if (!v) return <span style={{ fontSize: 11, color: '#d9d9d9' }}>—</span>
+      if (!v) return <span style={{ fontSize: 11, color: '#c9cdd4' }}>—</span>
       // **列表只显示审核状态，不区分是 AI 审的还是人审的** —— 一列一种语义。
       // 谁审的、审了几轮、每轮的必改清单，都在详情页的「审核」tab 里。
       // （原来这里给 AI 的结论标了「AI 过/AI 打回」，同一列混两套语义，看着就是不一致。）
@@ -813,16 +818,16 @@ export default function CaseManagement() {
         </div>}>{tag}</Tooltip>
       ) : tag
       if (v === 'approved') return wrap(
-        <Tag style={{ fontSize: 10, background: '#e0f7f6', color: '#0ea5a0', border: 'none', margin: 0 }}>通过</Tag>)
+        <Tag style={{ fontSize: 11, background: 'var(--green-bg)', color: '#0ea5a0', border: 'none', margin: 0 }}>通过</Tag>)
       if (v === 'rejected') return wrap(
-        <Tag color="error" style={{ fontSize: 10, margin: 0 }}>打回</Tag>)
+        <Tag color="error" style={{ fontSize: 11, margin: 0 }}>打回</Tag>)
       return (
         <Dropdown trigger={['click']} menu={{ items: [
           { key: 'approved', label: '通过' },
           { key: 'rejected', label: '打回', danger: true },
         ], onClick: ({ key, domEvent }) => { domEvent.stopPropagation(); key === 'approved' ? approveCase(row.id) : setRejectFor(row.id) } }}>
           <Tag onClick={e => e.stopPropagation()}
-            style={{ fontSize: 10, cursor: 'pointer', background: 'rgba(78,138,240,0.08)', color: '#4e8af0', border: 'none', margin: 0 }}>
+            style={{ fontSize: 11, cursor: 'pointer', background: 'rgba(78,138,240,0.08)', color: '#4e8af0', border: 'none', margin: 0 }}>
             待审 ▾
           </Tag>
         </Dropdown>
@@ -834,9 +839,9 @@ export default function CaseManagement() {
       return <span style={{ color, fontWeight: 600, fontSize: 12 }}>{v.total}</span>
     }},
 
-    { key: 'createdAt', title: '创建时间', dataIndex: 'createdAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
-    { key: 'updatedAt', title: '更新时间', dataIndex: 'updatedAt', width: 150, defaultVisible: false, render: v => <span style={{ fontSize: 12, color: '#86909c' }}>{v ? new Date(v).toLocaleString('zh-CN') : '-'}</span> },
-    { key: 'actions', title: '操作', width: statusFilter === 'deleted' ? 128 : 80, align: 'center', defaultVisible: true, render: (_, row) => (
+    { ...timeColumn({ key: 'createdAt', title: '创建时间' }), defaultVisible: false },
+    { ...timeColumn({ key: 'updatedAt', title: '更新时间' }), defaultVisible: true },
+    { key: 'actions', title: '操作', width: statusFilter === 'deleted' ? 128 : 80, align: 'center', defaultVisible: true, fixed: 'right', render: (_, row) => (
       statusFilter === 'deleted' ? (
         <Space size={2}>
         {/* 误删一条就得整条重写，那这一步缓冲就白设了 */}
@@ -904,7 +909,7 @@ export default function CaseManagement() {
   const [columnSettingOpen, setColumnSettingOpen] = useState(false)
 
   const columns = [
-    ...allColumns.filter(c => c.fixed || visibleColumnKeys.includes(c.key)),
+    ...allColumns.filter(c => c.alwaysOn || visibleColumnKeys.includes(c.key)),
     {
       title: (
         <Tooltip title="列设置">
@@ -919,6 +924,9 @@ export default function CaseManagement() {
       key: '_settings',
       width: 40,
       align: 'center',
+      // 13 列放不进 1142px 的内容区，一定会有横向滚动；操作列和列设置必须钉在
+      // 右边，否则要先横向滚一段才点得到「复制/删除」。
+      fixed: 'right',
       render: () => null,
     },
   ]
@@ -1250,7 +1258,9 @@ export default function CaseManagement() {
               pagination={false}
               size="small"
               loading={loading}
-              scroll={{ y: 'calc(100vh - 330px)' }}
+              // x 给默认列宽的合计值：正好不出横向滚动条；齿轮里多开几列会超过
+              // 这个 min-width，那时滚动条才出现，而不是把某一列压成 4px。
+              scroll={{ x: 1132, y: 'calc(100vh - 330px)' }}
               rowSelection={{ selectedRowKeys: selectedRowKeys, onChange: setSelectedRowKeys }}
               style={{ flex: 1 }}
               locale={{ emptyText: <Empty description="暂无用例" /> }}
@@ -1338,8 +1348,8 @@ export default function CaseManagement() {
         ) : (
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {[
-              { label: '新增', count: importResult.new, color: '#0ea5a0', bg: '#e0f7f6' },
-              { label: '更新', count: importResult.updated, color: '#0ea5a0', bg: '#e0f7f6' },
+              { label: '新增', count: importResult.new, color: '#0ea5a0', bg: 'rgba(14,165,160,0.1)' },
+              { label: '更新', count: importResult.updated, color: '#0ea5a0', bg: 'rgba(14,165,160,0.1)' },
               { label: '跳过', count: importResult.skipped, color: '#86909c', bg: 'rgba(0,0,0,0.03)' },
             ].map(s => (
               <div key={s.label} style={{ flex: 1, textAlign: 'center', padding: '16px 0', background: s.bg, borderRadius: 12 }}>
@@ -1495,11 +1505,11 @@ export default function CaseManagement() {
             {/* **和表格一一对齐**：固定列（标题）也列出来，勾选框锁死 ——
                 原来它不在名单里，人对着列设置数不出表格上那一列是哪来的。 */}
             {allColumns.map(col => (
-              <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: col.fixed ? 'not-allowed' : 'pointer', padding: '4px 8px', borderRadius: 12, background: (col.fixed || visibleColumnKeys.includes(col.key)) ? '#e0f7f6' : 'transparent', opacity: col.fixed ? 0.75 : 1 }}>
+              <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: col.alwaysOn ? 'not-allowed' : 'pointer', padding: '4px 8px', borderRadius: 12, background: (col.alwaysOn || visibleColumnKeys.includes(col.key)) ? 'var(--primary-bg)' : 'transparent', opacity: col.alwaysOn ? 0.75 : 1 }}>
                 <input
                   type="checkbox"
-                  checked={col.fixed || visibleColumnKeys.includes(col.key)}
-                  disabled={col.fixed}
+                  checked={col.alwaysOn || visibleColumnKeys.includes(col.key)}
+                  disabled={col.alwaysOn}
                   onChange={e => {
                     if (e.target.checked) {
                       setVisibleColumnKeys(prev => [...prev, col.key])
@@ -1509,9 +1519,9 @@ export default function CaseManagement() {
                   }}
                 />
                 <span style={{ fontSize: 13 }}>{col.title}</span>
-                {col.fixed
-                  ? <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: 'rgba(0,0,0,0.04)', color: '#86909c' }}>始终显示</Tag>
-                  : col.defaultVisible && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#e0f7f6', color: '#0ea5a0' }}>默认</Tag>}
+                {col.alwaysOn
+                  ? <Tag style={{ fontSize: 11, lineHeight: '16px', padding: '0 4px', border: 'none', background: 'rgba(0,0,0,0.04)', color: '#86909c' }}>始终显示</Tag>
+                  : col.defaultVisible && <Tag style={{ fontSize: 11, lineHeight: '16px', padding: '0 4px', border: 'none', background: 'var(--green-bg)', color: '#0ea5a0' }}>默认</Tag>}
               </label>
             ))}
           </div>
@@ -1570,7 +1580,7 @@ export default function CaseManagement() {
             <div style={{ maxHeight: 460, overflow: 'auto' }}>
               {(reviewResult.results || []).map((r, i) => (
                 <div key={i} style={{ padding: '10px 12px', marginBottom: 8, borderRadius: 12,
-                  background: r.verdict === 'approved' ? '#f6ffed' : '#fff7f6' }}>
+                  background: r.verdict === 'approved' ? 'rgba(14,165,160,0.1)' : '#fff7f6' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <Tag color={r.verdict === 'approved' ? 'success' : 'error'} style={{ margin: 0 }}>
                       {r.error ? '评审失败' : r.verdict === 'approved' ? '过审' : '打回'}
@@ -1585,7 +1595,7 @@ export default function CaseManagement() {
                   {(r.findings || []).filter(f => f.severity !== 'minor').map((f, j) => (
                     <div key={j} style={{ fontSize: 12, marginTop: 6, lineHeight: 1.6 }}>
                       <Tag color={f.severity === 'blocker' ? 'error' : 'warning'}
-                        style={{ fontSize: 10, margin: '0 6px 0 0' }}>
+                        style={{ fontSize: 11, margin: '0 6px 0 0' }}>
                         {f.severity === 'blocker' ? '致命' : '重要'}</Tag>
                       <span style={{ color: '#86909c' }}>{f.where}</span>：{f.problem}
                       {f.fix && <span style={{ color: '#0ea5a0' }}> → {f.fix}</span>}
